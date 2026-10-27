@@ -5,17 +5,17 @@ Status as of 27 October 2026. Read this, then `README.md` and `GETTING_STARTED.m
 ## What exists and works (verified)
 
 - Next.js 16.4 app (App Router, Cache Components) + local MongoDB + Tailwind v4. Project: `~/code/baremetal`.
-- 6 courses / 41 lessons in `content/` (C and Rust, zero → HTTP server). `npm run verify:content` checks every lesson (solution passes, starter fails) — was all green.
+- 9 courses / 65 lessons in `content/` (C, Rust and x86-64 assembly). `npm run verify:content` checks every lesson (solution passes, starter fails) — was all green.
 - Sandboxed runner (`src/lib/runner.ts`): gcc/rustc inside bubblewrap, no network, CPU/mem/proc limits, UBSan for C.
 - AI tutor (`src/lib/tutor.ts`, `/api/tutor`): Claude Opus 5.5 or Ollama (`TUTOR_PROVIDER`). Response cache, prompt caching, quotas per user/IP/global, pre-written failure explanations with "Elaborate" button (`src/lib/diagnostics.ts`). **Not configured yet:** needs `ANTHROPIC_API_KEY` in `.env.local` or Ollama installed.
-- Auth hardening: scrypt, hashed sessions in httpOnly SameSite=Strict cookies, TOTP 2FA + backup codes (required for admins), lockout with exponential backoff, PoW CAPTCHA after 3 failures, HIBP + top-10k password checks, IP limits (trusted-proxy aware). `npm run test:e2e -- http://localhost:3100` → 46/46 passed (run against `next start -p 3100`).
+- Auth hardening: scrypt, hashed sessions in httpOnly SameSite=Strict cookies, TOTP 2FA + backup codes (required for admins), lockout with exponential backoff, PoW CAPTCHA after 3 failures, HIBP + top-10k password checks, IP limits (trusted-proxy aware). `npm run test:e2e -- http://localhost:3100` → 45/45 passed (run against `next start -p 3100`).
 - GDPR/SEO set: legal pages from `content/legal/*.md`, consent banner + first-party analytics, export/delete in settings, robots, sitemap, llms.txt, og:images, JSON-LD, canonical, skeletons, 404.
 
 ## Added this session (typecheck, lint and `next build` pass; NOT yet browser-tested or e2e re-run)
 
 1. **Light mode** — tokens in `src/app/globals.css` (dark default, light via OS or `data-theme`), toggle `src/components/theme-toggle.tsx` in header, pre-paint script via `src/components/inline-script.tsx` (the pattern from Next's "preventing flash before hydration" guide — fixes the React "script tag" console error). Editor colours are `--code-*` tokens.
 2. **Difficulty** — every `lesson.md` has `difficulty: easy|medium|hard|impossible` (8/13/6/2). Colours green/amber/red/dark-red (`--easy` … `--impossible`). Badge: `DifficultyBadge` in `src/components/gamification.tsx`, shown on lesson pages and track lists.
-3. **XP & levels** — `src/lib/gamification.ts`: 5/10/20/40 XP; level L needs 4·L·(L−1) XP; 515 XP total; level 10 is reached at 360 XP and is the cap. Medieval titles: Novice … Archmage. XP granted once on first pass (`recordAttempt` in `src/lib/progress.ts`, race-safe), returned by `/api/run` as `reward` → "+XP / Level up" banner. `npm run recompute-xp` rebuilds XP from progress (already run once; your account got backdated XP).
+3. **XP & levels** — `src/lib/gamification.ts`: 5/10/20/40 XP; level L needs 4·L·(L−1) XP; 785 XP total; level 10 is reached at 360 XP and is the cap. Medieval titles: Novice … Archmage. XP granted once on first pass (`recordAttempt` in `src/lib/progress.ts`, race-safe), returned by `/api/run` as `reward` → "+XP / Level up" banner. `npm run recompute-xp` rebuilds XP from progress (already run once; your account got backdated XP).
 4. **Usernames & profiles** — `username` (unique, lowercase, `usernameProblem()` rules) on sign-up and in settings; `profilePublic` toggle (default on). Pages: `/leaderboard` (top 50 + username search) and `/u/[username]` (`src/lib/community.ts`). Both `noindex`. Header shows level chip; dashboard shows level card + "choose a username" prompt for old accounts.
 
 ## Next steps (in order)

@@ -1,8 +1,8 @@
 # Baremetal
 
-Learn low-level programming from absolute zero. Learners read short lessons, write C and Rust in an in-browser editor, get instant results from hidden tests run in a sandbox, and can ask an AI tutor that guides them without handing over answers.
+Learn low-level programming from absolute zero. Learners read short lessons, write C, Rust and x86-64 assembly in an in-browser editor, get instant results from hidden tests run in a sandbox, and can ask an AI tutor that guides them without handing over answers.
 
-**Courses (41 lessons):** Programming from Zero (C) → Pointers & Memory in C → Systems Programming in C → Rust Foundations → Rust Traits & Lifetimes → Build an HTTP Server in Rust.
+**Courses (65 lessons):** Programming from Zero (C) → Pointers & Memory in C → Systems Programming in C → C in Practice → Rust Foundations → Rust Traits & Lifetimes → Rust in Practice → Build an HTTP Server in Rust → Assembly: First Steps.
 
 ## Running it locally
 
@@ -35,6 +35,7 @@ npm run make-admin -- you@example.com
 ## How it fits together
 
 - **Content** is plain files in `content/<track>/<NN-lesson>/`: `lesson.md`, `task.md`, `hints.md`, `starter.*`, `solution.*` and `tests.*` (or `cases.json` for output-checked lessons). Legal text is in `content/legal/`.
+  - **Assembly tracks** (`"language": "asm"` in `track.json`): learners edit `starter.s` (GNU as, `.intel_syntax noprefix`, System V AMD64 calling convention: args in `rdi rsi rdx rcx r8 r9`, result in `rax`). The hidden `tests.c` uses the same `CHECK` harness as C lessons, declares the learner's functions `extern`, and has its own `main`; the runner links `gcc -no-pie starter.s tests.c`. Every `.s` ends with `.section .note.GNU-stack,"",@progbits`. No UBSan applies; functions are leaf routines (no libc calls needed). See `content/asm-first-steps/01-hello-registers`.
 - **Code runner** (`src/lib/runner.ts`) compiles and runs code with gcc/rustc inside bubblewrap: no network, read-only system, private temp dir, CPU/memory/process/output limits, 5 s timeout. C is built with UBSan to explain undefined behaviour.
 - **AI tutor** (`src/lib/tutor.ts`, `/api/tutor`): Claude Opus 5.5 or a local Ollama model. Costs are kept down by a response cache for repeated first questions, prompt caching, short history and output caps, free pre-written failure explanations (`src/lib/diagnostics.ts`) and authored hints, and per-user/IP/global quotas.
 - **Auth** (`src/lib/auth.ts`, `src/app/(auth)/actions.ts`): scrypt passwords, hashed session tokens in `httpOnly` `SameSite=Strict` cookies, TOTP 2FA with backup codes (required for admins), lockout with exponential backoff, proof-of-work CAPTCHA, HIBP and common-password checks.
