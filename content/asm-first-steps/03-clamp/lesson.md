@@ -3,6 +3,7 @@ title: Compare and Branch
 summary: Use cmp and conditional jumps to implement if statements in assembly, and learn how signed and unsigned comparisons differ.
 minutes: 20
 difficulty: medium
+tags: branching, flags
 id: asm-first-steps/clamp
 mode: harness
 ---

@@ -3,6 +3,7 @@ title: Hello, Registers
 summary: Registers are the CPU's own tiny variables. Learn how a function receives its arguments and returns a result in x86-64 assembly.
 minutes: 15
 difficulty: easy
+tags: registers, calling-convention
 id: asm-first-steps/hello-registers
 mode: harness
 ---

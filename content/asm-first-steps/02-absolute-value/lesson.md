@@ -3,6 +3,7 @@ title: Absolute Value and Flags
 summary: Arithmetic instructions leave clues in the CPU's flags. Use neg and a conditional move to compute an absolute value without a branch.
 minutes: 15
 difficulty: easy
+tags: flags, arithmetic
 id: asm-first-steps/absolute-value
 mode: harness
 ---

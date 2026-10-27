@@ -3,6 +3,7 @@ title: Writing Through Pointers
 summary: Modify an array in place with loads and stores, using two pointers that walk toward each other from both ends.
 minutes: 25
 difficulty: medium
+tags: pointers, memory, arrays
 id: asm-first-steps/reverse-array
 mode: harness
 ---

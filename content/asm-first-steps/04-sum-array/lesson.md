@@ -3,6 +3,7 @@ title: Loops and Memory
 summary: Read an array from memory with pointers, addressing modes and a counted loop, and handle the empty array correctly.
 minutes: 20
 difficulty: medium
+tags: loops, memory, arrays
 id: asm-first-steps/sum-array
 mode: harness
 ---

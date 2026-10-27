@@ -3,6 +3,7 @@ title: Bit Twiddling
 summary: Shift, mask and clear bits with and, shr and sub to count the set bits in a 64-bit number, and learn which registers you must preserve.
 minutes: 25
 difficulty: medium
+tags: bitwise, loops
 id: asm-first-steps/popcount
 mode: harness
 ---

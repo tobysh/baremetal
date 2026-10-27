@@ -3,6 +3,7 @@ title: The Stack and Recursion
 summary: Use the stack, call and ret to write a recursive function, save callee-saved registers safely, and keep rsp 16-byte aligned.
 minutes: 30
 difficulty: hard
+tags: stack, recursion
 id: asm-first-steps/factorial
 mode: harness
 ---

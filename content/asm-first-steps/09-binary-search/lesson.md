@@ -3,6 +3,7 @@ title: Binary Search
 summary: Put everything together, with registers, comparisons, scaled addressing and careful bounds, to search a sorted array in logarithmic time.
 minutes: 35
 difficulty: hard
+tags: algorithms, branching, memory
 id: asm-first-steps/binary-search
 mode: harness
 ---
