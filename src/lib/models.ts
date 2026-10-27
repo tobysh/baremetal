@@ -59,6 +59,8 @@ export type ProgressDoc = {
   attempts: number;
   /** XP granted when the lesson was first passed. */
   xpAwarded?: number;
+  /** First pass happened faster than a person can learn (see PASS_PACE), so no XP was granted. */
+  xpWithheld?: boolean;
   updatedAt: Date;
   passedAt?: Date;
 };

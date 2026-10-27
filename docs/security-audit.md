@@ -27,6 +27,8 @@ Out of scope unless asked: physical/host OS hardening outside the app, third-par
 
 ## 1. Leads to confirm first
 
+**Status (27 Oct 2026):** L1 is confirmed by the PoCs in `scripts/security/integrity/` and is not fixed at its root: test results come from the learner's own process, and any secret placed in that process (a nonce, a sentinel) can be read back by learner code, so a nonce would only look like a fix. Mitigations in place: first-pass XP is paced (`PASS_PACE` in `src/lib/progress.ts`: more than 6 first passes in 10 minutes are saved as passed with no XP, flagged `xpWithheld`, and `recompute-xp` respects the flag), and test binaries run with the sources deleted from the work dir (L2 at run time; compile-time `.incbin` of the source still works). The real fix is to decide the verdict outside the learner's process.
+
 | # | Area | Lead | Where | Initial severity |
 |---|---|---|---|---|
 | L1 | Test integrity | Test results are parsed from the learner process's own stdout (C/asm `@@PASS`, Rust `test __bm_tests::x ... ok`, Go `--- PASS:`) or from port 0xE9 (kernel). Learner code can print fake pass lines from a constructor/`init()` and exit 0 before any real test runs. A kernel can `outb` to 0xE9 and write 1 to `isa-debug-exit`. Result: XP and leaderboard rank for every lesson without solving it. | `runner.ts` `parseHarnessOutput`, `testRustHarness`, `testGoHarness`, `testKernelHarness` | High (integrity) |

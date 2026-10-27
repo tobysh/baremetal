@@ -397,6 +397,14 @@ export function runProgram(language: Language, code: string, stdin = ""): Promis
   );
 }
 
+/**
+ * Test binaries run with only themselves in the work dir, so learner code can't read the
+ * hidden test sources at runtime. (It can still embed them at compile time; see docs/security-audit.md L2.)
+ */
+async function keepOnlyProgram(dir: string) {
+  for (const f of await readdir(dir)) if (f !== "prog") await rm(path.join(dir, f), { recursive: true, force: true });
+}
+
 const normalizeOut = (s: string) => s.replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, "").trimEnd();
 
 /** Run an exercise's tests against learner code. */
@@ -478,6 +486,7 @@ async function runCHarness(dir: string, build: () => ReturnType<typeof exec>): P
   const c = await build();
   const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
   if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: "Your code didn't compile." };
+  await keepOnlyProgram(dir);
   const r = await exec(dir, ["./prog"], { timeoutMs: RUN_TIMEOUT_MS, limits: runLimits(), env: runEnv });
   const { results, running, userOutput } = parseHarnessOutput(r.stdout);
   const crash = r.timedOut ? `Timed out after ${RUN_TIMEOUT_MS / 1000}s — is there a loop that never ends?` : signalMessage(r.signal, r.code);
@@ -491,6 +500,7 @@ async function testGoHarness(dir: string, ex: Exercise, code: string): Promise<T
   const c = await compile(dir, "go", code, { test: true, harness: ex.harness ?? "" });
   const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
   if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: c.timedOut ? "Compilation took too long." : "Your code didn't compile." };
+  await keepOnlyProgram(dir);
   const r = await exec(dir, ["./prog", "-test.v", "-test.timeout=5s", "-test.count=1"], { timeoutMs: RUN_TIMEOUT_MS * 2, limits: goRunLimits(), env: runEnv });
   const results: TestCaseResult[] = [];
   const lines = r.stdout.split("\n");
@@ -528,6 +538,7 @@ async function testRustHarness(dir: string, ex: Exercise, code: string): Promise
   const c = await compile(dir, "rust", rustTestSource(code, ex.harness ?? ""), { test: true });
   const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
   if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: "Your code didn't compile." };
+  await keepOnlyProgram(dir);
   const r = await exec(dir, ["./prog", "--test-threads=1", "--color", "never"], { timeoutMs: RUN_TIMEOUT_MS * 2, limits: runLimits(), env: runEnv });
   const results: TestCaseResult[] = [];
   const failures = new Map<string, string>();

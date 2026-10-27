@@ -51,6 +51,7 @@ type RunResponse =
       error: string | null;
       saved: boolean;
       reward: Reward | null;
+      paced?: boolean;
     };
 
 type Reward = { xp: number; totalXp: number; level: number; title: string; levelUp: boolean };
@@ -447,7 +448,7 @@ function OutputPanel({
   const explanations = failed ? explain(result) : [];
   return (
     <div className="space-y-4" aria-live="polite">
-      {result.kind === "test" && result.allPassed && <SuccessBanner nextHref={nextHref} signedIn={signedIn} reward={result.reward} />}
+      {result.kind === "test" && result.allPassed && <SuccessBanner nextHref={nextHref} signedIn={signedIn} reward={result.reward} paced={result.paced} />}
 
       {explanations.length > 0 && (
         <section aria-labelledby="what-went-wrong" className="space-y-2">
@@ -525,13 +526,14 @@ function OutputPanel({
   );
 }
 
-function SuccessBanner({ nextHref, signedIn, again = false, reward = null }: { nextHref: string | null; signedIn: boolean; again?: boolean; reward?: Reward | null }) {
+function SuccessBanner({ nextHref, signedIn, again = false, reward = null, paced = false }: { nextHref: string | null; signedIn: boolean; again?: boolean; reward?: Reward | null; paced?: boolean }) {
   return (
     <div role="status" className="rounded-lg bg-ok-soft p-4 text-sm">
       <p className="font-medium text-ok">
         {again ? "You've completed this lesson." : "All tests pass — nicely done!"}
         {reward && <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-ink">+{reward.xp} XP</span>}
       </p>
+      {paced && <p className="mt-1">This lesson is saved as passed, but no XP was added because you passed several lessons in a few minutes. XP resumes automatically.</p>}
       {reward?.levelUp && (
         <p className="mt-1 font-medium">
           Level up! You&apos;re now level {reward.level}: {reward.title}.

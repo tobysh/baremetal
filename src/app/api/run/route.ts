@@ -38,6 +38,7 @@ export async function POST(req: Request) {
         kind: "test",
         ...result,
         saved: !!user,
+        paced: reward?.paced ?? false,
         reward: reward?.firstPass && after ? { xp: reward.xpAwarded, totalXp: after.xp, level: after.level, title: after.title, levelUp: after.level > (before?.level ?? 0) } : null,
       });
     }

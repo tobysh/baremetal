@@ -13,7 +13,14 @@ export async function saveCode(userId: string, exerciseId: string, trackSlug: st
   );
 }
 
-export type AttemptOutcome = { firstPass: boolean; xpAwarded: number; totalXp: number | null };
+export type AttemptOutcome = { firstPass: boolean; xpAwarded: number; totalXp: number | null; paced?: boolean };
+
+/**
+ * Test results come from the learner's own process, so a determined learner can
+ * forge them. This caps the damage: more than MAX first passes inside WINDOW_MS
+ * still counts as passed, but earns no XP.
+ */
+export const PASS_PACE = { max: 6, windowMs: 10 * 60 * 1000 };
 
 export async function recordAttempt(
   userId: string,
@@ -34,8 +41,15 @@ export async function recordAttempt(
   if (!passed) return { firstPass: false, xpAwarded: 0, totalXp: null };
   // Passing is permanent, and XP is granted once: only the request that flips
   // the status to "passed" awards it, even if Test is pressed twice at once.
-  const flipped = await c.updateOne({ ...filter, status: { $ne: "passed" } }, { $set: { status: "passed", passedAt: now, xpAwarded: xp } });
+  const recent = await c.countDocuments({ userId: filter.userId, status: "passed", passedAt: { $gte: new Date(now.getTime() - PASS_PACE.windowMs) } });
+  const paced = recent >= PASS_PACE.max;
+  const award = paced ? 0 : xp;
+  const flipped = await c.updateOne(
+    { ...filter, status: { $ne: "passed" } },
+    { $set: { status: "passed", passedAt: now, xpAwarded: award, ...(paced ? { xpWithheld: true } : {}) } },
+  );
   if (flipped.modifiedCount !== 1) return { firstPass: false, xpAwarded: 0, totalXp: null };
+  if (paced) return { firstPass: true, xpAwarded: 0, totalXp: null, paced: true };
   const db = await getDb();
   const user = await db
     .collection<UserDoc>("users")

@@ -30,6 +30,7 @@ The last full pass was green: `verify:content` for the asm and osdev tracks (wit
 
 ## Suggested next steps
 
+0. **Test-result integrity (`docs/security-audit.md` L1) is mitigated, not fixed.** Learner code can forge passes; XP is paced and sources are hidden at run time. Decide whether to move the verdict out of the learner's process before the leaderboard is public.
 1. Start Phase A of `docs/gamification-plan.md` (XP ledger, server-side hint tracking, learner timezone). Phase D's solo features (D1–D4) do not need a userbase.
 2. Decide the community threshold (open decision in the plan) before building D5.
 3. Real-device phone check of the header and lesson workspace (checked in headless Chromium at 390px only).
@@ -43,6 +44,7 @@ The last full pass was green: `verify:content` for the asm and osdev tracks (wit
 - Pages that read the DB during render need `await connection()` inside `<Suspense>`.
 - Lesson ids (`track/slug`) are the progress keys. Renumbering folder prefixes is safe; changing a slug or `id:` loses learners' progress. After changing a lesson's difficulty run `npm run recompute-xp`.
 - Adding a language touches the runner, curriculum types, editor grammar, diagnostics and the tutor prompt.
+- Rust here is installed system-wide (`/usr/bin/rustc`), not via rustup, so the runner finds no toolchain unless `RUST_TOOLCHAIN_DIR=/usr` is set (in `.env.local` for dev, and when running `verify:content`).
 - Don't `pkill -f` with a pattern that also appears in your own command line (it kills the shell). Kill by PID.
 - `verify:content -- osdev` reports a bare "triple fault" for every lesson when `qemu-system-x86_64` is missing; install QEMU before trusting a failure.
 - Commits in this repo carry no co-author or "Generated with" lines.

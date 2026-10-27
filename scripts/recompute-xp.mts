@@ -12,10 +12,10 @@ const db = client.db(process.env.MONGODB_DB ?? "baremetal");
 
 let changed = 0;
 for await (const user of db.collection("users").find({}, { projection: { _id: 1, xp: 1 } })) {
-  const passed = await db.collection("progress").find({ userId: user._id, status: "passed" }, { projection: { exerciseId: 1 } }).toArray();
+  const passed = await db.collection("progress").find({ userId: user._id, status: "passed" }, { projection: { exerciseId: 1, xpWithheld: 1 } }).toArray();
   let xp = 0;
   for (const p of passed) {
-    const award = xpByExercise.get(p.exerciseId) ?? 0;
+    const award = p.xpWithheld ? 0 : (xpByExercise.get(p.exerciseId) ?? 0);
     xp += award;
     await db.collection("progress").updateOne({ _id: p._id }, { $set: { xpAwarded: award } });
   }
