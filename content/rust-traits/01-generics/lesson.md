@@ -3,6 +3,7 @@ title: Generics
 summary: Write one function or struct that works for many types, using type parameters and trait bounds like PartialOrd and Copy.
 minutes: 15
 difficulty: easy
+tags: generics
 id: rust-traits/generics
 mode: harness
 ---

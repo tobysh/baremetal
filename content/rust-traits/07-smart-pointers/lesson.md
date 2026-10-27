@@ -3,6 +3,7 @@ title: Box, Rc and RefCell
 summary: Share and mutate data with smart pointers. Build a small tree whose nodes have several owners, using Rc and RefCell.
 minutes: 30
 difficulty: hard
+tags: smart-pointers, ownership
 id: rust-traits/smart-pointers
 mode: harness
 ---

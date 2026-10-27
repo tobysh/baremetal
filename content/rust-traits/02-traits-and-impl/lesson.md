@@ -3,6 +3,7 @@ title: Traits and impl
 summary: Define shared behaviour with a trait, implement it for your own types, and use default methods and trait-bounded functions.
 minutes: 16
 difficulty: easy
+tags: traits
 id: rust-traits/traits-and-impl
 mode: harness
 ---

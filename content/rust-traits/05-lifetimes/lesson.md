@@ -3,6 +3,7 @@ title: Lifetimes
 summary: Learn what 'a means, how references are checked against the data they borrow, and how to store references in structs.
 minutes: 25
 difficulty: hard
+tags: lifetimes, borrowing
 id: rust-traits/lifetimes
 mode: harness
 ---

@@ -3,6 +3,7 @@ title: Closures
 summary: Use closures, anonymous functions that capture their surroundings, and the Fn, FnMut and FnOnce traits that describe them.
 minutes: 20
 difficulty: medium
+tags: closures
 id: rust-traits/closures
 mode: harness
 ---

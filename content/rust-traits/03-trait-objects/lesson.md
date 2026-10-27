@@ -3,6 +3,7 @@ title: Trait objects vs generics
 summary: Choose between generics (static dispatch) and dyn Trait (dynamic dispatch), and keep mixed collections with Box<dyn Trait>.
 minutes: 20
 difficulty: medium
+tags: trait-objects, generics
 id: rust-traits/trait-objects
 mode: harness
 ---
