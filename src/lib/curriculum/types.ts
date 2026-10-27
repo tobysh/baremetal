@@ -32,6 +32,10 @@ export type Lesson = {
   summary: string;
   minutes: number;
   difficulty: Difficulty;
+  /** "review" lessons consolidate earlier ones: no new concepts, familiar ideas combined in a new setting. */
+  kind: "lesson" | "review";
+  /** Lowercase kebab-case topic tags, from `tags:` in the frontmatter (comma-separated). */
+  tags: string[];
   /** Lesson body (markdown). */
   body: string;
   exercise: Exercise;

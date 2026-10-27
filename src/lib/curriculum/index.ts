@@ -43,12 +43,17 @@ function loadLesson(trackDir: string, dirName: string, language: Track["language
   };
   if (!meta.title || !meta.summary || !meta.id) throw new Error(`Lesson ${dir} is missing title, summary or id`);
   if (!isDifficulty(meta.difficulty)) throw new Error(`Lesson ${dir} needs difficulty: easy | medium | hard | impossible`);
+  if (meta.kind && meta.kind !== "lesson" && meta.kind !== "review") throw new Error(`Lesson ${dir}: kind must be lesson or review`);
+  const tags = (meta.tags ?? "").split(",").map((t) => t.trim()).filter(Boolean);
+  for (const t of tags) if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(t)) throw new Error(`Lesson ${dir}: tag "${t}" must be lowercase kebab-case`);
   return {
     slug: dirName.replace(/^\d+-/, ""),
     title: meta.title,
     summary: meta.summary,
     minutes: Number(meta.minutes ?? 15),
     difficulty: meta.difficulty,
+    kind: meta.kind === "review" ? "review" : "lesson",
+    tags,
     body: body.trim(),
     exercise,
   };

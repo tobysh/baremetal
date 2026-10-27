@@ -67,6 +67,7 @@ async function Lesson({ params }: { params: PageProps<"/learn/[track]/[lesson]">
             educationalLevel: track.level,
             inLanguage: "en",
             timeRequired: `PT${lesson.minutes}M`,
+            ...(lesson.tags.length ? { keywords: lesson.tags.join(", ") } : {}),
             isAccessibleForFree: true,
             programmingLanguage: LANGUAGE_LABEL[track.language],
             isPartOf: { "@type": "Course", name: track.title, url: absoluteUrl(`/learn/${track.slug}`) },
@@ -100,7 +101,17 @@ async function Lesson({ params }: { params: PageProps<"/learn/[track]/[lesson]">
             </Badge>
             <DifficultyBadge difficulty={lesson.difficulty} />
             <Badge>{lesson.minutes} min</Badge>
+            {lesson.kind === "review" && <Badge tone="accent">Review</Badge>}
           </div>
+          {lesson.tags.length > 0 && (
+            <ul aria-label="Topics" className="mt-2 flex flex-wrap gap-1.5">
+              {lesson.tags.map((t) => (
+                <li key={t} className="rounded-md bg-surface-2 px-2 py-0.5 font-mono text-xs text-muted">
+                  #{t}
+                </li>
+              ))}
+            </ul>
+          )}
           <h1 className="mt-3 text-3xl font-bold tracking-tight">{lesson.title}</h1>
           <p className="mt-2 text-muted">{lesson.summary}</p>
           <Markdown className="mt-6">{lesson.body}</Markdown>

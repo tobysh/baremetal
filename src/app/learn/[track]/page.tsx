@@ -131,8 +131,22 @@ function LessonList({ trackSlug, passed }: { trackSlug: string; passed?: Set<str
               </span>
               <span className="flex-1">
                 <span className="font-medium">{l.title}</span>
+                {l.kind === "review" && (
+                  <span className="ml-2 align-middle">
+                    <Badge tone="accent">Review</Badge>
+                  </span>
+                )}
                 {done && <span className="sr-only"> (completed)</span>}
                 <span className="mt-1 block text-sm text-muted">{l.summary}</span>
+                {l.tags.length > 0 && (
+                  <span className="mt-2 flex flex-wrap gap-1.5">
+                    {l.tags.map((t) => (
+                      <span key={t} className="rounded-md bg-surface-2 px-2 py-0.5 font-mono text-xs text-muted">
+                        #{t}
+                      </span>
+                    ))}
+                  </span>
+                )}
               </span>
               <span className="flex shrink-0 flex-col items-end gap-1">
                 <DifficultyBadge difficulty={l.difficulty} />
