@@ -11,6 +11,11 @@ import { USERNAME_RE } from "@/lib/gamification";
 
 type Params = PageProps<"/u/[username]">["params"];
 
+// One sample value so the shell prerenders; other usernames render on request.
+export function generateStaticParams() {
+  return [{ username: "example" }];
+}
+
 export async function generateMetadata({ params }: PageProps<"/u/[username]">): Promise<Metadata> {
   const { username } = await params;
   const name = decodeURIComponent(username).toLowerCase();
