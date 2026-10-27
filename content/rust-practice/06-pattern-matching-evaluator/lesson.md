@@ -3,6 +3,7 @@ title: Patterns in Depth: An Expression Evaluator
 summary: Use match guards, bindings, nested enum patterns and slice patterns to evaluate and simplify arithmetic expression trees.
 minutes: 35
 difficulty: hard
+tags: pattern-matching, enums, parsing
 id: rust-practice/pattern-matching-evaluator
 mode: harness
 ---

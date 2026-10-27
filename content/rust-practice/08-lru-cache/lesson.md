@@ -3,6 +3,7 @@ title: A Least-Recently-Used Cache
 summary: Combine a HashMap with a Vec to build an LRU cache, and learn to keep two data structures in step without fighting the borrow checker.
 minutes: 30
 difficulty: hard
+tags: data-structures, caching
 id: rust-practice/lru-cache
 mode: harness
 ---

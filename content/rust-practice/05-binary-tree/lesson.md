@@ -3,6 +3,7 @@ title: A Binary Search Tree
 summary: Build a binary search tree from Option<Box<Node>>, with insert, contains, in-order traversal and height, using recursion and &mut references.
 minutes: 25
 difficulty: medium
+tags: data-structures, recursion
 id: rust-practice/binary-tree
 mode: harness
 ---

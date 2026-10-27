@@ -3,6 +3,7 @@ title: Writing Your Own Iterator
 summary: Implement the Iterator trait for your own type and unlock map, filter, take_while, sum and the rest of the adaptors for free.
 minutes: 15
 difficulty: easy
+tags: iterators, traits
 id: rust-practice/custom-iterators
 mode: harness
 ---

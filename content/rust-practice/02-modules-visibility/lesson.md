@@ -3,6 +3,7 @@ title: Modules and Visibility
 summary: Group code into mod blocks, decide what is pub and what stays private, and reach items with use and paths like super::.
 minutes: 15
 difficulty: easy
+tags: modules, visibility
 id: rust-practice/modules-visibility
 mode: harness
 ---

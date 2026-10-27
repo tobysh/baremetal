@@ -3,6 +3,7 @@ title: Errors and Combinators
 summary: Chain Option and Result with map, and_then and ok_or, then write your own error enum with Display and From so the ? operator does the rest.
 minutes: 25
 difficulty: medium
+tags: errors, combinators
 id: rust-practice/errors-and-combinators
 mode: harness
 ---

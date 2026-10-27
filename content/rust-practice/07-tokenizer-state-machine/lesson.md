@@ -3,6 +3,7 @@ title: A Tokenizer as a State Machine
 summary: Turn text into tokens with a hand-written state machine, using an enum for the state, tuple matches with guards, and a custom error with positions.
 minutes: 30
 difficulty: medium
+tags: parsing, state-machines, enums
 id: rust-practice/tokenizer-state-machine
 mode: harness
 ---

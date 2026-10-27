@@ -3,6 +3,7 @@ title: A Generic Stack and Queue
 summary: Build Stack<T> and Queue<T> on top of Vec, practise Option returns and borrowed peeks, and use a stack to check balanced brackets.
 minutes: 20
 difficulty: medium
+tags: generics, data-structures
 id: rust-practice/generic-stack-queue
 mode: harness
 ---
