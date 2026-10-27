@@ -3,6 +3,7 @@ title: Recursion and Backtracking
 summary: Solve puzzles by trying a choice, exploring what follows, and undoing it. Count subsets that add up and the ways to place queens safely.
 minutes: 45
 difficulty: hard
+tags: recursion, algorithms
 id: c-practice/recursion-and-backtracking
 mode: harness
 ---

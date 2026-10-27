@@ -3,6 +3,7 @@ title: The Preprocessor and Macros
 summary: Learn what #define really does, why unbracketed macros give wrong answers, and write five small macros that behave themselves.
 minutes: 30
 difficulty: medium
+tags: preprocessor, macros
 id: c-practice/macros
 mode: harness
 ---

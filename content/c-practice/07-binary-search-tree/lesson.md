@@ -3,6 +3,7 @@ title: Binary Search Trees
 summary: Grow a tree of malloc'd nodes where smaller keys go left and bigger go right, then search it, measure it, list it in order and free it.
 minutes: 45
 difficulty: hard
+tags: data-structures, recursion, heap
 id: c-practice/binary-search-tree
 mode: harness
 ---

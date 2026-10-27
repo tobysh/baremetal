@@ -3,6 +3,7 @@ title: Enums and Tagged Values
 summary: Name a set of choices with an enum, then use a union plus a tag to hold one of several different shapes of data in the same space.
 minutes: 20
 difficulty: easy
+tags: enums, structs
 id: c-practice/enums-and-tagged-values
 mode: harness
 ---

@@ -3,6 +3,7 @@ title: Formatting and Parsing Text
 summary: Build text safely with snprintf, then read a tiny key=value language with a state machine that knows what it is looking at.
 minutes: 40
 difficulty: medium
+tags: parsing, strings
 id: c-practice/formatting-and-parsing
 mode: harness
 ---

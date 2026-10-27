@@ -3,6 +3,7 @@ title: Sorting by Hand
 summary: Write insertion sort and merge sort yourself, and learn why one is simple and slow while the other is clever and fast.
 minutes: 35
 difficulty: medium
+tags: sorting, algorithms
 id: c-practice/sorting-by-hand
 mode: harness
 ---

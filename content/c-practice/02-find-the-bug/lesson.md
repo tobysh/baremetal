@@ -3,6 +3,7 @@ title: Find the Bug
 summary: Read six small functions that almost work, spot the off-by-one and other classic slips, and fix each one so the tests pass.
 minutes: 20
 difficulty: easy
+tags: debugging, undefined-behaviour
 id: c-practice/find-the-bug
 mode: harness
 ---

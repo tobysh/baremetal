@@ -3,6 +3,7 @@ title: A Double-Ended Queue
 summary: Build a doubly linked list with malloc, then use it as a deque you can add to and remove from at both ends, reverse and tidy up.
 minutes: 40
 difficulty: medium
+tags: data-structures, heap
 id: c-practice/deque
 mode: harness
 ---
