@@ -181,6 +181,9 @@ export function TutorChat({
           )}
         </div>
       </form>
+      <p className="px-3 pb-2 text-[11px] text-muted">
+        The tutor is an AI and can make mistakes. Check its answers against the lesson and your own tests.
+      </p>
       {quota && (
         <p className="px-3 pb-2 text-[11px] text-muted" aria-live="polite">
           {quota.remaining} of {quota.limit} tutor questions left this hour. Repeated common questions and hints don&apos;t count.

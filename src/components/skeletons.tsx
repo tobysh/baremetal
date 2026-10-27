@@ -4,6 +4,7 @@ import { Container, Skeleton } from "./ui";
 export function LessonSkeleton() {
   return (
     <div className="mx-auto w-full max-w-[96rem] px-4 py-6 sm:px-6" aria-busy="true" aria-label="Loading lesson">
+      <Skeleton className="mb-5 h-12 w-64" />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
         <div className="space-y-4">
           <Skeleton className="h-4 w-56" />
@@ -24,7 +25,7 @@ export function LessonSkeleton() {
             <Skeleton className="h-4 w-4/5" />
           </div>
         </div>
-        <Skeleton className="h-[36rem] rounded-xl lg:h-[calc(100dvh-6.5rem)]" />
+        <Skeleton className="hidden h-[36rem] rounded-xl lg:block lg:h-[calc(100dvh-10rem)]" />
       </div>
     </div>
   );

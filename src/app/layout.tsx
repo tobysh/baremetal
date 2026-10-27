@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Archivo, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { Analytics } from "@/components/analytics";
 import { CookieBanner } from "@/components/consent";
 import { InlineScript } from "@/components/inline-script";
@@ -11,6 +11,8 @@ import { Suspense } from "react";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({ variable: "--font-plex-sans", subsets: ["latin"], weight: ["400", "500", "600", "700"], display: "swap" });
+// Display face for headings on the dashboard; the width axis gives the wide cut (font-stretch).
+const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin"], axes: ["wdth"], display: "swap" });
 const plexMono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"], weight: ["400", "500"], display: "swap" });
 
 export const metadata: Metadata = {
@@ -33,7 +35,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     // suppressHydrationWarning: the pre-paint script may set data-theme before React hydrates.
-    <html lang="en-GB" className={`${plexSans.variable} ${plexMono.variable} antialiased`} suppressHydrationWarning>
+    <html lang="en-GB" className={`${plexSans.variable} ${plexMono.variable} ${archivo.variable} antialiased`} suppressHydrationWarning>
       <head>
         {/* Sets the saved theme before first paint, so there's no flash of the wrong one. */}
         <InlineScript html={themeInitScript} />

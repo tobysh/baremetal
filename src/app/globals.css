@@ -3,11 +3,11 @@
 /* Design tokens — see CLAUDE.md. Dark is the default; light applies when the
    OS prefers it, or when the visitor picks it (data-theme on <html>). */
 :root {
-  --bg: #0e1013;
-  --surface: #15181d;
-  --surface-2: #1c2027;
-  --border: #2a2f38;
-  --text: #e8eaee;
+  --bg: #0c0d0f;
+  --surface: #131417;
+  --surface-2: #181a1e;
+  --border: #23252a;
+  --text: #ecebe8;
   --muted: #9aa3b2;
   --accent: #f5a524;
   --accent-ink: #1a1203;
@@ -15,6 +15,7 @@
   --ok: #3fcf8e;
   --ok-soft: rgb(63 207 142 / 0.12);
   --err: #ff6b6b;
+  --err-ink: #210b0b;
   --err-soft: rgb(255 107 107 / 0.12);
   --focus: #7cb7ff;
   /* Difficulty: green, amber, red, dark red. */
@@ -23,6 +24,13 @@
   --hard: #ff5c5c;
   --impossible: #a3132b;
   --impossible-ink: #ffffff;
+  /* Panels and rules (dashboard) */
+  --panel: #131417;
+  --panel-2: #181a1e;
+  --line: #23252a;
+  --line-strong: #2f3238;
+  --text-2: #b3b4ba;
+  --panel-edge: inset 0 1px 0 rgb(255 255 255 / 0.04);
   /* Code editor */
   --code-bg: #16191e;
   --code-text: #e6e9ef;
@@ -49,12 +57,13 @@
     --border: #e2ded5;
     --text: #17181b;
     --muted: #5d6470;
-    --accent: #b86e00;
+    --accent: #9a5b00;
     --accent-ink: #ffffff;
-    --accent-soft: rgb(184 110 0 / 0.1);
-    --ok: #0f8a55;
-    --ok-soft: rgb(15 138 85 / 0.1);
+    --accent-soft: rgb(154 91 0 / 0.1);
+    --ok: #0f7a4a;
+    --ok-soft: rgb(15 122 74 / 0.1);
     --err: #c62f2f;
+    --err-ink: #ffffff;
     --err-soft: rgb(198 47 47 / 0.08);
     --focus: #1f6fd1;
     --easy: #0f7a4a;
@@ -62,6 +71,12 @@
     --hard: #c62828;
     --impossible: #7f0f1d;
     --impossible-ink: #ffffff;
+    --panel: #ffffff;
+    --panel-2: #f3f1ec;
+    --line: #e2ded5;
+    --line-strong: #8f8a7e;
+    --text-2: #3d4450;
+    --panel-edge: inset 0 1px 0 rgb(255 255 255 / 0.8);
     --code-bg: #ffffff;
     --code-text: #1f2328;
     --code-muted: #6e7781;
@@ -86,12 +101,13 @@
   --border: #e2ded5;
   --text: #17181b;
   --muted: #5d6470;
-  --accent: #b86e00;
+  --accent: #9a5b00;
   --accent-ink: #ffffff;
-  --accent-soft: rgb(184 110 0 / 0.1);
-  --ok: #0f8a55;
-  --ok-soft: rgb(15 138 85 / 0.1);
+  --accent-soft: rgb(154 91 0 / 0.1);
+  --ok: #0f7a4a;
+  --ok-soft: rgb(15 122 74 / 0.1);
   --err: #c62f2f;
+  --err-ink: #ffffff;
   --err-soft: rgb(198 47 47 / 0.08);
   --focus: #1f6fd1;
   --easy: #0f7a4a;
@@ -99,6 +115,12 @@
   --hard: #c62828;
   --impossible: #7f0f1d;
   --impossible-ink: #ffffff;
+  --panel: #ffffff;
+  --panel-2: #f3f1ec;
+  --line: #e2ded5;
+  --line-strong: #8f8a7e;
+  --text-2: #3d4450;
+  --panel-edge: inset 0 1px 0 rgb(255 255 255 / 0.8);
   --code-bg: #ffffff;
   --code-text: #1f2328;
   --code-muted: #6e7781;
@@ -121,6 +143,11 @@
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-border: var(--border);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-text-2: var(--text-2);
   --color-text: var(--text);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
@@ -136,6 +163,7 @@
   --color-impossible: var(--impossible);
   --color-impossible-ink: var(--impossible-ink);
   --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-archivo), var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
@@ -147,7 +175,16 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
+  line-height: 1.6;
+  text-rendering: optimizeLegibility;
 }
+
+h1, h2, h3, h4 { text-wrap: balance; line-height: 1.25; }
+button, input, textarea, select { font-family: inherit; }
+button, summary, a { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled), summary { cursor: pointer; }
+input, textarea, select { transition: border-color 150ms ease, background-color 150ms ease; }
+input:hover:not(:disabled), textarea:hover:not(:disabled), select:hover:not(:disabled) { border-color: var(--muted); }
 
 :focus-visible {
   outline: 2px solid var(--focus);
@@ -157,6 +194,24 @@ body {
 
 ::selection {
   background: var(--accent-soft);
+}
+
+/* Panels and display type (dashboard). Display text is Archivo at a wide cut. */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--panel-edge);
+}
+.display {
+  font-family: var(--font-display);
+  font-stretch: 118%;
+  letter-spacing: -0.025em;
+}
+.display-sm {
+  font-family: var(--font-display);
+  font-stretch: 112%;
+  letter-spacing: -0.015em;
 }
 
 /* Skeleton shimmer, respecting reduced motion. */
@@ -172,6 +227,53 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .skeleton { animation: none; }
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+}
+
+/* Headline typed out on load at about 200 wpm (5 characters a word: 60ms a character).
+   Every character is already in the page, so there is no layout shift and crawlers
+   see the full text. The cursor trails the character being typed, then blinks on the
+   full stop. With reduced motion the text is shown at once with a solid cursor. */
+.type-char {
+  --tick: 60ms; /* one character: 60ms is about 200 wpm */
+  position: relative;
+  opacity: 0;
+  animation: type-in 100ms steps(1, jump-start) forwards;
+  animation-delay: calc(var(--i) * var(--tick) + 250ms);
+}
+.type-char::after {
+  content: "";
+  position: absolute;
+  left: 100%;
+  top: 0.1em;
+  width: 0.28em;
+  height: 0.95em;
+  margin-left: -0.03em;
+  background: var(--accent);
+  opacity: 0;
+  animation: type-caret var(--tick) steps(1);
+  animation-delay: calc(var(--i) * var(--tick) + 250ms);
+}
+/* The final cursor is a terminal block cursor over the full stop. The block is the
+   glyph's own background and the glyph's colour switches with it, so one animation
+   drives both and they can never drift out of step. */
+.type-char[data-last] {
+  background: linear-gradient(var(--accent), var(--accent)) no-repeat 0 0.1em / 100% 0.95em;
+  animation: type-in 100ms steps(1, jump-start) forwards, cursor-blink 1.1s steps(1) infinite;
+  animation-delay: calc(var(--i) * var(--tick) + 250ms), calc(var(--i) * var(--tick) + 250ms);
+}
+.type-char[data-last]::after { display: none; }
+/* Not a 1ms animation: Chromium can finish those between frames and never apply them. */
+@keyframes type-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes type-caret { from, to { opacity: 1; } }
+@keyframes cursor-blink {
+  0%, 49.9% { color: var(--accent-ink); background-size: 100% 0.95em; }
+  50%, 100% { color: inherit; background-size: 100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .type-char { opacity: 1; animation: none; }
+  .type-char::after { animation: none; }
+  .type-char[data-last] { color: var(--accent-ink); }
 }
 
 /* Long-form content (lessons, legal pages). */

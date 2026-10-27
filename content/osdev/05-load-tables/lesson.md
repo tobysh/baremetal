@@ -7,7 +7,7 @@ tags: cpu, descriptors, interrupts
 id: osdev/load-tables
 mode: harness
 ---
-Last lesson you built single entries. Now you build whole tables, hand them to the CPU, and see what happens when an exception fires. The boot stub already set up a temporary GDT and IDT so your code could start. A real kernel replaces them with its own as one of its first jobs.
+[Last lesson](/learn/osdev/descriptors) you built single entries. Now you build whole tables, hand them to the CPU, and see what happens when an exception fires. The boot stub already set up a temporary GDT and IDT so your code could start. A real kernel replaces them with its own as one of its first jobs.
 
 ## The GDT
 

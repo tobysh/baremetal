@@ -45,7 +45,7 @@ export function Field({ label, name, errors, hint, after, className = "", "aria-
         id={id}
         name={name}
         aria-invalid={invalid || undefined}
-        aria-describedby={[invalid ? errorId : null, hint ? hintId : null, extraDescribedBy].filter(Boolean).join(" ") || undefined}
+        aria-describedby={[invalid ? errorId : null, hint && !invalid ? hintId : null, extraDescribedBy].filter(Boolean).join(" ") || undefined}
         className={`mt-1.5 block h-11 w-full rounded-lg border bg-bg px-3 text-base placeholder:text-muted ${invalid ? "border-err" : "border-border"}`}
         {...input}
       />
@@ -94,7 +94,7 @@ export function Checkbox({ name, label, errors, defaultChecked }: { name: string
 
 export function SubmitButton({ children, pendingText, variant = "primary", className = "" }: { children: ReactNode; pendingText: string; variant?: "primary" | "danger"; className?: string }) {
   const { pending } = useFormStatus();
-  const colors = variant === "danger" ? "bg-err text-white" : "bg-accent text-accent-ink";
+  const colors = variant === "danger" ? "bg-err text-[var(--err-ink)]" : "bg-accent text-accent-ink";
   return (
     <button type="submit" disabled={pending} aria-disabled={pending} className={`inline-flex h-11 items-center justify-center rounded-lg px-5 font-medium hover:brightness-110 disabled:opacity-60 ${colors} ${className}`}>
       {pending ? pendingText : children}

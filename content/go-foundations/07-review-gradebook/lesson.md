@@ -10,6 +10,8 @@ mode: harness
 ---
 This is a **review lesson**. It introduces nothing new. You have covered functions with several return values, slices and maps, structs with methods, interfaces and errors. Here they all appear in one small program.
 
+Lessons this review draws on: [Functions and multiple returns](/learn/go-foundations/functions), [Slices and maps](/learn/go-foundations/slices-and-maps), [Structs and methods](/learn/go-foundations/structs-and-methods), [Interfaces](/learn/go-foundations/interfaces), [Errors are values](/learn/go-foundations/errors).
+
 ## What you already know
 
 - **Structs and methods:** `type Student struct{ ... }` with a method that reads its fields.

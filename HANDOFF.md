@@ -19,7 +19,6 @@ Everything described here is committed. The last full pass (`verify:content`, `t
 
 ## Known gaps
 
-- **Assembly highlighting is weak.** The editor uses the `gas` mode from `@codemirror/legacy-modes`, which colours only comments and labels. Mnemonics, registers, directives and strings are plain. A small custom highlighter would fix it.
 - **`/u/<valid-name>` for a user that doesn't exist returns HTTP 200** with the not-found page. Malformed names return a real 404. A true 404 needs the existence check before streaming starts, which would make the page blocking; left as is because the pages are `noindex`. `generateStaticParams` in that page returns one sample name only to satisfy Cache Components at build time.
 - **375px header** was checked only as static markup in a narrow frame (it wraps to two rows, nothing clipped, no horizontal scroll), not on a real phone-width viewport.
 - **Gamification plan not built beyond XP/levels/profiles.** `docs/gamification-plan.md` has phases A–D. Phase D was rewritten to be solo-first (review queue, personal bests, daily pick, own-action achievements), with community features dormant until enough users exist; it proposes a `communityReady()` helper that does not exist yet. The user-count threshold is an open decision there.

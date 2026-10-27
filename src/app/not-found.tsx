@@ -11,10 +11,10 @@ export const metadata: Metadata = {
 export default function NotFound() {
   return (
     <Container className="max-w-2xl py-20 text-center">
-      <p className="font-mono text-sm text-accent">error 404: segmentation fault (page not found)</p>
-      <h1 className="mt-4 text-4xl font-bold tracking-tight">This page doesn&apos;t exist</h1>
+      <p className="font-mono text-sm text-accent">404 · Page not found</p>
+      <h1 className="display mt-4 text-4xl font-bold">This page doesn&apos;t exist</h1>
       <p className="mt-4 text-lg text-muted">
-        Like dereferencing a pointer to memory you don&apos;t own, this address points nowhere. It may have moved, or the link might have a typo.
+        This address may have moved, or the link might have a typo. Head back to your courses to keep learning.
       </p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <ButtonLink href="/learn" size="lg">

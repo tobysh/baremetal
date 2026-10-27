@@ -6,7 +6,7 @@ export function SettingsNav({ current }: { current: "account" | "security" }) {
     <Link
       href={href}
       aria-current={current === id ? "page" : undefined}
-      className={`-mb-px border-b-2 px-3 py-2 text-sm ${current === id ? "border-accent text-text" : "border-transparent text-muted hover:text-text"}`}
+      className={`-mb-px inline-flex min-h-11 items-center border-b-2 px-3 py-2 text-sm ${current === id ? "border-accent font-medium text-text" : "border-transparent text-muted hover:text-text"}`}
     >
       {label}
     </Link>

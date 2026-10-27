@@ -12,9 +12,9 @@ This is a **review lesson**. It introduces nothing new. Instead it asks you to p
 
 ## What you already know
 
-- **String Length:** a C string ends at the `'\0'` byte, so you can walk a pointer until you reach it.
-- **Reverse a String:** two indices, one at each end, swap and move inwards.
-- **Palindromes:** compare from both ends, and use `tolower` with an `unsigned char` cast to ignore case.
+- **[String Length](/learn/c-memory/string-length):** a C string ends at the `'\0'` byte, so you can walk a pointer until you reach it.
+- **[Reverse a String](/learn/c-memory/reverse-string):** two indices, one at each end, swap and move inwards.
+- **[Palindromes](/learn/c-memory/palindromes):** compare from both ends, and use `tolower` with an `unsigned char` cast to ignore case.
 
 ## The twists
 
@@ -22,4 +22,4 @@ This is a **review lesson**. It introduces nothing new. Instead it asks you to p
 2. **Reverse only part of it.** Same swap loop as before, but the right-hand index starts at `n - 1` rather than at the end of the string.
 3. **Skip what doesn't count.** A phrase palindrome ignores everything that isn't a letter or digit. Move `left` forward and `right` backward past such characters before comparing. `isalnum` from `<ctype.h>` tests a character (cast to `unsigned char` first, as with `tolower`).
 
-Take your time. If one part feels shaky, reread the lesson it came from. The hints build up gradually.
+Take your time. If one part feels shaky, reread the lesson it came from (linked above). The hints build up gradually.

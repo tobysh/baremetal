@@ -47,7 +47,7 @@ When no task is READY, the CPU still has to run something. The **idle task** is 
 
 ## Time
 
-The timer interrupt (lesson 6) calls `sched_tick` once per tick. It advances the clock and moves every SLEEPING task whose `wake_tick` has arrived back to READY.
+The timer interrupt ([lesson 6](/learn/osdev/pic-timer)) calls `sched_tick` once per tick. It advances the clock and moves every SLEEPING task whose `wake_tick` has arrived back to READY.
 
 ## A worked trace
 
@@ -76,7 +76,7 @@ Round robin is not the best scheduler, only the simplest *fair* one. Real system
 Your scheduler only *chooses*. Whether a task gets interrupted depends on who calls `sched_pick_next`:
 
 - **Cooperative:** a task calls it voluntarily (by yielding, sleeping or blocking). One task that never yields hogs the CPU.
-- **Preemptive:** the timer interrupt from lesson 6 calls it every few ticks, so a task that loops forever still loses the CPU. The next lesson supplies the switching, and putting the timer handler, scheduler and switch together gives you a preemptive kernel.
+- **Preemptive:** the timer interrupt from [lesson 6](/learn/osdev/pic-timer) calls it every few ticks, so a task that loops forever still loses the CPU. The [next lesson](/learn/osdev/context-switch) supplies the switching, and putting the timer handler, scheduler and switch together gives you a preemptive kernel.
 
 ## Debugging checklist
 

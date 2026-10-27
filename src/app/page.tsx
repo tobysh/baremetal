@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Fragment, type CSSProperties } from "react";
+import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { JsonLd } from "@/components/json-ld";
-import { Badge, ButtonLink, Card, Container } from "@/components/ui";
+import { Badge, ButtonLink, Card, Container, Skeleton } from "@/components/ui";
+import { getCurrentUser } from "@/lib/auth";
 import { getTracks } from "@/lib/curriculum";
 import { PATHS } from "@/lib/curriculum/paths";
 import { SITE, absoluteUrl } from "@/lib/site";
@@ -38,7 +42,19 @@ const FAQ = [
 ];
 
 export default function HomePage() {
+  return (
+    <Suspense fallback={<Container className="py-12"><Skeleton className="h-10 w-64" /><Skeleton className="mt-6 h-48" /></Container>}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+async function HomeContent() {
+  const user = await getCurrentUser();
+  if (user) redirect("/dashboard");
+
   const tracks = getTracks();
+  const featuredTracks = PATHS.flatMap((path) => tracks.filter((track) => track.path === path.id).slice(0, 1));
   const lessonCount = tracks.reduce((n, t) => n + t.lessons.length, 0);
 
   return (
@@ -57,15 +73,14 @@ export default function HomePage() {
 
       {/* Hero: headline and primary CTA sit above the fold on every screen size. */}
       <section className="border-b border-border">
-        <Container className="grid items-center gap-10 py-12 sm:py-16 lg:grid-cols-[1.05fr_1fr] lg:py-20">
+        <Container className="grid items-center gap-10 py-12 sm:py-16 lg:grid-cols-[1.05fr_1fr] lg:py-24">
           <div>
-            <Badge tone="accent">Free · {lessonCount} hands-on lessons · C, Rust, Go, asm</Badge>
-            <h1 className="mt-5 text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl">
-              Learn how computers <span className="text-accent">really</span> work.
+            <p className="text-sm font-medium text-accent">Free · {lessonCount} hands-on lessons · C, Rust, Go, asm</p>
+            <h1 aria-label={SLOGAN.join(" ")} className="display mt-5 text-4xl font-bold leading-[1.08] sm:text-5xl lg:text-6xl">
+              <TypedSlogan />
             </h1>
             <p className="mt-5 max-w-xl text-lg text-muted">
-              Start from zero and write real C, Rust, Go and assembly — from swapping two numbers to building your own HTTP server. An AI tutor reads your code and
-              guides you with questions, not answers.
+              Write C, Rust, Go and assembly in your browser. Start with your first program and build up to your own HTTP server, with an AI tutor to help you reason through the hard parts.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <ButtonLink href="/signup" size="lg">
@@ -83,7 +98,7 @@ export default function HomePage() {
 
       <section aria-labelledby="how" className="py-16">
         <Container>
-          <h2 id="how" className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          <h2 id="how" className="display-sm text-2xl font-bold sm:text-3xl">
             How it works
           </h2>
           <ol className="mt-8 grid gap-4 md:grid-cols-3">
@@ -92,11 +107,11 @@ export default function HomePage() {
               ["Write real code", "Solve an exercise in the in-browser editor. Press Test and hidden tests check your work in about a second."],
               ["Get unstuck, not spoon-fed", "Stuck on an error? The AI tutor sees your code and output and asks the question that helps it click."],
             ].map(([title, body], i) => (
-              <Card as="li" key={title} className="p-6">
+              <li key={title} className="border-t border-border pt-6">
                 <span className="font-mono text-sm text-accent">0{i + 1}</span>
                 <h3 className="mt-2 font-semibold">{title}</h3>
-                <p className="mt-2 text-sm text-muted">{body}</p>
-              </Card>
+                <p className="mt-2 leading-relaxed text-muted">{body}</p>
+              </li>
             ))}
           </ol>
         </Container>
@@ -105,17 +120,17 @@ export default function HomePage() {
       <section aria-labelledby="courses" className="py-16">
         <Container>
           <div className="flex flex-wrap items-end justify-between gap-4">
-            <h2 id="courses" className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              A path from zero to systems programmer
+            <h2 id="courses" className="display-sm text-2xl font-bold sm:text-3xl">
+              Find your starting point
             </h2>
             <Link href="/learn" className="text-sm text-accent underline underline-offset-4">
               See all courses
             </Link>
           </div>
           <ol className="mt-8 grid gap-4 sm:grid-cols-2">
-            {tracks.map((t) => (
-              <Card as="li" key={t.slug} className="flex flex-col p-6">
-                <div className="flex items-center gap-2">
+            {featuredTracks.map((t) => (
+              <Card as="li" key={t.slug} className="flex flex-col p-6 transition-colors hover:border-accent/40">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-sm text-muted">{PATHS.find((p) => p.id === t.path)?.title}</span>
                   <Badge>{t.level}</Badge>
                   <Badge>{LANGUAGE_LABEL[t.language]}</Badge>
@@ -137,12 +152,12 @@ export default function HomePage() {
 
       <section aria-labelledby="faq" className="py-16">
         <Container className="max-w-3xl">
-          <h2 id="faq" className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          <h2 id="faq" className="display-sm text-2xl font-bold sm:text-3xl">
             Questions
           </h2>
-          <div className="mt-6 divide-y divide-border rounded-xl border border-border bg-surface">
+          <div className="mt-6 divide-y divide-border panel">
             {FAQ.map((f) => (
-              <details key={f.q} className="group p-5">
+              <details key={f.q} className="group p-5 sm:p-6">
                 <summary className="cursor-pointer list-none font-medium marker:hidden">
                   <span className="flex items-center justify-between gap-4">
                     {f.q}
@@ -162,7 +177,7 @@ export default function HomePage() {
         <Container>
           <Card className="flex flex-col items-start gap-4 p-8 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-xl font-semibold">Your first program is five minutes away.</h2>
+              <h2 className="display-sm text-xl font-bold">Your first program is five minutes away.</h2>
               <p className="mt-1 text-muted">Create a free account to save progress and talk to the tutor.</p>
             </div>
             <ButtonLink href="/signup" size="lg">
@@ -175,10 +190,39 @@ export default function HomePage() {
   );
 }
 
+const SLOGAN = ["Learn", "how", "computers", "really", "work."];
+const SLOGAN_ACCENT = "really";
+
+/** The headline, typed out by CSS (see .type-char). The h1 carries the plain sentence as its aria-label. */
+function TypedSlogan() {
+  let i = 0;
+  const total = SLOGAN.join(" ").length;
+  return (
+    <>
+      <span aria-hidden="true">
+        {SLOGAN.map((word, w) => {
+          if (w > 0) i++;
+          return (
+            <Fragment key={word}>
+              {w > 0 && " "}
+              <span className={`inline-block ${word === SLOGAN_ACCENT ? "text-accent" : ""}`}>
+                {[...word].map((ch) => {
+                  const index = i++;
+                  return <span key={index} className="type-char" data-last={index === total - 1 ? "" : undefined} style={{ "--i": index } as CSSProperties}>{ch}</span>;
+                })}
+              </span>
+            </Fragment>
+          );
+        })}
+      </span>
+    </>
+  );
+}
+
 /** A static, server-rendered picture of the workspace — no JavaScript or images. */
 function WorkspacePreview() {
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-2xl shadow-black/20" aria-label="Example lesson workspace" role="img">
+    <div className="min-w-0 overflow-hidden panel" aria-label="Example lesson workspace" role="img">
       <div className="flex items-center gap-2 border-b border-border px-4 py-2.5 text-xs text-muted">
         <span className="font-mono">reverse.c</span>
         <span className="ml-auto">Pointers &amp; Memory · Lesson 4</span>

@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type KeyboardEvent, Suspense, lazy, useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { type KeyboardEvent, Suspense, lazy, useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { LANGUAGE_FILE, LANGUAGE_LABEL, type PublicExercise } from "@/lib/curriculum/types";
 import { track } from "../analytics";
 import { MiniMarkdown } from "./mini-markdown";
 import { explainFailure, type Explanation } from "@/lib/diagnostics";
+import { errorLines } from "@/lib/error-lines";
 import { TutorChat, type ChatMessage, type TutorControl } from "./tutor-chat";
 
 // The editor is the heaviest dependency on the site: load it only in the
 // browser, only on lesson pages, and show the code as plain text until then
 // (so the server-rendered HTML contains the starter code too).
+const NO_LINES: number[] = [];
 const CodeEditor = lazy(() => import("./code-editor"));
 const noop = () => () => {};
 const useIsClient = () => useSyncExternalStore(noop, () => true, () => false);
@@ -160,6 +162,11 @@ export function Workspace({
   const run = useCallback(() => execute("run"), [execute]);
   const test = useCallback(() => execute("test"), [execute]);
 
+  const errorLinesOf = useMemo(() => {
+    if (!result || busy) return NO_LINES;
+    const compileFailed = result.kind === "run" ? result.phase === "compile" && !result.ok : !result.compiled;
+    return errorLines(exercise.language, result.compileOutput, result.kind === "run" ? result.stderr : result.output, compileFailed);
+  }, [result, busy, exercise.language]);
   const lastOutput = describeResult(result);
   const getContext = useCallback(() => ({ code: codeRef.current, lastOutput }), [lastOutput]);
 
@@ -183,19 +190,19 @@ export function Workspace({
   };
 
   return (
-    <div onKeyDown={onKeyDown} className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface lg:h-[calc(100dvh-6.5rem)]">
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
+    <div onKeyDown={onKeyDown} className="flex flex-col overflow-clip panel lg:h-[calc(100dvh-10rem)] lg:min-h-[32rem]">
+      <div className="sticky top-16 z-10 flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-surface px-3 py-3 lg:static">
         <span className="font-mono text-xs text-muted">{LANGUAGE_FILE[exercise.language]}</span>
         <span className="text-xs text-muted" aria-live="polite">
           {signedIn ? { idle: "", saving: "Saving…", saved: "Saved", error: "Couldn't save" }[saveState] : "Saved in this browser only"}
         </span>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           {confirmReset ? (
             <>
               <span className="text-xs text-muted">Discard your code?</span>
               <button
                 type="button"
-                className="h-8 rounded-md px-2 text-xs text-err hover:bg-err-soft"
+                className="min-h-11 rounded-md px-2 text-xs text-err hover:bg-err-soft sm:min-h-9"
                 onClick={() => {
                   onChange(exercise.starter);
                   setConfirmReset(false);
@@ -203,12 +210,12 @@ export function Workspace({
               >
                 Reset
               </button>
-              <button type="button" className="h-8 rounded-md px-2 text-xs text-muted hover:bg-surface-2" onClick={() => setConfirmReset(false)}>
+              <button type="button" className="min-h-11 rounded-md px-2 text-xs text-muted hover:bg-surface-2 sm:min-h-9" onClick={() => setConfirmReset(false)}>
                 Cancel
               </button>
             </>
           ) : (
-            <button type="button" className="h-8 rounded-md px-2 text-xs text-muted hover:bg-surface-2 hover:text-text" onClick={() => setConfirmReset(true)}>
+            <button type="button" className="min-h-11 rounded-md px-2 text-xs text-muted hover:bg-surface-2 hover:text-text sm:min-h-9" onClick={() => setConfirmReset(true)}>
               Reset
             </button>
           )}
@@ -218,7 +225,7 @@ export function Workspace({
             disabled={!!busy}
             title={`Compile and run your own main() (${mod}+Shift+Enter)`}
             aria-keyshortcuts={mod === "⌘" ? "Meta+Shift+Enter" : "Control+Shift+Enter"}
-            className="inline-flex h-8 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium hover:bg-surface-2 disabled:opacity-60"
+            className="inline-flex h-11 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium hover:bg-surface-2 disabled:opacity-60 sm:h-9"
           >
             {busy === "run" ? "Running…" : "Run"}
             <span className="hidden items-center gap-0.5 sm:inline-flex">
@@ -233,7 +240,7 @@ export function Workspace({
             disabled={!!busy}
             title={`Check your solution against the tests (${mod}+Enter)`}
             aria-keyshortcuts={mod === "⌘" ? "Meta+Enter" : "Control+Enter"}
-            className="inline-flex h-8 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-accent-ink hover:brightness-110 disabled:opacity-60"
+            className="inline-flex h-11 items-center gap-2 rounded-lg bg-accent px-3 text-sm font-medium text-accent-ink hover:brightness-110 disabled:opacity-60 sm:h-9"
           >
             {busy === "test" ? "Testing…" : "Test"}
             <span className="hidden items-center gap-0.5 sm:inline-flex">
@@ -247,7 +254,7 @@ export function Workspace({
       <div className="h-[22rem] min-h-0 border-b border-border lg:h-auto lg:flex-[1.3]">
         {isClient ? (
           <Suspense fallback={<CodeFallback code={code} />}>
-            <CodeEditor value={code} onChange={onChange} language={exercise.language} onRun={run} onTest={test} label={`${LANGUAGE_LABEL[exercise.language]} code editor`} />
+            <CodeEditor value={code} onChange={onChange} language={exercise.language} onRun={run} onTest={test} label={`${LANGUAGE_LABEL[exercise.language]} code editor`} errorLines={errorLinesOf} />
           </Suspense>
         ) : (
           <CodeFallback code={code} />
@@ -283,8 +290,17 @@ export function Workspace({
             id={`tab-${t.id}`}
             aria-selected={tab === t.id}
             aria-controls={`panel-${t.id}`}
+            tabIndex={tab === t.id ? 0 : -1}
             onClick={() => setTab(t.id)}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm ${tab === t.id ? "border-accent text-text" : "border-transparent text-muted hover:text-text"}`}
+            onKeyDown={(event) => {
+              if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+              event.preventDefault();
+              const index = tabs.findIndex((item) => item.id === t.id);
+              const next = event.key === "Home" ? tabs[0] : event.key === "End" ? tabs[tabs.length - 1] : tabs[(index + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+              setTab(next.id);
+              document.getElementById(`tab-${next.id}`)?.focus();
+            }}
+            className={`-mb-px min-h-11 border-b-2 px-3 py-2 text-sm ${tab === t.id ? "border-accent text-text" : "border-transparent text-muted hover:text-text"}`}
           >
             {t.label}
           </button>
@@ -292,7 +308,8 @@ export function Workspace({
       </div>
 
       <div className="h-[20rem] min-h-0 lg:h-auto lg:flex-1">
-        <div role="tabpanel" id="panel-output" aria-labelledby="tab-output" hidden={tab !== "output"} className="h-full overflow-y-auto p-4">
+        <div role="tabpanel" id="panel-output" aria-labelledby="tab-output" tabIndex={0} hidden={tab !== "output"} className="h-full overflow-y-auto p-4">
+          {result && !busy && <CopyOutput text={lastOutput} />}
           <OutputPanel
             result={result}
             busy={busy}
@@ -316,7 +333,7 @@ export function Workspace({
             }
           />
         </div>
-        <div role="tabpanel" id="panel-hints" aria-labelledby="tab-hints" hidden={tab !== "hints"} className="h-full overflow-y-auto p-4">
+        <div role="tabpanel" id="panel-hints" aria-labelledby="tab-hints" tabIndex={0} hidden={tab !== "hints"} className="h-full overflow-y-auto p-4">
           <ol className="space-y-3">
             {exercise.hints.slice(0, hintsShown).map((h, i) => (
               <li key={i} className="rounded-lg border border-border bg-bg p-3 text-sm">
@@ -363,6 +380,18 @@ export function Workspace({
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+function CopyOutput({ text }: { text: string }) {
+  const [status, setStatus] = useState("Copy output");
+  return (
+    <div className="mb-3 flex justify-end">
+      <button type="button" className="min-h-9 rounded-lg border border-border px-3 text-xs text-muted hover:bg-surface-2 hover:text-text" onClick={async () => {
+        try { await navigator.clipboard.writeText(text); setStatus("Copied"); }
+        catch { setStatus("Copy unavailable"); }
+      }}><span aria-live="polite">{status}</span></button>
     </div>
   );
 }

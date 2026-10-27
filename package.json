@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.4.3",
-    "@tailwindcss/turbopack": "^4",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.2",
     "@types/qrcode": "^1.5.6",

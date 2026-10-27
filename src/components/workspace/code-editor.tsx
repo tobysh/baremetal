@@ -2,11 +2,11 @@
 
 import CodeMirror from "@uiw/react-codemirror";
 import { HighlightStyle, indentUnit, syntaxHighlighting } from "@codemirror/language";
-import { EditorView, keymap } from "@codemirror/view";
+import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate, keymap } from "@codemirror/view";
 import { indentLess, indentMore } from "@codemirror/commands";
-import { EditorSelection, Prec, type Extension } from "@codemirror/state";
+import { EditorSelection, Prec, StateEffect, StateField, type Extension } from "@codemirror/state";
 import { tags as t } from "@lezer/highlight";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Language } from "@/lib/curriculum/types";
 
 // Colours come from the --code-* tokens in globals.css, so the editor follows
@@ -35,6 +35,8 @@ const theme = EditorView.theme(
     ".cm-content": { fontFamily: "var(--font-mono)", caretColor: C.cursor, padding: "12px 0", lineHeight: "1.65" },
     ".cm-gutters": { backgroundColor: C.gutterBg, color: C.muted, border: "none", paddingRight: "4px" },
     ".cm-activeLine": { backgroundColor: C.activeLine },
+    // Translucent, so the selection layer underneath still shows through.
+    ".cm-line.cm-errorLine": { backgroundColor: "var(--err-soft)" },
     ".cm-activeLineGutter": { backgroundColor: C.activeLine, color: C.text },
     ".cm-cursor, .cm-dropCursor": { borderLeftColor: C.cursor, borderLeftWidth: "2px" },
     "&.cm-focused": { outline: "none" },
@@ -60,12 +62,50 @@ const loadLanguage = (language: Language): Promise<Extension> =>
   language === "c" || language === "kernel"
     ? import("@codemirror/lang-cpp").then((m) => m.cpp())
     : language === "asm"
-      ? Promise.all([import("@codemirror/language"), import("@codemirror/legacy-modes/mode/gas")]).then(([l, m]) => l.StreamLanguage.define(m.gas))
+      ? import("./asm-language").then((m) => m.asm)
       : language === "go"
         ? Promise.all([import("@codemirror/language"), import("@codemirror/legacy-modes/mode/go")]).then(([l, m]) => l.StreamLanguage.define(m.go))
         : import("@codemirror/lang-rust").then((m) => m.rust());
 
+// CodeMirror's own active-line highlight is opaque and sits above the selection
+// layer, so the cursor's line (the last line of a selection) looked unselected.
+// Only highlight the line when nothing is selected.
+const activeLine = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+    constructor(view: EditorView) {
+      this.decorations = this.build(view);
+    }
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.selectionSet) this.decorations = this.build(update.view);
+    }
+    build(view: EditorView) {
+      const { state } = view;
+      if (state.selection.ranges.some((r) => !r.empty)) return Decoration.none;
+      return Decoration.set([Decoration.line({ class: "cm-activeLine" }).range(state.doc.lineAt(state.selection.main.head).from)]);
+    }
+  },
+  { decorations: (plugin) => plugin.decorations },
+);
+
+const setErrorLines = StateEffect.define<number[]>();
+const errorLineField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(lines, tr) {
+    lines = lines.map(tr.changes);
+    for (const effect of tr.effects) {
+      if (!effect.is(setErrorLines)) continue;
+      const mark = Decoration.line({ class: "cm-errorLine" });
+      lines = Decoration.set(effect.value.filter((n) => n >= 1 && n <= tr.state.doc.lines).map((n) => mark.range(tr.state.doc.line(n).from)));
+    }
+    return lines;
+  },
+  provide: (field) => EditorView.decorations.from(field),
+});
+
 const NO_LANGUAGE: Extension = [];
+
+const NO_LINES: number[] = [];
 
 const TAB_WIDTH = 4;
 
@@ -102,6 +142,7 @@ export default function CodeEditor({
   onRun,
   onTest,
   label,
+  errorLines = NO_LINES,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -109,7 +150,9 @@ export default function CodeEditor({
   onRun: () => void;
   onTest: () => void;
   label: string;
+  errorLines?: number[];
 }) {
+  const view = useRef<EditorView | null>(null);
   const [grammar, setGrammar] = useState<{ language: Language; ext: Extension } | null>(null);
   useEffect(() => {
     let live = true;
@@ -124,6 +167,8 @@ export default function CodeEditor({
     () => [
       languageExt,
       syntaxHighlighting(highlight),
+      activeLine,
+      errorLineField,
       indentUnit.of("    "),
       EditorView.contentAttributes.of({ "aria-label": `${label}. Tab indents; press Escape then Tab to leave the editor.` }),
       // CodeMirror's built-in escape hatch (Esc, then Tab) keeps keyboard users
@@ -138,15 +183,22 @@ export default function CodeEditor({
     ],
     [languageExt, label, onRun, onTest],
   );
+  useEffect(() => {
+    view.current?.dispatch({ effects: setErrorLines.of(errorLines) });
+  }, [errorLines]);
   return (
     <CodeMirror
       value={value}
+      onCreateEditor={(v) => {
+        view.current = v;
+        v.dispatch({ effects: setErrorLines.of(errorLines) });
+      }}
       onChange={onChange}
       extensions={extensions}
       theme={theme}
       height="100%"
       className="h-full"
-      basicSetup={{ foldGutter: false, highlightActiveLine: true, autocompletion: false, searchKeymap: true, tabSize: 4 }}
+      basicSetup={{ foldGutter: false, highlightActiveLine: false, autocompletion: false, searchKeymap: true, tabSize: 4 }}
       indentWithTab={false}
     />
   );

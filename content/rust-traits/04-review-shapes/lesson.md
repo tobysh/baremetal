@@ -10,6 +10,8 @@ mode: harness
 ---
 This is a **review lesson**. It introduces nothing new. You have seen generics, traits, and trait objects separately, and the useful thing is to notice how they fit together around a single trait.
 
+Lessons this review draws on: [Generics](/learn/rust-traits/generics), [Traits and impl](/learn/rust-traits/traits-and-impl), [Trait objects vs generics](/learn/rust-traits/trait-objects).
+
 ## What you already know
 
 - **A trait** is a set of methods a type promises to have. A trait can also provide a **default method**, written in the trait itself, that every implementor gets for free and may override.

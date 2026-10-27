@@ -7,7 +7,7 @@ tags: flags, arithmetic
 id: asm-first-steps/absolute-value
 mode: harness
 ---
-In the last lesson you moved numbers between registers and added them. Real programs also need to *decide* things, and the CPU decides using **flags**.
+In [the last lesson](/learn/asm-first-steps/hello-registers) you moved numbers between registers and added them. Real programs also need to *decide* things, and the CPU decides using **flags**.
 
 ## Flags
 
@@ -73,7 +73,7 @@ Both inputs end with 7. The conditional move works "backwards" from how you migh
 
 ## Why avoid a jump?
 
-You could write the same function with a compare and a jump, which is how Lesson 3 does things. A conditional move has one advantage: the CPU does not have to *guess* which way a branch will go. Modern processors run ahead of the instruction they are on, and a wrong guess about a jump throws that work away. A `cmov` has no guess to get wrong. It is not always faster (it always computes both values), but for tiny choices like this one it often is, and compilers use it constantly. If you compile `x < 0 ? -x : x` in C with optimisation on, you will usually see exactly the `neg` and `cmov` you wrote here.
+You could write the same function with a compare and a jump, which is how [Compare and Branch](/learn/asm-first-steps/clamp) does things. A conditional move has one advantage: the CPU does not have to *guess* which way a branch will go. Modern processors run ahead of the instruction they are on, and a wrong guess about a jump throws that work away. A `cmov` has no guess to get wrong. It is not always faster (it always computes both values), but for tiny choices like this one it often is, and compilers use it constantly. If you compile `x < 0 ? -x : x` in C with optimisation on, you will usually see exactly the `neg` and `cmov` you wrote here.
 
 ## The one value with no twin
 

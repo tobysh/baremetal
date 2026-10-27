@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { CourseProgress } from "@/components/course-progress";
 import { JsonLd } from "@/components/json-ld";
 import { TrackSkeleton } from "@/components/skeletons";
 import { DifficultyBadge } from "@/components/gamification";
-import { Badge, ButtonLink, Container } from "@/components/ui";
+import { Badge, Container, Skeleton } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import { getTrack, getTracks, lessonPath } from "@/lib/curriculum";
 import { getProgressMap } from "@/lib/progress";
@@ -43,7 +44,7 @@ async function TrackContent({ params }: { params: PageProps<"/learn/[track]">["p
   const totalMinutes = track.lessons.reduce((m, l) => m + l.minutes, 0);
 
   return (
-    <Container className="py-12">
+    <Container className="py-8 sm:py-12">
       <JsonLd
         data={[
           {
@@ -77,14 +78,14 @@ async function TrackContent({ params }: { params: PageProps<"/learn/[track]">["p
         </Link>{" "}
         / <span aria-current="page">{track.title}</span>
       </nav>
-      <div className="mt-6 grid gap-10 lg:grid-cols-[1fr_20rem]">
+      <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14">
         <div>
           <div className="flex flex-wrap gap-2">
             <Badge>{track.level}</Badge>
             <Badge>{LANGUAGE_LABEL[track.language]}</Badge>
             <Badge>{track.lessons.length} lessons</Badge>
           </div>
-          <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">{track.title}</h1>
+          <h1 className="display mt-4 text-3xl font-bold sm:text-4xl">{track.title}</h1>
           <p className="mt-4 max-w-2xl text-lg text-muted">{track.description}</p>
           {prereq && (
             <p className="mt-4 text-sm text-muted">
@@ -95,18 +96,24 @@ async function TrackContent({ params }: { params: PageProps<"/learn/[track]">["p
               .
             </p>
           )}
-          <h2 className="mt-12 text-xl font-semibold">Lessons</h2>
+          <div className="mt-6 panel p-5 lg:hidden">
+            <Suspense fallback={<Skeleton className="h-24" />}>
+              <CourseAction trackSlug={track.slug} />
+            </Suspense>
+          </div>
+          <div className="display-sm mt-12 flex items-baseline justify-between gap-4"><h2 className="text-xl font-bold">Course syllabus</h2><span className="text-sm text-muted">{track.lessons.length} lessons</span></div>
           <Suspense fallback={<LessonList trackSlug={track.slug} />}>
             <LessonListWithProgress trackSlug={track.slug} />
           </Suspense>
         </div>
-        <aside className="lg:pt-10">
-          <div className="sticky top-20 rounded-xl border border-border bg-surface p-6">
-            <p className="text-sm text-muted">About {Math.round(totalMinutes / 30) / 2} hours, at your own pace.</p>
-            <ButtonLink href={lessonPath(track.slug, track.lessons[0].slug)} size="lg" className="mt-4 w-full">
-              Start lesson 1
-            </ButtonLink>
-            <p className="mt-3 text-xs text-muted">Free. Sign up to save progress and use the AI tutor.</p>
+        <aside className="hidden lg:block">
+          <div className="sticky top-24 panel p-6">
+            <h2 className="display-sm text-lg font-bold">Build your understanding.</h2>
+            <p className="mb-6 mt-2 text-sm text-muted">About {Math.round(totalMinutes / 30) / 2} hours of hands-on practice, at your own pace.</p>
+            <Suspense fallback={<Skeleton className="h-24" />}>
+              <CourseAction trackSlug={track.slug} />
+            </Suspense>
+            <div className="mt-6 space-y-3 border-t border-border pt-5 text-sm text-muted"><p>✓ Real code in your browser</p><p>✓ Instant test feedback</p><p>✓ A tutor to help you think it through</p></div>
           </div>
         </aside>
       </div>
@@ -117,7 +124,7 @@ async function TrackContent({ params }: { params: PageProps<"/learn/[track]">["p
 function LessonList({ trackSlug, passed }: { trackSlug: string; passed?: Set<string> }) {
   const track = getTrack(trackSlug)!;
   return (
-    <ol className="mt-4 divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
+    <ol className="mt-4 divide-y divide-border overflow-hidden panel">
       {track.lessons.map((l, i) => {
         const done = passed?.has(l.exercise.id);
         return (
@@ -129,14 +136,14 @@ function LessonList({ trackSlug, passed }: { trackSlug: string; passed?: Set<str
               >
                 {done ? "✓" : i + 1}
               </span>
-              <span className="flex-1">
+              <span className="min-w-0 flex-1">
                 <span className="font-medium">{l.title}</span>
                 {l.kind === "review" && (
                   <span className="ml-2 align-middle">
                     <Badge tone="accent">Review</Badge>
                   </span>
                 )}
-                {done && <span className="sr-only"> (completed)</span>}
+                {done && <span className="ml-2 text-xs font-medium text-ok">Completed</span>}
                 <span className="mt-1 block text-sm text-muted">{l.summary}</span>
                 {l.tags.length > 0 && (
                   <span className="mt-2 flex flex-wrap gap-1.5">
@@ -150,7 +157,7 @@ function LessonList({ trackSlug, passed }: { trackSlug: string; passed?: Set<str
               </span>
               <span className="flex shrink-0 flex-col items-end gap-1">
                 <DifficultyBadge difficulty={l.difficulty} />
-                <span className="hidden text-xs text-muted sm:block">{l.minutes} min</span>
+                <span className="text-xs text-muted">{l.minutes} min</span>
               </span>
             </Link>
           </li>
@@ -166,4 +173,11 @@ async function LessonListWithProgress({ trackSlug }: { trackSlug: string }) {
   const progress = await getProgressMap(user.id);
   const passed = new Set([...progress.values()].filter((p) => p.status === "passed").map((p) => p.exerciseId));
   return <LessonList trackSlug={trackSlug} passed={passed} />;
+}
+
+async function CourseAction({ trackSlug }: { trackSlug: string }) {
+  const track = getTrack(trackSlug)!;
+  const user = await getCurrentUser();
+  const progress = user ? await getProgressMap(user.id) : new Map();
+  return <><CourseProgress track={track} progress={progress} signedIn={!!user} />{!user && <p className="mt-3 text-xs text-muted">Free. Sign in to save progress and use the AI tutor.</p>}</>;
 }

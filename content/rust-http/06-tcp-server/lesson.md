@@ -70,4 +70,4 @@ If the first line does not parse, do not crash. Reply `400 Bad Request` with a s
 
 ## Your turn
 
-The starter includes the earlier lessons' code. Write `handle_connection`: read the head, parse the request line, call `route`, build a response and write it. The tests start a real server on a random loopback port and connect to it.
+The starter includes the [earlier lessons](/learn/rust-http/review-handler)' code. Write `handle_connection`: read the head, parse the request line, call `route`, build a response and write it. The tests start a real server on a random loopback port and connect to it.

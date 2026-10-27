@@ -10,6 +10,8 @@ mode: harness
 ---
 This is a **review lesson**. It introduces nothing new. By now you have met ownership and `String`, `Vec` and iterators, and structs with methods. A real Rust program uses all of them in the same breath, so this exercise does too.
 
+Lessons this review draws on: [Ownership and strings](/learn/rust-foundations/ownership-and-strings), [Vectors and iterators](/learn/rust-foundations/vectors-and-iterators), [Structs and methods](/learn/rust-foundations/structs-and-methods).
+
 ## What you already know
 
 - **Owned and borrowed strings:** a `String` owns its text, a `&str` borrows it. A function that only reads text should take `&str`, and a struct that keeps text needs a `String` (`name.to_string()` makes one).

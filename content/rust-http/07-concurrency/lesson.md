@@ -7,7 +7,7 @@ tags: concurrency, networking
 id: rust-http/concurrency
 mode: harness
 ---
-Your server from the last lesson handles one client at a time. For a quick test that is fine. In the real world it has a serious flaw.
+Your server from [the last lesson](/learn/rust-http/tcp-server) handles one client at a time. For a quick test that is fine. In the real world it has a serious flaw.
 
 ## The slow client problem
 
@@ -67,4 +67,4 @@ Both build on exactly what you have learned: sockets, parsing, routing, response
 
 ## Your turn
 
-`handle_connection` from last lesson is in the starter (with a 5 second read timeout so dead clients do not hang a thread forever). The starter's `serve` is sequential. Rewrite it so each connection runs on its own thread. The test makes one client stall while another needs a quick answer.
+`handle_connection` from [last lesson](/learn/rust-http/tcp-server) is in the starter (with a 5 second read timeout so dead clients do not hang a thread forever). The starter's `serve` is sequential. Rewrite it so each connection runs on its own thread. The test makes one client stall while another needs a quick answer.

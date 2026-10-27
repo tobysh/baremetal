@@ -7,7 +7,7 @@ tags: trait-objects, generics
 id: rust-traits/trait-objects
 mode: harness
 ---
-Last lesson, `fn total_area<T: Shape>(shapes: &[T])` worked for a slice of squares **or** a slice of rectangles, but never a mix. A `Vec<T>` holds one type, and all elements of an array must be the same size. What if you want a list containing both?
+[Last lesson](/learn/rust-traits/traits-and-impl), `fn total_area<T: Shape>(shapes: &[T])` worked for a slice of squares **or** a slice of rectangles, but never a mix. A `Vec<T>` holds one type, and all elements of an array must be the same size. What if you want a list containing both?
 
 That is what a **trait object** is for.
 

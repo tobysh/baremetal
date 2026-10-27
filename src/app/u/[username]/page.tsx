@@ -33,7 +33,7 @@ export default async function ProfilePage({ params }: PageProps<"/u/[username]">
   const name = decodeURIComponent((await params).username).toLowerCase();
   if (!USERNAME_RE.test(name)) notFound();
   return (
-    <Container className="max-w-3xl py-12">
+    <Container className="max-w-3xl py-10 sm:py-14">
       <Suspense fallback={<ProfileSkeleton />}>
         <Profile params={params} />
       </Suspense>
@@ -58,7 +58,7 @@ async function Profile({ params }: { params: Params }) {
       </nav>
       <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{profile.username}</h1>
+          <h1 className="display break-words text-3xl font-bold sm:text-4xl">{profile.username}</h1>
           <p className="mt-1 text-sm text-muted">
             Rank #{profile.rank} · learning since {profile.memberSince.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
           </p>
@@ -70,21 +70,21 @@ async function Profile({ params }: { params: Params }) {
         )}
       </div>
 
-      <Card className="mt-8 p-6">
+      <Card className="mt-8 p-6 sm:p-8">
         <LevelProgress xp={profile.xp} />
       </Card>
 
-      <h2 className="mt-10 text-lg font-semibold">
+      <h2 className="display-sm mt-10 text-lg font-bold">
         Courses <span className="text-sm font-normal text-muted">· {profile.completed} of {profile.totalLessons} lessons</span>
       </h2>
       <ul className="mt-3 grid gap-3 sm:grid-cols-2">
         {profile.tracks.map((t) => (
-          <Card as="li" key={t.slug} className="p-4">
-            <div className="flex items-baseline justify-between gap-3 text-sm">
+          <Card as="li" key={t.slug} className="p-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-3 text-sm">
               <Link href={`/learn/${t.slug}`} className="font-medium hover:text-accent">
                 {t.title}
               </Link>
-              <span className="text-muted tabular-nums">
+              <span className="shrink-0 text-muted tabular-nums">
                 {t.done}/{t.total}
               </span>
             </div>
@@ -95,11 +95,11 @@ async function Profile({ params }: { params: Params }) {
         ))}
       </ul>
 
-      <h2 className="mt-10 text-lg font-semibold">Recently completed</h2>
+      <h2 className="display-sm mt-10 text-lg font-bold">Recently completed</h2>
       {profile.recent.length === 0 ? (
         <p className="mt-3 text-sm text-muted">No lessons completed yet.</p>
       ) : (
-        <ul className="mt-3 divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
+        <ul className="mt-3 divide-y divide-border overflow-hidden panel">
           {profile.recent.map((r) => (
             <li key={`${r.trackTitle}-${r.title}`} className="flex items-center gap-4 px-4 py-3">
               <span className="flex-1">

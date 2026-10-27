@@ -4,14 +4,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { Lesson, Track } from "./curriculum/types";
 import { EXPERIENCE_LEVELS, type ExperienceLevel, type TutorMessage } from "./models";
 
-// Which model answers tutor questions. "anthropic" (default) uses Claude via
-// the API; "ollama" uses a local model, so code and questions never leave the
-// machine running the site.
+// Which model answers tutor questions. "anthropic" (default) uses Claude via the API; "ollama" uses a local model, so code and questions never leave the machine running the site.
 export const TUTOR_PROVIDER = process.env.TUTOR_PROVIDER === "ollama" ? "ollama" : "anthropic";
-export const TUTOR_MODEL = "claude-opus-5-5";
-// Short, guiding replies don't need deep reasoning; "low" keeps thinking (and
-// cost) down. Raise to "medium" if answers on harder lessons feel shallow.
-const EFFORT = (process.env.TUTOR_EFFORT ?? "low") as "low" | "medium" | "high";
+export const TUTOR_MODEL = "claude-haiku-4-5";
 const OLLAMA_HOST = (process.env.OLLAMA_HOST ?? "http://127.0.0.1:11434").replace(/\/$/, "");
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? "qwen2.5-coder:7b";
 
@@ -28,7 +23,7 @@ How you teach:
 - Your goal is for the learner to understand and solve the exercise themselves. Guide; don't do the work for them.
 - Start from what they're asking and what their code shows. Find the single most important thing blocking them and focus on that.
 - Prefer a question or a nudge that lets them discover the problem ("What does your loop do when n is 0?") over stating the fix. Escalate gradually: concept → where to look → what is wrong → a small illustrative snippet.
-- Never write the complete solution to the exercise, even if asked directly. If they're stuck after several attempts, you may show a short snippet (a few lines) that illustrates the idea using different names or a different example, and explain it.
+- NEVER write the complete solution to the exercise or subtask, even if asked directly. If they're stuck after several attempts, you may show a short snippet (a few lines) that illustrates the idea using different names or a different example, and explain it.
 - Explain compiler errors and crashes in plain language: what the message means, which line it points to, and the usual cause. Many beginners are scared of errors — normalise them.
 - Use concrete analogies and tiny examples. Define any term the learner might not know the first time you use it.
 - Be warm and encouraging but not gushing. No filler, no emoji. Keep replies short: usually under 150 words, with at most one short code block. Use Markdown.
@@ -142,13 +137,10 @@ export function streamTutor(
 }
 
 async function* streamClaude(lessonCtx: string, messages: ChatTurn[], signal: AbortSignal, onDone: (u: TutorUsage, cacheable: boolean) => void): AsyncGenerator<string> {
-  const stream = anthropic().beta.messages.stream(
+  const stream = anthropic().messages.stream(
     {
       model: TUTOR_MODEL,
-      max_tokens: MAX_REPLY_TOKENS + 4_000, // headroom for adaptive thinking
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      output_config: { effort: EFFORT },
+      max_tokens: MAX_REPLY_TOKENS,
       // Prompt caching: the instructions and the lesson are identical for every
       // learner on a lesson, so after the first request they're read from cache.
       system: [

@@ -71,7 +71,7 @@ export function CookieBanner() {
       aria-label="Cookie preferences"
       className="fixed inset-x-0 bottom-0 z-50 p-3 sm:bottom-4 sm:left-4 sm:right-auto sm:max-w-md sm:p-0"
     >
-      <div className="rounded-xl border border-border bg-surface p-5 shadow-2xl shadow-black/30">
+      <div className="panel p-5 shadow-2xl shadow-black/30">
         <h2 className="text-base font-semibold">Cookies and analytics</h2>
         <p className="mt-2 text-sm text-muted">
           We use essential cookies to keep you signed in and remember this choice. With your permission we also count page visits with our own

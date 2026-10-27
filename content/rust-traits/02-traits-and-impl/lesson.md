@@ -45,7 +45,7 @@ impl Greet for Mage {
 
 ## Using traits in functions
 
-Combine this with last lesson's bounds. A function can accept any type that implements a trait:
+Combine this with [last lesson's](/learn/rust-traits/generics) bounds. A function can accept any type that implements a trait:
 
 ```rust
 fn welcome<T: Greet>(who: &T) -> String {

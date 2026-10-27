@@ -7,7 +7,7 @@ tags: memory, paging
 id: osdev/map-pages
 mode: harness
 ---
-Last lesson you read page tables. Now you **change** them, while the CPU is running on them. This is what `mmap`, `malloc` and loading a program all come down to: pick a virtual address, pick a physical frame, make the tables say so.
+[Last lesson](/learn/osdev/page-tables) you read page tables. Now you **change** them, while the CPU is running on them. This is what `mmap`, `malloc` and loading a program all come down to: pick a virtual address, pick a physical frame, make the tables say so.
 
 ## Mapping one page
 
@@ -88,4 +88,4 @@ The test's handler does what a demand-paging kernel does: read CR2, map a page t
 
 ## Your turn
 
-The starter provides `translate` from last lesson (finished), `alloc_frame`, the counter `frames_used`, `tlb_invalidate` and `read_cr3`. Implement `map_page` and `unmap_page`. The tests touch memory through your new mappings, so a wrong entry gives a real page fault.
+The starter provides `translate` from [last lesson](/learn/osdev/page-tables) (finished), `alloc_frame`, the counter `frames_used`, `tlb_invalidate` and `read_cr3`. Implement `map_page` and `unmap_page`. The tests touch memory through your new mappings, so a wrong entry gives a real page fault.

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { CourseProgress } from "@/components/course-progress";
 import { JsonLd } from "@/components/json-ld";
-import { Badge, Card, Container, ProgressBar, Skeleton } from "@/components/ui";
+import { Badge, Card, Container, Skeleton } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import { getTracks } from "@/lib/curriculum";
 import { groupByPath } from "@/lib/curriculum/paths";
@@ -21,7 +22,7 @@ export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
   const tracks = getTracks();
   const groups = groupByPath(tracks);
   return (
-    <Container className="py-12">
+    <Container className="py-8 sm:py-12">
       <JsonLd
         data={{
           "@context": "https://schema.org",
@@ -37,26 +38,26 @@ export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
       <Suspense fallback={null}>
         <Welcome searchParams={searchParams} />
       </Suspense>
-      <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Courses</h1>
+      <h1 className="display text-3xl font-bold sm:text-4xl">Choose your next challenge.</h1>
       <p className="mt-3 max-w-2xl text-muted">
         Pick a path. Courses are in order within each one. New to programming? Start with <Link className="text-accent underline underline-offset-2" href="/learn/first-steps">Programming from Zero</Link>, then choose a language.
       </p>
-      <nav aria-label="Paths" className="mt-6 flex flex-wrap gap-2 text-sm">
+      <nav aria-label="Paths" className="mt-8 flex flex-wrap gap-2 border-b border-border pb-6 text-sm">
         {groups.map((g) => (
-          <a key={g.id} href={`#path-${g.id}`} className="rounded-lg border border-border bg-surface px-3 py-1.5 hover:bg-surface-2">
+          <a key={g.id} href={`#path-${g.id}`} className="inline-flex min-h-11 items-center rounded-lg bg-surface px-4 py-2 text-muted hover:bg-surface-2 hover:text-text">
             {g.title}
           </a>
         ))}
       </nav>
       {groups.map((g) => (
         <section key={g.id} id={`path-${g.id}`} aria-labelledby={`h-${g.id}`} className="mt-12 scroll-mt-20">
-          <h2 id={`h-${g.id}`} className="text-2xl font-semibold tracking-tight">
+          <h2 id={`h-${g.id}`} className="display-sm text-2xl font-bold">
             {g.title}
           </h2>
           <p className="mt-1 text-muted">{g.blurb}</p>
           <ol className="mt-5 grid gap-5">
             {g.tracks.map((t, i) => (
-              <Card as="li" key={t.slug} className="grid gap-6 p-6 md:grid-cols-[1fr_16rem]">
+              <Card as="li" key={t.slug} className="grid gap-6 p-5 sm:p-6 md:grid-cols-[minmax(0,1fr)_17rem] md:gap-10">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     {g.tracks.length > 1 && (
@@ -72,7 +73,7 @@ export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
                       {t.title}
                     </Link>
                   </h3>
-                  <p className="mt-2 text-muted">{t.description}</p>
+                  <p className="mt-2 text-muted">{t.summary}</p>
                   {t.prerequisite && (
                     <p className="mt-3 text-sm text-muted">
                       Before this: <Link href={`/learn/${t.prerequisite}`} className="text-accent underline underline-offset-2">{tracks.find((x) => x.slug === t.prerequisite)?.title}</Link>
@@ -110,32 +111,6 @@ async function Welcome({ searchParams }: { searchParams: PageProps<"/learn">["se
 async function TrackProgress({ slug }: { slug: string }) {
   const track = getTracks().find((t) => t.slug === slug)!;
   const user = await getCurrentUser();
-  const first = `/learn/${slug}/${track.lessons[0].slug}`;
-  if (!user) {
-    return (
-      <Link href={first} className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-surface px-4 text-sm font-medium hover:bg-surface-2">
-        Start course
-      </Link>
-    );
-  }
-  const progress = await getProgressMap(user.id);
-  const done = track.lessons.filter((l) => progress.get(l.exercise.id)?.status === "passed").length;
-  const next = track.lessons.find((l) => progress.get(l.exercise.id)?.status !== "passed") ?? track.lessons[0];
-  return (
-    <div className="space-y-3">
-      <div className="flex justify-between text-sm">
-        <span className="text-muted">Progress</span>
-        <span>
-          {done}/{track.lessons.length}
-        </span>
-      </div>
-      <ProgressBar value={done / track.lessons.length} label={`${track.title} progress`} />
-      <Link
-        href={`/learn/${slug}/${next.slug}`}
-        className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-accent px-4 text-sm font-medium text-accent-ink hover:brightness-110"
-      >
-        {done === 0 ? "Start course" : done === track.lessons.length ? "Review course" : "Continue"}
-      </Link>
-    </div>
-  );
+  const progress = user ? await getProgressMap(user.id) : new Map();
+  return <CourseProgress track={track} progress={progress} signedIn={!!user} />;
 }

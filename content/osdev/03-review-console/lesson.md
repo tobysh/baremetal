@@ -10,12 +10,14 @@ mode: harness
 ---
 This is a **review lesson**. It introduces no new hardware. You have driven the serial port with port I/O and the VGA text screen with memory-mapped I/O. Before the course moves on to the CPU's own tables, this exercise puts the two together into something every kernel needs: a **console**.
 
+Lessons this review draws on: [The Serial Port](/learn/osdev/serial-port), [VGA Text Mode](/learn/osdev/vga-text).
+
 ## What you already have
 
 The starter contains your two drivers, ready to use:
 
-- `serial_init`, `serial_putc` and `serial_puts` from the serial lesson. Remember that `serial_puts` turns `\n` into `\r\n`, because a serial terminal needs both a carriage return and a line feed.
-- `term_init`, `term_set_color`, `term_putc` and the scrolling and cursor code from the VGA lesson. `term_putc` already understands `\n`, `\r`, `\b` and `\t`.
+- `serial_init`, `serial_putc` and `serial_puts` from [the serial lesson](/learn/osdev/serial-port). Remember that `serial_puts` turns `\n` into `\r\n`, because a serial terminal needs both a carriage return and a line feed.
+- `term_init`, `term_set_color`, `term_putc` and the scrolling and cursor code from [the VGA lesson](/learn/osdev/vga-text). `term_putc` already understands `\n`, `\r`, `\b` and `\t`.
 
 Read them over. They are the answers to the first two lessons, so this is also a chance to see whether the ideas still make sense to you.
 

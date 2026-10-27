@@ -17,14 +17,15 @@ export const metadata: Metadata = {
 
 export default function LeaderboardPage({ searchParams }: PageProps<"/leaderboard">) {
   return (
-    <Container className="max-w-3xl py-12">
-      <h1 className="text-3xl font-bold tracking-tight">Leaderboard</h1>
-      <p className="mt-2 text-muted">Earn XP by passing lessons: Easy 5, Medium 10, Hard 20, Impossible 40.</p>
+    <Container className="max-w-3xl py-10 sm:py-14">
+      <h1 className="display text-3xl font-bold sm:text-4xl">Leaderboard</h1>
+      <p className="mt-3 max-w-xl text-muted">Small steps add up. See what learners are building, one lesson at a time.</p>
+      <p className="mt-2 text-sm text-muted">XP per lesson: Easy 5 · Medium 10 · Hard 20 · Impossible 40.</p>
       <form action="/leaderboard" role="search" className="mt-6 flex gap-2">
         <label htmlFor="q" className="sr-only">
           Find a learner by username
         </label>
-        <Suspense fallback={<input disabled className="h-11 flex-1 rounded-lg border border-border bg-bg px-3" />}>
+        <Suspense fallback={<input disabled className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-bg px-3" />}>
           <SearchInput searchParams={searchParams} />
         </Suspense>
         <button type="submit" className="h-11 rounded-lg border border-border px-4 text-sm font-medium hover:bg-surface-2">
@@ -51,7 +52,7 @@ async function SearchInput({ searchParams }: { searchParams: PageProps<"/leaderb
       autoCapitalize="none"
       spellCheck={false}
       maxLength={20}
-      className="h-11 flex-1 rounded-lg border border-border bg-bg px-3 placeholder:text-muted"
+      className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-bg px-3 placeholder:text-muted"
     />
   );
 }
@@ -63,11 +64,11 @@ async function Results({ searchParams }: { searchParams: PageProps<"/leaderboard
     const found = await searchUsers(q);
     return (
       <section aria-labelledby="results" className="mt-8">
-        <h2 id="results" className="text-sm font-medium text-muted">
+        <h2 id="results" className="display-sm text-lg font-bold">
           {found.length ? `Learners matching “${q.trim()}”` : `No public profiles match “${q.trim()}”.`}
         </h2>
         {found.length > 0 && (
-          <ul className="mt-3 divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
+          <ul className="mt-3 divide-y divide-border overflow-hidden panel">
             {found.map((u) => (
               <Row key={u.username} username={u.username} xp={u.xp} isMe={me?.username === u.username} />
             ))}
@@ -82,13 +83,13 @@ async function Results({ searchParams }: { searchParams: PageProps<"/leaderboard
   const rows = await getLeaderboard(50);
   return (
     <section aria-labelledby="top" className="mt-8">
-      <h2 id="top" className="text-sm font-medium text-muted">
+      <h2 id="top" className="display-sm text-lg font-bold">
         Top learners
       </h2>
       {rows.length === 0 ? (
         <Card className="mt-3 p-6 text-sm text-muted">No one is on the board yet. Pass a lesson to be first.</Card>
       ) : (
-        <ol className="mt-3 divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
+        <ol className="mt-3 divide-y divide-border overflow-hidden panel">
           {rows.map((r) => (
             <Row key={r.username} rank={r.rank} username={r.username} xp={r.xp} isMe={me?.username === r.username} />
           ))}
@@ -110,9 +111,9 @@ function Row({ rank, username, xp, isMe }: { rank?: number; username: string; xp
   const l = levelFor(xp);
   return (
     <li>
-      <Link href={`/u/${username}`} className={`flex items-center gap-4 px-4 py-3 hover:bg-surface-2 ${isMe ? "bg-accent-soft" : ""}`}>
-        {rank !== undefined && <span className="w-8 text-right font-mono text-sm text-muted tabular-nums">{rank}</span>}
-        <span className="flex-1 truncate font-medium">
+      <Link href={`/u/${username}`} className={`flex items-center gap-3 px-4 py-4 transition-colors hover:bg-surface-2 ${isMe ? "bg-accent-soft" : ""}`}>
+        {rank !== undefined && <span className="w-7 shrink-0 text-right font-mono text-sm text-muted tabular-nums">{rank}</span>}
+        <span className="min-w-0 flex-1 truncate font-medium">
           {username}
           {isMe && <span className="ml-2 text-xs font-normal text-muted">(you)</span>}
           <span className="block text-xs font-normal text-muted">{l.title}</span>

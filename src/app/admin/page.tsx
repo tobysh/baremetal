@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function AdminPage() {
   return (
     <Container className="py-12">
-      <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
+      <h1 className="display text-3xl font-bold">Analytics</h1>
       <p className="mt-2 text-muted">Last 30 days · consented visitors only · no raw IPs stored</p>
       <Suspense fallback={<AdminSkeleton />}>
         <AdminBody />
@@ -44,7 +44,7 @@ async function AdminBody() {
       </div>
 
       <Card as="section" className="p-6">
-        <h2 className="font-semibold">Pageviews per day</h2>
+        <h2 className="display-sm font-semibold">Pageviews per day</h2>
         {s.daily.length === 0 ? (
           <p className="mt-3 text-sm text-muted">No data yet.</p>
         ) : (
@@ -89,7 +89,7 @@ async function AdminBody() {
 function StatTable({ title, head, rows }: { title: string; head: [string, string]; rows: (string | number)[][] }) {
   return (
     <Card as="section" className="p-6">
-      <h2 className="font-semibold">{title}</h2>
+      <h2 className="display-sm font-semibold">{title}</h2>
       {rows.length === 0 ? (
         <p className="mt-3 text-sm text-muted">No data yet.</p>
       ) : (

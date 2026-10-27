@@ -28,6 +28,8 @@ When you're not signed in, the code you write in a lesson is saved in your brows
 
 We also save your light or dark theme choice in your browser's local storage, under the name bm:theme. It stores only "light" or "dark". It is a functional preference that the site needs to show the look you picked, so we do not ask for consent. It is never sent to our servers and stays in your browser on that device. You can remove it by clearing your browser's site data, and the site will go back to your device's light or dark setting.
 
+The workspace remembers the reading pane width you choose under bm:workspace:reading-width. This stores only a width percentage between 32 and 60. If you dismiss the dashboard's username reminder, bm:username-notice: followed by your account ID stores "dismissed", so that reminder stays hidden for your account in that browser. These functional preferences are not sent to our servers and remain on that device until you clear the site's browser storage. Clearing them restores the default workspace width and allows the reminder to appear again.
+
 ## Analytics
 
 If you say yes, our analytics records page visits and some device details. It uses a visitor ID that changes every day. It sets no cookies and uses no local storage. See the analytics section of our [Privacy Policy](/privacy) for the full details.

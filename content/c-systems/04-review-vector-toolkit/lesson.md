@@ -8,7 +8,7 @@ tags: function-pointers, heap, data-structures
 id: c-systems/review-vector-toolkit
 mode: harness
 ---
-This is a **review lesson**. It introduces nothing new. You have built a growable array and you have used function pointers. Here you combine them, which is how a lot of real C libraries are shaped.
+This is a **review lesson**. It introduces nothing new. You have built a growable array ([A Growable Array](/learn/c-systems/dynamic-array)) and you have used function pointers ([Function Pointers and Callbacks](/learn/c-systems/function-pointers)). Here you combine them, which is how a lot of real C libraries are shaped.
 
 ## What you already know
 
@@ -18,7 +18,7 @@ This is a **review lesson**. It introduces nothing new. You have built a growabl
 
 ## What is provided
 
-The starter already contains working `vec_init`, `vec_push` and `vec_free`, written the way the earlier lesson asked, so you can focus on the new combination. Read them first; you may find you could have written them from memory.
+The starter already contains working `vec_init`, `vec_push` and `vec_free`, written the way [the growable array lesson](/learn/c-systems/dynamic-array) asked, so you can focus on the new combination. Read them first; you may find you could have written them from memory.
 
 ## The three functions
 

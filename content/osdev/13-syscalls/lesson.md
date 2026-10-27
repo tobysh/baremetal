@@ -65,7 +65,7 @@ Your `syscall_dispatch` is the middle of the journey. Here's the whole trip on x
 3. A small assembly stub saves registers, loads the kernel stack and calls C: effectively `syscall_dispatch(rax, rdi, rsi, rdx, ...)`.
 4. The return value goes in `rax`, and `sysret` restores `rip` and `rflags` and drops back to ring 3.
 
-Older systems used a software interrupt: `int 0x80` goes through an IDT gate you built in lesson 5, with the gate's privilege level set to 3 so user code may use it. It is slower, which is why `syscall` was added.
+Older systems used a software interrupt: `int 0x80` goes through an IDT gate you built in [lesson 5](/learn/osdev/load-tables), with the gate's privilege level set to 3 so user code may use it. It is slower, which is why `syscall` was added.
 
 ## A worked attack
 

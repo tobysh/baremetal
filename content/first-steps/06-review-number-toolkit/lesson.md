@@ -10,6 +10,8 @@ mode: harness
 ---
 This is a **review lesson**. It introduces nothing new. You have now met functions, `if` and loops, and the best way to make them stick is to use them together.
 
+Lessons this review draws on: [Functions](/learn/first-steps/functions), [Making decisions with if](/learn/first-steps/decisions), [Loops](/learn/first-steps/loops).
+
 ## What you already know
 
 - **Functions:** take inputs, do work, `return` a result.

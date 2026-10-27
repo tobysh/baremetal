@@ -7,7 +7,7 @@ tags: branching, flags
 id: asm-first-steps/clamp
 mode: harness
 ---
-Assembly has no `if`. It has **labels**, **jumps** and the flags from the last lesson. Everything else is built from those.
+Assembly has no `if`. It has **labels**, **jumps** and the flags from [the last lesson](/learn/asm-first-steps/absolute-value). Everything else is built from those.
 
 ## cmp and test
 

@@ -12,7 +12,7 @@ This is a **review lesson**. It introduces nothing new. So far you have written 
 
 ## What you already have
 
-The starter contains your finished code from the earlier lessons, ready to call:
+The starter contains your finished code from the earlier lessons ([parsing](/learn/rust-http/parsing-requests), [responses](/learn/rust-http/building-responses) and [routing](/learn/rust-http/routing)), ready to call:
 
 - `parse_request(raw) -> Result<Request, String>` turns text into a `Request` with `method`, `path`, `headers` (names lowercased) and `body`.
 - `build_response(status, content_type, body) -> String` produces the exact bytes of a response.
@@ -40,4 +40,4 @@ All responses use the content type `text/plain`.
 - Because the special route comes *after* the length check, a lying `POST /shout` is still a `400`.
 - `route` already decides what to do with unknown paths and wrong methods. Don't repeat that logic.
 
-The result is a complete request-to-response function with no networking in it. That is precisely what makes it easy to test, and it is the design the next lesson relies on.
+The result is a complete request-to-response function with no networking in it. That is precisely what makes it easy to test, and it is the design [the next lesson](/learn/rust-http/tcp-server) relies on.

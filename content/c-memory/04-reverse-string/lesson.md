@@ -37,7 +37,7 @@ void reverse_demo(char *s, size_t len) {
 }
 ```
 
-This is the same temporary-variable trick as `swap` from lesson 1.
+This is the same temporary-variable trick as `swap` from [Pointers and Swap](/learn/c-memory/pointers-swap).
 
 ## Find the end first
 

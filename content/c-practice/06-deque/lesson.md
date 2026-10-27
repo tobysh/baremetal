@@ -7,7 +7,7 @@ tags: data-structures, heap
 id: c-practice/deque
 mode: harness
 ---
-In `c-memory` you built a singly linked list: each node knew only the **next** one. That makes the front easy and the back awkward. A **doubly linked list** gives every node two links, `prev` and `next`, so you can walk either way, and by remembering both the `head` and the `tail` you can work at either end instantly.
+In [Linked Lists](/learn/c-memory/linked-lists) you built a singly linked list: each node knew only the **next** one. That makes the front easy and the back awkward. A **doubly linked list** gives every node two links, `prev` and `next`, so you can walk either way, and by remembering both the `head` and the `tail` you can work at either end instantly.
 
 A list used this way is a **deque** ("deck"): a double-ended queue. Customers can join or leave from the front or the back.
 

@@ -7,7 +7,7 @@ tags: http, parsing
 id: rust-http/parsing-requests
 mode: harness
 ---
-In the last lesson you parsed one line. Now we parse a whole request: everything a client sent, as one string.
+In [the last lesson](/learn/rust-http/what-is-http) you parsed one line. Now we parse a whole request: everything a client sent, as one string.
 
 ## Head and body
 
@@ -63,4 +63,4 @@ Input from the network is untrusted. A line with no colon is not a header, and a
 
 ## Your turn
 
-The starter includes `parse_request_line` from the previous lesson. Implement `parse_request`.
+The starter includes `parse_request_line` from [the previous lesson](/learn/rust-http/what-is-http). Implement `parse_request`.

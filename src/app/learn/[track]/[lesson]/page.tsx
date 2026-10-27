@@ -8,6 +8,7 @@ import { Markdown } from "@/components/markdown";
 import { DifficultyBadge } from "@/components/gamification";
 import { Badge, Skeleton } from "@/components/ui";
 import { Workspace } from "@/components/workspace/workspace";
+import { LessonLayout } from "@/components/workspace/lesson-layout";
 import { getCurrentUser } from "@/lib/auth";
 import { getLesson, getTracks, lessonPath } from "@/lib/curriculum";
 import { toPublicExercise } from "@/lib/curriculum/types";
@@ -84,7 +85,7 @@ async function Lesson({ params }: { params: PageProps<"/learn/[track]/[lesson]">
           },
         ]}
       />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+      <LessonLayout reading={
         <article className="min-w-0 lg:max-h-[calc(100dvh-6.5rem)] lg:overflow-y-auto lg:pr-4">
           <nav aria-label="Breadcrumb" className="text-sm text-muted">
             <Link href="/learn" className="hover:text-text">
@@ -112,11 +113,11 @@ async function Lesson({ params }: { params: PageProps<"/learn/[track]/[lesson]">
               ))}
             </ul>
           )}
-          <h1 className="mt-3 text-3xl font-bold tracking-tight">{lesson.title}</h1>
+          <h1 className="display mt-3 text-3xl font-bold">{lesson.title}</h1>
           <p className="mt-2 text-muted">{lesson.summary}</p>
           <Markdown className="mt-6">{lesson.body}</Markdown>
-          <section aria-labelledby="task" className="mt-10 rounded-xl border border-border bg-surface p-5">
-            <h2 id="task" className="text-lg font-semibold">
+          <section aria-labelledby="task" className="mt-10 panel p-5">
+            <h2 id="task" className="display-sm text-lg font-bold">
               Your task
             </h2>
             <Markdown className="mt-3">{exercise.task}</Markdown>
@@ -140,12 +141,13 @@ async function Lesson({ params }: { params: PageProps<"/learn/[track]/[lesson]">
             )}
           </nav>
         </article>
-        <div className="min-w-0 lg:sticky lg:top-20 lg:self-start">
+      } workspace={
+        <div className="min-w-0">
           <Suspense fallback={<WorkspaceSkeleton starter={exercise.starter} />}>
             <WorkspaceLoader exerciseId={exercise.id} path={path} nextHref={nextHref} trackSlug={track.slug} lessonSlug={lesson.slug} />
           </Suspense>
         </div>
-      </div>
+      } />
     </div>
   );
 }
@@ -169,7 +171,7 @@ async function WorkspaceLoader({ exerciseId, path, nextHref, trackSlug, lessonSl
 
 function WorkspaceSkeleton({ starter }: { starter: string }) {
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface lg:h-[calc(100dvh-6.5rem)]" aria-busy="true" aria-label="Loading the code editor">
+    <div className="flex flex-col overflow-hidden panel lg:h-[calc(100dvh-6.5rem)]" aria-busy="true" aria-label="Loading the code editor">
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <Skeleton className="h-4 w-16" />
         <div className="ml-auto flex gap-2">

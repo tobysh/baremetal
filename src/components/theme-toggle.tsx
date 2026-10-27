@@ -42,7 +42,7 @@ function apply(choice: ThemeChoice) {
   window.dispatchEvent(new Event(EVENT));
 }
 
-export function ThemeToggle() {
+export function ThemeToggle({ showLabel = false }: { showLabel?: boolean }) {
   const choice = useSyncExternalStore(subscribe, read, () => "system" as ThemeChoice);
   const next = ORDER[(ORDER.indexOf(choice) + 1) % ORDER.length];
   return (
@@ -51,7 +51,7 @@ export function ThemeToggle() {
       onClick={() => apply(next)}
       aria-label={`${LABEL[choice]}. Switch to ${LABEL[next].toLowerCase()}`}
       title={`${LABEL[choice]} — click for ${LABEL[next].toLowerCase()}`}
-      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text"
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg text-muted hover:bg-surface-2 hover:text-text ${showLabel ? "px-2 text-xs" : "w-11"}`}
     >
       <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         {choice === "light" ? (
@@ -68,6 +68,7 @@ export function ThemeToggle() {
           </>
         )}
       </svg>
+      {showLabel && <span>{choice.charAt(0).toUpperCase() + choice.slice(1)}</span>}
     </button>
   );
 }

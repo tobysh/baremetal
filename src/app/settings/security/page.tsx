@@ -13,8 +13,9 @@ export const metadata: Metadata = {
 
 export default function SecurityPage({ searchParams }: PageProps<"/settings/security">) {
   return (
-    <Container className="max-w-3xl py-12">
-      <h1 className="text-3xl font-bold tracking-tight">Account settings</h1>
+    <Container className="max-w-3xl py-10 sm:py-14">
+      <h1 className="display text-3xl font-bold sm:text-4xl">Account settings</h1>
+      <p className="mt-3 text-muted">Keep your account protected and your recovery options ready.</p>
       <SettingsNav current="security" />
       <Suspense fallback={<SettingsSkeleton />}>
         <SecurityBody searchParams={searchParams} />
@@ -36,7 +37,7 @@ async function SecurityBody({ searchParams }: { searchParams: PageProps<"/settin
       )}
       <Card as="section" className="p-6">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-lg font-semibold">Two-factor authentication</h2>
+          <h2 className="display-sm text-lg font-bold">Two-factor authentication</h2>
           {user.twoFactorEnabled ? <Badge tone="ok">On</Badge> : <Badge>Off</Badge>}
         </div>
         <p className="mt-1 text-sm text-muted">

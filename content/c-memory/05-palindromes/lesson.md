@@ -7,7 +7,7 @@ tags: strings, algorithms
 id: c-memory/palindromes
 mode: harness
 ---
-A **palindrome** reads the same forwards and backwards: "racecar", "noon", "level". You already know the two-index technique from the last lesson. Here you use it to *compare* instead of swap.
+A **palindrome** reads the same forwards and backwards: "racecar", "noon", "level". You already know the two-index technique from [the last lesson](/learn/c-memory/reverse-string). Here you use it to *compare* instead of swap.
 
 ## The idea
 
