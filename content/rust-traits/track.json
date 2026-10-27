@@ -1,0 +1,8 @@
+{
+  "title": "Rust Traits & Lifetimes",
+  "summary": "Go deeper in Rust: generics, traits, trait objects, lifetimes, closures and smart pointers (Box, Rc, RefCell), the tools behind most real Rust code.",
+  "description": "Once you can write structs and enums, the next step is writing code that works for many types at once. You'll learn generics and trait bounds, how to define shared behaviour with traits, when to pick dyn trait objects over generics, how lifetimes describe borrowed data, how closures capture their surroundings, and how Rc and RefCell let several owners share and change data safely.",
+  "level": "Intermediate",
+  "language": "rust",
+  "prerequisite": "rust-foundations"
+}

@@ -1,0 +1,4 @@
+Implement two functions, without `strtok`, `atoi`, `strtol` or `sscanf`.
+
+- `int split_words(const char *s, char words[][16], int max_words)` splits `s` on spaces (one or more in a row, and possibly at the start or end) and copies each word into `words[0]`, `words[1]`, and so on, as proper C strings. Return the number of words stored. Stop after `max_words`. A word longer than 15 characters is truncated to its first 15 characters (the rest is skipped). Do not modify `s`.
+- `int parse_int(const char *s, int *out)` parses a whole-number string with an optional leading `-` or `+` followed by one or more digits and nothing else. On success store the value in `*out` and return `1`. For anything else (empty, only a sign, letters, spaces, a decimal point) return `0` and leave `*out` unchanged. Inputs fit in an `int`.

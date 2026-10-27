@@ -2,7 +2,7 @@
 
 Learn low-level programming from absolute zero. Learners read short lessons, write C and Rust in an in-browser editor, get instant results from hidden tests run in a sandbox, and can ask an AI tutor that guides them without handing over answers.
 
-**Courses (29 lessons):** Programming from Zero (C) → Pointers & Memory in C → Rust Foundations → Build an HTTP Server in Rust.
+**Courses (41 lessons):** Programming from Zero (C) → Pointers & Memory in C → Systems Programming in C → Rust Foundations → Rust Traits & Lifetimes → Build an HTTP Server in Rust.
 
 ## Running it locally
 
