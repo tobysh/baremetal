@@ -11,7 +11,7 @@ export function GET() {
     "",
     `> ${SITE.description}`,
     "",
-    "Baremetal is a free, browser-based course platform for learning low-level programming. Learners read short lessons, solve coding exercises in C, Rust or x86-64 assembly that are compiled and tested in a sandbox, and can ask an AI tutor that guides them without giving away answers. Courses are meant to be taken in order.",
+    "Baremetal is a free, browser-based course platform for learning low-level programming. Learners read short lessons, solve coding exercises in C, Rust, Go or x86-64 assembly that are compiled and tested in a sandbox, and can ask an AI tutor that guides them without giving away answers. Courses are meant to be taken in order.",
     "",
     ...tracks.flatMap((t, i) => [
       `## Course ${i + 1}: ${t.title} (${t.level}, ${LANGUAGE_LABEL[t.language]})`,
