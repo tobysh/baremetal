@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { type KeyboardEvent, Suspense, lazy, useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { PublicExercise } from "@/lib/curriculum/types";
+import { LANGUAGE_FILE, LANGUAGE_LABEL, type PublicExercise } from "@/lib/curriculum/types";
 import { track } from "../analytics";
 import { MiniMarkdown } from "./mini-markdown";
 import { explainFailure, type Explanation } from "@/lib/diagnostics";
@@ -182,7 +182,7 @@ export function Workspace({
   return (
     <div onKeyDown={onKeyDown} className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface lg:h-[calc(100dvh-6.5rem)]">
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
-        <span className="font-mono text-xs text-muted">{exercise.language === "c" ? "main.c" : "main.rs"}</span>
+        <span className="font-mono text-xs text-muted">{LANGUAGE_FILE[exercise.language]}</span>
         <span className="text-xs text-muted" aria-live="polite">
           {signedIn ? { idle: "", saving: "Saving…", saved: "Saved", error: "Couldn't save" }[saveState] : "Saved in this browser only"}
         </span>
@@ -244,7 +244,7 @@ export function Workspace({
       <div className="h-[22rem] min-h-0 border-b border-border lg:h-auto lg:flex-[1.3]">
         {isClient ? (
           <Suspense fallback={<CodeFallback code={code} />}>
-            <CodeEditor value={code} onChange={onChange} language={exercise.language} onRun={run} onTest={test} label={`${exercise.language === "c" ? "C" : "Rust"} code editor`} />
+            <CodeEditor value={code} onChange={onChange} language={exercise.language} onRun={run} onTest={test} label={`${LANGUAGE_LABEL[exercise.language]} code editor`} />
           </Suspense>
         ) : (
           <CodeFallback code={code} />

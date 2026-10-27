@@ -1,6 +1,10 @@
 import type { Difficulty } from "../gamification";
 
-export type Language = "c" | "rust";
+export type Language = "c" | "rust" | "asm";
+
+/** Display names and the editor's file name per language. */
+export const LANGUAGE_LABEL: Record<Language, string> = { c: "C", rust: "Rust", asm: "x86-64 assembly" };
+export const LANGUAGE_FILE: Record<Language, string> = { c: "main.c", rust: "main.rs", asm: "starter.s" };
 
 export type StdoutCase = { name: string; stdin?: string; expected: string };
 
@@ -16,7 +20,7 @@ export type Exercise = {
   /** "stdout": compare program output. "harness": hidden tests call the learner's functions. */
   mode: "stdout" | "harness";
   cases?: StdoutCase[];
-  /** C: code using CHECK(name, cond, fmt, ...) with its own main(). Rust: #[test] functions. */
+  /** C: code using CHECK(name, cond, fmt, ...) with its own main(). Rust: #[test] functions. asm: C file (tests.c) declaring the learner's functions extern. */
   harness?: string;
   hints: string[];
 };

@@ -10,6 +10,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getTrack, getTracks, lessonPath } from "@/lib/curriculum";
 import { getProgressMap } from "@/lib/progress";
 import { SITE, absoluteUrl } from "@/lib/site";
+import { LANGUAGE_LABEL } from "@/lib/curriculum/types";
 
 export function generateStaticParams() {
   return getTracks().map((t) => ({ track: t.slug }));
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }: PageProps<"/learn/[track]">):
   const track = getTrack((await params).track);
   if (!track) return {};
   return {
-    title: `${track.title} — free ${track.language === "c" ? "C" : "Rust"} course`,
+    title: `${track.title} — free ${LANGUAGE_LABEL[track.language]} course`,
     description: track.summary,
     alternates: { canonical: `/learn/${track.slug}` },
     openGraph: { title: track.title, description: track.summary, url: `/learn/${track.slug}` },
@@ -80,7 +81,7 @@ async function TrackContent({ params }: { params: PageProps<"/learn/[track]">["p
         <div>
           <div className="flex flex-wrap gap-2">
             <Badge>{track.level}</Badge>
-            <Badge>{track.language === "c" ? "C" : "Rust"}</Badge>
+            <Badge>{LANGUAGE_LABEL[track.language]}</Badge>
             <Badge>{track.lessons.length} lessons</Badge>
           </div>
           <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">{track.title}</h1>

@@ -1,0 +1,8 @@
+{
+  "title": "Assembly: First Steps",
+  "summary": "Meet the CPU itself: registers, instructions and the System V calling convention. Write real x86-64 assembly functions that C code calls.",
+  "description": "Underneath every C and Rust program is machine code. In this course you write x86-64 assembly (GNU as, Intel syntax) by hand: you will learn what registers are, how arguments arrive and results leave a function, and how to read and write memory. Your functions are tested by hidden C programs, exactly the way real assembly is used in operating systems and performance-critical libraries.",
+  "level": "Intermediate",
+  "language": "asm",
+  "prerequisite": "c-memory"
+}

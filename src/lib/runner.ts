@@ -207,7 +207,23 @@ const C_STDIO_INIT = `#include <stdio.h>
 __attribute__((constructor)) static void __bm_init(void) { setvbuf(stdout, NULL, _IOLBF, 0); }
 `;
 
-async function compile(dir: string, language: Language, source: string, opts: { test?: boolean } = {}) {
+// Assembly: the learner's file is GNU as with `.intel_syntax noprefix`, linked by gcc.
+// No UBSan (nothing to instrument); -no-pie so absolute symbol references work;
+// --noexecstack silences the missing .note.GNU-stack linker warning. In test mode
+// the hidden C harness (tests.c, with the CHECK prelude) supplies main().
+async function compileAsm(dir: string, source: string, harness: string | null) {
+  await writeFile(path.join(dir, "starter.s"), source);
+  await writeFile(path.join(dir, "bm_init.c"), C_STDIO_INIT);
+  const files = ["starter.s", "bm_init.c"];
+  if (harness !== null) {
+    await writeFile(path.join(dir, "tests.c"), `${C_TEST_PRELUDE}\n#line 1 "tests.c"\n${harness}\n`);
+    files.push("tests.c");
+  }
+  return exec(dir, ["gcc", "-std=c17", "-Wall", "-Wextra", "-g", "-O0", "-no-pie", "-Wa,--noexecstack", ...files, "-o", "prog"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits() });
+}
+
+async function compile(dir: string, language: Language, source: string, opts: { test?: boolean; harness?: string } = {}) {
+  if (language === "asm") return compileAsm(dir, source, opts.test ? (opts.harness ?? "") : null);
   if (language === "c") {
     await writeFile(path.join(dir, "main.c"), source);
     await writeFile(path.join(dir, "bm_init.c"), C_STDIO_INIT);
@@ -236,6 +252,10 @@ export function runProgram(language: Language, code: string, stdin = ""): Promis
       const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
       if (c.code !== 0) {
         const noMain = /undefined reference to `main'|`main` function not found/.test(compileOutput);
+        const noMainText =
+          language === "asm"
+            ? "There's no `main` label to run. Your functions are called by the hidden tests, so press Test to check them (or add a `.globl main` entry point to experiment)."
+            : "There's no main() function to run. Add one to experiment, or press Test to check your solution.";
         return {
           ok: false,
           phase: "compile",
@@ -244,7 +264,7 @@ export function runProgram(language: Language, code: string, stdin = ""): Promis
           stderr: "",
           exitCode: c.code,
           error: noMain
-            ? "There's no main() function to run. Add one to experiment, or press Test to check your solution."
+            ? noMainText
             : c.timedOut
               ? "Compilation took too long."
               : "Your code didn't compile. Read the first error carefully — later errors are often caused by the first.",
@@ -269,6 +289,7 @@ export function testExercise(exercise: Exercise, code: string): Promise<TestResu
   return withSlot(() =>
     withWorkdir(async (dir) => {
       if (exercise.mode === "stdout") return testStdout(dir, exercise, code);
+      if (exercise.language === "asm") return testAsmHarness(dir, exercise, code);
       if (exercise.language === "c") return testCHarness(dir, exercise, code);
       return testRustHarness(dir, exercise, code);
     }),
@@ -297,8 +318,16 @@ async function testStdout(dir: string, ex: Exercise, code: string): Promise<Test
   return { compiled: true, compileOutput, results, allPassed: results.every((r) => r.passed), output, error };
 }
 
-async function testCHarness(dir: string, ex: Exercise, code: string): Promise<TestResult> {
-  const c = await compile(dir, "c", cTestSource(code, ex.harness ?? ""), { test: true });
+function testCHarness(dir: string, ex: Exercise, code: string): Promise<TestResult> {
+  return runCHarness(dir, () => compile(dir, "c", cTestSource(code, ex.harness ?? ""), { test: true }));
+}
+
+function testAsmHarness(dir: string, ex: Exercise, code: string): Promise<TestResult> {
+  return runCHarness(dir, () => compile(dir, "asm", code, { test: true, harness: ex.harness ?? "" }));
+}
+
+async function runCHarness(dir: string, build: () => ReturnType<typeof exec>): Promise<TestResult> {
+  const c = await build();
   const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
   if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: "Your code didn't compile." };
   const r = await exec(dir, ["./prog"], { timeoutMs: RUN_TIMEOUT_MS, limits: runLimits(), env: runEnv });

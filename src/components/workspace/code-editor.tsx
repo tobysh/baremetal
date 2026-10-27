@@ -57,7 +57,11 @@ const highlight = HighlightStyle.define([
 
 // Each lesson needs one grammar, so load only that one.
 const loadLanguage = (language: Language): Promise<Extension> =>
-  language === "c" ? import("@codemirror/lang-cpp").then((m) => m.cpp()) : import("@codemirror/lang-rust").then((m) => m.rust());
+  language === "c"
+    ? import("@codemirror/lang-cpp").then((m) => m.cpp())
+    : language === "asm"
+      ? Promise.all([import("@codemirror/language"), import("@codemirror/legacy-modes/mode/gas")]).then(([l, m]) => l.StreamLanguage.define(m.gas))
+      : import("@codemirror/lang-rust").then((m) => m.rust());
 
 const NO_LANGUAGE: Extension = [];
 

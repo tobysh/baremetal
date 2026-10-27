@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getTracks } from "@/lib/curriculum";
 import { getProgressMap } from "@/lib/progress";
 import { SITE, absoluteUrl } from "@/lib/site";
+import { LANGUAGE_LABEL } from "@/lib/curriculum/types";
 
 export const metadata: Metadata = {
   title: "Courses: C and Rust from beginner to HTTP server",
@@ -45,7 +46,7 @@ export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-sm text-muted">Course {i + 1}</span>
                 <Badge>{t.level}</Badge>
-                <Badge>{t.language === "c" ? "C" : "Rust"}</Badge>
+                <Badge>{LANGUAGE_LABEL[t.language]}</Badge>
               </div>
               <h2 className="mt-3 text-xl font-semibold">
                 <Link href={`/learn/${t.slug}`} className="hover:text-accent">

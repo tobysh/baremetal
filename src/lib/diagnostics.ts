@@ -87,6 +87,54 @@ const C_WARN: Rule[] = [
   },
 ];
 
+const ASM_COMPILE: Rule[] = [
+  {
+    id: "asm-unknown-insn",
+    test: (t) => /no such instruction|unknown mnemonic/.test(t),
+    title: "The assembler doesn't know that instruction",
+    body: "Check the spelling of the mnemonic (`mov`, `add`, `lea`, `imul`...). Also make sure the file starts with `.intel_syntax noprefix`: without it the assembler expects AT&T syntax, where operands are reversed and registers need a `%`.",
+  },
+  {
+    id: "asm-operands",
+    test: (t) => /operand type mismatch|invalid (instruction )?operands?|too many memory references|number of operands mismatch|ambiguous operand size|no instruction mnemonic suffix given/.test(t),
+    title: "The operands don't fit that instruction",
+    body: "x86 can't move memory to memory, and both operands must be the same size (`rax` is 64-bit, `eax` is 32-bit, `al` is 8-bit). When one side is memory with no register, say the size: `mov DWORD PTR [rdi], 5`.",
+  },
+  {
+    id: "asm-bad-register",
+    test: (t) => /bad register name|unsupported instruction/.test(t),
+    title: "That register name isn't valid",
+    body: "In Intel syntax registers are written bare (`rax`, `rdi`), with no `%`. 64-bit names start with `r`: `rax rbx rcx rdx rsi rdi rbp rsp r8`-`r15`.",
+  },
+  {
+    id: "asm-symbol",
+    test: (t) => /undefined reference to `(?!main)|symbol .* is already defined/.test(t),
+    title: "A label or function name is wrong",
+    body: "The tests look for your function by name, so declare it with `.globl name` and a matching `name:` label, spelled exactly as in the task. A label can only be defined once, and each line holds just one instruction.",
+  },
+  {
+    id: "asm-directive",
+    test: (t) => /unknown pseudo-op|junk at end of line|expected comma/.test(t),
+    title: "A directive or line is malformed",
+    body: "Directives start with a dot (`.text`, `.globl`). Comments start with `#` or `;`. Operands are separated by commas, e.g. `add rax, rsi`.",
+  },
+];
+
+const ASM_RUNTIME: Rule[] = [
+  {
+    id: "asm-crash",
+    test: (t) => /Segmentation fault|Bus error/.test(t),
+    title: "Your assembly touched memory it doesn't own",
+    body: "In assembly a crash usually means a register holding a value was used as an address (`[rdi]`), or you forgot `ret` and the CPU ran off the end of your function, or `push`/`pop` didn't balance so `ret` jumped to a garbage address. Check each `[ ]` and that every `push` has a `pop` before `ret`.",
+  },
+  {
+    id: "asm-fpe",
+    test: (t) => /Arithmetic error/.test(t),
+    title: "A division went wrong",
+    body: "`idiv` divides `rdx:rax` by its operand: put the dividend in `rax`, sign-extend it into `rdx` with `cqo`, and never divide by zero. The quotient ends up in `rax` and the remainder in `rdx`.",
+  },
+];
+
 const RUST_COMPILE: Rule[] = [
   {
     id: "rs-moved",
@@ -184,18 +232,19 @@ export function explainFailure(f: FailureInput): Explanation[] {
   const unchanged = f.code.trim() === f.starter.trim();
 
   if (f.compileFailed) {
-    out.push(...match(f.language === "c" ? C_COMPILE : RUST_COMPILE, f.compileOutput));
+    out.push(...match(f.language === "c" ? C_COMPILE : f.language === "asm" ? ASM_COMPILE : RUST_COMPILE, f.compileOutput));
     if (!out.length)
       out.push({
         id: "compile-generic",
         title: "The code doesn't compile yet",
-        body: "Read the *first* error only: it names a file, line and column (like `main.c:7:5`). Fix that one and run again — later errors are often knock-on effects of the first.",
+        body: "Read the *first* error only: it names a file, line and column (like `main.c:7:5`, or `starter.s:7`). Fix that one and run again — later errors are often knock-on effects of the first.",
       });
     return out.slice(0, 3);
   }
 
   const runtimeText = [f.error ?? "", f.stderr ?? "", ...f.results.map((r) => r.message ?? "")].join("\n");
-  out.push(...match(RUNTIME, runtimeText));
+  if (f.language === "asm") out.push(...match(ASM_RUNTIME, runtimeText));
+  out.push(...match(f.language === "asm" ? RUNTIME.filter((r) => r.id !== "segfault" && r.id !== "ub-null" && r.id !== "abort") : RUNTIME, runtimeText));
 
   const failed = f.results.filter((r) => !r.passed);
   const passed = f.results.length - failed.length;

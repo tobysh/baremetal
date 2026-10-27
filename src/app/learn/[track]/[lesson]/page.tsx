@@ -13,6 +13,7 @@ import { getLesson, getTracks, lessonPath } from "@/lib/curriculum";
 import { toPublicExercise } from "@/lib/curriculum/types";
 import { getProgress, getTutorThread } from "@/lib/progress";
 import { SITE, absoluteUrl } from "@/lib/site";
+import { LANGUAGE_LABEL } from "@/lib/curriculum/types";
 
 export function generateStaticParams() {
   return getTracks().flatMap((t) => t.lessons.map((l) => ({ track: t.slug, lesson: l.slug })));
@@ -67,7 +68,7 @@ async function Lesson({ params }: { params: PageProps<"/learn/[track]/[lesson]">
             inLanguage: "en",
             timeRequired: `PT${lesson.minutes}M`,
             isAccessibleForFree: true,
-            programmingLanguage: track.language === "c" ? "C" : "Rust",
+            programmingLanguage: LANGUAGE_LABEL[track.language],
             isPartOf: { "@type": "Course", name: track.title, url: absoluteUrl(`/learn/${track.slug}`) },
             provider: { "@type": "Organization", name: SITE.name, url: SITE.url },
           },
