@@ -26,6 +26,8 @@ The sign-in cookie, bm_session, is set in a way that keeps it safer:
 
 When you're not signed in, the code you write in a lesson is saved in your browser's local storage so you don't lose it if you reload the page. This is not a cookie, it is never sent to us automatically, and it stays in your browser on that device. You can remove it by clearing your browser's site data.
 
+We also save your light or dark theme choice in your browser's local storage, under the name bm:theme. It stores only "light" or "dark". It is a functional preference that the site needs to show the look you picked, so we do not ask for consent. It is never sent to our servers and stays in your browser on that device. You can remove it by clearing your browser's site data, and the site will go back to your device's light or dark setting.
+
 ## Analytics
 
 If you say yes, our analytics records page visits and some device details. It uses a visitor ID that changes every day. It sets no cookies and uses no local storage. See the analytics section of our [Privacy Policy](/privacy) for the full details.

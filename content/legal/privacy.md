@@ -34,6 +34,7 @@ We rely on one of three legal reasons, called lawful bases, for each kind of dat
 | Two-factor authentication (optional, required for admins): authenticator secret and backup codes | To keep your account safe when you sign in | Contract; legitimate interest in security | Until you turn it off or delete your account |
 | Sessions: a session token and its creation and expiry times | To keep you signed in | Contract | 30 days, then automatically deleted |
 | Learning progress: code you write in exercises, whether you passed, number of attempts, timestamps | To track your progress through the course | Contract | Until you delete your account |
+| Public profile: username, level, XP and completed lessons | To show your progress on the [leaderboard](/leaderboard) and your public profile page (/u/your-username). Visible to anyone unless you hide your profile with the toggle in [Settings](/settings) | Contract | Until you delete your account or hide your profile |
 | AI tutor conversations | To answer your questions | Contract | Until you clear them or delete your account |
 | Code you run | To compile and run your code | Contract | Deleted straight after the run (only code saved as progress is kept) |
 | Security logs | To spot and stop attacks on accounts | Legitimate interest | 90 days |
@@ -63,6 +64,10 @@ Code you run is compiled and executed in an isolated sandbox on our server. The 
 We store your password only as a salted scrypt hash. We never store it in readable form.
 
 When you choose a password, we check it against the Have I Been Pwned "Pwned Passwords" service. We use k-anonymity for this. We send only the first 5 characters of a SHA-1 hash of the password. Your password and its full hash never leave our server.
+
+### Public profile
+
+If you choose a username, Baremetal shows your username, level, XP and completed lessons on the [leaderboard](/leaderboard) and on your profile page at /u/your-username. Anyone can see these pages, including people who are not signed in. We do not show your name, email or the code you write. You can hide your profile at any time with the profile toggle in [Settings](/settings). When it is hidden, your profile page is not available and you no longer appear on the leaderboard.
 
 ### Security logs and rate limits
 
