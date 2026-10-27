@@ -2,7 +2,7 @@
 
 Learn low-level programming from absolute zero. Learners read short lessons, write C, Rust, Go and x86-64 assembly in an in-browser editor, get instant results from hidden tests run in a sandbox, and can ask an AI tutor that guides them without handing over answers.
 
-**Courses (79 lessons):** Programming from Zero (C) → Pointers & Memory in C → Systems Programming in C → C in Practice → Rust Foundations → Rust Traits & Lifetimes → Rust in Practice → Build an HTTP Server in Rust → Go Foundations → Assembly: First Steps → Build an Operating System (in progress).
+**Courses (97 lessons):** Programming from Zero (C) → Pointers & Memory in C → Systems Programming in C → C in Practice → Rust Foundations → Rust Traits & Lifetimes → Rust in Practice → Build an HTTP Server in Rust → Go Foundations → Assembly: First Steps → Build an Operating System (in progress).
 
 ## Running it locally
 

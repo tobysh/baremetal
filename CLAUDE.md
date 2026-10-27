@@ -46,4 +46,4 @@ Also read `AGENTS.md` (Next.js 16 differs from training data; read `node_modules
 
 ## Content
 
-- Lessons live in `content/<track>/<NN-slug>/`, and each `lesson.md` needs `difficulty:`. Run `npm run verify:content` after editing lessons, and `npm run recompute-xp` after changing a difficulty.
+- Lessons live in `content/<track>/<NN-slug>/`, and each `lesson.md` needs `difficulty:`. Optional frontmatter: `tags:` (comma-separated, lowercase kebab-case, shown as `#tag` chips) and `kind: review`. A review lesson is a consolidation exercise: no new concepts, familiar ideas combined with small twists, kept comfortable (usually `easy`/`medium`), titled `Review: …`. Insert one by renumbering the folder prefixes; the slug and `id:` are unaffected, so progress is kept. Run `npm run verify:content` after editing lessons, and `npm run recompute-xp` after changing a difficulty.

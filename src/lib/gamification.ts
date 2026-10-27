@@ -11,7 +11,7 @@ export const isDifficulty = (v: unknown): v is Difficulty => typeof v === "strin
 export const xpFor = (d: Difficulty) => DIFFICULTIES[d].xp;
 
 // Cumulative XP needed to reach level L is 4·L·(L−1): 8, 24, 48, 80 … 360.
-// The current 79 lessons (including the 4 so far in the unfinished osdev track) are worth 935 XP; level 10 (360 XP) is the cap, and XP keeps counting past it.
+// The current 97 lessons (including 9 review lessons and the osdev track) are worth 1160 XP; level 10 (360 XP) is the cap, and XP keeps counting past it.
 const xpToReach = (level: number) => 4 * level * (level - 1);
 
 // Medieval ranks, all respectable: everyone starts as a Novice.
