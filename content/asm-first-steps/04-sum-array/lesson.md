@@ -20,6 +20,19 @@ add rax, [rdi]        # rax += *rdi
 
 The size comes from the register: `rax` is 64 bits, so it moves 8 bytes. A `long` is 8 bytes, so `[rdi]` is exactly one `long`.
 
+### How memory is laid out
+
+Memory is one long row of **bytes**, each with its own address. A `long` takes 8 of them, so an array of three `long`s occupies 24 consecutive bytes:
+
+```
+address:   a     a+8    a+16
+           [ a[0] ][ a[1] ][ a[2] ]      each cell is 8 bytes
+```
+
+x86 is **little-endian**: inside one 8-byte value, the *least significant* byte is stored at the lowest address. The number `1` is stored as `01 00 00 00 00 00 00 00`. You rarely notice this, because `mov rax, [rdi]` reassembles the bytes for you, but it matters when you read a `long` as individual bytes or when you look at a memory dump.
+
+The consequence for arrays is simple: element `i` starts `i * element_size` bytes after the start. That multiplication is exactly what the addressing mode below does for you.
+
 ## Addressing modes
 
 The brackets can hold a small expression: `[base + index*scale + offset]`, where scale is 1, 2, 4 or 8:
@@ -52,6 +65,31 @@ A `for` loop is a label at the top, the body, and a conditional jump back:
 `xor eax, eax` is the traditional way to set a register to zero: it is short and fast. `inc` adds one.
 
 Checking the condition at the **top** makes the loop correct for `n = 0`: the body never runs. If you put the check at the bottom, an empty array would read memory it should not.
+
+### Tracing the loop
+
+For `sum_array` on the array `{3, 4, 5}` with `n = 3`, the loop state at each check of the condition is:
+
+| Iteration | `rcx` (i) | `rax` (total) | what happens |
+|---|---|---|---|
+| 1 | 0 | 0 | 0 < 3, add `a[0]` = 3 |
+| 2 | 1 | 3 | 1 < 3, add `a[1]` = 4 |
+| 3 | 2 | 7 | 2 < 3, add `a[2]` = 5 |
+| exit | 3 | 12 | 3 < 3 is false, jump to `.Ldone`, return 12 |
+
+For `n = 0` the very first check is `0 < 0`, which is false, so the function returns the 0 it set up at the start without reading memory at all. That is the whole reason the test sits at the top.
+
+### When the size is not obvious
+
+Whenever a register is involved, the operand size is clear. When you write to memory with a constant and no register, it is not:
+
+```asm
+mov [rdi], 5                 # error: how many bytes?
+mov qword ptr [rdi], 5       # store 8 bytes
+mov dword ptr [rdi], 5       # store 4 bytes
+```
+
+`qword` is "quad word", 8 bytes; `dword` is 4, `word` is 2, `byte` is 1. You do not need this to solve the exercise, but you will meet the error message as soon as you try to store a constant.
 
 ## Types matter
 

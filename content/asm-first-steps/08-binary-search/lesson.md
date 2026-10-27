@@ -27,6 +27,38 @@ long find(const long *a, size_t n, long key) {
 
 A half-open range means `hi` is *one past* the last candidate, so an empty array is simply `lo == hi == 0` and the loop never runs. Because the range shrinks every time, the loop always terminates.
 
+### Why it is correct: the invariant
+
+Whenever you write a loop, find a sentence that is true every time you reach the top. For binary search it is:
+
+> If `key` is in the array, its index is in `[lo, hi)`.
+
+It is true at the start, because `[0, n)` covers the whole array. Each step keeps it true. If `a[mid] < key`, then since the array is sorted, everything at or below `mid` is too small, so the key can only be in `[mid + 1, hi)`. If `a[mid] > key`, everything at or above `mid` is too big, so the key can only be in `[lo, mid)`. The range gets strictly smaller each time, so the loop ends, and when it ends with `lo == hi` the range is empty: the key is not there.
+
+This is also why the two off-by-one choices (`mid + 1` and `mid`) are not interchangeable. If you used `lo = mid` the range might not shrink, and the loop could repeat forever.
+
+### Tracing two searches
+
+Use the sorted array `a = {2, 5, 8, 12, 16, 23, 38}`, so `n = 7`.
+
+Searching for `23` (present):
+
+| lo | hi | mid | `a[mid]` | decision |
+|---|---|---|---|---|
+| 0 | 7 | 3 | 12 | 12 < 23, so `lo = 4` |
+| 4 | 7 | 5 | 23 | equal: return 5 |
+
+Searching for `9` (absent):
+
+| lo | hi | mid | `a[mid]` | decision |
+|---|---|---|---|---|
+| 0 | 7 | 3 | 12 | 12 > 9, so `hi = 3` |
+| 0 | 3 | 1 | 5 | 5 < 9, so `lo = 2` |
+| 2 | 3 | 2 | 8 | 8 < 9, so `lo = 3` |
+| 3 | 3 | | | `lo >= hi`: range empty, return -1 |
+
+Each step halves the range, so an array of one billion elements needs at most about 30 steps, where a straight scan would need up to a billion. That is the difference between O(log n) and O(n).
+
 ## Computing the midpoint
 
 `(lo + hi) / 2` can overflow for huge values, so write it as `lo + (hi - lo) / 2`. Dividing by two is a right shift:
@@ -67,6 +99,18 @@ The array holds signed `long`s, so use `jl`; but positions (`lo`, `hi`, `mid`) a
 ## Returning -1
 
 `mov rax, -1` returns the signed value `-1`. Since the function returns `long`, the caller sees `-1` in 64 bits.
+
+## How to approach a bigger function
+
+This is the first function large enough that writing straight into assembly is a mistake. A method that works well:
+
+1. **Write the C first** (the lesson gave it to you) and get the logic right in your head.
+2. **Assign registers** in a table before writing a single instruction, as above. Note which arguments you must keep unchanged.
+3. **Give every C statement its own block of assembly with a comment** showing the C it came from. When something is wrong you can compare the two side by side.
+4. **Name your labels after intent**: `.Lloop`, `.Lfound`, `.Lgo_right`, `.Lnot_found`. Labels like `.L1` and `.L2` are hard to debug.
+5. **Check each exit.** There are three: found (return `mid`), not found (return -1) and the empty-array case, which falls out of the loop test. Each must set `rax` before `ret`.
+
+Structure that keeps the loop tidy is a single comparison at the top (`lo >= hi` exits), then one three-way split on `a[mid]`. The three branches either return or update a bound and jump back to the top. If you find yourself writing a `jmp` that goes somewhere unexpected, stop and redraw the flow on paper.
 
 ## Common mistakes
 

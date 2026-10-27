@@ -29,6 +29,23 @@ uint8_t inb(uint16_t port);                // read a byte from a port
 
 These compile to one instruction each (`out dx, al` and `in al, dx`). We provide them for you in this lesson. Later you'll write such wrappers yourself with inline assembly.
 
+### Why ports exist at all
+
+A normal `mov` reaches **memory**. The original 8086 designers also gave the CPU a second, separate address space of 65,536 **I/O ports** for talking to chips, so device registers would not use up precious memory addresses. Each port is an 8-, 16- or 32-bit register inside some chip, and reading or writing it is how you give the chip orders. Writing to a port is rarely "store a value". It is usually "do this now": send a byte, reset a flag, start a transfer. That is why the compiler must never reorder or drop these accesses, and why the real versions of `outb` and `inb` use inline assembly the optimiser cannot see through.
+
+Ports are also privileged. A normal user program is not allowed to run `in` or `out`, which is one reason the operating system exists: it is the only code trusted to touch hardware directly.
+
+## What a UART does
+
+**UART** stands for Universal Asynchronous Receiver/Transmitter. It converts bytes into a stream of electrical pulses on a single wire and back again. "Asynchronous" means there is no shared clock between the two ends, so both agree beforehand on how fast to send (the **baud rate**) and what a frame looks like. A single byte on the wire is one **frame**:
+
+```
+idle  start   d0 d1 d2 d3 d4 d5 d6 d7   stop   idle
+ 1      0     <-- 8 data bits, low first -->  1     1
+```
+
+The line rests at 1. A 0 for one bit time (the **start bit**) wakes the receiver, then eight data bits follow, least significant first, then a 1 (the **stop bit**) puts the line back to idle. That is the "8N1" in the setup steps: **8** data bits, **N**o parity, **1** stop bit. It costs 10 bits on the wire per byte, so at 38400 baud you move about 3840 bytes per second. A UART is slow compared with a CPU that executes billions of instructions a second, which is the real reason you must wait before sending the next byte.
+
 ## The 16550 UART
 
 The first serial port, **COM1**, lives at port `0x3F8`. It has eight registers at consecutive port numbers:
@@ -55,6 +72,25 @@ Registers 0 and 1 do double duty. Bit 7 of the line control register is the **DL
 
 The order matters. You have to open the latch before you can write the divisor, and close it before you can send data.
 
+### Reading each value
+
+Where the numbers come from is worth understanding, because every driver you write later is built the same way: read the datasheet, then turn each field into bits.
+
+- **Divisor.** The UART has a base clock of 115,200 ticks a second. Dividing it by `divisor` gives the baud rate: `115200 / 3 = 38400`. Divisor 1 is 115,200 baud, 12 is 9600. The divisor is 16 bits, which is why it needs two registers (low byte, high byte) behind the DLAB switch. For 3, the low byte is `0x03` and the high byte `0x00`.
+- **Line control `0x03`.** Bits 0 and 1 choose the word length (`11` means 8 bits). Bit 2 chooses 1 stop bit when 0. Bits 3 to 5 choose parity, and `000` means none. Bit 7 is DLAB and is 0, which is how this one write both sets the format and closes the latch.
+- **FIFO control `0xC7`.** Bit 0 enables the FIFOs (a 16-byte queue so the CPU can hand over several bytes at once), bits 1 and 2 clear the receive and transmit queues, and bits 6 and 7 set when the chip would raise an interrupt. You do not use interrupts yet.
+- **Modem control `0x03`.** Bits 0 and 1 are DTR (data terminal ready) and RTS (request to send), the flow-control lines that tell the other end you are listening.
+
+### Why the order matters
+
+Registers 0 and 1 mean different things depending on DLAB, so the sequence is really a small state machine:
+
+```
+interrupts off -> DLAB on -> write divisor -> DLAB off + format -> FIFO -> modem
+```
+
+If you write the divisor with DLAB still off, you would send a byte and set the interrupt enable register instead. Nothing crashes. The port simply produces the wrong speed or none at all, and with hardware you cannot see into, that kind of silent failure is the main reason to follow the manual's order exactly.
+
 ## Sending a byte
 
 The transmitter is slow compared to the CPU. If you write a second byte before the first has left, the first is lost. Bit 5 of the line status register (`0x20`, "transmit holding register empty") says when it is safe. So sending is a **polling loop**:
@@ -63,6 +99,12 @@ The transmitter is slow compared to the CPU. If you write a second byte before t
 while ((inb(COM1 + 5) & 0x20) == 0) { /* wait */ }
 outb(COM1, byte);
 ```
+
+### Polling and its cost
+
+The loop above is called **busy-waiting** or **polling**: the CPU does nothing useful while it spins. For a serial port at boot that is fine and keeps the code simple. In a finished kernel you would instead let the UART raise an **interrupt** when it can accept more data, and spend the waiting time running other work. You will build exactly that machinery in the interrupt lessons, and serial drivers are a common first user of it.
+
+The line status register has other useful bits you are not using yet: bit 0 means a received byte is waiting to be read, and bit 6 means the transmitter has finished with *everything*, including the byte currently being shifted out. Bit 5 is enough for sending because it says the holding register is free for the next byte.
 
 ## Newlines
 

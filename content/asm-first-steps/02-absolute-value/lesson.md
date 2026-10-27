@@ -21,6 +21,10 @@ Almost every arithmetic instruction records facts about its result in a special 
 
 Nothing is stored in a variable: the flags are simply left behind for the next instruction to look at.
 
+### Two's complement in one paragraph
+
+Negative numbers are stored in **two's complement**: to negate a number, flip every bit and add one. Using 8 bits to keep it short, `5` is `00000101`. Flipping gives `11111010`, adding one gives `11111011`, and that is `-5`. The top bit is therefore the **sign bit**: it is 1 for every negative number. That is exactly what `SF` copies. The same hardware adds signed and unsigned numbers; only your interpretation changes, which is why there are separate flags (`CF` for unsigned, `OF` for signed) to tell you when each kind has gone out of range.
+
 ## Negating
 
 `neg rax` replaces `rax` with `-rax` (two's complement) and sets the flags from the result. If the result is negative, `SF` is 1.
@@ -53,6 +57,26 @@ abs_val:
 ```
 
 This works for `x = 0` too: `-0` is `0`, not negative, so `rax` stays `0`.
+
+## Tracing it
+
+Follow `abs_val(-7)` and `abs_val(7)` through the code, watching `rax` and `SF`:
+
+| Step | x = -7: `rax` / `SF` | x = 7: `rax` / `SF` |
+|---|---|---|
+| `mov rax, rdi` | -7 / unchanged | 7 / unchanged |
+| `neg rax` | 7 / 0 | -7 / 1 |
+| `cmovs rax, rdi` | SF is 0, no move: **7** | SF is 1, move: rax = **7** |
+
+Both inputs end with 7. The conditional move works "backwards" from how you might first think about it: the sign of `-x` is what is tested, and it tells you which of `x` and `-x` you want.
+
+## Why avoid a jump?
+
+You could write the same function with a compare and a jump, which is how Lesson 3 does things. A conditional move has one advantage: the CPU does not have to *guess* which way a branch will go. Modern processors run ahead of the instruction they are on, and a wrong guess about a jump throws that work away. A `cmov` has no guess to get wrong. It is not always faster (it always computes both values), but for tiny choices like this one it often is, and compilers use it constantly. If you compile `x < 0 ? -x : x` in C with optimisation on, you will usually see exactly the `neg` and `cmov` you wrote here.
+
+## The one value with no twin
+
+With 64 bits you can represent `-9223372036854775808` (`LONG_MIN`) but not `+9223372036854775808`. Negating `LONG_MIN` overflows and gives back `LONG_MIN`, which is still negative, so `SF` is 1 and `OF` is also set. Your function will return `LONG_MIN` for that input. In C this is **undefined behaviour** (`abs(INT_MIN)` is a classic trap), and the task tells you to ignore it. The lesson is that every fixed-width number system has an edge, and flags like `OF` exist so careful code can notice it.
 
 ## Common mistakes
 

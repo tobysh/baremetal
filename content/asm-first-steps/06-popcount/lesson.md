@@ -24,6 +24,33 @@ All of them set `ZF` if the result is zero, so you can `jz` straight after.
 
 The shift count is an immediate or the register `cl`: `shr rax, cl`.
 
+### Shifts, with a picture
+
+A shift slides every bit sideways. Using 8 bits:
+
+```
+value      1011 0100
+shl 1      0110 1000     top bit falls off (into CF), a 0 enters at the bottom
+shr 1      0101 1010     bottom bit falls off (into CF), a 0 enters at the top
+sar 1      1101 1010     bottom bit falls off, the old top bit is copied back in
+```
+
+`shl n` multiplies by 2^n and `shr n` divides an unsigned number by 2^n. `sar` is the signed divide: it keeps negative numbers negative. The bit that falls off is not lost for free: it lands in `CF`, so `shr rax, 1` followed by `jc` branches on what the lowest bit *was*.
+
+### Masks and constants
+
+To test, set or clear specific bits you combine the value with a **mask**:
+
+```asm
+and rax, 0xFF        # keep only the low 8 bits (clear the rest)
+or  rax, 0x10        # set bit 4
+and rax, ~0x10       # clear bit 4 (the assembler computes the inversion)
+xor rax, 0x10        # toggle bit 4
+test rax, 0x10       # is bit 4 set? ZF = 0 if yes
+```
+
+There is a catch with big constants. Most instructions only accept a **32-bit** immediate, and for 64-bit operations it is *sign-extended*. So `and rax, 0x80000000` does not mean what it looks like: the constant becomes `0xFFFFFFFF80000000`. For a full 64-bit constant, load it into a register first with `mov rcx, 0x8000000000000000` and use that register.
+
 ## Counting set bits
 
 The **population count** of a number is how many of its bits are 1. The simple method tests the low bit, then shifts:
@@ -58,6 +85,32 @@ popcount64:
 .Ldone:
     ret
 ```
+
+### Why `x & (x - 1)` works
+
+Subtracting 1 from a binary number does a predictable thing: it **borrows** from the lowest set bit. That bit becomes 0, and every zero below it (which had nothing to give) becomes 1. Everything above is unchanged:
+
+```
+x       = 0110 1000        lowest set bit is bit 3
+x - 1   = 0110 0111        bit 3 cleared, bits 2..0 became 1
+x & x-1 = 0110 0000        the bits above bit 3 agree and survive;
+                           bit 3 and the low bits disagree, so they become 0
+```
+
+So `x & (x - 1)` always removes exactly one 1-bit, the lowest, and never anything else. Repeat until `x` is zero and the number of repeats is the population count. For `x = 0` the loop does not run at all, and for `x = 0xFFFFFFFFFFFFFFFF` it runs 64 times.
+
+Modern x86 CPUs also have a single `popcnt` instruction that does all of this in hardware. It is worth knowing it exists. Here the point is to build the loop yourself: the same "clear the lowest bit" step shows up in bitmap allocators and bit-set iteration, which you will meet in operating systems.
+
+### Tracing a small case
+
+For `x = 0b1101` (13), the loop state is:
+
+| Pass | `rdi` before | `rdi - 1` | `rdi` after | `eax` |
+|---|---|---|---|---|
+| 1 | `1101` | `1100` | `1100` | 1 |
+| 2 | `1100` | `1011` | `1000` | 2 |
+| 3 | `1000` | `0111` | `0000` | 3 |
+| check | `0000` | | | `jz` taken, return 3 |
 
 ## Which registers may you use?
 
