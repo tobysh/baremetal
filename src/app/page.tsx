@@ -3,6 +3,7 @@ import Link from "next/link";
 import { JsonLd } from "@/components/json-ld";
 import { Badge, ButtonLink, Card, Container } from "@/components/ui";
 import { getTracks } from "@/lib/curriculum";
+import { PATHS } from "@/lib/curriculum/paths";
 import { SITE, absoluteUrl } from "@/lib/site";
 import { LANGUAGE_LABEL } from "@/lib/curriculum/types";
 
@@ -112,10 +113,10 @@ export default function HomePage() {
             </Link>
           </div>
           <ol className="mt-8 grid gap-4 sm:grid-cols-2">
-            {tracks.map((t, i) => (
+            {tracks.map((t) => (
               <Card as="li" key={t.slug} className="flex flex-col p-6">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm text-muted">Course {i + 1}</span>
+                  <span className="font-mono text-sm text-muted">{PATHS.find((p) => p.id === t.path)?.title}</span>
                   <Badge>{t.level}</Badge>
                   <Badge>{LANGUAGE_LABEL[t.language]}</Badge>
                 </div>

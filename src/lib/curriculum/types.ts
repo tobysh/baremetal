@@ -1,10 +1,10 @@
 import type { Difficulty } from "../gamification";
 
-export type Language = "c" | "rust" | "asm";
+export type Language = "c" | "rust" | "asm" | "go" | "kernel";
 
 /** Display names and the editor's file name per language. */
-export const LANGUAGE_LABEL: Record<Language, string> = { c: "C", rust: "Rust", asm: "x86-64 assembly" };
-export const LANGUAGE_FILE: Record<Language, string> = { c: "main.c", rust: "main.rs", asm: "starter.s" };
+export const LANGUAGE_LABEL: Record<Language, string> = { c: "C", rust: "Rust", asm: "x86-64 assembly", go: "Go", kernel: "C (bare-metal kernel)" };
+export const LANGUAGE_FILE: Record<Language, string> = { c: "main.c", rust: "main.rs", asm: "starter.s", go: "main.go", kernel: "kernel.c" };
 
 export type StdoutCase = { name: string; stdin?: string; expected: string };
 
@@ -20,7 +20,7 @@ export type Exercise = {
   /** "stdout": compare program output. "harness": hidden tests call the learner's functions. */
   mode: "stdout" | "harness";
   cases?: StdoutCase[];
-  /** C: code using CHECK(name, cond, fmt, ...) with its own main(). Rust: #[test] functions. asm: C file (tests.c) declaring the learner's functions extern. */
+  /** C: code using CHECK(name, cond, fmt, ...) with its own main(). Rust: #[test] functions. asm: C file (tests.c) declaring the learner's functions extern. Go: a bm_test.go file (package main, with its own imports) of TestXxx functions. */
   harness?: string;
   hints: string[];
 };
@@ -46,6 +46,9 @@ export type Track = {
   level: "Beginner" | "Intermediate" | "Advanced";
   language: Language;
   prerequisite?: string;
+  /** Learning path this course belongs to (see paths.ts) and its position within it. */
+  path: string;
+  order: number;
   lessons: Lesson[];
 };
 

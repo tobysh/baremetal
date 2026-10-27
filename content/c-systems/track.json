@@ -4,5 +4,7 @@
   "description": "You know what a pointer is; now use it to build things. You'll bundle data with structs, pass behaviour around with function pointers (the idea behind qsort), grow an array with realloc, chop text into words and numbers by hand, build a stack and use it to check brackets, and finish with a hash table that looks things up by name. These are the building blocks inside nearly every operating system, database and game engine.",
   "level": "Intermediate",
   "language": "c",
+  "path": "c",
+  "order": 2,
   "prerequisite": "c-memory"
 }

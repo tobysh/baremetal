@@ -3,12 +3,10 @@
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { isDifficulty } from "../gamification";
+import { compareTracks } from "./paths";
 import type { Exercise, Lesson, Track } from "./types";
 
 const CONTENT_DIR = path.join(process.cwd(), "content");
-
-/** Track order on the site. */
-const TRACK_ORDER = ["first-steps", "c-memory", "c-systems", "c-practice", "rust-foundations", "rust-traits", "rust-practice", "rust-http", "asm-first-steps"];
 
 function parseFrontmatter(src: string): { meta: Record<string, string>; body: string } {
   const m = src.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
@@ -25,8 +23,8 @@ const read = (p: string) => readFileSync(p, "utf8");
 
 function loadLesson(trackDir: string, dirName: string, language: Track["language"]): Lesson {
   const dir = path.join(trackDir, dirName);
-  const ext = language === "c" ? "c" : language === "asm" ? "s" : "rs";
-  const harnessExt = language === "asm" ? "c" : ext;
+  const ext = { c: "c", asm: "s", go: "go", rust: "rs", kernel: "c" }[language];
+  const harnessExt = language === "asm" || language === "kernel" ? "c" : ext;
   const { meta, body } = parseFrontmatter(read(path.join(dir, "lesson.md")));
   const mode = meta.mode === "stdout" ? "stdout" : "harness";
   const exercise: Exercise = {
@@ -59,15 +57,14 @@ function loadLesson(trackDir: string, dirName: string, language: Track["language
 function loadTracks(): Track[] {
   if (!existsSync(CONTENT_DIR)) return [];
   const present = readdirSync(CONTENT_DIR).filter((d) => existsSync(path.join(CONTENT_DIR, d, "track.json")));
-  const ordered = [...TRACK_ORDER.filter((t) => present.includes(t)), ...present.filter((t) => !TRACK_ORDER.includes(t)).sort()];
-  return ordered.map((slug) => {
+  return present.map((slug) => {
     const dir = path.join(CONTENT_DIR, slug);
     const meta = JSON.parse(read(path.join(dir, "track.json")));
     const lessonDirs = readdirSync(dir)
       .filter((d) => /^\d+-/.test(d))
       .sort();
     return { slug, ...meta, lessons: lessonDirs.map((d) => loadLesson(dir, d, meta.language)) } as Track;
-  });
+  }).sort(compareTracks);
 }
 
 const globalForContent = globalThis as unknown as { __tracks?: Track[] };

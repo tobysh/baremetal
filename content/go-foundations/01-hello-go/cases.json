@@ -1,0 +1,6 @@
+[
+  {
+    "name": "prints the four lines",
+    "expected": "Language: Go\nReleased: 2009\nStatic typing: true\nPi is about 3.14\n"
+  }
+]

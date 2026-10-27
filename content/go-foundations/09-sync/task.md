@@ -1,0 +1,2 @@
+- `SafeCounter` counts occurrences of string keys and must be safe for use from many goroutines at once. Implement `NewSafeCounter() *SafeCounter`, `Inc(key string)` and `Value(key string) int` (zero for unseen keys) with a `sync.Mutex`.
+- `ParallelSum(nums []int, workers int) int` splits `nums` into `workers` chunks of roughly equal size, sums each chunk in its own goroutine, waits with a `sync.WaitGroup`, and returns the total. Treat `workers < 1` as `1`; `workers` may be larger than `len(nums)`.

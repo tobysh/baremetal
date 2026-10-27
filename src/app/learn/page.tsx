@@ -5,19 +5,21 @@ import { JsonLd } from "@/components/json-ld";
 import { Badge, Card, Container, ProgressBar, Skeleton } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import { getTracks } from "@/lib/curriculum";
+import { groupByPath } from "@/lib/curriculum/paths";
 import { getProgressMap } from "@/lib/progress";
 import { SITE, absoluteUrl } from "@/lib/site";
 import { LANGUAGE_LABEL } from "@/lib/curriculum/types";
 
 export const metadata: Metadata = {
-  title: "Courses: C and Rust from beginner to HTTP server",
+  title: "Courses: C, Rust, Go and assembly from beginner to kernel",
   description:
-    "Four hands-on courses that take you from your first program to pointers, memory, Rust ownership and a multi-threaded HTTP server. Every lesson has an exercise.",
+    "Hands-on courses in C, Rust, Go and x86-64 assembly, from your first program to pointers, Rust ownership, an HTTP server and a kernel. Every lesson has an exercise.",
   alternates: { canonical: "/learn" },
 };
 
 export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
   const tracks = getTracks();
+  const groups = groupByPath(tracks);
   return (
     <Container className="py-12">
       <JsonLd
@@ -37,35 +39,59 @@ export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
       </Suspense>
       <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Courses</h1>
       <p className="mt-3 max-w-2xl text-muted">
-        Take them in order — each one builds on the last. New to programming? Start with <Link className="text-accent underline underline-offset-2" href="/learn/first-steps">Programming from Zero</Link>.
+        Pick a path. Courses are in order within each one. New to programming? Start with <Link className="text-accent underline underline-offset-2" href="/learn/first-steps">Programming from Zero</Link>, then choose a language.
       </p>
-      <ol className="mt-10 grid gap-5">
-        {tracks.map((t, i) => (
-          <Card as="li" key={t.slug} className="grid gap-6 p-6 md:grid-cols-[1fr_16rem]">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-sm text-muted">Course {i + 1}</span>
-                <Badge>{t.level}</Badge>
-                <Badge>{LANGUAGE_LABEL[t.language]}</Badge>
-              </div>
-              <h2 className="mt-3 text-xl font-semibold">
-                <Link href={`/learn/${t.slug}`} className="hover:text-accent">
-                  {t.title}
-                </Link>
-              </h2>
-              <p className="mt-2 text-muted">{t.description}</p>
-            </div>
-            <div className="flex flex-col justify-between gap-4">
-              <p className="text-sm text-muted">
-                {t.lessons.length} lessons · about {Math.round(t.lessons.reduce((m, l) => m + l.minutes, 0) / 60 * 2) / 2} hours
-              </p>
-              <Suspense fallback={<Skeleton className="h-10 w-full" />}>
-                <TrackProgress slug={t.slug} />
-              </Suspense>
-            </div>
-          </Card>
+      <nav aria-label="Paths" className="mt-6 flex flex-wrap gap-2 text-sm">
+        {groups.map((g) => (
+          <a key={g.id} href={`#path-${g.id}`} className="rounded-lg border border-border bg-surface px-3 py-1.5 hover:bg-surface-2">
+            {g.title}
+          </a>
         ))}
-      </ol>
+      </nav>
+      {groups.map((g) => (
+        <section key={g.id} id={`path-${g.id}`} aria-labelledby={`h-${g.id}`} className="mt-12 scroll-mt-20">
+          <h2 id={`h-${g.id}`} className="text-2xl font-semibold tracking-tight">
+            {g.title}
+          </h2>
+          <p className="mt-1 text-muted">{g.blurb}</p>
+          <ol className="mt-5 grid gap-5">
+            {g.tracks.map((t, i) => (
+              <Card as="li" key={t.slug} className="grid gap-6 p-6 md:grid-cols-[1fr_16rem]">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {g.tracks.length > 1 && (
+                      <span className="font-mono text-sm text-muted">
+                        {i + 1} of {g.tracks.length}
+                      </span>
+                    )}
+                    <Badge>{t.level}</Badge>
+                    <Badge>{LANGUAGE_LABEL[t.language]}</Badge>
+                  </div>
+                  <h3 className="mt-3 text-xl font-semibold">
+                    <Link href={`/learn/${t.slug}`} className="hover:text-accent">
+                      {t.title}
+                    </Link>
+                  </h3>
+                  <p className="mt-2 text-muted">{t.description}</p>
+                  {t.prerequisite && (
+                    <p className="mt-3 text-sm text-muted">
+                      Before this: <Link href={`/learn/${t.prerequisite}`} className="text-accent underline underline-offset-2">{tracks.find((x) => x.slug === t.prerequisite)?.title}</Link>
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-col justify-between gap-4">
+                  <p className="text-sm text-muted">
+                    {t.lessons.length} lessons · about {Math.round(t.lessons.reduce((m, l) => m + l.minutes, 0) / 60 * 2) / 2} hours
+                  </p>
+                  <Suspense fallback={<Skeleton className="h-10 w-full" />}>
+                    <TrackProgress slug={t.slug} />
+                  </Suspense>
+                </div>
+              </Card>
+            ))}
+          </ol>
+        </section>
+      ))}
     </Container>
   );
 }

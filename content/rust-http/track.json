@@ -4,5 +4,7 @@
   "description": "Every website you have ever used is a program answering text messages over a network. In this track you will read those messages, parse them, build replies, wire it all to a real TCP socket and finally serve many clients at once — with nothing but Rust's standard library.",
   "level": "Advanced",
   "language": "rust",
+  "path": "rust",
+  "order": 4,
   "prerequisite": "rust-foundations"
 }

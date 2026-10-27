@@ -135,6 +135,108 @@ const ASM_RUNTIME: Rule[] = [
   },
 ];
 
+const GO_COMPILE: Rule[] = [
+  {
+    id: "go-unused-var",
+    test: (t) => /declared and not used/.test(t),
+    title: "A variable is declared but never used",
+    body: "Go refuses to compile unused local variables. Use the variable, or write `_ = name` / assign to the blank identifier `_` if you really want to ignore a value.",
+  },
+  {
+    id: "go-unused-import",
+    test: (t) => /imported and not used/.test(t),
+    title: "An import isn't used",
+    body: "Go won't build with an unused import. Remove it from the `import` block, or use something from the package.",
+  },
+  {
+    id: "go-undefined",
+    test: (t) => /undefined: /.test(t),
+    title: "A name isn't defined",
+    body: "Check the spelling and capitalisation (`Println`, not `println`, for `fmt`), that the package is imported, and that the variable is in scope: a name declared inside `{ }` is gone after the closing brace.",
+  },
+  {
+    id: "go-mismatch",
+    test: (t) => /cannot use .* as .* value|mismatched types|invalid operation: .*(mismatched|cannot convert)/.test(t),
+    title: "Types don't match",
+    body: "Go never converts between types implicitly: `int` and `int64`, or `float64` and `int`, must be converted by hand: `float64(n)`, `int(x)`.",
+  },
+  {
+    id: "go-return-count",
+    test: (t) => /not enough return values|too many return values|assignment mismatch|missing return/.test(t),
+    title: "The number of return values is wrong",
+    body: "A function that declares `(int, error)` must return both values on every path, and callers must receive both: `v, err := f()`. Every code path needs a `return`.",
+  },
+  {
+    id: "go-short-decl",
+    test: (t) => /no new variables on left side of :=|non-name .* on left side of :=/.test(t),
+    title: "`:=` needs at least one new variable",
+    body: "`:=` declares *and* assigns. To change an existing variable use plain `=`.",
+  },
+  {
+    id: "go-interface",
+    test: (t) => /does not implement|missing method|cannot use .* \(.*\) as .* value .*: .*method/.test(t),
+    title: "A type doesn't satisfy the interface",
+    body: "A type implements an interface when it has every method with exactly the right name and signature. If the methods use a pointer receiver (`func (s *T) ...`), pass `&value`, not `value`.",
+  },
+  {
+    id: "go-syntax",
+    test: (t) => /syntax error|unexpected newline|expected '\{'|non-declaration statement/.test(t),
+    title: "A syntax error",
+    body: "Look at the line reported and the one above it. Common causes: the opening `{` must be on the same line as `func`/`if`/`for`; statements outside a function must be declarations; a missing `)` or `,` (a multi-line list needs a trailing comma).",
+  },
+];
+
+const GO_RUNTIME: Rule[] = [
+  {
+    id: "go-nil-pointer",
+    test: (t) => /nil pointer dereference/.test(t),
+    title: "A nil pointer was used",
+    body: "A pointer (or map, or interface) that is `nil` was dereferenced. Check it with `if p == nil` before using it, and make sure it was initialised (`&T{}`, `new(T)`).",
+  },
+  {
+    id: "go-nil-map",
+    test: (t) => /assignment to entry in nil map/.test(t),
+    title: "You wrote to a nil map",
+    body: "`var m map[string]int` is nil and can be read but not written. Create it with `make(map[string]int)` or a literal `map[string]int{}` first.",
+  },
+  {
+    id: "go-index",
+    test: (t) => /index out of range|slice bounds out of range/.test(t),
+    title: "An index went past the end",
+    body: "Valid indices are `0` to `len(s)-1`. Check `<` vs `<=` in loops and the empty-slice case.",
+  },
+  {
+    id: "go-deadlock",
+    test: (t) => /all goroutines are asleep/.test(t),
+    title: "Deadlock: every goroutine is waiting",
+    body: "Something is blocked forever: sending on an unbuffered channel with nobody receiving, receiving from a channel nobody sends on or closes, or a `WaitGroup.Wait` whose `Done` never runs. Make sure each send has a matching receive and that the sender calls `close(ch)` when ranging over it.",
+  },
+  {
+    id: "go-closed-channel",
+    test: (t) => /send on closed channel|close of closed channel|close of nil channel/.test(t),
+    title: "A channel was closed wrongly",
+    body: "Only the sender should close a channel, only once, and never send after closing.",
+  },
+  {
+    id: "go-race",
+    test: (t) => /concurrent map (read and map )?write|DATA RACE/.test(t),
+    title: "Goroutines touched shared data at the same time",
+    body: "Protect shared variables and maps with a `sync.Mutex` (`Lock` / `defer Unlock`), or send the data over a channel instead.",
+  },
+  {
+    id: "go-zero-div",
+    test: (t) => /integer divide by zero/.test(t),
+    title: "Division by zero",
+    body: "Integer division by zero panics in Go. Check the divisor first and return an error.",
+  },
+  {
+    id: "go-panic",
+    test: (t) => /^panic: /m.test(t),
+    title: "The program panicked",
+    body: "A panic is Go's crash. Read the line after `panic:` for the reason and the first `main.go:NN` frame for where it happened.",
+  },
+];
+
 const RUST_COMPILE: Rule[] = [
   {
     id: "rs-moved",
@@ -225,6 +327,34 @@ const RUNTIME: Rule[] = [
   },
 ];
 
+// Bare-metal kernels run in a virtual machine, so a crash is a CPU exception or a reset rather than a signal.
+const KERNEL_RUNTIME: Rule[] = [
+  {
+    id: "kernel-triple-fault",
+    test: (t) => /triple fault/i.test(t),
+    title: "The CPU gave up: a triple fault",
+    body: "An exception happened, then another while the CPU tried to handle it, so the machine reset. On x86 this is nearly always a bad table: a descriptor with a wrong bit, an IDT entry pointing nowhere, a page table that doesn't map the code or stack, or a stack pointer that isn't set up. Check the last structure you built against its layout in the lesson.",
+  },
+  {
+    id: "kernel-page-fault",
+    test: (t) => /page fault/i.test(t),
+    title: "A page fault: the CPU touched an address that isn't mapped",
+    body: "The message gives the address being accessed. If it's tiny (like `0x0` or `0x8`) you followed a null pointer. If it's huge or looks like text, a pointer was overwritten or computed wrongly. If you are writing page tables, check the present bit and that you used the *physical* address of the next table.",
+  },
+  {
+    id: "kernel-gpf",
+    test: (t) => /general protection/i.test(t),
+    title: "A general protection fault",
+    body: "The CPU refused an operation: usually a bad segment selector, a non-canonical address (bits 63:48 must copy bit 47), or an unaligned operand where alignment is required. Look at what you loaded just before the fault.",
+  },
+  {
+    id: "kernel-invalid-opcode",
+    test: (t) => /invalid opcode/i.test(t),
+    title: "The CPU hit bytes that aren't an instruction",
+    body: "Execution ran into data or garbage, typically from a `ret` to a wrong address, a bad function pointer, or a stack that was not laid out the way `ret` expects.",
+  },
+];
+
 const match = (rules: Rule[], text: string) => rules.filter((r) => r.test(text)).map(({ id, title, body }) => ({ id, title, body }));
 
 export function explainFailure(f: FailureInput): Explanation[] {
@@ -232,7 +362,7 @@ export function explainFailure(f: FailureInput): Explanation[] {
   const unchanged = f.code.trim() === f.starter.trim();
 
   if (f.compileFailed) {
-    out.push(...match(f.language === "c" ? C_COMPILE : f.language === "asm" ? ASM_COMPILE : RUST_COMPILE, f.compileOutput));
+    out.push(...match({ c: C_COMPILE, kernel: C_COMPILE, asm: ASM_COMPILE, go: GO_COMPILE, rust: RUST_COMPILE }[f.language], f.compileOutput));
     if (!out.length)
       out.push({
         id: "compile-generic",
@@ -244,7 +374,15 @@ export function explainFailure(f: FailureInput): Explanation[] {
 
   const runtimeText = [f.error ?? "", f.stderr ?? "", ...f.results.map((r) => r.message ?? "")].join("\n");
   if (f.language === "asm") out.push(...match(ASM_RUNTIME, runtimeText));
-  out.push(...match(f.language === "asm" ? RUNTIME.filter((r) => r.id !== "segfault" && r.id !== "ub-null" && r.id !== "abort") : RUNTIME, runtimeText));
+  if (f.language === "go") out.push(...match(GO_RUNTIME, runtimeText));
+  if (f.language === "kernel") out.push(...match(KERNEL_RUNTIME, runtimeText));
+  const generic =
+    f.language === "go" || f.language === "kernel"
+      ? RUNTIME.filter((r) => r.id === "timeout")
+      : f.language === "asm"
+        ? RUNTIME.filter((r) => r.id !== "segfault" && r.id !== "ub-null" && r.id !== "abort")
+        : RUNTIME;
+  out.push(...match(generic, runtimeText));
 
   const failed = f.results.filter((r) => !r.passed);
   const passed = f.results.length - failed.length;

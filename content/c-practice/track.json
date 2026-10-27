@@ -4,5 +4,7 @@
   "description": "You can build structs, stacks and hash tables; now sharpen the craft. You'll model data that can be several things with enums and unions, learn what the preprocessor really does (and how macros bite), sort by hand with insertion and merge sort, solve puzzles by backtracking, build a double-ended queue and a binary search tree out of malloc'd nodes, format text safely with snprintf, parse a small language with a state machine, and practise reading code to find the bug. This is the everyday toolkit of working C programmers.",
   "level": "Intermediate",
   "language": "c",
+  "path": "c",
+  "order": 3,
   "prerequisite": "c-systems"
 }

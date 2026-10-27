@@ -3,7 +3,7 @@
 // limits. Imported only from route handlers and scripts (no "server-only" so
 // scripts/verify-curriculum.ts can use it directly).
 import { spawn } from "node:child_process";
-import { mkdtemp, rm, writeFile, readdir } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, readdir, readFile } from "node:fs/promises";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { tmpdir, homedir, userInfo } from "node:os";
 import path from "node:path";
@@ -11,6 +11,9 @@ import type { Exercise, Language } from "./curriculum/types";
 
 const MAX_OUTPUT = 64 * 1024;
 const COMPILE_TIMEOUT_MS = 20_000;
+// Go has no precompiled standard library in this toolchain, so the first build in a fresh
+// sandbox compiles what it imports (about 3 s wall, 25 s CPU across cores). Give it its own budget.
+const GO_COMPILE_TIMEOUT_MS = 60_000;
 const RUN_TIMEOUT_MS = 5_000;
 const MAX_CONCURRENT = 4;
 
@@ -119,6 +122,9 @@ function exec(work: string, cmd: string[], opts: { timeoutMs: number; stdin?: st
 
 const MB = 1024 * 1024;
 const compileLimits = () => [`--as=${2048 * MB}`, `--cpu=30`, `--nproc=${nprocLimit()}`, `--fsize=${64 * MB}`];
+const goCompileLimits = () => [`--cpu=120`, `--nproc=${nprocLimit() + 200}`, `--fsize=${256 * MB}`];
+// The Go runtime reserves a lot of address space up front, so the address-space cap is looser than for C.
+const goRunLimits = () => [`--as=${4096 * MB}`, `--cpu=10`, `--nproc=${nprocLimit() + 64}`, `--fsize=${4 * MB}`, `--nofile=128`, `--core=0`];
 const runLimits = () => [`--as=${256 * MB}`, `--cpu=5`, `--nproc=${nprocLimit()}`, `--fsize=${4 * MB}`, `--nofile=64`, `--core=0`];
 
 // Strip the sandbox paths from compiler output so messages read naturally.
@@ -167,6 +173,80 @@ function cTestSource(student: string, harness: string) {
 
 function rustTestSource(student: string, harness: string) {
   return `${student}\n\n#[cfg(test)]\nmod __bm_tests {\n#![allow(unused_imports)]\nuse super::*;\n${harness}\n}\n`;
+}
+
+// ---------- Kernel (x86-64 long mode, booted in QEMU) ----------
+
+// Learner code is freestanding C. A hidden boot stub (src/lib/kernel/boot.S) takes the
+// machine from Multiboot's 32-bit mode to long mode and calls kmain(); a hidden runtime
+// (runtime.c) supplies port I/O, mem*(), printf over the QEMU debug console and a default
+// exception reporter. Test results travel on that debug console (port 0xE9), so they
+// never mix with the learner's own serial output on COM1 (QEMU's stdout).
+const KERNEL_SUPPORT = path.join(process.cwd(), "src", "lib", "kernel");
+const KERNEL_CFLAGS = "-m64 -std=gnu17 -ffreestanding -fno-pic -fno-pie -mno-red-zone -mgeneral-regs-only -fno-stack-protector -fcf-protection=none -fno-asynchronous-unwind-tables -nostdlib -Wall -Wextra -g -O0";
+
+const KERNEL_TEST_PRELUDE = `
+#include <stdint.h>
+#include <stddef.h>
+void bm_printf(const char *fmt, ...);
+void *memcpy(void *, const void *, size_t);
+void *memset(void *, int, size_t);
+int memcmp(const void *, const void *, size_t);
+static inline void bm_outb(uint16_t p, uint8_t v) { __asm__ volatile("outb %0, %1" : : "a"(v), "Nd"(p)); }
+static inline uint8_t bm_inb(uint16_t p) { uint8_t v; __asm__ volatile("inb %1, %0" : "=a"(v) : "Nd"(p)); return v; }
+static inline void bm_outl(uint16_t p, uint32_t v) { __asm__ volatile("outl %0, %1" : : "a"(v), "Nd"(p)); }
+static inline uint32_t bm_inl(uint16_t p) { uint32_t v; __asm__ volatile("inl %1, %0" : "=a"(v) : "Nd"(p)); return v; }
+#define CHECK(name, cond, ...) do { \\
+  bm_printf("\\n@@RUN %s\\n", name); \\
+  if (cond) { bm_printf("\\n@@PASS %s\\n", name); } \\
+  else { bm_printf("\\n@@FAIL %s\\t", name); bm_printf(__VA_ARGS__); bm_printf("\\n"); } } while (0)
+`;
+
+function kernelTestSource(student: string, harness: string) {
+  // Same trick as the C harness: the learner may keep a kmain() to experiment, so rename it.
+  return `${student}\n#undef kmain\n#line 1 "tests.c"\n${KERNEL_TEST_PRELUDE}\n${harness}\n`;
+}
+
+async function compileKernel(dir: string, source: string, test: boolean) {
+  for (const f of ["boot.S", "runtime.c", "link.ld"]) await writeFile(path.join(dir, f), await readFile(path.join(KERNEL_SUPPORT, f)));
+  await writeFile(path.join(dir, "kernel.c"), source);
+  const rename = test ? "-Dkmain=__bm_student_kmain " : "";
+  const script = [
+    `gcc ${KERNEL_CFLAGS} -c boot.S runtime.c`,
+    `gcc ${KERNEL_CFLAGS} ${rename}-c kernel.c`,
+    `ld -m elf_x86_64 -nostdlib -z max-page-size=4096 -T link.ld -o kernel64.elf boot.o runtime.o kernel.o`,
+    `objcopy -O elf32-i386 kernel64.elf kernel.elf`,
+  ].join(" && ");
+  return exec(dir, ["sh", "-c", script], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits() });
+}
+
+// QEMU needs a lot of address space, so no --as limit here; CPU time, process count, file
+// size and the wall-clock timeout still bound it. No network, no disk, no display.
+const qemuLimits = () => [`--cpu=10`, `--nproc=${nprocLimit()}`, `--fsize=${4 * MB}`, `--nofile=256`, `--core=0`];
+
+type KernelRun = Exec & { debug: string; exception: string | null; exitStatus: number | null };
+
+async function bootKernel(dir: string): Promise<KernelRun> {
+  const qemu = [
+    "qemu-system-x86_64", "-machine", "pc,accel=tcg", "-cpu", "qemu64", "-m", "64",
+    "-nodefaults", "-vga", "std", "-display", "none", "-no-reboot", "-monitor", "none", "-net", "none",
+    "-kernel", "kernel.elf", "-serial", "stdio", "-debugcon", "file:debug.log",
+    "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",
+  ];
+  const r = await exec(dir, qemu, { timeoutMs: RUN_TIMEOUT_MS, limits: qemuLimits() });
+  const debug = (await readFile(path.join(dir, "debug.log"), "utf8").catch(() => "")).slice(0, MAX_OUTPUT);
+  const exc = debug.match(/^@@EXC (.*)\trip=(0x[0-9a-f]+) err=(0x[0-9a-f]+) cr2=(0x[0-9a-f]+)$/m);
+  const exception = exc ? `The CPU raised ${exc[1]} at instruction address ${exc[2]}${exc[1].includes("page fault") ? ` while touching address ${exc[4]}` : ""}.` : null;
+  return { ...r, debug, exception, exitStatus: r.code };
+}
+
+/** Why a finished boot counts as a crash, or null if the kernel returned from kmain normally. */
+function kernelCrash(r: KernelRun): string | null {
+  if (r.timedOut) return `Your kernel was still running after ${RUN_TIMEOUT_MS / 1000} seconds and was stopped. A kernel never exits on its own, so this is normal for a hand-written main loop, but a test that hangs usually means an endless wait for hardware.`;
+  if (r.truncated) return "Output was cut off at 64 KB.";
+  if (r.exception) return r.exception;
+  if (r.exitStatus === 1) return null;
+  return "The virtual machine reset itself. That's a triple fault: an exception happened and the CPU could not even run an exception handler (usually a bad GDT, IDT, page table or stack).";
 }
 
 // ---------- Public API ----------
@@ -222,7 +302,34 @@ async function compileAsm(dir: string, source: string, harness: string | null) {
   return exec(dir, ["gcc", "-std=c17", "-Wall", "-Wextra", "-g", "-O0", "-no-pie", "-Wa,--noexecstack", ...files, "-o", "prog"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits() });
 }
 
+// Go: the learner's file is main.go (package main) in a throwaway module. Tests are a hidden
+// bm_test.go in the same package, built with `go test -c` and run with -test.v. No network,
+// no cgo; the build cache lives in the sandbox's private /tmp.
+const GO_ENV = {
+  GOCACHE: "/tmp/gocache",
+  GOPATH: "/tmp/gopath",
+  GOFLAGS: "-mod=mod -buildvcs=false",
+  GOPROXY: "off",
+  GOTOOLCHAIN: "local",
+  GO111MODULE: "on",
+  GOTELEMETRY: "off",
+  CGO_ENABLED: "0",
+};
+
+async function compileGo(dir: string, source: string, harness: string | null) {
+  await writeFile(path.join(dir, "go.mod"), "module bm\n\ngo 1.24\n");
+  await writeFile(path.join(dir, "main.go"), source);
+  const cmd = ["go"];
+  if (harness !== null) {
+    await writeFile(path.join(dir, "bm_test.go"), harness);
+    cmd.push("test", "-c", "-vet=off", "-o", "prog");
+  } else cmd.push("build", "-o", "prog", ".");
+  return exec(dir, cmd, { timeoutMs: GO_COMPILE_TIMEOUT_MS, limits: goCompileLimits(), env: GO_ENV });
+}
+
 async function compile(dir: string, language: Language, source: string, opts: { test?: boolean; harness?: string } = {}) {
+  if (language === "kernel") return compileKernel(dir, source, !!opts.test);
+  if (language === "go") return compileGo(dir, source, opts.test ? (opts.harness ?? "") : null);
   if (language === "asm") return compileAsm(dir, source, opts.test ? (opts.harness ?? "") : null);
   if (language === "c") {
     await writeFile(path.join(dir, "main.c"), source);
@@ -251,9 +358,11 @@ export function runProgram(language: Language, code: string, stdin = ""): Promis
       const c = await compile(dir, language, code);
       const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
       if (c.code !== 0) {
-        const noMain = /undefined reference to `main'|`main` function not found/.test(compileOutput);
+        const noMain = /undefined reference to `k?main'|`main` function not found|function main is undeclared/.test(compileOutput);
         const noMainText =
-          language === "asm"
+          language === "kernel"
+            ? "There's no kmain() function to boot. Your kernel starts there. Add one to experiment, or press Test to check your solution."
+            : language === "asm"
             ? "There's no `main` label to run. Your functions are called by the hidden tests, so press Test to check them (or add a `.globl main` entry point to experiment)."
             : "There's no main() function to run. Add one to experiment, or press Test to check your solution.";
         return {
@@ -271,7 +380,13 @@ export function runProgram(language: Language, code: string, stdin = ""): Promis
           durationMs: c.ms,
         };
       }
-      const r = await exec(dir, ["./prog"], { timeoutMs: RUN_TIMEOUT_MS, stdin, limits: runLimits(), env: runEnv });
+      if (language === "kernel") {
+        const k = await bootKernel(dir);
+        // A kernel parked in a final hlt loop is normal, so a timeout alone is not a failure here.
+        const crash = k.timedOut ? null : kernelCrash(k);
+        return { ok: !crash, phase: "run", compileOutput, stdout: k.stdout, stderr: k.debug.trim(), exitCode: k.exitStatus === 1 ? 0 : k.exitStatus, error: crash, durationMs: c.ms + k.ms };
+      }
+      const r = await exec(dir, ["./prog"], { timeoutMs: RUN_TIMEOUT_MS, stdin, limits: language === "go" ? goRunLimits() : runLimits(), env: runEnv });
       const error = r.timedOut
         ? `Your program ran for more than ${RUN_TIMEOUT_MS / 1000} seconds and was stopped. Is there a loop that never ends, or is it waiting for input?`
         : r.truncated
@@ -289,6 +404,8 @@ export function testExercise(exercise: Exercise, code: string): Promise<TestResu
   return withSlot(() =>
     withWorkdir(async (dir) => {
       if (exercise.mode === "stdout") return testStdout(dir, exercise, code);
+      if (exercise.language === "kernel") return testKernelHarness(dir, exercise, code);
+      if (exercise.language === "go") return testGoHarness(dir, exercise, code);
       if (exercise.language === "asm") return testAsmHarness(dir, exercise, code);
       if (exercise.language === "c") return testCHarness(dir, exercise, code);
       return testRustHarness(dir, exercise, code);
@@ -304,7 +421,7 @@ async function testStdout(dir: string, ex: Exercise, code: string): Promise<Test
   let output = "";
   let error: string | null = null;
   for (const tc of ex.cases ?? []) {
-    const r = await exec(dir, ["./prog"], { timeoutMs: RUN_TIMEOUT_MS, stdin: tc.stdin ?? "", limits: runLimits(), env: runEnv });
+    const r = await exec(dir, ["./prog"], { timeoutMs: RUN_TIMEOUT_MS, stdin: tc.stdin ?? "", limits: ex.language === "go" ? goRunLimits() : runLimits(), env: runEnv });
     output = r.stdout + r.stderr;
     const crash = r.timedOut ? "Timed out." : (signalMessage(r.signal, r.code) ?? undefinedBehaviour(r.stderr));
     if (crash) error = crash;
@@ -326,15 +443,12 @@ function testAsmHarness(dir: string, ex: Exercise, code: string): Promise<TestRe
   return runCHarness(dir, () => compile(dir, "asm", code, { test: true, harness: ex.harness ?? "" }));
 }
 
-async function runCHarness(dir: string, build: () => ReturnType<typeof exec>): Promise<TestResult> {
-  const c = await build();
-  const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
-  if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: "Your code didn't compile." };
-  const r = await exec(dir, ["./prog"], { timeoutMs: RUN_TIMEOUT_MS, limits: runLimits(), env: runEnv });
+/** Reads the @@RUN / @@PASS / @@FAIL protocol the CHECK macro prints. Other lines are the learner's own output. */
+function parseHarnessOutput(text: string) {
   const results: TestCaseResult[] = [];
   let running: string | null = null;
   const userOutput: string[] = [];
-  for (const line of r.stdout.split("\n")) {
+  for (const line of text.split("\n")) {
     if (line.startsWith("@@RUN ")) running = line.slice(6);
     else if (line.startsWith("@@PASS ")) {
       results.push({ name: line.slice(7), passed: true });
@@ -343,13 +457,71 @@ async function runCHarness(dir: string, build: () => ReturnType<typeof exec>): P
       const [name, ...msg] = line.slice(7).split("\t");
       results.push({ name, passed: false, message: msg.join("\t") });
       running = null;
-    } else if (line.trim()) userOutput.push(line);
+    } else if (line.trim() && !line.startsWith("@@EXC ")) userOutput.push(line);
   }
+  return { results, running, userOutput };
+}
+
+async function testKernelHarness(dir: string, ex: Exercise, code: string): Promise<TestResult> {
+  const c = await compile(dir, "kernel", kernelTestSource(code, ex.harness ?? ""), { test: true });
+  const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
+  if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: "Your code didn't compile." };
+  const k = await bootKernel(dir);
+  const { results, running } = parseHarnessOutput(k.debug);
+  const error = kernelCrash(k);
+  if (running) results.push({ name: running, passed: false, message: error ?? "The kernel stopped during this test." });
+  const allPassed = !error && results.length > 0 && results.every((t) => t.passed);
+  return { compiled: true, compileOutput, results, allPassed, output: k.stdout.trim(), error };
+}
+
+async function runCHarness(dir: string, build: () => ReturnType<typeof exec>): Promise<TestResult> {
+  const c = await build();
+  const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
+  if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: "Your code didn't compile." };
+  const r = await exec(dir, ["./prog"], { timeoutMs: RUN_TIMEOUT_MS, limits: runLimits(), env: runEnv });
+  const { results, running, userOutput } = parseHarnessOutput(r.stdout);
   const crash = r.timedOut ? `Timed out after ${RUN_TIMEOUT_MS / 1000}s — is there a loop that never ends?` : signalMessage(r.signal, r.code);
   const error = crash ?? undefinedBehaviour(r.stderr);
   if (running) results.push({ name: running, passed: false, message: error ?? "The program stopped during this test." });
   const allPassed = !error && results.length > 0 && results.every((t) => t.passed);
   return { compiled: true, compileOutput, results, allPassed, output: [...userOutput, r.stderr.trim()].filter(Boolean).join("\n"), error };
+}
+
+async function testGoHarness(dir: string, ex: Exercise, code: string): Promise<TestResult> {
+  const c = await compile(dir, "go", code, { test: true, harness: ex.harness ?? "" });
+  const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
+  if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: c.timedOut ? "Compilation took too long." : "Your code didn't compile." };
+  const r = await exec(dir, ["./prog", "-test.v", "-test.timeout=5s", "-test.count=1"], { timeoutMs: RUN_TIMEOUT_MS * 2, limits: goRunLimits(), env: runEnv });
+  const results: TestCaseResult[] = [];
+  const lines = r.stdout.split("\n");
+  // `go test -v` prints "=== RUN Name", the test's own output / t.Errorf lines (indented), then "--- PASS|FAIL: Name (0.00s)".
+  let buf: string[] = [];
+  for (const line of lines) {
+    const m = line.match(/^\s*--- (PASS|FAIL): (\w+)/);
+    if (m) {
+      const msg = buf
+        .map((l) => l.replace(/^\s+(\S+\.go:\d+: )?/, ""))
+        .filter(Boolean)
+        .join("\n");
+      results.push({ name: m[2].replace(/^Test_?/, "").replaceAll("_", " "), passed: m[1] === "PASS", message: m[1] === "PASS" ? undefined : msg || "Test failed." });
+      buf = [];
+    } else if (line.startsWith("=== ")) {
+      buf = [];
+    } else if (!/^(PASS|FAIL|ok\s|exit status)/.test(line)) buf.push(line);
+  }
+  const timedOutInGo = /panic: test timed out/.test(r.stdout + r.stderr);
+  const panic = (r.stdout + r.stderr).match(/^panic: .*$/m)?.[0];
+  const crash = r.timedOut || timedOutInGo
+    ? `Timed out after ${RUN_TIMEOUT_MS / 1000}s — is there a loop that never ends, or a goroutine waiting forever?`
+    : /fatal error: all goroutines are asleep - deadlock!/.test(r.stdout + r.stderr)
+      ? "fatal error: all goroutines are asleep - deadlock!"
+      : panic ?? (r.signal ? signalMessage(r.signal, r.code) : null);
+  const failedNames = new Set(results.map((t) => t.name));
+  const running = [...r.stdout.matchAll(/^=== RUN\s+(\w+)/gm)].map((m) => m[1].replace(/^Test_?/, "").replaceAll("_", " ")).find((n) => !failedNames.has(n));
+  if (running && crash) results.push({ name: running, passed: false, message: crash });
+  const userOutput = r.stderr.trim();
+  const allPassed = !crash && results.length > 0 && results.every((t) => t.passed);
+  return { compiled: true, compileOutput, results, allPassed, output: userOutput, error: crash };
 }
 
 async function testRustHarness(dir: string, ex: Exercise, code: string): Promise<TestResult> {
