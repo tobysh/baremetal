@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { DifficultyBadge, LevelProgress } from "@/components/gamification";
 import { Card, Container, ProgressBar, Skeleton } from "@/components/ui";
@@ -32,6 +33,7 @@ export default function ProfilePage({ params }: PageProps<"/u/[username]">) {
 }
 
 async function Profile({ params }: { params: Params }) {
+  await connection(); // the DB driver reads the clock, so wait for a real request
   const name = decodeURIComponent((await params).username).toLowerCase();
   if (!USERNAME_RE.test(name)) notFound();
   const [profile, me] = await Promise.all([getPublicProfile(name), getCurrentUser()]);
