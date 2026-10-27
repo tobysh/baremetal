@@ -3,6 +3,7 @@ title: Loops
 summary: Repeat work with while and for loops, and avoid the classic off-by-one mistake.
 minutes: 20
 difficulty: medium
+tags: loops
 id: first-steps/loops
 mode: harness
 ---

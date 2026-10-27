@@ -3,6 +3,7 @@ title: Reading input
 summary: Read numbers typed by the user with scanf and respond to them.
 minutes: 15
 difficulty: medium
+tags: input, strings
 id: first-steps/reading-input
 mode: stdout
 ---

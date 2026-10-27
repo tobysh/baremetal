@@ -3,6 +3,7 @@ title: FizzBuzz
 summary: Combine loops and decisions to solve the classic FizzBuzz programming puzzle.
 minutes: 15
 difficulty: medium
+tags: loops, conditionals
 id: first-steps/fizzbuzz
 mode: stdout
 ---

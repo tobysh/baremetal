@@ -3,6 +3,7 @@ title: Making decisions with if
 summary: Use if, else and comparison operators to make your program choose what to do.
 minutes: 15
 difficulty: easy
+tags: conditionals
 id: first-steps/decisions
 mode: harness
 ---

@@ -3,6 +3,7 @@ title: Your first program
 summary: Write, compile and run your first C program, and learn what a compiler actually does.
 minutes: 10
 difficulty: easy
+tags: basics
 id: first-steps/hello-world
 mode: stdout
 ---

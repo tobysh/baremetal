@@ -3,6 +3,7 @@ title: Functions
 summary: Package instructions into reusable functions that take inputs and return a result.
 minutes: 15
 difficulty: easy
+tags: functions
 id: first-steps/functions
 mode: harness
 ---

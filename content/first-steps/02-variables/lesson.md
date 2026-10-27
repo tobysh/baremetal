@@ -3,6 +3,7 @@ title: Variables and types
 summary: Store numbers in variables, do arithmetic, and print the results with printf format codes.
 minutes: 15
 difficulty: easy
+tags: variables, types
 id: first-steps/variables
 mode: stdout
 ---
