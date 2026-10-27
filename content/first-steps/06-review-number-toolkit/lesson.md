@@ -4,7 +4,7 @@ summary: A relaxed consolidation exercise. Combine functions, if statements and 
 minutes: 15
 difficulty: easy
 kind: review
-tags: functions, conditionals, loops, review
+tags: functions, conditionals, loops
 id: first-steps/review-number-toolkit
 mode: harness
 ---

@@ -4,7 +4,7 @@ summary: A consolidation exercise. Combine structs, owned strings, vectors, iter
 minutes: 25
 difficulty: medium
 kind: review
-tags: structs, ownership, iterators, review
+tags: structs, ownership, iterators
 id: rust-foundations/review-inventory
 mode: harness
 ---

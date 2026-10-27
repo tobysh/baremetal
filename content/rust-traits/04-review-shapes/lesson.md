@@ -4,7 +4,7 @@ summary: A consolidation exercise. Combine trait implementations, a default meth
 minutes: 25
 difficulty: medium
 kind: review
-tags: traits, generics, trait-objects, review
+tags: traits, generics, trait-objects
 id: rust-traits/review-shapes
 mode: harness
 ---

@@ -4,7 +4,7 @@ summary: A consolidation exercise. Combine the counted loop, signed comparisons 
 minutes: 25
 difficulty: medium
 kind: review
-tags: loops, memory, branching, review
+tags: loops, memory, branching
 id: asm-first-steps/review-array-scan
 mode: harness
 ---

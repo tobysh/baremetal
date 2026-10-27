@@ -4,7 +4,7 @@ summary: A consolidation exercise. Join parsing, routing and response building i
 minutes: 25
 difficulty: medium
 kind: review
-tags: http, parsing, routing, review
+tags: http, parsing, routing
 id: rust-http/review-handler
 mode: harness
 ---

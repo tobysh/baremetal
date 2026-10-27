@@ -4,7 +4,7 @@ summary: A consolidation exercise. Combine structs, slices, maps, an interface a
 minutes: 25
 difficulty: medium
 kind: review
-tags: structs, interfaces, errors, maps, review
+tags: structs, interfaces, errors, maps
 id: go-foundations/review-gradebook
 mode: harness
 ---

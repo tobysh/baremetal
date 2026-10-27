@@ -4,7 +4,7 @@ summary: A consolidation exercise. Combine pointer walking, two-ended swapping a
 minutes: 20
 difficulty: medium
 kind: review
-tags: strings, pointers, review
+tags: strings, pointers
 id: c-memory/review-strings
 mode: harness
 ---

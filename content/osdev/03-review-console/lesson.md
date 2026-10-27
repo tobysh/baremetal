@@ -4,7 +4,7 @@ summary: A consolidation exercise. Send text to the serial port and the screen a
 minutes: 35
 difficulty: medium
 kind: review
-tags: hardware, io, serial, vga, review
+tags: hardware, io, serial, vga
 id: osdev/review-console
 mode: harness
 ---

@@ -4,7 +4,7 @@ summary: A consolidation exercise. Use your growable array together with functio
 minutes: 20
 difficulty: medium
 kind: review
-tags: function-pointers, heap, data-structures, review
+tags: function-pointers, heap, data-structures
 id: c-systems/review-vector-toolkit
 mode: harness
 ---
