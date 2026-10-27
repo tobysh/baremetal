@@ -1,0 +1,9 @@
+The error constants, `USER_TOP`, `console_write` (with its log), the pending input (`input_data`, `input_pos`), `current_pid` and `exit_code`/`exited` are in the starter. Implement:
+
+- `int user_range_ok(uint64_t ptr, uint64_t len)` returns 1 if the `len` bytes starting at `ptr` all lie in `[0, USER_TOP]`, else 0. `len == 0` is always fine. It must not be fooled by overflow. A null pointer is not special.
+- `int64_t copy_from_user(void *dst, uint64_t user_src, uint64_t len)` returns 0 after copying, or `-EFAULT` (and copies nothing) if the range is not valid.
+- `int64_t copy_to_user(uint64_t user_dst, const void *src, uint64_t len)` the same in the other direction.
+- `int64_t sys_write(uint64_t fd, uint64_t buf, uint64_t len)` returns `-EBADF` unless `fd` is 1 or 2; then `-EFAULT` if the buffer is not valid (nothing is written); otherwise copies the data in chunks of at most 64 bytes through a kernel buffer, calling `console_write` for each chunk, and returns `len`.
+- `int64_t sys_read(uint64_t fd, uint64_t buf, uint64_t len)` returns `-EBADF` unless `fd` is 0, and `-EFAULT` for a bad buffer. Otherwise it copies up to `len` bytes of the unread part of `input_data` into the buffer, advances `input_pos`, and returns the number of bytes copied (0 when the input is used up).
+- `int64_t sys_getpid(...)` returns `current_pid`. `int64_t sys_exit(uint64_t code, ...)` stores `code` in `exit_code`, sets `exited` to 1 and returns 0. (All of these take the same three `uint64_t` arguments, which they may ignore.)
+- `int64_t syscall_dispatch(uint64_t num, uint64_t a1, uint64_t a2, uint64_t a3)` calls the handler registered in `syscall_table` for `num` (0 read, 1 write, 39 getpid, 60 exit), or returns `-ENOSYS` for any number that is out of range or has no handler. Fill the table in `syscall_init()` (the tests call it first).

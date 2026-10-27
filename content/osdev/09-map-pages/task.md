@@ -1,0 +1,4 @@
+The `PTE_*` constants, `pt_index`, `translate`, `read_cr3`, `tlb_invalidate`, `alloc_frame` and `frames_used` are in the starter. Implement:
+
+- `int map_page(uint64_t cr3, uint64_t virt, uint64_t phys, uint64_t flags)` maps one 4 KiB page. `flags` may contain `PTE_WRITABLE`, `PTE_USER` and `PTE_NX`; ignore any other bits. Missing intermediate tables are allocated with `alloc_frame()` and entered as present, writable and user. If `flags` has `PTE_USER` (or `PTE_WRITABLE`), existing entries on the path get that bit set too. Returns 0, or -1 if an address is unaligned or `virt` non-canonical, the path crosses a huge page, the page is already mapped, or `alloc_frame()` returns 0.
+- `int unmap_page(uint64_t cr3, uint64_t virt)` clears the leaf entry for `virt`, flushes that address from the TLB with `tlb_invalidate`, and returns 0. Returns -1 if `virt` is unaligned or non-canonical, or is not mapped as a 4 KiB page. It does not free tables.

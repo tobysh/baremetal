@@ -3,6 +3,7 @@ title: The Screen: VGA Text Mode
 summary: Write characters straight into video memory at 0xB8000, handle newlines, tabs, backspace and scrolling, and move the hardware cursor with port I/O.
 minutes: 40
 difficulty: easy
+tags: hardware, io, vga
 id: osdev/vga-text
 mode: harness
 ---

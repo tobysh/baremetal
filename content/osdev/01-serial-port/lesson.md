@@ -3,6 +3,7 @@ title: Talking to Hardware: The Serial Port
 summary: Drive a UART with port I/O. Set the baud rate through the divisor latch, wait for the transmitter, and send text, the way every kernel prints its first message.
 minutes: 30
 difficulty: easy
+tags: hardware, io, serial
 id: osdev/serial-port
 mode: harness
 ---
