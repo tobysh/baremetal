@@ -3,6 +3,7 @@ title: Reverse a String
 summary: Reverse a string in place with the two-index technique, swapping from both ends toward the middle. Practice pointers, indices and the null terminator.
 minutes: 20
 difficulty: medium
+tags: strings, pointers, arrays
 id: c-memory/reverse-string
 mode: harness
 ---

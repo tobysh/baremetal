@@ -3,6 +3,7 @@ title: Pointers and Swap
 summary: Memory is a long street of numbered boxes. Learn addresses, the & and * operators, and why a function needs a pointer to change its caller's variable.
 minutes: 20
 difficulty: medium
+tags: pointers
 id: c-memory/pointers-swap
 mode: harness
 ---

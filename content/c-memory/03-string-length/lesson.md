@@ -3,6 +3,7 @@ title: String Length
 summary: A C string is just an array of chars ending in a zero byte. Learn the null terminator and write your own strlen by walking a pointer along the string.
 minutes: 15
 difficulty: easy
+tags: strings, pointers
 id: c-memory/string-length
 mode: harness
 ---

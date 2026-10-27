@@ -3,6 +3,7 @@ title: Linked Lists
 summary: Build a chain of heap nodes with structs and pointers. Learn struct, typedef, the -> operator, push_front, traversal, reversing a list, and freeing every node.
 minutes: 30
 difficulty: hard
+tags: heap, pointers, data-structures
 id: c-memory/linked-lists
 mode: harness
 ---

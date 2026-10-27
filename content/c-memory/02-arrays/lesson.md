@@ -3,6 +3,7 @@ title: Arrays
 summary: An array is a row of same-sized boxes side by side in memory. Learn indexing, how arrays decay to pointers, and why out-of-bounds access is undefined behaviour.
 minutes: 20
 difficulty: easy
+tags: arrays, pointers
 id: c-memory/arrays
 mode: harness
 ---

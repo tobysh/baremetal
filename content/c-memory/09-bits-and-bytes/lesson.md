@@ -3,6 +3,7 @@ title: Bits and Bytes
 summary: See numbers as the bits the hardware stores. Learn binary, the bitwise operators & | ^ ~ << >>, and how endianness decides the order of bytes in memory.
 minutes: 30
 difficulty: hard
+tags: bitwise
 id: c-memory/bits-and-bytes
 mode: harness
 ---

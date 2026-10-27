@@ -3,6 +3,7 @@ title: Heap Memory
 summary: Stack versus heap, and how to borrow memory with malloc, check for NULL, size it with sizeof, and give it back with free so you do not leak.
 minutes: 25
 difficulty: hard
+tags: heap, malloc
 id: c-memory/heap-memory
 mode: harness
 ---

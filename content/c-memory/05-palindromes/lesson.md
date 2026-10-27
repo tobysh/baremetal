@@ -3,6 +3,7 @@ title: Palindromes
 summary: Check whether a string reads the same both ways by comparing characters from both ends, then ignore case with tolower and an unsigned char cast.
 minutes: 20
 difficulty: medium
+tags: strings, algorithms
 id: c-memory/palindromes
 mode: harness
 ---
