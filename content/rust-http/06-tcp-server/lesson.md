@@ -3,6 +3,7 @@ title: A TCP Server
 summary: Use TcpListener and TcpStream to accept real connections, read a request that arrives in pieces, and write a response back to the client.
 minutes: 30
 difficulty: impossible
+tags: networking, tcp
 id: rust-http/tcp-server
 mode: harness
 ---

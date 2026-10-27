@@ -3,6 +3,7 @@ title: What is HTTP?
 summary: Learn how TCP and HTTP fit together, what an HTTP request looks like byte for byte, and parse the first line of one in Rust.
 minutes: 20
 difficulty: medium
+tags: http, networking
 id: rust-http/what-is-http
 mode: harness
 ---

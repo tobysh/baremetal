@@ -3,6 +3,7 @@ title: Parsing Requests
 summary: Split a raw HTTP request into request line, headers and body, handle case-insensitive header names, and report malformed input with Result.
 minutes: 25
 difficulty: hard
+tags: http, parsing
 id: rust-http/parsing-requests
 mode: harness
 ---

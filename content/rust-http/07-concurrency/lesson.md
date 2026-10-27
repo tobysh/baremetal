@@ -3,6 +3,7 @@ title: Concurrency
 summary: See why a single-threaded server stalls on one slow client, then fix it with one thread per connection using std::thread::spawn and move closures.
 minutes: 25
 difficulty: impossible
+tags: concurrency, networking
 id: rust-http/concurrency
 mode: harness
 ---

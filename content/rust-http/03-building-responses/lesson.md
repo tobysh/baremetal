@@ -3,6 +3,7 @@ title: Building Responses
 summary: Write HTTP responses by hand: the status line, reason phrases, headers, and why Content-Length counts bytes rather than characters.
 minutes: 20
 difficulty: medium
+tags: http, strings
 id: rust-http/building-responses
 mode: harness
 ---

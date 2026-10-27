@@ -3,6 +3,7 @@ title: Routing
 summary: Map method and path to a handler with match on slices of path segments, match guards and a small set of routes, including 404 and 405 errors.
 minutes: 25
 difficulty: hard
+tags: routing, http
 id: rust-http/routing
 mode: harness
 ---
