@@ -25,7 +25,7 @@ export default function LeaderboardPage({ searchParams }: PageProps<"/leaderboar
         <label htmlFor="q" className="sr-only">
           Find a learner by username
         </label>
-        <Suspense fallback={<input disabled className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-bg px-3" />}>
+        <Suspense fallback={<input disabled className="h-11 min-w-0 flex-1 rounded-lg border border-field bg-bg px-3" />}>
           <SearchInput searchParams={searchParams} />
         </Suspense>
         <button type="submit" className="h-11 rounded-lg border border-border px-4 text-sm font-medium hover:bg-surface-2">
@@ -52,7 +52,7 @@ async function SearchInput({ searchParams }: { searchParams: PageProps<"/leaderb
       autoCapitalize="none"
       spellCheck={false}
       maxLength={20}
-      className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-bg px-3 placeholder:text-muted"
+      className="h-11 min-w-0 flex-1 rounded-lg border border-field bg-bg px-3 placeholder:text-muted"
     />
   );
 }

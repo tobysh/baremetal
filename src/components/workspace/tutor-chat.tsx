@@ -168,7 +168,7 @@ export function TutorChat({
             }
           }}
           placeholder="Ask the tutor… (Enter to send)"
-          className="min-h-[2.5rem] flex-1 resize-none rounded-lg border border-border bg-bg px-3 py-2 text-sm placeholder:text-muted"
+          className="min-h-[2.5rem] flex-1 resize-none rounded-lg border border-field bg-bg px-3 py-2 text-sm placeholder:text-muted"
         />
         <div className="flex flex-col gap-1">
           <button type="submit" disabled={busy || !input.trim()} className="h-9 rounded-lg bg-accent px-3 text-sm font-medium text-accent-ink disabled:opacity-50">

@@ -49,7 +49,7 @@ export function ProfileForm({
         <label htmlFor="experience" className="block text-sm font-medium">
           Programming experience
         </label>
-        <select id="experience" name="experience" defaultValue={v.experience} className="mt-1.5 block h-11 w-full rounded-lg border border-border bg-bg px-3">
+        <select id="experience" name="experience" defaultValue={v.experience} className="mt-1.5 block h-11 w-full rounded-lg border border-field bg-bg px-3">
           {Object.entries(EXPERIENCE_LEVELS).map(([value, label]) => (
             <option key={value} value={value}>
               {label}

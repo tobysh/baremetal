@@ -276,7 +276,7 @@ export function Workspace({
             rows={1}
             value={stdin}
             onChange={(e) => setStdin(e.target.value)}
-            className="mt-1 block w-full resize-y rounded-md border border-border bg-bg px-2 py-1 font-mono text-sm"
+            className="mt-1 block w-full resize-y rounded-md border border-field bg-bg px-2 py-1 font-mono text-sm"
             placeholder="e.g. 8 3"
           />
         </div>

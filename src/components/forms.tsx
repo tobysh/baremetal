@@ -46,7 +46,7 @@ export function Field({ label, name, errors, hint, after, className = "", "aria-
         name={name}
         aria-invalid={invalid || undefined}
         aria-describedby={[invalid ? errorId : null, hint && !invalid ? hintId : null, extraDescribedBy].filter(Boolean).join(" ") || undefined}
-        className={`mt-1.5 block h-11 w-full rounded-lg border bg-bg px-3 text-base placeholder:text-muted ${invalid ? "border-err" : "border-border"}`}
+        className={`mt-1.5 block h-11 w-full rounded-lg border bg-bg px-3 text-base placeholder:text-muted ${invalid ? "border-err" : "border-field"}`}
         {...input}
       />
       {after}
