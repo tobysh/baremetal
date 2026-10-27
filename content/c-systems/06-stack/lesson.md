@@ -3,6 +3,7 @@ title: Stacks and Matching Brackets
 summary: Build a last-in, first-out stack on a plain array, then use it to check that every bracket in a piece of text is properly closed.
 minutes: 25
 difficulty: medium
+tags: data-structures, strings
 id: c-systems/stack
 mode: harness
 ---

@@ -3,6 +3,7 @@ title: A Growable Array
 summary: Build a vector that grows on demand with realloc: a struct holding a pointer, a length and a capacity, with push, pop and free.
 minutes: 30
 difficulty: hard
+tags: heap, data-structures
 id: c-systems/dynamic-array
 mode: harness
 ---

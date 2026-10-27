@@ -3,6 +3,7 @@ title: Tokenising Text by Hand
 summary: Split a sentence into words and turn digit strings into numbers, walking the characters yourself with no strtok and no atoi.
 minutes: 25
 difficulty: medium
+tags: parsing, strings
 id: c-systems/tokenising
 mode: harness
 ---

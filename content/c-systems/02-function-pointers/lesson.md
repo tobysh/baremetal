@@ -3,6 +3,7 @@ title: Function Pointers and Callbacks
 summary: Pass a function to another function. Write map, count_if and a sort that takes its comparison as an argument, the same trick qsort uses.
 minutes: 25
 difficulty: medium
+tags: function-pointers, callbacks
 id: c-systems/function-pointers
 mode: harness
 ---

@@ -3,6 +3,7 @@ title: Structs and typedef
 summary: Bundle related values into one struct, give it a friendly name with typedef, pass it around by value or by pointer, and nest one struct inside another.
 minutes: 20
 difficulty: easy
+tags: structs
 id: c-systems/structs
 mode: harness
 ---

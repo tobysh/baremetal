@@ -3,6 +3,7 @@ title: A Hash Table
 summary: Look values up by name in nearly constant time. Hash a string to a bucket, chain collisions in linked lists, and manage the heap memory yourself.
 minutes: 40
 difficulty: hard
+tags: data-structures, hashing
 id: c-systems/hash-table
 mode: harness
 ---
