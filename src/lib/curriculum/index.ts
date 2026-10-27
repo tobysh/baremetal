@@ -14,7 +14,12 @@ function parseFrontmatter(src: string): { meta: Record<string, string>; body: st
   const meta: Record<string, string> = {};
   for (const line of m[1].split("\n")) {
     const i = line.indexOf(":");
-    if (i > 0) meta[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+    if (i > 0) {
+      let v = line.slice(i + 1).trim();
+      // Values may be quoted (needed in YAML when they contain a colon); strip one matching pair.
+      if (v.length >= 2 && (v[0] === '"' || v[0] === "'") && v[v.length - 1] === v[0]) v = v.slice(1, -1);
+      meta[line.slice(0, i).trim()] = v;
+    }
   }
   return { meta, body: m[2] };
 }
