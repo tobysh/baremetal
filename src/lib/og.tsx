@@ -20,7 +20,7 @@ export function ogImage({ eyebrow, title, subtitle }: { eyebrow: string; title: 
           <span style={{ fontSize: title.length > 40 ? 64 : 76, fontWeight: 700, lineHeight: 1.08, letterSpacing: -1.5 }}>{title}</span>
           <span style={{ fontSize: 30, color: "#9aa3b2", lineHeight: 1.35 }}>{subtitle.length > 140 ? `${subtitle.slice(0, 137)}…` : subtitle}</span>
         </div>
-        <div style={{ display: "flex", fontSize: 24, color: "#9aa3b2" }}>Free · C and Rust · In-browser code runner · AI tutor</div>
+        <div style={{ display: "flex", fontSize: 24, color: "#9aa3b2" }}>Free · C, Rust, Go and assembly · In-browser code runner · AI tutor</div>
       </div>
     ),
     OG_SIZE,

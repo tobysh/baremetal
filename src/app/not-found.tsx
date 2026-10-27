@@ -4,7 +4,7 @@ import { ButtonLink, Container } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Page not found",
-  description: "We couldn't find that page. Head back to the courses to keep learning C and Rust.",
+  description: "We couldn't find that page. Head back to the courses to keep learning low-level programming.",
   robots: { index: false },
 };
 

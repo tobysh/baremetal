@@ -8,7 +8,7 @@ import { LoginForm } from "../auth-forms";
 
 export const metadata: Metadata = {
   title: "Sign in",
-  description: "Sign in to Baremetal to pick up your C and Rust lessons where you left off and chat with your AI tutor.",
+  description: "Sign in to Baremetal to pick up your lessons where you left off and chat with your AI tutor.",
   alternates: { canonical: "/login" },
 };
 

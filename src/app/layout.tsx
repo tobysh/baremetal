@@ -15,7 +15,7 @@ const plexMono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
-  title: { default: `${SITE.name} — Learn C and Rust from zero`, template: `%s | ${SITE.name}` },
+  title: { default: `${SITE.name} — Learn low-level programming from zero`, template: `%s | ${SITE.name}` },
   description: SITE.description,
   applicationName: SITE.name,
   openGraph: { type: "website", siteName: SITE.name, locale: "en_GB" },

@@ -8,9 +8,9 @@ import { SITE, absoluteUrl } from "@/lib/site";
 import { LANGUAGE_LABEL } from "@/lib/curriculum/types";
 
 export const metadata: Metadata = {
-  title: { absolute: `${SITE.name} — Learn C and Rust from zero, with an AI tutor` },
+  title: { absolute: `${SITE.name} — Learn C, Rust, Go and assembly from zero, with an AI tutor` },
   description:
-    "Learn low-level programming from absolute zero. Write real C and Rust in your browser, get instant feedback, and build up to your own HTTP server. Free.",
+    "Learn low-level programming from absolute zero. Write real C, Rust, Go and assembly in your browser, get instant feedback, and build up to your own HTTP server. Free.",
   alternates: { canonical: "/" },
 };
 
@@ -20,7 +20,7 @@ const FAQ = [
     a: "Yes. The first course, Programming from Zero, assumes nothing — not even what a program is. When you sign up you tell us your experience, and the AI tutor adjusts how it explains things to match.",
   },
   {
-    q: "Why learn C and Rust instead of Python or JavaScript?",
+    q: "Why learn C, Rust, Go or assembly instead of Python or JavaScript?",
     a: "They show you what the computer is actually doing: memory, pointers, bytes and system calls. That understanding makes you better in every other language too — and it's what operating systems, browsers and game engines are built with.",
   },
   {
@@ -59,12 +59,12 @@ export default function HomePage() {
       <section className="border-b border-border">
         <Container className="grid items-center gap-10 py-12 sm:py-16 lg:grid-cols-[1.05fr_1fr] lg:py-20">
           <div>
-            <Badge tone="accent">Free · {lessonCount} hands-on lessons · C and Rust</Badge>
+            <Badge tone="accent">Free · {lessonCount} hands-on lessons · C, Rust, Go, asm</Badge>
             <h1 className="mt-5 text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl">
               Learn how computers <span className="text-accent">really</span> work.
             </h1>
             <p className="mt-5 max-w-xl text-lg text-muted">
-              Start from zero and write real C and Rust — from swapping two numbers to building your own HTTP server. An AI tutor reads your code and
+              Start from zero and write real C, Rust, Go and assembly — from swapping two numbers to building your own HTTP server. An AI tutor reads your code and
               guides you with questions, not answers.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">

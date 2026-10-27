@@ -12,7 +12,7 @@ export function SiteFooter() {
           <div className="flex items-center gap-2 font-semibold">
             <LogoMark className="h-6 w-6" /> {SITE.name}
           </div>
-          <p className="mt-3 max-w-xs text-muted">Learn how computers really work by writing C and Rust, one small step at a time.</p>
+          <p className="mt-3 max-w-xs text-muted">Learn how computers really work by writing C, Rust, Go and assembly, one small step at a time.</p>
         </div>
         <nav aria-label="Learn">
           <h2 className="font-medium">Learn</h2>

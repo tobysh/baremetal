@@ -5,7 +5,7 @@ import { SignupForm } from "../auth-forms";
 
 export const metadata: Metadata = {
   title: "Create your free account",
-  description: "Create a free Baremetal account to save your progress through the C and Rust courses and get help from the AI tutor.",
+  description: "Create a free Baremetal account to save your progress through the courses and get help from the AI tutor.",
   alternates: { canonical: "/signup" },
 };
 

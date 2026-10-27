@@ -9,7 +9,7 @@ import { getProgressMap } from "@/lib/progress";
 
 export const metadata: Metadata = {
   title: "Your dashboard",
-  description: "Your progress through the Baremetal C and Rust courses.",
+  description: "Your progress through the Baremetal courses.",
   robots: { index: false },
 };
 
