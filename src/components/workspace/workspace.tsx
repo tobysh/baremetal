@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { type KeyboardEvent, Suspense, lazy, useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { LANGUAGE_FILE, LANGUAGE_LABEL, type PublicExercise } from "@/lib/curriculum/types";
 import { track } from "../analytics";
@@ -80,6 +81,7 @@ export function Workspace({
   const mod = useModKey();
   const [stdin, setStdin] = useState("");
   const [busy, setBusy] = useState<null | "run" | "test">(null);
+  const router = useRouter();
   const [result, setResult] = useState<RunResponse | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [passed, setPassed] = useState(alreadyPassed);
@@ -145,6 +147,7 @@ export function Workspace({
         if (body.kind === "test" && body.allPassed) {
           setPassed(true);
           track("test_passed");
+          if (body.reward) router.refresh(); // header XP chip reads the user at request time
         }
       } catch (e) {
         setRequestError((e as Error).message);
@@ -152,7 +155,7 @@ export function Workspace({
         setBusy(null);
       }
     },
-    [exercise.id],
+    [exercise.id, router],
   );
   const run = useCallback(() => execute("run"), [execute]);
   const test = useCallback(() => execute("test"), [execute]);
