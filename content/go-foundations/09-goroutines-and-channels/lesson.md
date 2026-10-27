@@ -3,6 +3,7 @@ title: Goroutines and channels
 summary: Run functions concurrently with goroutines and pass data between them over channels to build a pipeline.
 minutes: 25
 difficulty: hard
+tags: concurrency, goroutines, channels
 id: go-foundations/goroutines-and-channels
 mode: harness
 ---

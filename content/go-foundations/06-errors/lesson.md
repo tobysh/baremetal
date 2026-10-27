@@ -3,6 +3,7 @@ title: Errors are values
 summary: Handle failure the Go way: return an error, check it, wrap it with %w, and test it with errors.Is and errors.As.
 minutes: 22
 difficulty: medium
+tags: errors
 id: go-foundations/errors
 mode: harness
 ---

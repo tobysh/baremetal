@@ -3,6 +3,7 @@ title: Structs and methods
 summary: Group data into structs, attach methods to your own types, and learn when a method needs a pointer receiver.
 minutes: 20
 difficulty: medium
+tags: structs, methods
 id: go-foundations/structs-and-methods
 mode: harness
 ---

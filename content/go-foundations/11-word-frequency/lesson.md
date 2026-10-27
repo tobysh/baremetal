@@ -3,6 +3,7 @@ title: Practical Go - a word counter
 summary: Put it together: read text from an io.Reader with bufio, count and sort words, and write code that is easy to test.
 minutes: 25
 difficulty: hard
+tags: maps, strings, io
 id: go-foundations/word-frequency
 mode: harness
 ---

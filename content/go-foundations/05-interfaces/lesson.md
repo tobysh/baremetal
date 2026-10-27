@@ -3,6 +3,7 @@ title: Interfaces
 summary: Define behaviour with interfaces that types satisfy implicitly, then use type switches to recover the concrete type.
 minutes: 20
 difficulty: medium
+tags: interfaces
 id: go-foundations/interfaces
 mode: harness
 ---

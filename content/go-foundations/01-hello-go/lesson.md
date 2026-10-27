@@ -3,6 +3,7 @@ title: Hello, Go
 summary: Meet Go, a small compiled language with fast builds. Write package main, declare variables with var and :=, and print with fmt.
 minutes: 12
 difficulty: easy
+tags: basics
 id: go-foundations/hello-go
 mode: stdout
 ---

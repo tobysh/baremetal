@@ -3,6 +3,7 @@ title: Slices and maps
 summary: Work with Go's two workhorse collections: growable slices with append and slicing, and hash maps with the comma-ok idiom.
 minutes: 20
 difficulty: medium
+tags: slices, maps
 id: go-foundations/slices-and-maps
 mode: harness
 ---

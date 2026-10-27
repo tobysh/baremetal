@@ -3,6 +3,7 @@ title: Pointers
 summary: Understand Go pointers: & and *, pass by value, nil, new, and building a linked list without pointer arithmetic.
 minutes: 18
 difficulty: medium
+tags: pointers
 id: go-foundations/pointers
 mode: harness
 ---

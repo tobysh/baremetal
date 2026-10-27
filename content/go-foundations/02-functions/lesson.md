@@ -3,6 +3,7 @@ title: Functions and multiple returns
 summary: Write Go functions with typed parameters, multiple return values, named results and variadic arguments.
 minutes: 15
 difficulty: easy
+tags: functions
 id: go-foundations/functions
 mode: harness
 ---

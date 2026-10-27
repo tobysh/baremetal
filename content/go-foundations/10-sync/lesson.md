@@ -3,6 +3,7 @@ title: WaitGroup and Mutex
 summary: Wait for goroutines with sync.WaitGroup and protect shared data from races with sync.Mutex.
 minutes: 25
 difficulty: hard
+tags: concurrency, sync
 id: go-foundations/sync
 mode: harness
 ---
