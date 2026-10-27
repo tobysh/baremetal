@@ -1,0 +1,8 @@
+{
+  "title": "Rust in Practice",
+  "summary": "Build real Rust: custom iterators, modules, error handling, collections, trees, pattern matching, a tokenizer and a cache.",
+  "description": "You know the language; now put it to work. Each lesson is a small, complete piece of the kind of code Rust programmers write every day: an iterator of your own, a tidy module with private parts, errors that explain themselves, a generic stack and queue, a binary search tree, an expression evaluator built on pattern matching, a tokenizer driven by a state machine, and a least-recently-used cache.",
+  "level": "Intermediate",
+  "language": "rust",
+  "prerequisite": "rust-traits"
+}
