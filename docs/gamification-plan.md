@@ -207,28 +207,85 @@ The current weekly progress stays private.
 
 ---
 
-## Phase D: friendly competition
+## Phase D: solo-first value, optional community
 
-### D1. Seasons on the leaderboard
+Phases A to C already give a single learner plenty to do. Phase D adds what keeps one person
+coming back with **zero other users**, then adds social features that stay hidden until there
+are enough people to make them worthwhile. Nothing in D may depend on other users existing.
 
-All-time XP favours early users forever. Add tabs to `/leaderboard`: **This month** (default)
-and **All time**.
+**Already implemented** (so D doesn't rebuild it): XP, levels and titles (`levelFor`), the
+dashboard's level card, lessons done, test runs, "up next" and course progress, the all-time
+`/leaderboard` (`getLeaderboard`, top 50 by XP, `profilePublic` opt-out), username prefix search
+(`searchUsers`) and `/u/[username]` (`getPublicProfile`). **Not implemented:** streaks or
+rhythm, personal bests, review of past lessons, daily suggestion, any per-day activity data.
+The leaderboard currently renders whatever rows exist, including a list of one or none.
 
-- The monthly figure is a ledger aggregation (`xp_events` with `at` in the current month, UTC).
-  Index `xp_events` on `(at, userId)`, and cache for 5 minutes with `"use cache"` / `cacheLife`.
-  Check the Next 16 docs for the current API.
-- Show "your position" even when you're outside the top 50 (one `countDocuments`).
-- At month end, nothing resets except the view. Optionally award a **Season Laurel** achievement
-  to the top 3 (via a cron/script).
+### D1. Review queue (spaced repetition of past lessons)
 
-### D2. Out of scope for now
+The most useful solo feature: a learner who has finished everything still has a reason to return.
 
-These need moderation, trust and safety work, or more users first:
-- friends and following
-- duels and head-to-head races
-- comments on profiles
-- XP gifting
-- paid cosmetics
+- New collection `reviews`: `{ userId, exerciseId, dueAt, interval, lastAt }`, unique on
+  `(userId, exerciseId)`. A first pass creates a row with `dueAt` = +3 days.
+- Review means re-solving the lesson from a fresh starter. Pass: `interval` goes 3, 7, 21, 60
+  days. Fail or "I need a refresher": back to 3. Review gives **no XP** (principle 1), so there
+  is nothing to farm.
+- The dashboard shows "N lessons ready for review" with a link to the oldest. No overdue
+  counters, no red badges (principle 4). With nothing due the card is simply absent.
+- Reuses the existing editor and `/api/run`; the only server change is a `review` flag so
+  `recordAttempt` updates the schedule instead of awarding XP.
+
+### D2. Personal stats and bests
+
+All derived from data already stored or added in A and B, shown on the dashboard and **private**.
+
+- Per-lesson personal bests: fewest attempts to pass, and (once recorded) fastest pass time from
+  first run, kept in `progress` (`bestAttempts`, `bestMs`).
+- Totals: lessons passed per track, XP by month (from the `xp_events` ledger), seals earned,
+  hint use trend. Plain tables or a small SVG bar chart; no comparison to anyone else.
+- A "Your week" strip using the B4 weekly rhythm, so the rhythm is visible without needing
+  friends.
+
+### D3. Daily suggestion
+
+One suggested lesson a day, chosen deterministically on the server so it needs no job runner.
+
+- Priority: a review that is due, otherwise the next unpassed lesson in the learner's furthest
+  track, otherwise an unpassed challenge, otherwise a random passed lesson to revisit.
+- Shown as "Today's pick" on the dashboard. It is a suggestion only: skipping it costs nothing
+  and nothing is tracked about whether it was followed.
+
+### D4. Milestone achievements for own actions
+
+Extend the B3 Codex with solo, effort-based entries (still no XP, still defined in
+`src/lib/achievements.ts`): `review-1` (first review passed), `review-10`, `rhythm-8` (8 weeks
+of rhythm), `revisit-track` (review every lesson in a track once), `fifty-runs-unaided`.
+All are earned by the learner's own actions and need no other users.
+
+### D5. Optional community, gated by user count
+
+Social features are built last and ship **dormant**. A single helper in `src/lib/community.ts`,
+`communityReady()`, returns true only when public learners (`profilePublic !== false` with a
+username) with at least one pass number **20 or more** (constant `COMMUNITY_MIN_USERS`, env
+override), cached for 10 minutes. Features below check it; when false they are hidden, not
+shown empty.
+
+- **Leaderboard:** below the threshold `/leaderboard` is not linked from the nav or sitemap and
+  the page shows a short "Community opens when more learners join" note instead of a table
+  (no rows, no "1st of 1"). Above it the page works as today.
+- **Seasons:** only after the threshold, add **This month** and **All time** tabs from the
+  ledger (`xp_events` filtered by `at`, index `(at, userId)`, cached 5 minutes with
+  `"use cache"` / `cacheLife`; check the Next 16 docs). The tab is hidden if fewer than 5
+  learners earned XP this month. Show "your position" even outside the top 50.
+- **Profile extras:** a learner's own `/u/[username]` stays fully useful with nobody watching
+  (seals, achievements, rhythm from C3). Rank is shown on it only when `communityReady()`.
+- Season Laurels (top 3 monthly achievement) are dropped unless the owner wants them later.
+- Suggested rollout: ship D1 to D4 first. Build D5 only after the first real cohort, and
+  decide the threshold from actual numbers.
+
+### D6. Out of scope for now
+
+These need moderation, trust and safety work, or many more users: friends and following,
+duels and head-to-head races, comments on profiles, XP gifting, paid cosmetics.
 
 ---
 
@@ -238,6 +295,8 @@ These need moderation, trust and safety work, or more users first:
 |---|---|---|
 | `xp_events` | yes | XP ledger: unique `(userId, source, ref)`, index `(at, userId)` |
 | `achievements` | yes | Unique `(userId, id)` |
+| `reviews` | yes | Spaced-repetition schedule: unique `(userId, exerciseId)` |
+| `progress.bestAttempts`, `bestMs` | yes | Personal bests (private) |
 | `progress.hintsUsed`, `hintsUsedAtPass`, `attemptsAtPass` | yes | Seals and achievements |
 | `progress.challenge` | yes | `{ status, attempts, passedAt }` for the lesson's challenge |
 | `users.timezone`, `weeklyGoal`, `rhythm { current, best, restWeeks, lastWeek }` | yes | Weekly rhythm |
@@ -255,7 +314,8 @@ Each needs to be covered by settings' **data export** and **account deletion**, 
 6. B4 weekly rhythm.
 7. B2 challenges, one per track, plus `verify-curriculum` support.
 8. C2 course map, C3 profile showcase.
-9. D1 seasons.
+9. D1 review queue, D2 personal stats, D3 daily suggestion, D4 solo achievements.
+10. D5 community features, only once there is a real cohort; check `communityReady()` gates before shipping.
 
 Each step should leave typecheck, lint, `next build`, `verify:content` and `test:e2e` green,
 and be committed separately.
@@ -265,5 +325,5 @@ and be committed separately.
 1. Level curve once challenges exist: cap at 10 (recommended) or add titles?
 2. Should the Unaided seal require no tutor use as well as no hints? (The plan says yes.)
 3. Default weekly goal: 2 lessons?
-4. Season Laurels for the monthly top 3: yes or no?
+4. Community threshold: 20 public learners, or a different number? Season Laurels: yes or no?
 5. Should achievement names be shown on public profiles by default, or only when opted in?
