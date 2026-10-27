@@ -16,13 +16,17 @@ export async function generateMetadata({ params }: PageProps<"/u/[username]">): 
   const name = decodeURIComponent(username).toLowerCase();
   return {
     title: `${name} — learner profile`,
-    description: `${name}'s level, XP and completed C and Rust lessons on Baremetal.`,
+    description: `${name}'s level, XP and completed lessons on Baremetal.`,
     alternates: { canonical: `/u/${name}` },
     robots: { index: false, follow: true },
   };
 }
 
-export default function ProfilePage({ params }: PageProps<"/u/[username]">) {
+export default async function ProfilePage({ params }: PageProps<"/u/[username]">) {
+  // Malformed names 404 here, before any streaming starts, so they get a real 404 status.
+  // Well-formed but unknown names can only be detected inside <Suspense> (needs the DB).
+  const name = decodeURIComponent((await params).username).toLowerCase();
+  if (!USERNAME_RE.test(name)) notFound();
   return (
     <Container className="max-w-3xl py-12">
       <Suspense fallback={<ProfileSkeleton />}>
