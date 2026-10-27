@@ -3,6 +3,7 @@ title: Structs and methods
 summary: Group data with struct, attach behavior with impl, and learn when a method needs &self or &mut self.
 minutes: 18
 difficulty: medium
+tags: structs, methods
 id: rust-foundations/structs-and-methods
 mode: harness
 ---

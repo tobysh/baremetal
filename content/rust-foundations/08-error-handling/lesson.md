@@ -3,6 +3,7 @@ title: Error handling
 summary: Handle failure without exceptions or magic return codes, using Result, the ? operator, parse and map_err.
 minutes: 18
 difficulty: hard
+tags: errors
 id: rust-foundations/error-handling
 mode: harness
 ---

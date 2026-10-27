@@ -3,6 +3,7 @@ title: Enums and match
 summary: Model "one of several things" with enums that carry data, and handle every case with exhaustive match.
 minutes: 18
 difficulty: medium
+tags: enums, pattern-matching
 id: rust-foundations/enums-and-match
 mode: harness
 ---

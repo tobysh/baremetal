@@ -3,6 +3,7 @@ title: Hello, Rust
 summary: Meet Rust, the language that gives C-level control with compiler-checked memory safety. Write main, println!, let and mut.
 minutes: 12
 difficulty: easy
+tags: basics
 id: rust-foundations/hello-rust
 mode: stdout
 ---

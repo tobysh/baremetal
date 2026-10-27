@@ -3,6 +3,7 @@ title: Ownership and strings
 summary: Understand ownership, moves and borrowing, the idea that replaces malloc and free, and the difference between String and &str.
 minutes: 20
 difficulty: medium
+tags: ownership, strings
 id: rust-foundations/ownership-and-strings
 mode: harness
 ---

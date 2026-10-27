@@ -3,6 +3,7 @@ title: Functions and types
 summary: Learn Rust's integer and float types, expressions versus statements, implicit return and if as an expression.
 minutes: 15
 difficulty: easy
+tags: functions, types
 id: rust-foundations/functions-and-types
 mode: harness
 ---

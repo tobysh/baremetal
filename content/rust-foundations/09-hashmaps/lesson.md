@@ -3,6 +3,7 @@ title: HashMaps
 summary: Store key-value pairs in a HashMap and use the entry API to count and group things without checking twice.
 minutes: 15
 difficulty: medium
+tags: maps
 id: rust-foundations/hashmaps
 mode: harness
 ---

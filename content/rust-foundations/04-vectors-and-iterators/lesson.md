@@ -3,6 +3,7 @@ title: Vectors and iterators
 summary: Store lists in Vec, borrow them as slices, and process them with map, filter, sum and collect. Meet Option for missing values.
 minutes: 18
 difficulty: medium
+tags: vectors, iterators
 id: rust-foundations/vectors-and-iterators
 mode: harness
 ---
