@@ -1,0 +1,17 @@
+[
+  {
+    "name": "input 8 3",
+    "stdin": "8 3\n",
+    "expected": "sum: 11\nlarger: 8\n"
+  },
+  {
+    "name": "input 2 10",
+    "stdin": "2 10\n",
+    "expected": "sum: 12\nlarger: 10\n"
+  },
+  {
+    "name": "input -4 -4",
+    "stdin": "-4\n-4\n",
+    "expected": "sum: -8\nlarger: equal\n"
+  }
+]

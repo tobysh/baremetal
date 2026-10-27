@@ -1,0 +1,8 @@
+{
+  "title": "Build an HTTP Server in Rust",
+  "summary": "Build a working web server from scratch in Rust using only the standard library: parse requests, route them, speak TCP and handle many clients at once.",
+  "description": "Every website you have ever used is a program answering text messages over a network. In this track you will read those messages, parse them, build replies, wire it all to a real TCP socket and finally serve many clients at once — with nothing but Rust's standard library.",
+  "level": "Advanced",
+  "language": "rust",
+  "prerequisite": "rust-foundations"
+}

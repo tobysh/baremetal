@@ -1,0 +1,8 @@
+{
+  "title": "Pointers & Memory in C",
+  "summary": "Learn how memory really works: addresses, pointers, arrays, strings, the heap, linked lists and bits. The ideas that make C (and every low-level language) click.",
+  "description": "C gives you direct access to the computer's memory, and that is both its power and its danger. You'll learn what an address is, how pointers let functions change the caller's data, how arrays and strings are laid out byte by byte, how to ask for memory with malloc and give it back, how to build a linked list, and how numbers look as bits and bytes.",
+  "level": "Beginner",
+  "language": "c",
+  "prerequisite": "first-steps"
+}

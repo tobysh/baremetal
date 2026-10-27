@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Baremetal
 
-## Getting Started
+Learn low-level programming from absolute zero. Learners read short lessons, write C and Rust in an in-browser editor, get instant results from hidden tests run in a sandbox, and can ask an AI tutor that guides them without handing over answers.
 
-First, run the development server:
+**Courses (29 lessons):** Programming from Zero (C) → Pointers & Memory in C → Rust Foundations → Build an HTTP Server in Rust.
+
+## Running it locally
+
+Prerequisites (already installed on this machine): Node 24 via nvm, MongoDB 8 in `~/.local/opt` (linked into `~/.local/bin`), Rust via rustup, `gcc`, and `bwrap` (bubblewrap) for the code sandbox.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run db            # terminal 1: MongoDB, data in .data/db
+npm run dev           # terminal 2: http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Settings live in `.env.local` (never commit it). For the AI tutor, either set `ANTHROPIC_API_KEY`, or install [Ollama](https://ollama.com), run `ollama pull qwen2.5-coder:7b`, and set `TUTOR_PROVIDER=ollama`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Make yourself an admin (then turn on 2FA at `/settings/security` to open `/admin`):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run make-admin -- you@example.com
+```
 
-## Learn More
+## Scripts
 
-To learn more about Next.js, take a look at the following resources:
+| Script | What it does |
+|---|---|
+| `npm run dev` / `build` / `start` | Next.js dev server, production build, production server |
+| `npm run db` | Start the local MongoDB |
+| `npm run verify:content [-- track]` | Checks every lesson: the reference solution passes, the starter compiles but fails |
+| `npm run test:e2e -- <url>` | 46 end-to-end security checks against a running server (sign-up, 2FA, lockout, CAPTCHA, reset, authorization) |
+| `npm run make-admin -- <email>` | Promote an account to admin |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## How it fits together
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Content** is plain files in `content/<track>/<NN-lesson>/`: `lesson.md`, `task.md`, `hints.md`, `starter.*`, `solution.*` and `tests.*` (or `cases.json` for output-checked lessons). Legal text is in `content/legal/`.
+- **Code runner** (`src/lib/runner.ts`) compiles and runs code with gcc/rustc inside bubblewrap: no network, read-only system, private temp dir, CPU/memory/process/output limits, 5 s timeout. C is built with UBSan to explain undefined behaviour.
+- **AI tutor** (`src/lib/tutor.ts`, `/api/tutor`): Claude Opus 5.5 or a local Ollama model. Costs are kept down by a response cache for repeated first questions, prompt caching, short history and output caps, free pre-written failure explanations (`src/lib/diagnostics.ts`) and authored hints, and per-user/IP/global quotas.
+- **Auth** (`src/lib/auth.ts`, `src/app/(auth)/actions.ts`): scrypt passwords, hashed session tokens in `httpOnly` `SameSite=Strict` cookies, TOTP 2FA with backup codes (required for admins), lockout with exponential backoff, proof-of-work CAPTCHA, HIBP and common-password checks.
+- **Privacy:** consent-gated first-party analytics (no cookies, no raw IPs), data export and account deletion in `/settings`, TTL indexes that delete data on the schedule stated in the Privacy Notice.
 
-## Deploy on Vercel
+## Before going to production
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Run behind a reverse proxy** that sets `X-Forwarded-For` (nginx: `proxy_set_header X-Forwarded-For $remote_addr;`), and set `TRUSTED_PROXY_HOPS`. Without one, clients can fake their IP and get around the per-IP limits (per-account limits still hold).
+2. **HTTPS**, and set `NEXT_PUBLIC_SITE_URL` to the real origin (canonical URLs, sitemap, og:image).
+3. **Secrets:** a fresh `AUTH_SECRET` (`openssl rand -base64 48`), `ANTHROPIC_API_KEY`, `SMTP_URL` and `EMAIL_FROM` for password-reset emails.
+4. **MongoDB** with authentication enabled and not exposed publicly; back it up.
+5. **Legal:** fill in `LEGAL_ENTITY_NAME`, `LEGAL_ADDRESS`, `LEGAL_CONTACT_EMAIL`, `LEGAL_JURISDICTION`. The Terms, Privacy Notice and Cookie Policy are drafts written from what the code actually does. Have them reviewed by a qualified lawyer before launch.
+6. **Code sandbox:** bubblewrap is solid for a learning site, but for a public deployment consider running the runner on separate, disposable hosts or VMs (e.g. Firecracker or gVisor) so a kernel exploit can't reach the web server.

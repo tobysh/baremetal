@@ -1,0 +1,6 @@
+[
+  {
+    "name": "prints Hello, world!",
+    "expected": "Hello, world!\n"
+  }
+]

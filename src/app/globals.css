@@ -1,26 +1,219 @@
 @import "tailwindcss";
 
+/* Design tokens — see CLAUDE.md. Dark is the default; light applies when the
+   OS prefers it, or when the visitor picks it (data-theme on <html>). */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #0e1013;
+  --surface: #15181d;
+  --surface-2: #1c2027;
+  --border: #2a2f38;
+  --text: #e8eaee;
+  --muted: #9aa3b2;
+  --accent: #f5a524;
+  --accent-ink: #1a1203;
+  --accent-soft: rgb(245 165 36 / 0.12);
+  --ok: #3fcf8e;
+  --ok-soft: rgb(63 207 142 / 0.12);
+  --err: #ff6b6b;
+  --err-soft: rgb(255 107 107 / 0.12);
+  --focus: #7cb7ff;
+  /* Difficulty: green, amber, red, dark red. */
+  --easy: #3fcf8e;
+  --medium: #f5a524;
+  --hard: #ff5c5c;
+  --impossible: #a3132b;
+  --impossible-ink: #ffffff;
+  /* Code editor */
+  --code-bg: #16191e;
+  --code-text: #e6e9ef;
+  --code-muted: #8f98a8;
+  --code-active: #1f242c;
+  --code-selection: #2c3a52;
+  --code-bracket: #3a4252;
+  --code-cursor: #ffb547;
+  --code-keyword: #ffb547;
+  --code-type: #7cc4ff;
+  --code-string: #8ee6a8;
+  --code-number: #e0a8ff;
+  --code-comment: #9aa4b5;
+  --code-macro: #ff9ccf;
+  --code-fn: #9fd2ff;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #fbfaf7;
+    --surface: #ffffff;
+    --surface-2: #f3f1ec;
+    --border: #e2ded5;
+    --text: #17181b;
+    --muted: #5d6470;
+    --accent: #b86e00;
+    --accent-ink: #ffffff;
+    --accent-soft: rgb(184 110 0 / 0.1);
+    --ok: #0f8a55;
+    --ok-soft: rgb(15 138 85 / 0.1);
+    --err: #c62f2f;
+    --err-soft: rgb(198 47 47 / 0.08);
+    --focus: #1f6fd1;
+    --easy: #0f7a4a;
+    --medium: #9a5b00;
+    --hard: #c62828;
+    --impossible: #7f0f1d;
+    --impossible-ink: #ffffff;
+    --code-bg: #ffffff;
+    --code-text: #1f2328;
+    --code-muted: #6e7781;
+    --code-active: #f6f4ef;
+    --code-selection: #cfe3ff;
+    --code-bracket: #e2ded5;
+    --code-cursor: #b86e00;
+    --code-keyword: #a8540a;
+    --code-type: #0b5fbf;
+    --code-string: #116329;
+    --code-number: #8250df;
+    --code-comment: #6e7781;
+    --code-macro: #b3125f;
+    --code-fn: #0550ae;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #fbfaf7;
+  --surface: #ffffff;
+  --surface-2: #f3f1ec;
+  --border: #e2ded5;
+  --text: #17181b;
+  --muted: #5d6470;
+  --accent: #b86e00;
+  --accent-ink: #ffffff;
+  --accent-soft: rgb(184 110 0 / 0.1);
+  --ok: #0f8a55;
+  --ok-soft: rgb(15 138 85 / 0.1);
+  --err: #c62f2f;
+  --err-soft: rgb(198 47 47 / 0.08);
+  --focus: #1f6fd1;
+  --easy: #0f7a4a;
+  --medium: #9a5b00;
+  --hard: #c62828;
+  --impossible: #7f0f1d;
+  --impossible-ink: #ffffff;
+  --code-bg: #ffffff;
+  --code-text: #1f2328;
+  --code-muted: #6e7781;
+  --code-active: #f6f4ef;
+  --code-selection: #cfe3ff;
+  --code-bracket: #e2ded5;
+  --code-cursor: #b86e00;
+  --code-keyword: #a8540a;
+  --code-type: #0b5fbf;
+  --code-string: #116329;
+  --code-number: #8250df;
+  --code-comment: #6e7781;
+  --code-macro: #b3125f;
+  --code-fn: #0550ae;
+  color-scheme: light;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-err: var(--err);
+  --color-err-soft: var(--err-soft);
+  --color-easy: var(--easy);
+  --color-medium: var(--medium);
+  --color-hard: var(--hard);
+  --color-impossible: var(--impossible);
+  --color-impossible-ink: var(--impossible-ink);
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
 }
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+/* Skeleton shimmer, respecting reduced motion. */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 37%, var(--surface-2) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: 6px;
+}
+@keyframes shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
+
+/* Long-form content (lessons, legal pages). */
+.prose {
+  line-height: 1.7;
+  font-size: 1rem;
+}
+.prose > * + * { margin-top: 1em; }
+.prose h2 { font-size: 1.35rem; font-weight: 600; margin-top: 2em; line-height: 1.3; }
+.prose h3 { font-size: 1.1rem; font-weight: 600; margin-top: 1.6em; }
+.prose a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+.prose ul, .prose ol { padding-left: 1.4em; }
+.prose ul { list-style: disc; }
+.prose ol { list-style: decimal; }
+.prose li + li { margin-top: 0.35em; }
+.prose strong { font-weight: 600; }
+.prose :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 0.1em 0.35em;
+  border-radius: 5px;
+}
+.prose pre {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1em 1.1em;
+  overflow-x: auto;
+}
+/* Callouts get a full border and tint — never a left stripe. */
+.prose blockquote {
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.8em 1em;
+}
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.95em; display: block; overflow-x: auto; }
+.prose th, .prose td { border: 1px solid var(--border); padding: 0.45em 0.7em; text-align: left; vertical-align: top; }
+.prose th { background: var(--surface-2); font-weight: 600; }
+.prose hr { border-color: var(--border); margin: 2em 0; }

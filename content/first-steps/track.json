@@ -1,0 +1,7 @@
+{
+  "title": "Programming from Zero",
+  "summary": "Never written code before? Start here. Learn what a program is and write your first ones in C: output, variables, functions, decisions and loops.",
+  "description": "This track assumes nothing. You'll learn what a program actually is, how a compiler turns your text into something a CPU can run, and the five building blocks every program is made of. By the end you'll write FizzBuzz and programs that read input \u2014 in C, the language most of the world's operating systems are written in.",
+  "level": "Beginner",
+  "language": "c"
+}

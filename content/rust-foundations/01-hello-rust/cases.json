@@ -1,0 +1,6 @@
+[
+  {
+    "name": "prints the three lines",
+    "expected": "Language: Rust\nEdition: 2021\nMemory safe: true\n"
+  }
+]
