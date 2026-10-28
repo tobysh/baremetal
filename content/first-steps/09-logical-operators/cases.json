@@ -1,0 +1,6 @@
+[
+  { "name": "2024", "stdin": "2024\n", "expected": "2024 is a leap year\n" },
+  { "name": "2023", "stdin": "2023\n", "expected": "2023 is not a leap year\n" },
+  { "name": "1900 (century, not divisible by 400)", "stdin": "1900\n", "expected": "1900 is not a leap year\n" },
+  { "name": "2000 (divisible by 400)", "stdin": "2000\n", "expected": "2000 is a leap year\n" }
+]

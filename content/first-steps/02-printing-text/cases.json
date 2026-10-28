@@ -1,0 +1,6 @@
+[
+  {
+    "name": "prints the three lines",
+    "expected": "Name:\tAda\nShe said \"hi\"\nC:\\temp\n"
+  }
+]

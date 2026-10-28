@@ -1,0 +1,6 @@
+[
+  {
+    "name": "prints the average and the temperature",
+    "expected": "Average: 8.33\nFahrenheit: 97.88\n"
+  }
+]

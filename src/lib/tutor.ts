@@ -6,7 +6,7 @@ import { EXPERIENCE_LEVELS, type ExperienceLevel, type TutorMessage } from "./mo
 
 // Which model answers tutor questions. "anthropic" (default) uses Claude via the API; "ollama" uses a local model, so code and questions never leave the machine running the site.
 export const TUTOR_PROVIDER = process.env.TUTOR_PROVIDER === "ollama" ? "ollama" : "anthropic";
-export const TUTOR_MODEL = "claude-haiku-4-5";
+export const TUTOR_MODEL = "claude-haiku-5-5";
 const OLLAMA_HOST = (process.env.OLLAMA_HOST ?? "http://127.0.0.1:11434").replace(/\/$/, "");
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? "qwen2.5-coder:7b";
 

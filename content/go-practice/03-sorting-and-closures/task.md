@@ -1,0 +1,4 @@
+- `Person` has `Name string` and `Age int`. `SortPeople(ps []Person)` sorts in place by `Age` ascending, then by `Name` ascending for equal ages.
+- `TopWords(words []string, n int) []string` returns up to `n` distinct words with the highest counts, most frequent first. Words with equal counts come in alphabetical order. If `n` is larger than the number of distinct words, return them all; if `n <= 0`, return an empty slice.
+- `Counter() func() int` returns a function that returns 1, then 2, then 3, ... Each call to `Counter` starts a new, independent sequence.
+- `Memoize(f func(int) int) func(int) int` returns a function that gives the same results as `f`, but calls `f` at most once per distinct argument.

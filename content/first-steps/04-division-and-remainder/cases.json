@@ -1,0 +1,6 @@
+[
+  {
+    "name": "prints the three conversions",
+    "expected": "4 hours 35 minutes\n12 dollars and 34 cents\nlast digit of 1234: 4\n"
+  }
+]

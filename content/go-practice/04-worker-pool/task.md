@@ -1,0 +1,4 @@
+- `Process(inputs []int, workers int, f func(int) int) []int` applies `f` to every input using `workers` goroutines (treat `workers < 1` as `1`) and returns the results **in the same order as the inputs**. For empty input return an empty non-nil slice.
+- `Generate(nums ...int) <-chan int` returns a channel that yields the numbers in order and is then closed.
+- `Square(in <-chan int) <-chan int` returns a channel that yields the square of each value received, and is closed once `in` is closed.
+- `Collect(in <-chan int) []int` reads until `in` is closed and returns everything received (an empty non-nil slice if nothing arrived).

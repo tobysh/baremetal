@@ -1,0 +1,6 @@
+[
+  {
+    "name": "prints the five lines",
+    "expected": "letter: h\ncode: 104\nnext: i\nupper: H\nword: hello\n"
+  }
+]

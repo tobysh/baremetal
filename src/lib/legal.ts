@@ -33,7 +33,7 @@ function tutorText() {
   return {
     tutorShort: "Your AI tutor chats are sent to Anthropic so the tutor can reply.",
     tutorProcessing:
-      "This information is sent to Anthropic, PBC, which makes the Claude Haiku 4.5 AI model that writes the reply. Anthropic acts as our processor, which means it handles this data for us. Under its commercial terms, inputs and outputs sent through the API are not used to train its models.\n\nYour data may be transferred to the United States. We use Standard Contractual Clauses and the UK International Data Transfer Addendum to protect it when it moves.",
+      "This information is sent to Anthropic, PBC, which makes the Claude Haiku 5.5 AI model that writes the reply. Anthropic acts as our processor, which means it handles this data for us. Under its commercial terms, inputs and outputs sent through the API are not used to train its models.\n\nYour data may be transferred to the United States. We use Standard Contractual Clauses and the UK International Data Transfer Addendum to protect it when it moves.",
     tutorSharing: "- **Anthropic, PBC**: receives AI tutor requests as described above.\n",
   };
 }

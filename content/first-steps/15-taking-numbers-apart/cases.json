@@ -1,0 +1,6 @@
+[
+  { "name": "4821", "stdin": "4821\n", "expected": "digits: 4\nsum: 15\nreversed: 1284\n" },
+  { "name": "a single digit", "stdin": "7\n", "expected": "digits: 1\nsum: 7\nreversed: 7\n" },
+  { "name": "trailing zeros", "stdin": "1000\n", "expected": "digits: 4\nsum: 1\nreversed: 1\n" },
+  { "name": "123456", "stdin": "123456\n", "expected": "digits: 6\nsum: 21\nreversed: 654321\n" }
+]

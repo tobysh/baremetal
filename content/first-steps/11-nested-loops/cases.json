@@ -1,0 +1,6 @@
+[
+  {
+    "name": "prints the triangle and the table",
+    "expected": "*\n**\n***\n****\n1 2 3\n2 4 6\n3 6 9\n"
+  }
+]

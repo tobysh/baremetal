@@ -10,9 +10,11 @@ export type Difficulty = keyof typeof DIFFICULTIES;
 export const isDifficulty = (v: unknown): v is Difficulty => typeof v === "string" && v in DIFFICULTIES;
 export const xpFor = (d: Difficulty) => DIFFICULTIES[d].xp;
 
-// Cumulative XP needed to reach level L is 4·L·(L−1): 8, 24, 48, 80 … 360.
-// The current 97 lessons (including 9 review lessons and the osdev track) are worth 1160 XP; level 10 (360 XP) is the cap, and XP keeps counting past it.
-const xpToReach = (level: number) => 4 * level * (level - 1);
+// Cumulative XP needed to reach each level (index 0 is level 1). Levels 2 and 3 come quickly so a new learner feels
+// movement; after that each level costs noticeably more than the last: 8, 24, 60, 120, 210, 330, 500, 720, 1000.
+// Level 10 is the cap, and XP keeps counting past it. Changing this table changes everyone's level, never their XP.
+const LEVEL_FLOORS = [0, 8, 24, 60, 120, 210, 330, 500, 720, 1000];
+const xpToReach = (level: number) => LEVEL_FLOORS[level - 1] ?? Infinity;
 
 // Medieval ranks, all respectable: everyone starts as a Novice.
 const TITLES = ["Novice", "Apprentice", "Squire", "Scribe", "Knight", "Ranger", "Paladin", "Sorcerer", "Oracle", "Archmage"];
