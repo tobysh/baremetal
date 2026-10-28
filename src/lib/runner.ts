@@ -3,6 +3,8 @@
 // limits. Imported only from route handlers and scripts (no "server-only" so
 // scripts/verify-curriculum.ts can use it directly).
 import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import type { Writable } from "node:stream";
 import { mkdtemp, rm, writeFile, readdir, readFile } from "node:fs/promises";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { tmpdir, homedir, userInfo } from "node:os";
@@ -45,8 +47,14 @@ function nprocLimit(): number {
 
 let active = 0;
 const queue: (() => void)[] = [];
+export class RunnerBusyError extends Error {}
+/** Waiting requests beyond this are turned away, so a flood can't build an unbounded backlog. */
+const MAX_QUEUED = 24;
 async function withSlot<T>(fn: () => Promise<T>): Promise<T> {
-  if (active >= MAX_CONCURRENT) await new Promise<void>((r) => queue.push(r));
+  if (active >= MAX_CONCURRENT) {
+    if (queue.length >= MAX_QUEUED) throw new RunnerBusyError("The code runner is busy.");
+    await new Promise<void>((r) => queue.push(r));
+  }
   active++;
   try {
     return await fn();
@@ -58,9 +66,62 @@ async function withSlot<T>(fn: () => Promise<T>): Promise<T> {
 
 type Exec = { stdout: string; stderr: string; code: number | null; signal: string | null; timedOut: boolean; truncated: boolean; ms: number };
 
-function sandboxArgs(work: string, extraEnv: Record<string, string> = {}): string[] {
+// Syscalls no learner program or toolchain needs, and which are the usual route from a
+// sandboxed process into the host kernel (io_uring, bpf, userfaultfd, perf, ptrace, module
+// and namespace tricks). Denied with EPERM rather than killing, so tools fail cleanly.
+const DENIED_SYSCALLS = [
+  101, // ptrace
+  103, // syslog
+  163, // acct
+  164, // settimeofday
+  165, 166, // mount, umount2
+  155, 161, // pivot_root, chroot
+  167, 168, 169, // swapon, swapoff, reboot
+  175, 176, 313, // init_module, delete_module, finit_module
+  179, // quotactl
+  212, // lookup_dcookie
+  227, // clock_settime
+  246, 320, // kexec_load, kexec_file_load
+  248, 249, 250, // add_key, request_key, keyctl
+  272, 308, // unshare, setns
+  298, // perf_event_open
+  304, // open_by_handle_at
+  310, 311, // process_vm_readv, process_vm_writev
+  321, // bpf
+  323, // userfaultfd
+  425, 426, 427, // io_uring_setup, io_uring_enter, io_uring_register
+];
+
+/** A classic-BPF seccomp program: x86-64 only, the syscalls above return EPERM, everything else is allowed. */
+function seccompFilter(): Buffer {
+  const n = DENIED_SYSCALLS.length;
+  const ins: [number, number, number, number][] = [
+    [0x20, 0, 0, 4], // ld arch
+    [0x15, 1, 0, 0xc000003e], // jeq x86_64 -> skip kill
+    [0x06, 0, 0, 0x80000000], // ret KILL_PROCESS
+    [0x20, 0, 0, 0], // ld syscall nr
+    [0x35, n + 1, 0, 0x40000000], // jge x32 range -> deny
+    ...DENIED_SYSCALLS.map((nr, i): [number, number, number, number] => [0x15, n - i, 0, nr]), // jeq nr -> deny
+    [0x06, 0, 0, 0x7fff0000], // ret ALLOW
+    [0x06, 0, 0, 0x00050001], // ret ERRNO(EPERM)
+  ];
+  const buf = Buffer.alloc(ins.length * 8);
+  ins.forEach(([code, jt, jf, k], i) => {
+    buf.writeUInt16LE(code, i * 8);
+    buf.writeUInt8(jt, i * 8 + 2);
+    buf.writeUInt8(jf, i * 8 + 3);
+    buf.writeUInt32LE(k, i * 8 + 4);
+  });
+  return buf;
+}
+const SECCOMP = seccompFilter();
+
+function sandboxArgs(work: string, extraEnv: Record<string, string> = {}, opts: { run?: boolean; tmpMb?: number } = {}): string[] {
   const args = [
     "--unshare-all",
+    "--unshare-user",
+    "--disable-userns",
+    "--seccomp", "3",
     "--die-with-parent",
     "--new-session",
     "--ro-bind", "/usr", "/usr",
@@ -70,8 +131,11 @@ function sandboxArgs(work: string, extraEnv: Record<string, string> = {}): strin
     "--ro-bind", "/etc/ld.so.cache", "/etc/ld.so.cache",
     "--proc", "/proc",
     "--dev", "/dev",
-    "--tmpfs", "/tmp",
-    "--bind", work, "/work",
+    // Bounded scratch space (these are RAM); /dev/shm would otherwise default to half of RAM.
+    "--size", String((opts.tmpMb ?? 256) * MB), "--tmpfs", "/dev/shm",
+    "--size", String((opts.tmpMb ?? 256) * MB), "--tmpfs", "/tmp",
+    // Running learner code can't write to the work dir, so it can't fill the disk with files.
+    opts.run ? "--ro-bind" : "--bind", work, "/work",
     "--chdir", "/work",
     "--clearenv",
     "--setenv", "PATH", "/usr/bin",
@@ -83,11 +147,14 @@ function sandboxArgs(work: string, extraEnv: Record<string, string> = {}): strin
   return args;
 }
 
-function exec(work: string, cmd: string[], opts: { timeoutMs: number; stdin?: string; limits: string[]; env?: Record<string, string> }): Promise<Exec> {
+function exec(work: string, cmd: string[], opts: { timeoutMs: number; stdin?: string; limits: string[]; env?: Record<string, string>; run?: boolean; tmpMb?: number }): Promise<Exec> {
   return new Promise((resolve) => {
     const started = Date.now();
-    const args = [...sandboxArgs(work, opts.env), "--", "/usr/bin/prlimit", ...opts.limits, "--", ...cmd];
-    const child = spawn("bwrap", args, { stdio: ["pipe", "pipe", "pipe"] });
+    const args = [...sandboxArgs(work, opts.env, { run: opts.run, tmpMb: opts.tmpMb ?? (opts.run ? 32 : undefined) }), "--", "/usr/bin/prlimit", ...opts.limits, "--", ...cmd];
+    const child = spawn("bwrap", args, { stdio: ["pipe", "pipe", "pipe", "pipe"] });
+    const seccomp = child.stdio[3] as Writable;
+    seccomp.on("error", () => {});
+    seccomp.end(SECCOMP);
     let stdout = "";
     let stderr = "";
     let truncated = false;
@@ -150,25 +217,25 @@ function signalMessage(signal: string | null, code: number | null): string | nul
 
 const C_FLAGS = ["-std=c17", "-Wall", "-Wextra", "-g", "-O0", "-fsanitize=undefined", "-fno-sanitize-recover=undefined", "-fstack-protector-strong"];
 
-const C_TEST_PRELUDE = `
+const cTestPrelude = (nonce: string) => `
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stddef.h>
 #define CHECK(name, cond, ...) do { \\
-  printf("\\n@@RUN %s\\n", name); fflush(stdout); \\
-  if (cond) { printf("\\n@@PASS %s\\n", name); } \\
-  else { printf("\\n@@FAIL %s\\t", name); printf(__VA_ARGS__); printf("\\n"); } \\
+  printf("\\n@@RUN ${nonce} %s\\n", name); fflush(stdout); \\
+  if (cond) { printf("\\n@@PASS ${nonce} %s\\n", name); } \\
+  else { printf("\\n@@FAIL ${nonce} %s\\t", name); printf(__VA_ARGS__); printf("\\n"); } \\
   fflush(stdout); } while (0)
 `;
 
-function cTestSource(student: string, harness: string) {
+function cTestSource(student: string, harness: string, nonce: string) {
   // Learners may keep their own main() for experimenting; rename it so the
   // test harness's main() is the entry point.
   // main is renamed with -Dmain=... on the command line rather than a #define
   // here, so main.c's line numbers and gcc's source excerpts stay exact.
-  return `${student}\n#undef main\n#line 1 "tests.c"\n${C_TEST_PRELUDE}\n${harness}\n`;
+  return `${student}\n#undef main\n#line 1 "tests.c"\n${cTestPrelude(nonce)}\n${harness}\n`;
 }
 
 function rustTestSource(student: string, harness: string) {
@@ -185,7 +252,7 @@ function rustTestSource(student: string, harness: string) {
 const KERNEL_SUPPORT = path.join(process.cwd(), "src", "lib", "kernel");
 const KERNEL_CFLAGS = "-m64 -std=gnu17 -ffreestanding -fno-pic -fno-pie -mno-red-zone -mgeneral-regs-only -fno-stack-protector -fcf-protection=none -fno-asynchronous-unwind-tables -nostdlib -Wall -Wextra -g -O0";
 
-const KERNEL_TEST_PRELUDE = `
+const kernelTestPrelude = (nonce: string) => `
 #include <stdint.h>
 #include <stddef.h>
 void bm_printf(const char *fmt, ...);
@@ -197,14 +264,14 @@ static inline uint8_t bm_inb(uint16_t p) { uint8_t v; __asm__ volatile("inb %1, 
 static inline void bm_outl(uint16_t p, uint32_t v) { __asm__ volatile("outl %0, %1" : : "a"(v), "Nd"(p)); }
 static inline uint32_t bm_inl(uint16_t p) { uint32_t v; __asm__ volatile("inl %1, %0" : "=a"(v) : "Nd"(p)); return v; }
 #define CHECK(name, cond, ...) do { \\
-  bm_printf("\\n@@RUN %s\\n", name); \\
-  if (cond) { bm_printf("\\n@@PASS %s\\n", name); } \\
-  else { bm_printf("\\n@@FAIL %s\\t", name); bm_printf(__VA_ARGS__); bm_printf("\\n"); } } while (0)
+  bm_printf("\\n@@RUN ${nonce} %s\\n", name); \\
+  if (cond) { bm_printf("\\n@@PASS ${nonce} %s\\n", name); } \\
+  else { bm_printf("\\n@@FAIL ${nonce} %s\\t", name); bm_printf(__VA_ARGS__); bm_printf("\\n"); } } while (0)
 `;
 
-function kernelTestSource(student: string, harness: string) {
+function kernelTestSource(student: string, harness: string, nonce: string) {
   // Same trick as the C harness: the learner may keep a kmain() to experiment, so rename it.
-  return `${student}\n#undef kmain\n#line 1 "tests.c"\n${KERNEL_TEST_PRELUDE}\n${harness}\n`;
+  return `${student}\n#undef kmain\n#line 1 "tests.c"\n${kernelTestPrelude(nonce)}\n${harness}\n`;
 }
 
 async function compileKernel(dir: string, source: string, test: boolean) {
@@ -233,7 +300,8 @@ async function bootKernel(dir: string): Promise<KernelRun> {
     "-kernel", "kernel.elf", "-serial", "stdio", "-debugcon", "file:debug.log",
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",
   ];
-  const r = await exec(dir, qemu, { timeoutMs: RUN_TIMEOUT_MS, limits: qemuLimits() });
+  // QEMU writes its debug console to a file in the work dir (one file, capped by --fsize), so this run stays writable.
+  const r = await exec(dir, qemu, { tmpMb: 256, timeoutMs: RUN_TIMEOUT_MS, limits: qemuLimits() });
   const debug = (await readFile(path.join(dir, "debug.log"), "utf8").catch(() => "")).slice(0, MAX_OUTPUT);
   const exc = debug.match(/^@@EXC (.*)\trip=(0x[0-9a-f]+) err=(0x[0-9a-f]+) cr2=(0x[0-9a-f]+)$/m);
   const exception = exc ? `The CPU raised ${exc[1]} at instruction address ${exc[2]}${exc[1].includes("page fault") ? ` while touching address ${exc[4]}` : ""}.` : null;
@@ -291,12 +359,12 @@ __attribute__((constructor)) static void __bm_init(void) { setvbuf(stdout, NULL,
 // No UBSan (nothing to instrument); -no-pie so absolute symbol references work;
 // --noexecstack silences the missing .note.GNU-stack linker warning. In test mode
 // the hidden C harness (tests.c, with the CHECK prelude) supplies main().
-async function compileAsm(dir: string, source: string, harness: string | null) {
+async function compileAsm(dir: string, source: string, harness: string | null, nonce = "") {
   await writeFile(path.join(dir, "starter.s"), source);
   await writeFile(path.join(dir, "bm_init.c"), C_STDIO_INIT);
   const files = ["starter.s", "bm_init.c"];
   if (harness !== null) {
-    await writeFile(path.join(dir, "tests.c"), `${C_TEST_PRELUDE}\n#line 1 "tests.c"\n${harness}\n`);
+    await writeFile(path.join(dir, "tests.c"), `${cTestPrelude(nonce)}\n#line 1 "tests.c"\n${harness}\n`);
     files.push("tests.c");
   }
   return exec(dir, ["gcc", "-std=c17", "-Wall", "-Wextra", "-g", "-O0", "-no-pie", "-Wa,--noexecstack", ...files, "-o", "prog"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits() });
@@ -324,13 +392,13 @@ async function compileGo(dir: string, source: string, harness: string | null) {
     await writeFile(path.join(dir, "bm_test.go"), harness);
     cmd.push("test", "-c", "-vet=off", "-o", "prog");
   } else cmd.push("build", "-o", "prog", ".");
-  return exec(dir, cmd, { timeoutMs: GO_COMPILE_TIMEOUT_MS, limits: goCompileLimits(), env: GO_ENV });
+  return exec(dir, cmd, { timeoutMs: GO_COMPILE_TIMEOUT_MS, limits: goCompileLimits(), env: GO_ENV, tmpMb: 1024 });
 }
 
-async function compile(dir: string, language: Language, source: string, opts: { test?: boolean; harness?: string } = {}) {
+async function compile(dir: string, language: Language, source: string, opts: { test?: boolean; harness?: string; nonce?: string } = {}) {
   if (language === "kernel") return compileKernel(dir, source, !!opts.test);
   if (language === "go") return compileGo(dir, source, opts.test ? (opts.harness ?? "") : null);
-  if (language === "asm") return compileAsm(dir, source, opts.test ? (opts.harness ?? "") : null);
+  if (language === "asm") return compileAsm(dir, source, opts.test ? (opts.harness ?? "") : null, opts.nonce);
   if (language === "c") {
     await writeFile(path.join(dir, "main.c"), source);
     await writeFile(path.join(dir, "bm_init.c"), C_STDIO_INIT);
@@ -386,7 +454,7 @@ export function runProgram(language: Language, code: string, stdin = ""): Promis
         const crash = k.timedOut ? null : kernelCrash(k);
         return { ok: !crash, phase: "run", compileOutput, stdout: k.stdout, stderr: k.debug.trim(), exitCode: k.exitStatus === 1 ? 0 : k.exitStatus, error: crash, durationMs: c.ms + k.ms };
       }
-      const r = await exec(dir, ["./prog"], { timeoutMs: RUN_TIMEOUT_MS, stdin, limits: language === "go" ? goRunLimits() : runLimits(), env: runEnv });
+      const r = await exec(dir, ["./prog"], { run: true, timeoutMs: RUN_TIMEOUT_MS, stdin, limits: language === "go" ? goRunLimits() : runLimits(), env: runEnv });
       const error = r.timedOut
         ? `Your program ran for more than ${RUN_TIMEOUT_MS / 1000} seconds and was stopped. Is there a loop that never ends, or is it waiting for input?`
         : r.truncated
@@ -405,6 +473,20 @@ async function keepOnlyProgram(dir: string) {
   for (const f of await readdir(dir)) if (f !== "prog") await rm(path.join(dir, f), { recursive: true, force: true });
 }
 
+/** Text with no honest use in a solution: the harness's result protocol, its internals, and load-time hooks. */
+const TAMPER_PATTERNS: RegExp[] = [
+  /@@\s*(?:RUN|PASS|FAIL|EXC|NONCE)/,
+  /---\s+(?:PASS|FAIL):/,
+  /__bm_tests|\bbm_test\b|__bm_student/,
+  /\.incbin|\.init_array|\.preinit_array|\.fini_array|link_section|__attribute__\s*\(\(\s*(?:constructor|destructor)/,
+  /\/proc\/(?:self|\d)/,
+];
+
+function harnessTampering(code: string): string | null {
+  if (!TAMPER_PATTERNS.some((re) => re.test(code))) return null;
+  return "Your code contains text that belongs to the test harness (its result lines, internal names, load-time hooks or a read of /proc). Tests can't be checked while it's there. Remove it and run the tests again.";
+}
+
 const normalizeOut = (s: string) => s.replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, "").trimEnd();
 
 /** Run an exercise's tests against learner code. */
@@ -412,10 +494,13 @@ export function testExercise(exercise: Exercise, code: string): Promise<TestResu
   return withSlot(() =>
     withWorkdir(async (dir) => {
       if (exercise.mode === "stdout") return testStdout(dir, exercise, code);
-      if (exercise.language === "kernel") return testKernelHarness(dir, exercise, code);
+      const tampering = harnessTampering(code);
+      if (tampering) return { compiled: true, compileOutput: "", results: [], allPassed: false, output: "", error: tampering };
+      const nonce = randomBytes(12).toString("hex"); // unique to this run, so printed text can't pose as a result
+      if (exercise.language === "kernel") return testKernelHarness(dir, exercise, code, nonce);
       if (exercise.language === "go") return testGoHarness(dir, exercise, code);
-      if (exercise.language === "asm") return testAsmHarness(dir, exercise, code);
-      if (exercise.language === "c") return testCHarness(dir, exercise, code);
+      if (exercise.language === "asm") return testAsmHarness(dir, exercise, code, nonce);
+      if (exercise.language === "c") return testCHarness(dir, exercise, code, nonce);
       return testRustHarness(dir, exercise, code);
     }),
   );
@@ -429,7 +514,7 @@ async function testStdout(dir: string, ex: Exercise, code: string): Promise<Test
   let output = "";
   let error: string | null = null;
   for (const tc of ex.cases ?? []) {
-    const r = await exec(dir, ["./prog"], { timeoutMs: RUN_TIMEOUT_MS, stdin: tc.stdin ?? "", limits: ex.language === "go" ? goRunLimits() : runLimits(), env: runEnv });
+    const r = await exec(dir, ["./prog"], { run: true, timeoutMs: RUN_TIMEOUT_MS, stdin: tc.stdin ?? "", limits: ex.language === "go" ? goRunLimits() : runLimits(), env: runEnv });
     output = r.stdout + r.stderr;
     const crash = r.timedOut ? "Timed out." : (signalMessage(r.signal, r.code) ?? undefinedBehaviour(r.stderr));
     if (crash) error = crash;
@@ -443,26 +528,32 @@ async function testStdout(dir: string, ex: Exercise, code: string): Promise<Test
   return { compiled: true, compileOutput, results, allPassed: results.every((r) => r.passed), output, error };
 }
 
-function testCHarness(dir: string, ex: Exercise, code: string): Promise<TestResult> {
-  return runCHarness(dir, () => compile(dir, "c", cTestSource(code, ex.harness ?? ""), { test: true }));
+function testCHarness(dir: string, ex: Exercise, code: string, nonce: string): Promise<TestResult> {
+  return runCHarness(dir, nonce, () => compile(dir, "c", cTestSource(code, ex.harness ?? "", nonce), { test: true }));
 }
 
-function testAsmHarness(dir: string, ex: Exercise, code: string): Promise<TestResult> {
-  return runCHarness(dir, () => compile(dir, "asm", code, { test: true, harness: ex.harness ?? "" }));
+function testAsmHarness(dir: string, ex: Exercise, code: string, nonce: string): Promise<TestResult> {
+  return runCHarness(dir, nonce, () => compile(dir, "asm", code, { test: true, harness: ex.harness ?? "", nonce }));
 }
 
-/** Reads the @@RUN / @@PASS / @@FAIL protocol the CHECK macro prints. Other lines are the learner's own output. */
-function parseHarnessOutput(text: string) {
+/**
+ * Results are only trusted if they carry this run's nonce. A line that merely looks like a
+ * result is the learner's own output. The nonce lives in the compiled harness, so this stops
+ * copy-pasted or hard-coded forgeries; code that reads the test binary back can still forge
+ * (see docs/security-audit.md, L1).
+ */
+function parseHarnessOutput(text: string, nonce: string) {
+  const tag = (kind: string) => `@@${kind} ${nonce} `;
   const results: TestCaseResult[] = [];
   let running: string | null = null;
   const userOutput: string[] = [];
   for (const line of text.split("\n")) {
-    if (line.startsWith("@@RUN ")) running = line.slice(6);
-    else if (line.startsWith("@@PASS ")) {
-      results.push({ name: line.slice(7), passed: true });
+    if (line.startsWith(tag("RUN"))) running = line.slice(tag("RUN").length);
+    else if (line.startsWith(tag("PASS"))) {
+      results.push({ name: line.slice(tag("PASS").length), passed: true });
       running = null;
-    } else if (line.startsWith("@@FAIL ")) {
-      const [name, ...msg] = line.slice(7).split("\t");
+    } else if (line.startsWith(tag("FAIL"))) {
+      const [name, ...msg] = line.slice(tag("FAIL").length).split("\t");
       results.push({ name, passed: false, message: msg.join("\t") });
       running = null;
     } else if (line.trim() && !line.startsWith("@@EXC ")) userOutput.push(line);
@@ -470,25 +561,25 @@ function parseHarnessOutput(text: string) {
   return { results, running, userOutput };
 }
 
-async function testKernelHarness(dir: string, ex: Exercise, code: string): Promise<TestResult> {
-  const c = await compile(dir, "kernel", kernelTestSource(code, ex.harness ?? ""), { test: true });
+async function testKernelHarness(dir: string, ex: Exercise, code: string, nonce: string): Promise<TestResult> {
+  const c = await compile(dir, "kernel", kernelTestSource(code, ex.harness ?? "", nonce), { test: true });
   const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
   if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: "Your code didn't compile." };
   const k = await bootKernel(dir);
-  const { results, running } = parseHarnessOutput(k.debug);
+  const { results, running } = parseHarnessOutput(k.debug, nonce);
   const error = kernelCrash(k);
   if (running) results.push({ name: running, passed: false, message: error ?? "The kernel stopped during this test." });
   const allPassed = !error && results.length > 0 && results.every((t) => t.passed);
   return { compiled: true, compileOutput, results, allPassed, output: k.stdout.trim(), error };
 }
 
-async function runCHarness(dir: string, build: () => ReturnType<typeof exec>): Promise<TestResult> {
+async function runCHarness(dir: string, nonce: string, build: () => ReturnType<typeof exec>): Promise<TestResult> {
   const c = await build();
   const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
   if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: "Your code didn't compile." };
   await keepOnlyProgram(dir);
-  const r = await exec(dir, ["./prog"], { timeoutMs: RUN_TIMEOUT_MS, limits: runLimits(), env: runEnv });
-  const { results, running, userOutput } = parseHarnessOutput(r.stdout);
+  const r = await exec(dir, ["./prog"], { run: true, timeoutMs: RUN_TIMEOUT_MS, limits: runLimits(), env: runEnv });
+  const { results, running, userOutput } = parseHarnessOutput(r.stdout, nonce);
   const crash = r.timedOut ? `Timed out after ${RUN_TIMEOUT_MS / 1000}s — is there a loop that never ends?` : signalMessage(r.signal, r.code);
   const error = crash ?? undefinedBehaviour(r.stderr);
   if (running) results.push({ name: running, passed: false, message: error ?? "The program stopped during this test." });
@@ -501,7 +592,7 @@ async function testGoHarness(dir: string, ex: Exercise, code: string): Promise<T
   const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
   if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: c.timedOut ? "Compilation took too long." : "Your code didn't compile." };
   await keepOnlyProgram(dir);
-  const r = await exec(dir, ["./prog", "-test.v", "-test.timeout=5s", "-test.count=1"], { timeoutMs: RUN_TIMEOUT_MS * 2, limits: goRunLimits(), env: runEnv });
+  const r = await exec(dir, ["./prog", "-test.v", "-test.timeout=5s", "-test.count=1"], { run: true, timeoutMs: RUN_TIMEOUT_MS * 2, limits: goRunLimits(), env: runEnv });
   const results: TestCaseResult[] = [];
   const lines = r.stdout.split("\n");
   // `go test -v` prints "=== RUN Name", the test's own output / t.Errorf lines (indented), then "--- PASS|FAIL: Name (0.00s)".
@@ -539,7 +630,7 @@ async function testRustHarness(dir: string, ex: Exercise, code: string): Promise
   const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
   if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: "Your code didn't compile." };
   await keepOnlyProgram(dir);
-  const r = await exec(dir, ["./prog", "--test-threads=1", "--color", "never"], { timeoutMs: RUN_TIMEOUT_MS * 2, limits: runLimits(), env: runEnv });
+  const r = await exec(dir, ["./prog", "--test-threads=1", "--color", "never"], { run: true, timeoutMs: RUN_TIMEOUT_MS * 2, limits: runLimits(), env: runEnv });
   const results: TestCaseResult[] = [];
   const failures = new Map<string, string>();
   // Collect panic messages from the "---- name stdout ----" sections.

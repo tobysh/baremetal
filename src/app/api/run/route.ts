@@ -5,7 +5,7 @@ import { levelFor, xpFor } from "@/lib/gamification";
 import { jsonError, readJson, sameOrigin } from "@/lib/http";
 import { recordAttempt } from "@/lib/progress";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { runProgram, testExercise } from "@/lib/runner";
+import { runProgram, testExercise, RunnerBusyError } from "@/lib/runner";
 
 type Body = { exerciseId?: string; code?: string; stdin?: string; mode?: "run" | "test" };
 
@@ -46,6 +46,7 @@ export async function POST(req: Request) {
     const result = await runProgram(found.exercise.language, body.code, stdin);
     return NextResponse.json({ kind: "run", ...result });
   } catch (e) {
+    if (e instanceof RunnerBusyError) return jsonError(503, "The code runner is busy right now. Please try again in a few seconds.");
     console.error("[run] runner failure", e);
     return jsonError(500, "The code runner hit a problem on our side. Please try again.");
   }

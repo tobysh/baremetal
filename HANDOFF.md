@@ -30,7 +30,7 @@ The last full pass was green: `verify:content` for the asm and osdev tracks (wit
 
 ## Suggested next steps
 
-0. **Test-result integrity (`docs/security-audit.md` L1) is mitigated, not fixed.** Learner code can forge passes; XP is paced and sources are hidden at run time. Decide whether to move the verdict out of the learner's process before the leaderboard is public.
+0. **Test-result integrity (`docs/security-audit.md` L1) is mitigated, not fixed.** Results carry a per-run nonce (C/asm/kernel), submissions containing harness protocol text are rejected, and first-pass XP is paced. A determined learner can still forge by reading the nonce out of their own process. The root fix is an out-of-process verdict (driver prints raw values, server diffs against a reference transcript), which means rewriting the lesson tests. The sandbox is also hardened (seccomp, no user namespaces, read-only work dir at run time, capped tmpfs, bounded queue); cgroup limits and uid separation are deployment tasks in `docs/deployment-hardening.md`.
 1. Start Phase A of `docs/gamification-plan.md` (XP ledger, server-side hint tracking, learner timezone). Phase D's solo features (D1–D4) do not need a userbase.
 2. Decide the community threshold (open decision in the plan) before building D5.
 3. Real-device phone check of the header and lesson workspace (checked in headless Chromium at 390px only).
