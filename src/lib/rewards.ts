@@ -2,7 +2,6 @@ import "server-only";
 import { ObjectId } from "mongodb";
 import { ACHIEVEMENTS, achievementById, type CodexContext } from "./achievements";
 import { getTracks } from "./curriculum";
-import type { Track } from "./curriculum/types";
 import { getDb } from "./db";
 import type { AchievementDoc, ProgressDoc, ReviewDoc, UserDoc } from "./models";
 import { buildContext } from "./rewards-context";

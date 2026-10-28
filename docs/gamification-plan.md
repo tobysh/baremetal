@@ -1,5 +1,15 @@
 # Gamification plan: phase 2
 
+> **Status (28 Oct 2026): phases A to D4 are built.** D5 (community features gated by user count) is deliberately not built.
+> Deviations from the text below:
+> - **Level curve:** `LEVEL_FLOORS` in `gamification.ts` (8, 24, 60, 120, 210, 330, 500, 720, 1000), steeper than the old 4·L·(L−1). Level 10 stays the cap; XP keeps counting.
+> - **Challenges** are stored as their own `progress` documents with the exercise id `<lesson id>#challenge` (so they get saved code and attempts for free), not as a `progress.challenge` field. There is one per language track family: `c-memory/linked-lists`, `rust-foundations/vectors-and-iterators`, `go-foundations/slices-and-maps`, `asm-first-steps/sum-array`. Files: `challenge.md`, `challenge-starter.*`, `challenge-solution.*`, and `challenge-tests.*` or `challenge-cases.json`.
+> - **Weekly rhythm** is computed from `passedAt` timestamps (`src/lib/rhythm.ts`); only `users.weeklyGoal` and `users.timezone` are stored. Paced (XP-withheld) passes don't count.
+> - **Personal bests:** `bestMs` isn't tracked (no timing data). `attemptsAtPass` gives "passed on the first run".
+> - `fifty-runs-unaided` became `unaided-25` ("Own Compass").
+> - Reviews only advance when due; failed runs never reset the schedule, only the "I need a refresher" button does.
+> - Rebuild or backfill with `npm run recompute-xp` (ledger and review schedule) and `npm run backfill-achievements`.
+
 A plan for taking Baremetal's gamification further. Read `CLAUDE.md`, `AGENTS.md` and
 `HANDOFF.md` first. **Finish HANDOFF's "Next steps"** (browser check, e2e re-run, legal updates,
 commit) before starting, so this work lands on a clean, committed tree.

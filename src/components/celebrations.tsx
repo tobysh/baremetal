@@ -59,8 +59,13 @@ export function Celebration({ levelUp, trackComplete, onClose }: { levelUp: Rewa
       if (!focusable.length) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) (e.preventDefault(), last.focus());
-      else if (!e.shiftKey && document.activeElement === last) (e.preventDefault(), first.focus());
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKey);
     return () => {
