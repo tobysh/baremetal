@@ -14,6 +14,7 @@ import { checkPassword } from "@/lib/password";
 import { authRateLimit, logAuthEvent, requestContext } from "@/lib/security";
 import { hashBackupCode, newBackupCodes, newTotpSecret, otpauthUrl, verifyTotp } from "@/lib/totp";
 import { SITE } from "@/lib/site";
+import { validTimezone, WEEKLY_GOALS } from "@/lib/rhythm";
 
 async function mustUser(): Promise<UserDoc> {
   const user = await getUserDoc();
@@ -65,6 +66,27 @@ export async function updateProfile(_prev: FormState, formData: FormData): Promi
   }
   revalidatePath("/settings");
   return { ok: true, message: "Profile saved.", values: { ...values, username: rest.username } };
+}
+
+// ---------- Rhythm (weekly goal and time zone) ----------
+
+export async function updateRhythm(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await mustUser();
+  const goal = Number(formData.get("weeklyGoal"));
+  const timezone = String(formData.get("timezone") ?? "");
+  if (goal !== 0 && !(WEEKLY_GOALS as readonly number[]).includes(goal)) return { errors: { weeklyGoal: ["Pick one of the options"] } };
+  if (!validTimezone(timezone)) return { errors: { timezone: ["Pick a time zone from the list"] } };
+  await (await users()).updateOne({ _id: user._id }, { $set: { weeklyGoal: goal, timezone } });
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
+  return { ok: true, message: "Saved." };
+}
+
+/** Called silently by the dashboard the first time we see a learner, so weeks start on their own Monday. */
+export async function rememberTimezone(timezone: string): Promise<void> {
+  const user = await getUserDoc();
+  if (!user || user.timezone || !validTimezone(timezone)) return;
+  await (await users()).updateOne({ _id: user._id, timezone: { $exists: false } }, { $set: { timezone } });
 }
 
 // ---------- Password ----------
@@ -173,6 +195,9 @@ export async function deleteAccount(_prev: FormState, formData: FormData): Promi
   await Promise.all([
     db.collection("progress").deleteMany({ userId: user._id }),
     db.collection("tutor_threads").deleteMany({ userId: user._id }),
+    db.collection("xp_events").deleteMany({ userId: user._id }),
+    db.collection("achievements").deleteMany({ userId: user._id }),
+    db.collection("reviews").deleteMany({ userId: user._id }),
     db.collection("sessions").deleteMany({ userId: user._id }),
     db.collection("password_resets").deleteMany({ userId: user._id }),
     db.collection("pending_2fa").deleteMany({ userId: user._id }),

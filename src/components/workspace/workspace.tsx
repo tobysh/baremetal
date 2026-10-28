@@ -9,6 +9,7 @@ import { MiniMarkdown } from "./mini-markdown";
 import { explainFailure, type Explanation } from "@/lib/diagnostics";
 import { errorLines } from "@/lib/error-lines";
 import { TutorChat, type ChatMessage, type TutorControl } from "./tutor-chat";
+import { AchievementToasts, Celebration, type Reward, type TrackComplete, type Unlocked } from "../celebrations";
 
 // The editor is the heaviest dependency on the site: load it only in the
 // browser, only on lesson pages, and show the code as plain text until then
@@ -52,9 +53,14 @@ type RunResponse =
       saved: boolean;
       reward: Reward | null;
       paced?: boolean;
+      unaided?: boolean;
+      reviewed?: boolean;
+      achievements?: Unlocked[];
+      trackComplete?: TrackComplete | null;
     };
 
-type Reward = { xp: number; totalXp: number; level: number; title: string; levelUp: boolean };
+/** "lesson" is the normal exercise; "challenge" is its optional harder twin; "review" re-solves a passed lesson for the schedule (no XP). */
+export type Variant = "lesson" | "challenge" | "review";
 
 type Tab = "output" | "hints" | "tutor";
 
@@ -66,6 +72,9 @@ export function Workspace({
   tutorHistory,
   nextHref,
   loginHref,
+  variant = "lesson",
+  initialHints = 0,
+  onPassed,
 }: {
   exercise: PublicExercise;
   initialCode: string | null;
@@ -74,6 +83,10 @@ export function Workspace({
   tutorHistory: ChatMessage[];
   nextHref: string | null;
   loginHref: string;
+  variant?: Variant;
+  /** Hints the server remembers the learner opening, so a reload does not hide them. */
+  initialHints?: number;
+  onPassed?: () => void;
 }) {
   const storageKey = `bm:code:${exercise.id}`;
   // Signed-out visitors keep their code in this browser only.
@@ -89,7 +102,11 @@ export function Workspace({
   const [requestError, setRequestError] = useState<string | null>(null);
   const [passed, setPassed] = useState(alreadyPassed);
   const [tab, setTab] = useState<Tab>("output");
-  const [hintsShown, setHintsShown] = useState(0);
+  const [hintsShown, setHintsShown] = useState(variant === "lesson" ? Math.min(initialHints, exercise.hints.length) : 0);
+  const [toasts, setToasts] = useState<Unlocked[]>([]);
+  const [celebration, setCelebration] = useState<{ levelUp: Reward | null; trackComplete: TrackComplete | null } | null>(null);
+  const dismissToast = useCallback((id: string) => setToasts((t) => t.filter((x) => x.id !== id)), []);
+  const closeCelebration = useCallback(() => setCelebration(null), []);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [confirmReset, setConfirmReset] = useState(false);
   const tutorRef = useRef<TutorControl>(null);
@@ -108,6 +125,7 @@ export function Workspace({
           } catch {}
           return;
         }
+        if (variant === "review") return; // a review starts from the starter and must not overwrite the saved solution
         setSaveState("saving");
         try {
           const res = await fetch("/api/progress", {
@@ -121,7 +139,7 @@ export function Workspace({
         }
       }, 1200);
     },
-    [exercise.id, signedIn, storageKey],
+    [exercise.id, signedIn, storageKey, variant],
   );
 
   // Latest values for callbacks handed to the editor's keymap.
@@ -142,7 +160,7 @@ export function Workspace({
         const res = await fetch("/api/run", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ exerciseId: exercise.id, code: codeRef.current, stdin: stdinRef.current, mode }),
+          body: JSON.stringify({ exerciseId: exercise.id, code: codeRef.current, stdin: stdinRef.current, mode, review: variant === "review" }),
         });
         const body = await res.json();
         if (!res.ok) throw new Error(body.error ?? "Something went wrong running your code.");
@@ -150,7 +168,11 @@ export function Workspace({
         if (body.kind === "test" && body.allPassed) {
           setPassed(true);
           track("test_passed");
-          if (body.reward) router.refresh(); // header XP chip reads the user at request time
+          if (body.reward || body.reviewed) router.refresh(); // header XP chip and dashboard read the user at request time
+          if (variant === "lesson") onPassed?.();
+          if (body.achievements?.length) setToasts((t) => [...t, ...body.achievements]);
+          const levelUp = body.reward?.levelUp ? body.reward : null;
+          if (levelUp || body.trackComplete) setCelebration({ levelUp, trackComplete: body.trackComplete ?? null });
         }
       } catch (e) {
         setRequestError((e as Error).message);
@@ -158,8 +180,16 @@ export function Workspace({
         setBusy(null);
       }
     },
-    [exercise.id, router],
+    [exercise.id, router, variant, onPassed],
   );
+  const openHint = () => {
+    // Remembered on the server (it decides the Unaided seal), but only for the real lesson and never to the learner's cost.
+    if (signedIn && variant === "lesson") {
+      fetch("/api/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ exerciseId: exercise.id, event: "hint", index: hintsShown }) }).catch(() => {});
+    }
+    setHintsShown((n) => n + 1);
+    track("hint_open");
+  };
   const run = useCallback(() => execute("run"), [execute]);
   const test = useCallback(() => execute("test"), [execute]);
 
@@ -319,6 +349,7 @@ export function Workspace({
             nextHref={nextHref}
             signedIn={signedIn}
             onAsk={askTutor}
+            variant={variant}
             explain={(r) =>
               explainFailure({
                 language: exercise.language,
@@ -348,8 +379,7 @@ export function Workspace({
               type="button"
               className="mt-3 h-9 rounded-lg border border-border px-3 text-sm hover:bg-surface-2"
               onClick={() => {
-                setHintsShown((n) => n + 1);
-                track("hint_open");
+                openHint();
               }}
             >
               {hintsShown === 0 ? "Show a hint" : "Show the next hint"}
@@ -372,15 +402,16 @@ export function Workspace({
               hintsShown < exercise.hints.length
                 ? () => {
                     // Authored hints cost nothing — offer them before a model call.
-                    setHintsShown((n) => n + 1);
+                    openHint();
                     setTab("hints");
-                    track("hint_open");
                   }
                 : null
             }
           />
         </div>
       </div>
+      <AchievementToasts items={toasts} onDismiss={dismissToast} />
+      {celebration && <Celebration levelUp={celebration.levelUp} trackComplete={celebration.trackComplete} onClose={closeCelebration} />}
     </div>
   );
 }
@@ -406,6 +437,7 @@ function OutputPanel({
   signedIn,
   onAsk,
   explain,
+  variant,
 }: {
   result: RunResponse | null;
   busy: null | "run" | "test";
@@ -415,6 +447,7 @@ function OutputPanel({
   signedIn: boolean;
   onAsk: (text: string) => void;
   explain: (r: RunResponse) => Explanation[];
+  variant: Variant;
 }) {
   if (busy) {
     return (
@@ -438,7 +471,7 @@ function OutputPanel({
         <p>
           Press <strong className="text-text">Test</strong> to check your solution, or <strong className="text-text">Run</strong> to run your own <code className="font-mono">main</code>.
         </p>
-        {passed && <SuccessBanner nextHref={nextHref} signedIn={signedIn} again />}
+        {passed && <SuccessBanner nextHref={nextHref} signedIn={signedIn} again variant={variant} />}
       </div>
     );
   }
@@ -448,7 +481,7 @@ function OutputPanel({
   const explanations = failed ? explain(result) : [];
   return (
     <div className="space-y-4" aria-live="polite">
-      {result.kind === "test" && result.allPassed && <SuccessBanner nextHref={nextHref} signedIn={signedIn} reward={result.reward} paced={result.paced} />}
+      {result.kind === "test" && result.allPassed && <SuccessBanner nextHref={nextHref} signedIn={signedIn} reward={result.reward} paced={result.paced} unaided={result.unaided} reviewed={result.reviewed} variant={variant} />}
 
       {explanations.length > 0 && (
         <section aria-labelledby="what-went-wrong" className="space-y-2">
@@ -526,13 +559,34 @@ function OutputPanel({
   );
 }
 
-function SuccessBanner({ nextHref, signedIn, again = false, reward = null, paced = false }: { nextHref: string | null; signedIn: boolean; again?: boolean; reward?: Reward | null; paced?: boolean }) {
+function SuccessBanner({
+  nextHref,
+  signedIn,
+  again = false,
+  reward = null,
+  paced = false,
+  unaided = false,
+  reviewed = false,
+  variant,
+}: {
+  nextHref: string | null;
+  signedIn: boolean;
+  again?: boolean;
+  reward?: Reward | null;
+  paced?: boolean;
+  unaided?: boolean;
+  reviewed?: boolean;
+  variant: Variant;
+}) {
+  const noun = variant === "challenge" ? "challenge" : "lesson";
   return (
     <div role="status" className="rounded-lg bg-ok-soft p-4 text-sm">
       <p className="font-medium text-ok">
-        {again ? "You've completed this lesson." : "All tests pass — nicely done!"}
+        {again ? `You've completed this ${noun}.` : "All tests pass — nicely done!"}
         {reward && <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-ink">+{reward.xp} XP</span>}
       </p>
+      {unaided && <p className="mt-1">You earned the Unaided seal: no hints and no tutor.</p>}
+      {variant === "review" && <p className="mt-1">{reviewed ? "Review recorded. Your next one is scheduled further out." : "Nicely done. This review wasn't due yet, so the schedule is unchanged."}</p>}
       {paced && <p className="mt-1">This lesson is saved as passed, but no XP was added because you passed several lessons in a few minutes. XP resumes automatically.</p>}
       {reward?.levelUp && (
         <p className="mt-1 font-medium">
@@ -547,7 +601,7 @@ function SuccessBanner({ nextHref, signedIn, again = false, reward = null, paced
           to save this progress.
         </p>
       )}
-      {nextHref && (
+      {nextHref && variant === "lesson" && (
         <Link href={nextHref} className="mt-3 inline-flex h-9 items-center rounded-lg bg-accent px-3 font-medium text-accent-ink">
           Next lesson →
         </Link>

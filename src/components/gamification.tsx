@@ -44,7 +44,7 @@ export function LevelProgress({ xp }: { xp: number }) {
         <ProgressBar value={l.progress} label={`Progress to level ${l.level + 1}`} />
       </div>
       <p className="mt-2 text-xs text-muted">
-        {l.next === null ? "Maximum level — you've mastered every lesson." : `${l.next - xp} XP to level ${l.level + 1}`}
+        {l.next === null ? "Maximum level. Challenges still earn XP." : `${l.next - xp} XP to level ${l.level + 1}`}
       </p>
     </div>
   );

@@ -7,7 +7,8 @@ import { DifficultyBadge, LevelProgress } from "@/components/gamification";
 import { Card, Container, ProgressBar, Skeleton } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import { getPublicProfile } from "@/lib/community";
-import { USERNAME_RE } from "@/lib/gamification";
+import { USERNAME_RE, levelFor, titleBlurb } from "@/lib/gamification";
+import { Seal } from "@/components/seals";
 
 type Params = PageProps<"/u/[username]">["params"];
 
@@ -72,6 +73,8 @@ async function Profile({ params }: { params: Params }) {
 
       <Card className="mt-8 p-6 sm:p-8">
         <LevelProgress xp={profile.xp} />
+        <p className="mt-3 text-sm text-text-2">{levelFor(profile.xp).title}: {titleBlurb(levelFor(profile.xp).level)}</p>
+        {profile.bestRhythm > 0 && <p className="mt-1 text-sm text-muted">Best weekly rhythm: {profile.bestRhythm} {profile.bestRhythm === 1 ? "week" : "weeks"} in a row.</p>}
       </Card>
 
       <h2 className="display-sm mt-10 text-lg font-bold">
@@ -88,12 +91,34 @@ async function Profile({ params }: { params: Params }) {
                 {t.done}/{t.total}
               </span>
             </div>
+            {(t.unaided > 0 || t.challenges > 0) && (
+              <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+                {t.unaided > 0 && <span className="inline-flex items-center gap-1.5"><Seal kind="unaided" earned size={14} /> {t.unaided} unaided</span>}
+                {t.challenges > 0 && <span className="inline-flex items-center gap-1.5"><Seal kind="challenge" earned size={14} /> {t.challenges} {t.challenges === 1 ? "challenge" : "challenges"}</span>}
+              </p>
+            )}
             <div className="mt-2">
               <ProgressBar value={t.done / t.total} label={`${t.title} progress`} />
             </div>
           </Card>
         ))}
       </ul>
+
+      <h2 className="display-sm mt-10 text-lg font-bold">
+        Achievements <span className="text-sm font-normal text-muted">· {profile.achievements.length}</span>
+      </h2>
+      {profile.achievements.length === 0 ? (
+        <p className="mt-3 text-sm text-muted">None yet.</p>
+      ) : (
+        <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+          {profile.achievements.map((a) => (
+            <Card as="li" key={a.name} className="p-4">
+              <p className="font-medium">{a.name}</p>
+              <p className="mt-0.5 text-sm text-muted">{a.description}</p>
+            </Card>
+          ))}
+        </ul>
+      )}
 
       <h2 className="display-sm mt-10 text-lg font-bold">Recently completed</h2>
       {profile.recent.length === 0 ? (

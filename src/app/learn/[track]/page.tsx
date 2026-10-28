@@ -1,3 +1,6 @@
+import { SealRow } from "@/components/seals";
+import { sealsFor } from "@/lib/rewards-context";
+import type { ProgressDoc } from "@/lib/models";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -121,12 +124,13 @@ async function TrackContent({ params }: { params: PageProps<"/learn/[track]">["p
   );
 }
 
-function LessonList({ trackSlug, passed }: { trackSlug: string; passed?: Set<string> }) {
+function LessonList({ trackSlug, progress }: { trackSlug: string; progress?: Map<string, ProgressDoc> }) {
   const track = getTrack(trackSlug)!;
   return (
     <ol className="mt-4 divide-y divide-border overflow-hidden panel">
       {track.lessons.map((l, i) => {
-        const done = passed?.has(l.exercise.id);
+        const done = progress?.get(l.exercise.id)?.status === "passed";
+        const seals = progress ? sealsFor(progress, l.exercise.id) : null;
         return (
           <li key={l.slug}>
             <Link href={lessonPath(track.slug, l.slug)} className="flex items-start gap-4 p-5 hover:bg-surface-2">
@@ -157,6 +161,7 @@ function LessonList({ trackSlug, passed }: { trackSlug: string; passed?: Set<str
               </span>
               <span className="flex shrink-0 flex-col items-end gap-1">
                 <DifficultyBadge difficulty={l.difficulty} />
+                {seals ? <SealRow seals={seals} hasChallenge={!!l.challenge} /> : l.challenge && <span className="text-xs text-muted">Has a challenge</span>}
                 <span className="text-xs text-muted">{l.minutes} min</span>
               </span>
             </Link>
@@ -171,8 +176,7 @@ async function LessonListWithProgress({ trackSlug }: { trackSlug: string }) {
   const user = await getCurrentUser();
   if (!user) return <LessonList trackSlug={trackSlug} />;
   const progress = await getProgressMap(user.id);
-  const passed = new Set([...progress.values()].filter((p) => p.status === "passed").map((p) => p.exerciseId));
-  return <LessonList trackSlug={trackSlug} passed={passed} />;
+  return <LessonList trackSlug={trackSlug} progress={progress} />;
 }
 
 async function CourseAction({ trackSlug }: { trackSlug: string }) {

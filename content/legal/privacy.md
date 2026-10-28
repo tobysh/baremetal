@@ -33,8 +33,10 @@ We rely on one of three legal reasons, called lawful bases, for each kind of dat
 | Account: name, email, password, experience level, date and version of Terms you accepted | To give you an account | Contract | Until you delete your account |
 | Two-factor authentication (optional, required for admins): authenticator secret and backup codes | To keep your account safe when you sign in | Contract; legitimate interest in security | Until you turn it off or delete your account |
 | Sessions: a session token and its creation and expiry times | To keep you signed in | Contract | 30 days, then automatically deleted |
-| Learning progress: code you write in exercises, whether you passed, number of attempts, timestamps | To track your progress through the course | Contract | Until you delete your account |
-| Public profile: username, level, XP and completed lessons | To show your progress on the [leaderboard](/leaderboard) and your public profile page (/u/your-username). Visible to anyone unless you hide your profile with the toggle in [Settings](/settings) | Contract | Until you delete your account or hide your profile |
+| Learning progress: code you write in exercises, whether you passed, number of attempts, how many hints you opened, whether you used the tutor before passing (to award the Unaided seal), timestamps | To track your progress through the course | Contract | Until you delete your account |
+| XP history, achievements and review schedule: when each XP award, achievement and review happened | To show your level, your achievements and the lessons due for review | Contract | Until you delete your account |
+| Learning rhythm: your weekly lesson goal and the time zone your browser reports | To work out your weeks (Monday to Sunday) and your weekly rhythm. You can change both in [Settings](/settings) | Contract | Until you delete your account |
+| Public profile: username, level, XP, completed lessons, seals, achievements and your best weekly rhythm | To show your progress on the [leaderboard](/leaderboard) and your public profile page (/u/your-username). Visible to anyone unless you hide your profile with the toggle in [Settings](/settings) | Contract | Until you delete your account or hide your profile |
 | AI tutor conversations | To answer your questions | Contract | Until you clear them or delete your account |
 | Code you run | To compile and run your code | Contract | Deleted straight after the run (only code saved as progress is kept) |
 | Security logs | To spot and stop attacks on accounts | Legitimate interest | 90 days |
@@ -67,7 +69,7 @@ When you choose a password, we check it against the Have I Been Pwned "Pwned Pas
 
 ### Public profile
 
-If you choose a username, Baremetal shows your username, level, XP and completed lessons on the [leaderboard](/leaderboard) and on your profile page at /u/your-username. Anyone can see these pages, including people who are not signed in. We do not show your name, email or the code you write. You can hide your profile at any time with the profile toggle in [Settings](/settings). When it is hidden, your profile page is not available and you no longer appear on the leaderboard.
+If you choose a username, Baremetal shows your username, level, XP, completed lessons, the seals you have earned, your achievements and your best weekly rhythm on the [leaderboard](/leaderboard) and on your profile page at /u/your-username. Anyone can see these pages, including people who are not signed in. We do not show your name, email or the code you write. You can hide your profile at any time with the profile toggle in [Settings](/settings). When it is hidden, your profile page is not available and you no longer appear on the leaderboard.
 
 ### Security logs and rate limits
 

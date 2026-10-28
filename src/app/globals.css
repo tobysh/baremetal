@@ -324,3 +324,23 @@ input:hover:not(:disabled), textarea:hover:not(:disabled), select:hover:not(:dis
 .prose th, .prose td { border: 1px solid var(--border); padding: 0.45em 0.7em; text-align: left; vertical-align: top; }
 .prose th { background: var(--surface-2); font-weight: 600; }
 .prose hr { border-color: var(--border); margin: 2em 0; }
+
+/* ---- Celebration moments: short and quiet. Confetti and the pop only run if motion is welcome. ---- */
+@media (prefers-reduced-motion: no-preference) {
+  .toast-in { animation: toast-in 0.25s ease-out; }
+  .celebrate-in { animation: celebrate-in 0.22s ease-out; }
+  .confetti span {
+    position: absolute;
+    top: -12px;
+    width: 7px;
+    height: 12px;
+    border-radius: 1px;
+    animation: confetti-fall 2.4s ease-in forwards;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti { display: none; }
+}
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes celebrate-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes confetti-fall { to { transform: translateY(26rem) rotate(300deg); opacity: 0; } }

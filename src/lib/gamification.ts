@@ -9,6 +9,12 @@ export const DIFFICULTIES = {
 export type Difficulty = keyof typeof DIFFICULTIES;
 export const isDifficulty = (v: unknown): v is Difficulty => typeof v === "string" && v in DIFFICULTIES;
 export const xpFor = (d: Difficulty) => DIFFICULTIES[d].xp;
+/** A lesson's optional challenge is worth half its XP, rounded up (easy 3, medium 5, hard 10, impossible 20). */
+export const challengeXpFor = (d: Difficulty) => Math.ceil(DIFFICULTIES[d].xp / 2);
+/** Challenges are stored as exercises with this suffix on the lesson's id. */
+export const CHALLENGE_SUFFIX = "#challenge";
+export const isChallengeId = (id: string) => id.endsWith(CHALLENGE_SUFFIX);
+export const challengeIdOf = (lessonExerciseId: string) => lessonExerciseId + CHALLENGE_SUFFIX;
 
 // Cumulative XP needed to reach each level (index 0 is level 1). Levels 2 and 3 come quickly so a new learner feels
 // movement; after that each level costs noticeably more than the last: 8, 24, 60, 120, 210, 330, 500, 720, 1000.
@@ -18,6 +24,19 @@ const xpToReach = (level: number) => LEVEL_FLOORS[level - 1] ?? Infinity;
 
 // Medieval ranks, all respectable: everyone starts as a Novice.
 const TITLES = ["Novice", "Apprentice", "Squire", "Scribe", "Knight", "Ranger", "Paladin", "Sorcerer", "Oracle", "Archmage"];
+const TITLE_BLURBS = [
+  "Everyone starts here. Your first program is a few minutes away.",
+  "You can print, store values and make simple decisions.",
+  "You can hold your own with loops and functions.",
+  "You write careful, readable code and can read someone else's.",
+  "You understand how memory is laid out and handle pointers with care.",
+  "You build real data structures and know when to reach for each.",
+  "You are at ease with the machine: bits, bytes and the borrow checker.",
+  "You combine ideas from several languages and lean on the standard tools.",
+  "You can reason about code at every level, from source to silicon.",
+  "You have worked through the whole road. Challenges still earn XP.",
+];
+export const titleBlurb = (level: number) => TITLE_BLURBS[Math.min(level, TITLE_BLURBS.length) - 1];
 
 export type LevelInfo = {
   level: number;

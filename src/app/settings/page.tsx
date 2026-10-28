@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { CookieSettingsButton } from "@/components/consent";
-import { PasswordForm, PrivacyControls, ProfileForm } from "@/components/settings/settings-forms";
+import { PasswordForm, PrivacyControls, ProfileForm, RhythmForm } from "@/components/settings/settings-forms";
 import { SettingsNav, SettingsSkeleton } from "@/components/settings/settings-nav";
 import { Card, Container } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
@@ -35,6 +35,13 @@ async function SettingsBody() {
         <p className="mt-1 break-words text-sm text-muted">Signed in as {user.email}</p>
         <div className="mt-5">
           <ProfileForm name={user.name} username={user.username} experience={user.experience} profilePublic={user.profilePublic} />
+        </div>
+      </Card>
+      <Card as="section" className="p-6">
+        <h2 className="display-sm text-lg font-bold">Learning rhythm</h2>
+        <p className="mt-1 text-sm text-muted">Set a gentle weekly goal. There are no streak penalties and no reminders.</p>
+        <div className="mt-5">
+          <RhythmForm weeklyGoal={user.weeklyGoal} timezone={user.timezone} />
         </div>
       </Card>
       <Card as="section" className="p-6">

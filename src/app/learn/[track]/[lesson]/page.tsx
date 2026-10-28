@@ -7,12 +7,15 @@ import { LessonSkeleton } from "@/components/skeletons";
 import { Markdown } from "@/components/markdown";
 import { DifficultyBadge } from "@/components/gamification";
 import { Badge, Skeleton } from "@/components/ui";
-import { Workspace } from "@/components/workspace/workspace";
+import { LessonWorkspace } from "@/components/workspace/lesson-workspace";
+import { SealRow } from "@/components/seals";
 import { LessonLayout } from "@/components/workspace/lesson-layout";
 import { getCurrentUser } from "@/lib/auth";
 import { getLesson, getTracks, lessonPath } from "@/lib/curriculum";
 import { toPublicExercise } from "@/lib/curriculum/types";
-import { getProgress, getTutorThread } from "@/lib/progress";
+import { challengeIdOf, challengeXpFor } from "@/lib/gamification";
+import { sealsFor } from "@/lib/rewards-context";
+import { getProgress, getProgressMap, getReviewFor, getTutorThread } from "@/lib/progress";
 import { SITE, absoluteUrl } from "@/lib/site";
 import { LANGUAGE_LABEL } from "@/lib/curriculum/types";
 
@@ -34,18 +37,18 @@ export async function generateMetadata({ params }: PageProps<"/learn/[track]/[le
   };
 }
 
-export default function LessonPage({ params }: PageProps<"/learn/[track]/[lesson]">) {
+export default function LessonPage({ params, searchParams }: PageProps<"/learn/[track]/[lesson]">) {
   // URL data is read inside the boundary so client navigations between lessons
   // can show the skeleton immediately. Generated lesson paths are still fully
   // prerendered at build time.
   return (
     <Suspense fallback={<LessonSkeleton />}>
-      <Lesson params={params} />
+      <Lesson params={params} searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function Lesson({ params }: { params: PageProps<"/learn/[track]/[lesson]">["params"] }) {
+async function Lesson({ params, searchParams }: { params: PageProps<"/learn/[track]/[lesson]">["params"]; searchParams: PageProps<"/learn/[track]/[lesson]">["searchParams"] }) {
   const { track: t, lesson: l } = await params;
   const found = getLesson(t, l);
   if (!found) notFound();
@@ -103,6 +106,9 @@ async function Lesson({ params }: { params: PageProps<"/learn/[track]/[lesson]">
             <DifficultyBadge difficulty={lesson.difficulty} />
             <Badge>{lesson.minutes} min</Badge>
             {lesson.kind === "review" && <Badge tone="accent">Review</Badge>}
+            <Suspense fallback={null}>
+              <LessonSeals exerciseId={exercise.id} hasChallenge={!!lesson.challenge} />
+            </Suspense>
           </div>
           {lesson.tags.length > 0 && (
             <ul aria-label="Topics" className="mt-2 flex flex-wrap gap-1.5">
@@ -144,7 +150,7 @@ async function Lesson({ params }: { params: PageProps<"/learn/[track]/[lesson]">
       } workspace={
         <div className="min-w-0">
           <Suspense fallback={<WorkspaceSkeleton starter={exercise.starter} />}>
-            <WorkspaceLoader exerciseId={exercise.id} path={path} nextHref={nextHref} trackSlug={track.slug} lessonSlug={lesson.slug} />
+            <WorkspaceLoader exerciseId={exercise.id} path={path} nextHref={nextHref} trackSlug={track.slug} lessonSlug={lesson.slug} searchParams={searchParams} />
           </Suspense>
         </div>
       } />
@@ -152,16 +158,35 @@ async function Lesson({ params }: { params: PageProps<"/learn/[track]/[lesson]">
   );
 }
 
-async function WorkspaceLoader({ exerciseId, path, nextHref, trackSlug, lessonSlug }: { exerciseId: string; path: string; nextHref: string | null; trackSlug: string; lessonSlug: string }) {
+async function LessonSeals({ exerciseId, hasChallenge }: { exerciseId: string; hasChallenge: boolean }) {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const progress = await getProgressMap(user.id);
+  return <SealRow seals={sealsFor(progress, exerciseId)} hasChallenge={hasChallenge} size={22} />;
+}
+
+async function WorkspaceLoader({ exerciseId, path, nextHref, trackSlug, lessonSlug, searchParams }: { exerciseId: string; path: string; nextHref: string | null; trackSlug: string; lessonSlug: string; searchParams: PageProps<"/learn/[track]/[lesson]">["searchParams"] }) {
   const { lesson } = getLesson(trackSlug, lessonSlug)!;
   const user = await getCurrentUser();
-  const [progress, thread] = user ? await Promise.all([getProgress(user.id, exerciseId), getTutorThread(user.id, exerciseId)]) : [null, null];
+  const wantReview = (await searchParams).review === "1";
+  const [progress, thread, challengeProgress, review] = user
+    ? await Promise.all([
+        getProgress(user.id, exerciseId),
+        getTutorThread(user.id, exerciseId),
+        lesson.challenge ? getProgress(user.id, challengeIdOf(exerciseId)) : null,
+        getReviewFor(user.id, exerciseId),
+      ])
+    : [null, null, null, null];
   return (
-    <Workspace
-      exercise={toPublicExercise(lesson.exercise)}
-      initialCode={progress?.code ?? null}
+    <LessonWorkspace
+      lesson={toPublicExercise(lesson.exercise)}
+      lessonCode={progress?.code || null}
+      lessonPassed={progress?.status === "passed"}
+      initialHints={progress?.hintsUsed ?? 0}
+      challenge={lesson.challenge ? { exercise: toPublicExercise(lesson.challenge.exercise), code: challengeProgress?.code || null, passed: challengeProgress?.status === "passed", xp: challengeXpFor(lesson.difficulty) } : null}
+      review={review ? { due: review.dueAt <= new Date(), dueOn: review.dueAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) } : null}
+      startInReview={wantReview}
       signedIn={!!user}
-      alreadyPassed={progress?.status === "passed"}
       tutorHistory={(thread?.messages ?? []).map((m) => ({ role: m.role, content: m.content }))}
       nextHref={nextHref}
       loginHref={`/login?next=${encodeURIComponent(path)}`}

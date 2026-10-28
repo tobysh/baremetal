@@ -32,8 +32,21 @@ for (const track of getTracks()) {
     if (!start.compiled) problems.push(`starter does not compile (it should, so beginners start from a working state):\n${start.compileOutput}`);
     else if (start.allPassed) problems.push("starter already passes all tests");
 
+    const ch = lesson.challenge?.exercise;
+    if (ch) {
+      // A challenge must be solvable, must not be satisfied by the plain lesson solution, and must start from a failing, compiling state.
+      const csol = await testExercise(ch, ch.solution);
+      if (!csol.compiled) problems.push(`challenge solution does not compile:\n${csol.compileOutput}`);
+      else if (!csol.allPassed) problems.push(`challenge solution fails:\n${csol.results.filter((r) => !r.passed).map((r) => `  - ${r.name}: ${r.message}`).join("\n")}`);
+      const plain = await testExercise(ch, ex.solution);
+      if (plain.allPassed) problems.push("the plain lesson solution already passes the challenge, so it is not a challenge");
+      const cstart = await testExercise(ch, ch.starter);
+      if (!cstart.compiled) problems.push(`challenge starter does not compile:\n${cstart.compileOutput}`);
+      else if (cstart.allPassed) problems.push("challenge starter already passes");
+    }
+
     const status = problems.length ? "FAIL" : "ok  ";
-    console.log(`  ${status} ${lesson.slug} (${sol.results.length} tests)`);
+    console.log(`  ${status} ${lesson.slug} (${sol.results.length} tests${ch ? ", challenge checked" : ""})`);
     for (const p of problems) console.log(`       ${p.replaceAll("\n", "\n       ")}`);
     if (problems.length) failed++;
   }

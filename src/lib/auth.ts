@@ -1,3 +1,4 @@
+import { goalOf } from "./rhythm";
 import "server-only";
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
@@ -99,6 +100,10 @@ export type CurrentUser = {
   username: string | null;
   xp: number;
   profilePublic: boolean;
+  /** IANA zone, or null until the browser has reported one. */
+  timezone: string | null;
+  /** Lessons per week the learner is aiming for (0 = none). */
+  weeklyGoal: number;
 };
 
 async function loadUser(): Promise<UserDoc | null> {
@@ -134,6 +139,8 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     username: user.username ?? null,
     xp: user.xp ?? 0,
     profilePublic: user.profilePublic !== false,
+    timezone: user.timezone ?? null,
+    weeklyGoal: goalOf(user.weeklyGoal),
   };
 });
 

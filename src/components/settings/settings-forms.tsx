@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useState, useSyncExternalStore, useTransition } from "react";
 import { Checkbox, Field, FormAlert, PasswordField, SubmitButton } from "@/components/forms";
 import { initialFormState, type FormState } from "@/lib/forms";
 import { EXPERIENCE_LEVELS, type ExperienceLevel } from "@/lib/models";
@@ -13,6 +13,7 @@ import {
   disableTwoFactor,
   regenerateBackupCodes,
   updateProfile,
+  updateRhythm,
 } from "@/app/settings/actions";
 
 export function ProfileForm({
@@ -71,6 +72,62 @@ export function ProfileForm({
       <SubmitButton pendingText="Saving…">Save profile</SubmitButton>
     </form>
   );
+}
+
+export function RhythmForm({ weeklyGoal, timezone }: { weeklyGoal: number; timezone: string | null }) {
+  const [state, action] = useActionState(updateRhythm, initialFormState);
+  // The list comes from the browser; the saved zone is always included so the select can show it.
+  const zones = useSyncExternalStore(
+    () => () => {},
+    () => zoneListKey(timezone),
+    () => timezone ?? "UTC",
+  ).split("|");
+  const detected = useSyncExternalStore(() => () => {}, () => Intl.DateTimeFormat().resolvedOptions().timeZone, () => "UTC");
+  return (
+    <form action={action} className="space-y-5" noValidate>
+      <FormAlert state={state} />
+      <div>
+        <label htmlFor="weeklyGoal" className="block text-sm font-medium">
+          Weekly goal
+        </label>
+        <select id="weeklyGoal" name="weeklyGoal" defaultValue={String(weeklyGoal)} className="mt-1.5 block h-11 w-full rounded-lg border border-field bg-bg px-3">
+          <option value="0">No goal</option>
+          {[1, 2, 3, 5].map((n) => (
+            <option key={n} value={n}>
+              {n} {n === 1 ? "lesson" : "lessons"} a week
+            </option>
+          ))}
+        </select>
+        <p className="mt-1.5 text-xs text-muted">Lessons and challenges you pass for the first time count. Missing a week is fine: your rhythm just starts again, and we bank rest weeks as you go.</p>
+      </div>
+      <div>
+        <label htmlFor="timezone" className="block text-sm font-medium">
+          Time zone
+        </label>
+        <select id="timezone" name="timezone" defaultValue={timezone ?? detected} className="mt-1.5 block h-11 w-full rounded-lg border border-field bg-bg px-3">
+          {zones.map((z) => (
+            <option key={z} value={z}>
+              {z.replaceAll("_", " ")}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1.5 text-xs text-muted">Your week runs Monday to Sunday in this zone.</p>
+      </div>
+      <SubmitButton pendingText="Saving…">Save rhythm</SubmitButton>
+    </form>
+  );
+}
+
+function zoneListKey(saved: string | null): string {
+  let zones: string[];
+  try {
+    zones = Intl.supportedValuesOf("timeZone");
+  } catch {
+    zones = [];
+  }
+  const own = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  for (const z of [saved, own, "UTC"]) if (z && !zones.includes(z)) zones.unshift(z);
+  return zones.join("|");
 }
 
 export function PasswordForm({ email, name }: { email: string; name: string }) {

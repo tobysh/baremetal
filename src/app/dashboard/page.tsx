@@ -9,7 +9,16 @@ import { getTracks, lessonPath } from "@/lib/curriculum";
 import { LANGUAGE_LABEL, type Language, type Track } from "@/lib/curriculum/types";
 import { levelFor } from "@/lib/gamification";
 import type { ProgressDoc } from "@/lib/models";
-import { getProgressMap } from "@/lib/progress";
+import { getProgressMap, getReviews } from "@/lib/progress";
+import { CodexPanel, CourseMap, PickCard, ReviewCard, RhythmCard, StatsPanel, type DueReview, type MonthXp } from "@/components/dashboard-sections";
+import { TimezoneSync } from "@/components/timezone-sync";
+import { dailyPick } from "@/lib/daily";
+import { getDb } from "@/lib/db";
+import { ObjectId } from "mongodb";
+import { buildContext } from "@/lib/rewards-context";
+import { getUnlocked } from "@/lib/rewards";
+import { isChallengeId, titleBlurb } from "@/lib/gamification";
+import type { XpEventDoc } from "@/lib/models";
 
 export const metadata: Metadata = {
   title: "Your dashboard",
@@ -28,8 +37,29 @@ type CourseEntry = { track: Track } & ReturnType<typeof courseState>;
 
 async function DashboardBody() {
   const user = await requireUser("/dashboard");
-  const progress = await getProgressMap(user.id);
+  const [progress, reviews, unlockedRows, xpEvents] = await Promise.all([
+    getProgressMap(user.id),
+    getReviews(user.id),
+    getUnlocked(user.id),
+    (await getDb()).collection<XpEventDoc>("xp_events").find({ userId: new ObjectId(user.id) }, { projection: { xp: 1, at: 1 } }).toArray(),
+  ]);
   const tracks = getTracks();
+  const now = new Date();
+  const ctx = buildContext(tracks, [...progress.values()], reviews, { xp: user.xp, timezone: user.timezone ?? "UTC", weeklyGoal: user.weeklyGoal }, now);
+  const lessonOf = new Map(tracks.flatMap((t) => t.lessons.map((l) => [l.exercise.id, { t, l }] as const)));
+  const dueReviews: DueReview[] = reviews
+    .filter((r) => r.dueAt <= now && lessonOf.has(r.exerciseId))
+    .map((r) => ({ href: `/learn/${lessonOf.get(r.exerciseId)!.t.slug}/${lessonOf.get(r.exerciseId)!.l.slug}?review=1`, title: lessonOf.get(r.exerciseId)!.l.title, trackTitle: lessonOf.get(r.exerciseId)!.t.title }));
+  const unlocked = new Map(unlockedRows.map((r) => [r.id, r.unlockedAt]));
+  const months: MonthXp[] = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (5 - i), 1));
+    const next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+    return { label: d.toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" }), xp: xpEvents.filter((e) => e.at >= d && e.at < next).reduce((n, e) => n + e.xp, 0) };
+  });
+  const passedDocs = [...progress.values()].filter((p) => p.status === "passed" && !isChallengeId(p.exerciseId)).sort((a, b) => +(b.passedAt ?? 0) - +(a.passedAt ?? 0));
+  const avgHints = (docs: typeof passedDocs) => docs.reduce((n, p) => n + (p.hintsUsedAtPass ?? 0), 0) / Math.max(1, docs.length);
+  const recentDocs = passedDocs.slice(0, 10);
+  const earlierDocs = passedDocs.slice(10, 20);
   const allLessons = tracks.flatMap((track) => track.lessons.map((lesson) => ({ track, lesson })));
   const passedCount = allLessons.filter(({ lesson }) => progress.get(lesson.exercise.id)?.status === "passed").length;
   const courses: CourseEntry[] = tracks.map((track) => ({ track, ...courseState(track, progress) }));
@@ -48,11 +78,13 @@ async function DashboardBody() {
   const ready = (course: CourseEntry) => Number(!prerequisite(course) || prerequisite(course)!.started);
   const notStarted = courses.filter((course) => !course.started).sort((a, b) => ready(b) - ready(a)).slice(0, 4);
 
+  const pick = dailyPick({ tracks, progress, reviews, userId: user.id, now, skipExerciseId: nextUp?.lesson.exercise.id });
   const level = levelFor(user.xp);
   const xpFill = level.next === null ? 1 : user.xp / level.next;
 
   return (
     <div className="flex flex-col gap-6">
+      {!user.timezone && <TimezoneSync />}
       <div className="flex flex-wrap items-stretch gap-6">
         {nextUp ? (
           <section aria-label="Resume course" className="panel flex min-w-0 flex-[999_1_600px] flex-col justify-between gap-10 p-6 sm:p-8">
@@ -86,12 +118,13 @@ async function DashboardBody() {
         <aside aria-label="Your progress" className="panel flex min-w-0 flex-[1_1_320px] flex-col p-6 sm:p-8">
           <span className="text-sm font-semibold text-accent">Level {level.level}</span>
           <span className="display mt-1.5 text-[38px] font-bold leading-[1.05]">{level.title}</span>
+          <span className="mt-2 text-sm text-muted">{titleBlurb(level.level)}</span>
           <div role="img" aria-label={level.next === null ? `${user.xp} XP, top level` : `${user.xp} of ${level.next} XP`} className="mt-7 h-2.5 overflow-hidden rounded-sm bg-line">
             <div className="h-full bg-accent" style={{ width: `${Math.round(Math.min(1, xpFill) * 100)}%` }} />
           </div>
           <div className="mt-3 flex justify-between gap-2 text-sm">
             <span className="font-medium">{user.xp}{level.next !== null && ` / ${level.next}`} XP</span>
-            <span className="text-muted">{level.next === null ? "Top level" : `${level.next - user.xp} XP to level ${level.level + 1}`}</span>
+            <span className="text-muted">{level.next === null ? "Top level. Challenges still earn XP." : `${level.next - user.xp} XP to level ${level.level + 1}`}</span>
           </div>
           <dl className="mt-auto flex flex-col pt-10">
             <div className="flex items-baseline justify-between border-t border-line py-4">
@@ -105,6 +138,14 @@ async function DashboardBody() {
           </dl>
         </aside>
       </div>
+
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <RhythmCard rhythm={ctx.rhythm} />
+        <ReviewCard due={dueReviews} />
+        {pick && <PickCard pick={pick} />}
+      </div>
+
+      <CourseMap tracks={tracks} progress={progress} />
 
       {alsoActive.length > 0 && (
         <CoursePanel id="also-active" title="In progress" count={alsoActive.length}>
@@ -133,6 +174,16 @@ async function DashboardBody() {
           })}
         </CoursePanel>
       )}
+
+      <CodexPanel unlocked={unlocked} />
+
+      <StatsPanel
+        months={months}
+        seals={{ passed: ctx.passed.size, unaided: [...ctx.passed.values()].filter((p) => p.unaided).length, challenge: ctx.challenges.size }}
+        firstTry={[...ctx.passed.values()].filter((p) => p.attemptsAtPass === 1).length}
+        hints={{ recent: avgHints(recentDocs), earlier: earlierDocs.length ? avgHints(earlierDocs) : null }}
+        tracks={tracks.map((t) => ({ title: t.title, done: t.lessons.filter((l) => ctx.passed.has(l.exercise.id)).length, total: t.lessons.length }))}
+      />
 
       {!user.username && <UsernameNotice userId={user.id} />}
     </div>

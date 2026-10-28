@@ -2,7 +2,7 @@
 // Server-only in practice (uses fs); scripts import it directly.
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
-import { isDifficulty } from "../gamification";
+import { challengeIdOf, isChallengeId, isDifficulty } from "../gamification";
 import { compareTracks } from "./paths";
 import type { Exercise, Lesson, Track } from "./types";
 
@@ -46,6 +46,26 @@ function loadLesson(trackDir: string, dirName: string, language: Track["language
       .map((h) => h.trim())
       .filter(Boolean),
   };
+  const challengeFile = path.join(dir, "challenge.md");
+  let challenge: Lesson["challenge"];
+  if (existsSync(challengeFile)) {
+    const hasTests = existsSync(path.join(dir, `challenge-tests.${harnessExt}`));
+    const brief = read(challengeFile).trim();
+    challenge = {
+      brief,
+      exercise: {
+        id: challengeIdOf(meta.id),
+        language,
+        task: brief,
+        starter: read(path.join(dir, `challenge-starter.${ext}`)),
+        solution: read(path.join(dir, `challenge-solution.${ext}`)),
+        mode: hasTests ? "harness" : "stdout",
+        cases: hasTests ? undefined : JSON.parse(read(path.join(dir, "challenge-cases.json"))),
+        harness: hasTests ? read(path.join(dir, `challenge-tests.${harnessExt}`)) : undefined,
+        hints: [],
+      },
+    };
+  }
   if (!meta.title || !meta.summary || !meta.id) throw new Error(`Lesson ${dir} is missing title, summary or id`);
   if (!isDifficulty(meta.difficulty)) throw new Error(`Lesson ${dir} needs difficulty: easy | medium | hard | impossible`);
   if (meta.kind && meta.kind !== "lesson" && meta.kind !== "review") throw new Error(`Lesson ${dir}: kind must be lesson or review`);
@@ -61,6 +81,7 @@ function loadLesson(trackDir: string, dirName: string, language: Track["language
     tags,
     body: body.trim(),
     exercise,
+    challenge,
   };
 }
 
@@ -96,10 +117,13 @@ export function getLesson(trackSlug: string, lessonSlug: string) {
   return { track, lesson: track.lessons[index], index, prev: track.lessons[index - 1], next: track.lessons[index + 1] };
 }
 
+/** Finds a lesson's exercise, or its challenge when the id ends in "#challenge". */
 export function findExercise(exerciseId: string) {
+  const wantChallenge = isChallengeId(exerciseId);
   for (const track of getTracks()) {
     for (const lesson of track.lessons) {
-      if (lesson.exercise.id === exerciseId) return { track, lesson, exercise: lesson.exercise };
+      if (!wantChallenge && lesson.exercise.id === exerciseId) return { track, lesson, exercise: lesson.exercise, isChallenge: false };
+      if (wantChallenge && lesson.challenge?.exercise.id === exerciseId) return { track, lesson, exercise: lesson.challenge.exercise, isChallenge: true };
     }
   }
   return undefined;

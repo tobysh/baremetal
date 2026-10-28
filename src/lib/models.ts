@@ -18,6 +18,10 @@ export type UserDoc = {
   xp?: number;
   /** Whether the profile appears on /u/<username> and the leaderboard. */
   profilePublic?: boolean;
+  /** IANA time zone name; weeks for the weekly rhythm start on Monday in this zone. Unset until first seen. */
+  timezone?: string;
+  /** Lessons per week the learner is aiming for; 0 means no goal. Unset means the default. */
+  weeklyGoal?: number;
   passwordHash: string;
   experience: ExperienceLevel;
   role: "user" | "admin";
@@ -63,7 +67,22 @@ export type ProgressDoc = {
   xpWithheld?: boolean;
   updatedAt: Date;
   passedAt?: Date;
+  /** Highest number of authored hints the learner has opened (recorded by the server). */
+  hintsUsed?: number;
+  /** Snapshots taken on first pass; they decide the Unaided seal and some achievements. */
+  hintsUsedAtPass?: number;
+  attemptsAtPass?: number;
+  /** Passed without hints or the tutor, after at least one failed run (or on a hard lesson). Cosmetic. */
+  unaided?: boolean;
 };
+
+/** Every XP grant. The unique (userId, source, ref) index is the "award once" guarantee. */
+export type XpEventDoc = { _id: ObjectId; userId: ObjectId; source: "lesson" | "challenge"; ref: string; xp: number; at: Date };
+
+export type AchievementDoc = { _id: ObjectId; userId: ObjectId; id: string; unlockedAt: Date };
+
+/** Spaced review of a passed lesson. Reviews never award XP. */
+export type ReviewDoc = { _id: ObjectId; userId: ObjectId; exerciseId: string; dueAt: Date; interval: number; lastAt: Date; count: number };
 
 export type TutorMessage = { role: "user" | "assistant"; content: string; at: Date };
 

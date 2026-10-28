@@ -39,6 +39,8 @@ export type Lesson = {
   /** Lesson body (markdown). */
   body: string;
   exercise: Exercise;
+  /** Optional harder variant, unlocked once the lesson is passed. Its exercise id is the lesson's plus "#challenge". */
+  challenge?: { brief: string; exercise: Exercise };
 };
 
 export type Track = {
