@@ -1,0 +1,10 @@
+{
+  "title": "Build a Unix Shell in C",
+  "summary": "Write the pieces of a real shell: quoting, fork and exec, pipes, redirection, signals, background jobs and process groups, then clone cat, wc, grep and ls.",
+  "description": "A shell is the program you talk to every day, and it is made of a handful of system calls. You'll tokenise a command line with quotes, start programs with fork, execv and waitpid, search PATH, write the cd and exit builtins, decode exit statuses, connect commands with pipes (two, then any number), redirect with dup2, handle SIGINT and SIGCHLD, run jobs in the background without leaving zombies, put them in their own process groups, expand environment variables, and finish with small clones of cat, wc, grep and ls. Every lesson is tested against real processes running in the sandbox.",
+  "level": "Advanced",
+  "language": "c",
+  "path": "c",
+  "order": 4,
+  "prerequisite": "c-systems"
+}

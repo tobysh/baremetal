@@ -1,0 +1,3 @@
+- `SleepCtx(ctx context.Context, d time.Duration) error` sleeps for `d`, but wakes early if `ctx` is done. It returns `nil` if the full time passed and `ctx.Err()` if the context ended first.
+- `Ticks(ctx context.Context) <-chan int` returns a channel that yields `0, 1, 2, ...` as fast as the receiver takes them. When `ctx` is done it stops and **closes** the channel, even if the receiver has stopped reading.
+- `CallWithTimeout(d time.Duration, f func(ctx context.Context) (int, error)) (int, error)` calls `f` with a context that expires after `d`, and returns `f`'s results. The context must also be cancelled when `CallWithTimeout` returns, to release its resources. (`f` is expected to watch its context; you do not need to abandon it.)

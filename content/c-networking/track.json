@@ -1,0 +1,10 @@
+{
+  "title": "Networking from Scratch in C",
+  "summary": "Speak the wire protocols yourself: byte order, binary headers, sockets, TCP and UDP over loopback, poll(), an HTTP/1.1 request parser and a DNS message builder.",
+  "description": "Every network program is bytes in, bytes out. You'll start with byte order and packed binary headers, move messages through socketpair() and real TCP and UDP sockets on the loopback interface, survive partial reads and writes, frame a line-based protocol, serve many clients with poll() and non-blocking I/O, and finish by parsing an HTTP/1.1 request and building and decoding a DNS message by hand. Everything runs on 127.0.0.1 inside the sandbox, so nothing leaves the machine.",
+  "level": "Advanced",
+  "language": "c",
+  "path": "c",
+  "order": 4,
+  "prerequisite": "c-systems"
+}

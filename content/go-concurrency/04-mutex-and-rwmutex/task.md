@@ -1,0 +1,6 @@
+- `Counter` is a counter safe for use by many goroutines. `Inc()` adds one and `Value() int` returns the current count. The zero value must be ready to use.
+- `Registry` is a map from string to int that is safe for concurrent use. Build it with `NewRegistry() *Registry`. Methods:
+  - `Set(key string, v int)` stores a value.
+  - `Get(key string) (int, bool)` reads a value; the bool says whether the key exists. Use a read lock.
+  - `Incr(key string) int` adds one to the key's value (a missing key counts as 0) and returns the **new** value. It must be one atomic step.
+  - `Len() int` returns the number of keys.

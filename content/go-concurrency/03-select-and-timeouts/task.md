@@ -1,0 +1,4 @@
+- `TrySend(ch chan<- int, v int) bool` sends `v` if that can happen **without waiting** and reports whether it did.
+- `TryRecv(ch <-chan int) (int, bool)` returns a value and `true` if one is available right now. If nothing is ready, or the channel is closed and empty, return `0, false`. It never waits.
+- `RecvTimeout(ch <-chan int, d time.Duration) (int, bool)` waits up to `d` for a value. It returns `0, false` if the time runs out first.
+- `FirstOf(a, b <-chan string) string` returns whichever value arrives first, from either channel.

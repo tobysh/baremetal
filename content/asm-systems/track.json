@@ -1,0 +1,10 @@
+{
+  "title": "Assembly: Calling Conventions & Beyond",
+  "summary": "Go from leaf functions to real programs: stack frames, recursion, libc calls, strings, SSE and SIMD, bit tricks, jump tables and a tiny virtual machine, all in hand-written x86-64.",
+  "description": "You can already write small assembly functions. Now you learn how real code is organised: the System V AMD64 calling convention in full (stack arguments, callee-saved registers, stack alignment), stack frames with local variables, recursion, calling libc from assembly, arrays, structs and strings, floating point with SSE, packed SIMD arithmetic, the bit-scanning instructions, switch statements compiled into jump tables, and how to read and repair compiler output. The track ends with a stack-based bytecode interpreter written entirely in assembly. Every function is checked by hidden C programs, and where the ABI requires it they also verify that you preserved the callee-saved registers.",
+  "level": "Advanced",
+  "language": "asm",
+  "path": "low",
+  "order": 2,
+  "prerequisite": "asm-first-steps"
+}

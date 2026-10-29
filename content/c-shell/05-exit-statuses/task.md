@@ -1,0 +1,4 @@
+Implement two functions. The starter provides `int run_wait(char *const argv[])`, which runs a command and returns the raw `waitpid` status (or `-1` if the fork failed). If the program cannot be started, the child exits with 127.
+
+- `int exit_code(int wstatus)` converts a raw wait status to the shell convention: the exit code for a normal exit, `128 + signal` for a command killed by a signal, and `128 + signal` too for one that is stopped. Return `-1` for a status of `-1`.
+- `int run_list(char *const a[], char *const b[], int op)` runs `a` and then maybe `b`. `op` is `OP_SEQ` (`;`), `OP_AND` (`&&`) or `OP_OR` (`||`), defined in the starter. `b` runs after `a` for `OP_SEQ`, only if `a` returned 0 for `OP_AND`, and only if `a` returned nonzero for `OP_OR`. Return the shell-convention status of the last command that ran.

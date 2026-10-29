@@ -1,0 +1,5 @@
+The starter declares `ErrShort` and `ErrCorrupt`. Use the frame layout from the lesson: `crc` (CRC-32 IEEE over the 4 length bytes and the payload), `len`, `payload`, both integers big-endian.
+
+- `Frame(payload []byte) []byte` returns one frame. An empty payload is allowed.
+- `Unframe(data []byte) (payload []byte, n int, err error)` decodes the frame at the start of `data` and returns the payload and the frame's total size `n`. If there are not enough bytes for the header or for the payload the lengths promise, return `ErrShort`. If the bytes are all there but the checksum is wrong, return `ErrCorrupt`. Never panic on any input, including a length field of 4 billion.
+- `ScanFrames(data []byte) (payloads [][]byte, valid int, err error)` decodes frames one after another. A clean end or a short tail gives `err == nil`. A checksum failure stops the scan and returns an error for which `errors.Is(err, ErrCorrupt)` is true. In every case `payloads` holds the good frames before the stop and `valid` is their total size in bytes.

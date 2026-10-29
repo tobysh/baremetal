@@ -1,0 +1,4 @@
+- `Gen(n int) <-chan int` returns a channel that yields `1, 2, ..., n` in order and is then closed (`n <= 0` gives a channel that is closed immediately). It must return right away; do the sending in a goroutine.
+- `Sum(ch <-chan int) int` receives until `ch` is closed and returns the total.
+- `Preloaded(vals ...int) <-chan int` returns a **buffered** channel with capacity exactly `len(vals)`, already containing the values in order and already closed. Do it without starting a goroutine.
+- `Take(ch <-chan int, n int) []int` receives at most `n` values and returns them. If the channel closes first, return what arrived. Do not wait for more once you have `n`. Return an empty, non-nil slice if nothing arrived.

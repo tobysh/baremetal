@@ -1,0 +1,2 @@
+- `RunAll(tasks ...func())` starts every task in its own goroutine, **all at the same time**, and returns only after every task has finished. (The tests include tasks that wait for each other, so running them one after another will hang.)
+- `Squares(n int) []int` returns a slice of length `n` where element `i` is `i*i`, computing each element in its own goroutine. For `n <= 0` return an empty, non-nil slice.

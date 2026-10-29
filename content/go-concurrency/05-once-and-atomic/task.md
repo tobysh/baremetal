@@ -1,0 +1,6 @@
+- `Lazy` holds an integer that is computed on first use. `(*Lazy).Get(init func() int) int` calls `init` the first time anyone calls `Get` (from any goroutine), remembers the result, and returns it. Later calls must **not** call `init` again and must all return the same value. Concurrent callers must wait for the first call to finish. Use `sync.Once`. The zero value must be ready to use.
+- `Stats` accumulates non-negative measurements from many goroutines **without a mutex**. Use `sync/atomic`. The zero value must be ready to use:
+  - `Record(v int64)` adds one measurement.
+  - `Count() int64` is how many were recorded.
+  - `Total() int64` is their sum.
+  - `Max() int64` is the largest recorded value (`0` if none).

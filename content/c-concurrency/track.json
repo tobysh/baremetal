@@ -1,0 +1,10 @@
+{
+  "title": "Concurrency in C",
+  "summary": "Run code on several threads at once: pthreads, mutexes, condition variables, semaphores, atomics, memory ordering, a thread pool and a lock-free queue.",
+  "description": "Your computer has many cores, and a single thread uses only one. You'll start threads with pthreads, hand them work and collect results, then meet the hard part: data races. You'll protect shared data with mutexes, avoid deadlock with lock ordering, block politely with condition variables and semaphores, and use C11 atomics and memory ordering to go without locks. You finish by building a thread pool and a lock-free ring buffer, the pieces inside web servers, databases and game engines.",
+  "level": "Advanced",
+  "language": "c",
+  "path": "c",
+  "order": 4,
+  "prerequisite": "c-systems"
+}

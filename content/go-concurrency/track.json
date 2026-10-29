@@ -1,0 +1,10 @@
+{
+  "title": "Concurrency in Go",
+  "summary": "Goroutines, channels, select, locks, atomics, contexts, errgroups, semaphores, rate limits and leak-free shutdown.",
+  "description": "Go makes concurrency easy to start and easy to get wrong. This course goes far beyond a single worker pool. You will coordinate goroutines with WaitGroups and channels, wait on several things at once with select and timeouts, protect shared state with mutexes, Once and atomics, cancel work with context, fan results out and back in, bound parallelism with a semaphore, build an errgroup from scratch, pace work with tickers, and shut everything down without leaking goroutines. Every exercise is checked by a hidden test suite built to be deterministic, with generous timing margins.",
+  "level": "Advanced",
+  "language": "go",
+  "path": "go",
+  "order": 3,
+  "prerequisite": "go-practice"
+}

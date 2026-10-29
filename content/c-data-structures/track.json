@@ -1,0 +1,10 @@
+{
+  "title": "Data Structures & Algorithms in C",
+  "summary": "Build the classics by hand: growable arrays, queues, linked lists, hash tables, trees, heaps, tries and graphs, plus the sorting and searching that go with them.",
+  "description": "Every serious program stands on a handful of data structures. Here you build them yourself in C, with malloc, pointers and nothing else: a growable array, a ring-buffer queue, a doubly linked list, two kinds of hash table, a binary search tree with deletion, a heap, a trie and a graph. Along the way you write binary search and three classic sorts, and you finish by combining a hash table and a linked list into an LRU cache, the structure behind real caches in browsers and databases.",
+  "level": "Intermediate",
+  "language": "c",
+  "path": "c",
+  "order": 4,
+  "prerequisite": "c-memory"
+}

@@ -1,0 +1,10 @@
+{
+  "title": "Concurrency in Rust",
+  "summary": "Threads, channels, locks, atomics and a thread pool: write concurrent Rust that the compiler proves free of data races.",
+  "description": "Rust's ownership rules are also its concurrency rules. You'll spawn and join threads, move data into them, pass messages over channels, share state with Arc and Mutex or RwLock, learn what Send and Sync really mean, borrow safely with scoped threads, use atomics and memory ordering, block politely with Condvar, coordinate with Barrier, Once and OnceLock, then build a thread pool and a parallel map-reduce from the standard library alone.",
+  "level": "Advanced",
+  "language": "rust",
+  "path": "rust",
+  "order": 5,
+  "prerequisite": "rust-traits"
+}

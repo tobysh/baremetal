@@ -1,0 +1,1 @@
+Complete `fn census(lines: Vec<String>, workers: usize) -> (BTreeMap<String, usize>, usize)` in the starter. It returns the lowercase word counts and the total number of words. Use real threads: split the lines round-robin, count locally, send each worker's map over a channel, and keep the grand total in an `Arc<Mutex<usize>>`. Treat `workers == 0` as `1`.

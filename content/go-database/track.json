@@ -1,0 +1,10 @@
+{
+  "title": "Build a Database in Go",
+  "summary": "Build a small storage engine from scratch: a key-value store, a checksummed append-only log, crash recovery, compaction, a skip list, SSTables, an LSM read path, a Bloom filter, transactions, merging iterators and snapshots.",
+  "description": "Databases are less magic than they look. You'll start with a map and end with the pieces of a real storage engine, all in standard-library Go: length-prefixed records and a write-ahead log, CRC checksums, crash recovery that survives a torn or corrupted tail, log compaction, a skip list for sorted data, an SSTable writer and reader with an index, a memtable plus tables read path, a Bloom filter, atomic transactions, lazy merge iterators and snapshot reads. Everything runs against in-memory buffers, and the tests cut and damage your bytes on purpose to see whether your data survives.",
+  "level": "Advanced",
+  "language": "go",
+  "path": "go",
+  "order": 3,
+  "prerequisite": "go-practice"
+}
