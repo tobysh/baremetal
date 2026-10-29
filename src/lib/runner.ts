@@ -280,7 +280,7 @@ const HIDDEN_NOTE = "(a diagnostic inside the hidden tests was hidden)";
 /**
  * Compiler diagnostics quote the source line they complain about, and the hidden tests are
  * compiled into the same unit, so a learner could provoke an error in a harness line to read
- * it (docs/security-audit.md L2). In test builds, diagnostics located in harness code are
+ * it (docs/security.md L2). In test builds, diagnostics located in harness code are
  * replaced by a one-line note. `learnerLines` is how many lines of main.rs are the learner's
  * (Rust appends the tests to the same file); the other languages name a separate harness file.
  */
@@ -330,7 +330,7 @@ const C_FLAGS = ["-std=c17", "-Wall", "-Wextra", "-g", "-O0", "-fsanitize=undefi
 // run passes it in BM_NONCE; a .preinit_array hook, which runs before any constructor, copies it
 // into a static and overwrites the original string so /proc/self/environ no longer holds it.
 // Learner code in the same process could still scan live memory for it (accepted residual,
-// docs/security-audit.md L1). Completeness rejects truncated transcripts but is not a trust boundary.
+// docs/security.md L1). Completeness rejects truncated transcripts but is not a trust boundary.
 const cTestPrelude = () => {
   // Fresh unguessable identifiers prevent a learner from naming the harness static
   // directly in the same translation unit. The process can still inspect its own memory.
@@ -603,7 +603,7 @@ export function runProgram(language: Language, code: string, stdin = ""): Promis
 
 /**
  * Test binaries run with only themselves in the work dir, so learner code can't read the
- * hidden test sources at runtime. (It can still embed them at compile time; see docs/security-audit.md L2.)
+ * hidden test sources at runtime. (It can still embed them at compile time; see docs/security.md L2.)
  */
 async function keepOnlyProgram(dir: string) {
   for (const f of await readdir(dir)) if (f !== "prog") await rm(path.join(dir, f), { recursive: true, force: true });
@@ -616,7 +616,7 @@ const TAMPER_PATTERNS: RegExp[] = [
   /__bm_tests|\bbm_test\b|__bm_student/,
   /\.incbin|\.init_array|\.preinit_array|\.fini_array|link_section|__attribute__\s*\(\(\s*(?:constructor|destructor)/,
   /\/proc\/(?:self|\d)/,
-  // Ways to pull the hidden tests into the learner's own build (docs/security-audit.md L2).
+  // Ways to pull the hidden tests into the learner's own build (docs/security.md L2).
   /\/\/go:embed|\binclude_(?:str|bytes)!|\binclude!\s*[(\[{]|^\s*\.(?:include|incbin)\b|#\s*include\s*"|#\s*include_next\b/m,
 ];
 
@@ -760,7 +760,7 @@ function testAsmHarness(dir: string, ex: Exercise, code: string, nonce: string):
  * result is the learner's own output. For C and assembly the nonce reaches the harness through
  * the environment and is wiped before learner code runs (see cTestPrelude); the kernel harness
  * still compiles it in. Either way this stops copy-pasted or hard-coded forgeries, and testExercise
- * additionally requires the full expected transcript (docs/security-audit.md, L1).
+ * additionally requires the full expected transcript (docs/security.md, L1).
  */
 function parseHarnessOutput(text: string, nonce: string) {
   const tag = (kind: string) => `@@${kind} ${nonce} `;

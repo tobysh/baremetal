@@ -1,4 +1,4 @@
-// Regression fixtures for Phase 1 of docs/security-remediation-plan.md (R1, R3).
+// Regression fixtures for Phase 1 of docs/security.md (R1, R3).
 // Each fixture is a learner submission that must NOT pass; the script exits 1 if one does.
 // Usage: npx tsx scripts/security/integrity/fixtures-forgery.mts [c|rust|go|asm]
 import { getTracks } from "../../../src/lib/curriculum/index";

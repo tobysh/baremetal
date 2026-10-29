@@ -8,6 +8,7 @@ import { hmac } from "@/lib/crypto";
 import type { TutorThreadDoc } from "@/lib/models";
 import { getTutorThread } from "@/lib/progress";
 import { clientIp, ipLimit, rateLimit, rateLimitHit } from "@/lib/rate-limit";
+import { checkBudget, estimateCostMicro, recordSpend } from "@/lib/tutor-budget";
 import { TutorUnavailableError, exposesSolution, buildMessages, lessonContext, responseCacheKey, streamTutor, type TutorUsage } from "@/lib/tutor";
 
 type Body = { exerciseId?: string; message?: string; code?: string; lastOutput?: string };
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
   const lessonCtx = lessonContext(found.track, found.lesson, user.experience);
   const thread = await getTutorThread(user.id, found.exercise.id);
   const firstTurn = !thread?.messages.length;
-  const cacheKey = firstTurn ? responseCacheKey({ lessonCtx, message, code, lastOutput }) : null;
+  const cacheKey = firstTurn ? responseCacheKey({ lessonCtx, message, code, lastOutput, language: found.exercise.language }) : null;
   const cached = cacheKey ? await db.collection<{ key: string; reply: string }>("tutor_cache").findOne({ key: cacheKey }) : null;
 
   const saveTurn = async (reply: string) => {
@@ -63,7 +64,7 @@ export async function POST(req: Request) {
       { upsert: true },
     );
   };
-  const recordUsage = (usage: Partial<TutorUsage> & { responseCacheHit: boolean }) =>
+  const recordUsage = (usage: Partial<TutorUsage> & { responseCacheHit: boolean; costMicroUsd?: number }) =>
     db.collection("tutor_usage").insertOne({ ...usage, exerciseId: found.exercise.id, ts: new Date() });
 
   const encoder = new TextEncoder();
@@ -79,6 +80,10 @@ export async function POST(req: Request) {
   if (account?.emailVerified === false) return jsonError(403, "Verify your email address to use the tutor.");
   const age = Date.now() - (account?.createdAt.getTime() ?? Date.now());
   if (age < 10 * 60_000) return jsonError(403, "The tutor opens ten minutes after signup. You can use the lesson hints now.");
+
+  // Dollar ceilings (per user and site-wide, per UTC day), checked before any quota is consumed.
+  const budget = await checkBudget(db, user.id);
+  if (!budget.ok) return jsonError(budget.scope === "user" ? 429 : 503, budget.message);
 
   // Only real model calls count against the quotas.
   const ip = clientIp(req.headers);
@@ -122,6 +127,8 @@ export async function POST(req: Request) {
           reply += text;
           if (reply.length > 32 * 1024) throw new TutorUnavailableError("The tutor response was too long. Try a more specific question.");
         }
+        // Spend is recorded as soon as the API reports usage, even if the client left.
+        if (usage) await recordSpend(db, user.id, usage as TutorUsage).catch((e) => console.error("[tutor] spend", e));
         if (abort.signal.aborted) return;
         if (exposesSolution(reply, found.exercise.solution, found.exercise.starter)) {
           reply = "Let's work through the idea one step at a time. Which part of the task is unclear?";
@@ -129,7 +136,7 @@ export async function POST(req: Request) {
         }
         await saveTurn(reply);
         if (!abort.signal.aborted) controller.enqueue(encoder.encode(reply));
-        if (usage) await recordUsage({ ...(usage as TutorUsage), responseCacheHit: false });
+        if (usage) await recordUsage({ ...(usage as TutorUsage), costMicroUsd: estimateCostMicro(usage as TutorUsage), responseCacheHit: false });
         if (cacheKey && cacheable && reply.trim()) {
           await db
             .collection("tutor_cache")

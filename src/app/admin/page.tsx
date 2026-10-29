@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { Card, Container, Skeleton } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
@@ -15,6 +16,11 @@ export default function AdminPage() {
     <Container className="py-12">
       <h1 className="display text-3xl font-bold">Analytics</h1>
       <p className="mt-2 text-muted">Last 30 days · consented visitors only · no raw IPs stored</p>
+      <p className="mt-2 text-sm">
+        <Link href="/admin/stuck" className="text-accent underline underline-offset-2">
+          Where learners get stuck
+        </Link>
+      </p>
       <Suspense fallback={<AdminSkeleton />}>
         <AdminBody />
       </Suspense>

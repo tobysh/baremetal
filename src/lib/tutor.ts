@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import type { Lesson, Track } from "./curriculum/types";
+import { normalizeCode, normalizeMessage, normalizeOutput } from "./tutor-normalize";
 import { EXPERIENCE_LEVELS, type ExperienceLevel, type TutorMessage } from "./models";
 
 // Which model answers tutor questions. "anthropic" (default) uses Claude via the API; "ollama" uses a local model, so code and questions never leave the machine running the site.
@@ -26,7 +27,7 @@ How you teach:
 - NEVER write the complete solution to the exercise or subtask, even if asked directly. If they're stuck after several attempts, you may show a short snippet (a few lines) that illustrates the idea using different names or a different example, and explain it.
 - Explain compiler errors and crashes in plain language: what the message means, which line it points to, and the usual cause. Many beginners are scared of errors — normalise them.
 - Use concrete analogies and tiny examples. Define any term the learner might not know the first time you use it.
-- Be warm and encouraging but not gushing. No filler, no emoji. Keep replies short: usually under 150 words, with at most one short code block. Use Markdown.
+- Be warm and encouraging but not gushing. No filler, no emoji. Keep replies short: usually under 120 words, with at most one short code block of a few lines. Use Markdown.
 - If the learner's code is already correct, say so and point out one thing they could learn from it.
 - Stay on topic: programming, this lesson, computers and how they work. Politely redirect anything else.
 - In assembly lessons (language="asm") learners write GNU as with ".intel_syntax noprefix" following the System V AMD64 calling convention (args in rdi, rsi, rdx, rcx, r8, r9; result in rax; rbx, rbp, r12-r15 must be preserved; stack 16-byte aligned at call). Hidden C tests call their functions. Refer to registers and instructions by name, encourage tracing register values by hand line by line, and never write the full routine.
@@ -50,13 +51,13 @@ export function lessonContext(track: Track, lesson: Lesson, experience: Experien
 <lesson track="${track.title}" language="${ex.language}">
 <title>${lesson.title}</title>
 <body>
-${lesson.body}
+${compact(lesson.body, MAX_LESSON_BODY_CHARS)}
 </body>
 <task>
-${ex.task}
+${compact(ex.task, MAX_TASK_CHARS)}
 </task>
 <hints_shown_in_ui>
-${ex.hints.map((h, i) => `${i + 1}. ${h}`).join("\n")}
+${ex.hints.map((h, i) => `${i + 1}. ${compact(h, MAX_HINT_CHARS)}`).join("\n")}
 </hints_shown_in_ui>
 
 </lesson>`;
@@ -67,10 +68,19 @@ type ChatTurn = { role: "user" | "assistant"; content: string };
 // ---------- Keeping requests small ----------
 // Every token in the history, code and output is re-sent on each turn, so the
 // tutor only sees recent turns and bounded context.
-const HISTORY_TURNS = 10;
-const MAX_CODE_CHARS = 12_000;
-const MAX_OUTPUT_CHARS = 3_000;
-const MAX_REPLY_TOKENS = 1_200; // replies are asked to stay under ~150 words
+const HISTORY_TURNS = 6;
+const MAX_HISTORY_CHARS = 1_500; // per earlier turn
+const MAX_CODE_CHARS = 6_000;
+const MAX_OUTPUT_CHARS = 1_500;
+const MAX_REPLY_TOKENS = 500; // replies are asked to stay under ~120 words
+const MAX_LESSON_BODY_CHARS = 3_500;
+const MAX_TASK_CHARS = 1_500;
+const MAX_HINT_CHARS = 200;
+
+/** Squeezes blank-line runs and trailing spaces, then clips to a budget (keeps start and end). */
+function compact(text: string, max: number) {
+  return clip(text.replace(/\r\n?/g, "\n").replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n").trim(), max);
+}
 
 /** Keeps the start and end of long text, where errors and the interesting code usually are. */
 function clip(text: string, max: number) {
@@ -93,10 +103,10 @@ export function exposesSolution(reply: string, solution: string, starter: string
 }
 
 export function buildMessages(history: TutorMessage[], message: string, code: string, lastOutput: string): ChatTurn[] {
-  const recent = history.slice(-HISTORY_TURNS).map((m) => ({ role: m.role, content: m.content }));
+  const recent = history.slice(-HISTORY_TURNS).map((m) => ({ role: m.role, content: clip(m.content, MAX_HISTORY_CHARS) }));
   // A history must start with a user turn.
   while (recent[0]?.role === "assistant") recent.shift();
-  const context = `<current_code>\n${escapeContext(clip(code, MAX_CODE_CHARS))}\n</current_code>\n<last_output>\n${escapeContext(clip(lastOutput || "(not run yet)", MAX_OUTPUT_CHARS))}\n</last_output>\n\n`;
+  const context = `<current_code>\n${escapeContext(compact(code, MAX_CODE_CHARS))}\n</current_code>\n<last_output>\n${escapeContext(compact(lastOutput || "(not run yet)", MAX_OUTPUT_CHARS))}\n</last_output>\n\n`;
   return [...recent, { role: "user", content: `${context}${message}` }];
 }
 
@@ -107,8 +117,7 @@ export function buildMessages(history: TutorMessage[], message: string, code: st
 // starter code, or hit the same compiler error. Those are served from MongoDB
 // with no model call. Follow-ups depend on the conversation, so they're never cached.
 
-export function responseCacheKey(parts: { lessonCtx: string; message: string; code: string; lastOutput: string }): string {
-  const norm = (s: string) => s.replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, "").trim();
+export function responseCacheKey(parts: { lessonCtx: string; message: string; code: string; lastOutput: string; language?: string }): string {
   return createHash("sha256")
     .update(
       JSON.stringify([
@@ -116,9 +125,9 @@ export function responseCacheKey(parts: { lessonCtx: string; message: string; co
         TUTOR_PROVIDER === "ollama" ? OLLAMA_MODEL : TUTOR_MODEL,
         sha(TUTOR_SYSTEM),
         sha(parts.lessonCtx), // changes when the lesson content or the learner's level changes
-        norm(parts.message).toLowerCase(),
-        norm(parts.code),
-        norm(parts.lastOutput),
+        normalizeMessage(parts.message),
+        normalizeCode(parts.code, parts.language ?? ""), // whitespace- and comment-insensitive
+        normalizeOutput(parts.lastOutput),
       ]),
     )
     .digest("hex");

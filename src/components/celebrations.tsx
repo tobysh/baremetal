@@ -10,7 +10,7 @@ export type TrackComplete = { slug: string; title: string; lessons: number; unai
 /** A short, quiet thank-you for each new achievement. Several unlocks stack; each fades on its own. */
 export function AchievementToasts({ items, onDismiss }: { items: Unlocked[]; onDismiss: (id: string) => void }) {
   return (
-    <div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-4 bottom-4 z-40 flex flex-col items-end gap-2 sm:left-auto sm:right-4">
+    <div role="status" aria-live="polite" aria-atomic="false" aria-relevant="additions" className="pointer-events-none fixed inset-x-4 bottom-4 z-40 flex flex-col items-end gap-2 sm:left-auto sm:right-4">
       {items.map((a) => (
         <Toast key={a.id} item={a} onDismiss={onDismiss} />
       ))}
@@ -19,12 +19,20 @@ export function AchievementToasts({ items, onDismiss }: { items: Unlocked[]; onD
 }
 
 function Toast({ item, onDismiss }: { item: Unlocked; onDismiss: (id: string) => void }) {
+  // The timer pauses while the pointer or keyboard focus is on the toast, so it can be read and its link reached.
+  const [paused, setPaused] = useState(false);
   useEffect(() => {
+    if (paused) return;
     const t = setTimeout(() => onDismiss(item.id), 8000);
     return () => clearTimeout(t);
-  }, [item.id, onDismiss]);
+  }, [item.id, onDismiss, paused]);
   return (
-    <div className="toast-in panel pointer-events-auto flex w-full max-w-sm items-start gap-3 p-4 shadow-lg">
+    <div
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+      className="toast-in panel pointer-events-auto flex w-full max-w-sm items-start gap-3 p-4 shadow-lg">
       <div className="min-w-0 flex-1">
         <p className="text-xs font-semibold text-accent">Achievement unlocked</p>
         <p className="display-sm mt-0.5 font-bold">{item.name}</p>
@@ -48,36 +56,54 @@ export function Celebration({ levelUp, trackComplete, onClose }: { levelUp: Rewa
   // Confetti only for finishing a course or reaching the top level, and only if motion is welcome (see globals.css).
   const confetti = (page === "track" && !!trackComplete) || (page === "level" && levelUp?.level === 10);
 
+  // Remember the trigger once, and give focus back to it when the dialog goes away.
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
+    return () => {
+      if (previous?.isConnected) previous.focus();
+    };
+  }, []);
+
+  // Move focus to the primary action whenever the page changes (and on open).
+  useEffect(() => {
     const node = ref.current;
-    node?.querySelector<HTMLElement>("[data-autofocus]")?.focus();
+    (node?.querySelector<HTMLElement>("[data-autofocus]") ?? node)?.focus();
+  }, [page]);
+
+  // Escape closes; Tab stays inside the dialog.
+  useEffect(() => {
+    const node = ref.current;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") return onClose();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        return onClose();
+      }
       if (e.key !== "Tab" || !node) return;
       const focusable = [...node.querySelectorAll<HTMLElement>("a[href], button:not([disabled])")];
-      if (!focusable.length) return;
+      if (!focusable.length) return e.preventDefault();
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
+      const active = document.activeElement;
+      if (!node.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && (active === first || active === node)) {
         e.preventDefault();
         last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
+      } else if (!e.shiftKey && active === last) {
         e.preventDefault();
         first.focus();
       }
     };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      previous?.focus();
-    };
-  }, [onClose, page]);
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [onClose]);
 
   const hasBoth = !!trackComplete && !!levelUp;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 p-4 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId} className="celebrate-in panel relative w-full max-w-md overflow-hidden p-7 text-center">
+      <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="celebrate-in outline-none panel relative w-full max-w-md overflow-hidden p-7 text-center">
         {confetti && <Confetti />}
         {page === "track" && trackComplete ? (
           <>
