@@ -46,11 +46,26 @@ async function ensureIndexes(db: Db) {
     db.collection("password_resets").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
     db.collection("pending_2fa").createIndex({ tokenHash: 1 }, { unique: true }),
     db.collection("pending_2fa").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
-    // Tutor response cache: 30 days, so answers refresh as lessons and models change.
+    // Tutor response cache: each entry carries its own expireAt (30 days, 90 once it is popular), so answers refresh as lessons and models change.
     db.collection("tutor_cache").createIndex({ key: 1 }, { unique: true }),
-    db.collection("tutor_cache").createIndex({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 30 }),
+    db.collection("tutor_cache").createIndex({ expireAt: 1 }, { expireAfterSeconds: 0 }),
+    db.collection("tutor_cache").createIndex({ popular: 1, hits: -1 }),
+    db.collection("tutor_cache").createIndex({ exerciseId: 1, hits: -1 }),
+    // One document per user/site and UTC day. Kept 60 days; only the current day is read.
+    db.collection("tutor_spend").createIndex({ key: 1 }, { unique: true }).catch((e) => console.warn("[db] tutor_spend unique index not created (duplicate keys?):", e?.message)),
+    db.collection("tutor_spend").createIndex({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 60 }),
     db.collection("tutor_usage").createIndex({ ts: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 180 }),
   ]);
+  await migrateTutorCache(db);
+}
+
+/** Older cache entries were expired by a createdAt TTL index; they now carry expireAt like new ones. */
+async function migrateTutorCache(db: Db) {
+  const cache = db.collection("tutor_cache");
+  await cache.dropIndex("createdAt_1").catch(() => undefined); // already gone, or never existed
+  await cache
+    .updateMany({ expireAt: { $exists: false } }, [{ $set: { expireAt: { $dateAdd: { startDate: { $ifNull: ["$createdAt", "$$NOW"] }, unit: "day", amount: 30 } } } }])
+    .catch((e) => console.warn("[db] tutor_cache migration skipped:", e?.message));
 }
 
 export function getDb(): Promise<Db> {

@@ -1,6 +1,6 @@
 ---
 title: Critical Sections: Interrupts, Atomics and Spinlocks
-summary: Save and restore the interrupt flag, build atomic add and compare-and-swap with lock-prefixed instructions, and write a spinlock that is safe against interrupt handlers.
+summary: Save and restore the interrupt flag, build atomic add and compare-and-swap, and write a spinlock that is safe against interrupt handlers.
 minutes: 50
 difficulty: medium
 tags: concurrency, interrupts, atomics

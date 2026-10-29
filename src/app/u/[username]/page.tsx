@@ -19,7 +19,8 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps<"/u/[username]">): Promise<Metadata> {
   const { username } = await params;
-  const name = decodeURIComponent(username).toLowerCase();
+  const name = username.toLowerCase();
+  if (!USERNAME_RE.test(name)) notFound();
   return {
     title: `${name} — learner profile`,
     description: `${name}'s level, XP and completed lessons on Baremetal.`,
@@ -31,7 +32,7 @@ export async function generateMetadata({ params }: PageProps<"/u/[username]">): 
 export default async function ProfilePage({ params }: PageProps<"/u/[username]">) {
   // Malformed names 404 here, before any streaming starts, so they get a real 404 status.
   // Well-formed but unknown names can only be detected inside <Suspense> (needs the DB).
-  const name = decodeURIComponent((await params).username).toLowerCase();
+  const name = (await params).username.toLowerCase();
   if (!USERNAME_RE.test(name)) notFound();
   return (
     <Container className="max-w-3xl py-10 sm:py-14">
@@ -44,7 +45,7 @@ export default async function ProfilePage({ params }: PageProps<"/u/[username]">
 
 async function Profile({ params }: { params: Params }) {
   await connection(); // the DB driver reads the clock, so wait for a real request
-  const name = decodeURIComponent((await params).username).toLowerCase();
+  const name = (await params).username.toLowerCase();
   if (!USERNAME_RE.test(name)) notFound();
   const [profile, me] = await Promise.all([getPublicProfile(name), getCurrentUser()]);
   if (!profile) notFound();

@@ -1,0 +1,10 @@
+{
+  "title": "Detection Engineering",
+  "summary": "Write the rules, parsers and tuning logic that turn synthetic logs, DNS and network traffic into alerts people can trust.",
+  "description": "Detection engineering is the craft of turning raw telemetry into alerts. You will parse key=value logs, evaluate Sigma-style rules and boolean conditions, count events in sliding windows, tune out false positives with allowlists, extract indicators of compromise, flag DNS tunnelling, evaluate and audit firewall rules, match IDS-style payload signatures and stitch events into incidents. Every log, address and domain is synthetic (documentation address ranges and .test names), and every lesson asks for the defender's side: a rule, a filter or a report.",
+  "level": "Advanced",
+  "language": "c",
+  "path": "security",
+  "order": 6,
+  "prerequisite": "sec-forensics"
+}

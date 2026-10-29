@@ -1,0 +1,32 @@
+[
+  {
+    "name": "report 1",
+    "stdin": "DNS lookup for cdn(.)update-check(.)test then LOGIN.PAY-SECURE.TEST, repeated.\nBeacon to 203(.)0(.)113(.)36 observed from 198.51.100.7.\n(198[.]51[.]100[.]200), c2-6.example.test.\nNothing to see here, ticket #735 closed.\nNothing to see here, ticket #397 closed.\nNote: hash-like d202c6352853d70eb818bf37535f01223\nDNS lookup for login.pay-secure.test then A.B.C.EVIL.TEST, repeated.\n",
+    "expected": "ip 198.51.100.200\nip 198.51.100.7\nip 203.0.113.36\ndomain a.b.c.evil.test\ndomain c2-6.example.test\ndomain cdn.update-check.test\ndomain login.pay-secure.test\n"
+  },
+  {
+    "name": "report 2",
+    "stdin": "Beacon to 203(.)0(.)113(.)88 observed from 198[.]51[.]100[.]7.\nNote: version 10.2.3.4.5 shipped\n(198[.]51[.]100[.]200), cdn.update-check.test.\nContacted 192.0.2.196:8080 and cdn.update-check.test/path?x=1\nBeacon to 192[.]0[.]2[.]196 observed from 192(.)0(.)2(.)196.\nBeacon to 203.0.113.88 observed from 198(.)51(.)100(.)7.\n(203(.)0(.)113(.)88), c2-3.example.test.\n",
+    "expected": "ip 192.0.2.196\nip 198.51.100.200\nip 198.51.100.7\nip 203.0.113.88\ndomain c2-3.example.test\ndomain cdn.update-check.test\n"
+  },
+  {
+    "name": "report 3",
+    "stdin": "Nothing to see here, ticket #195 closed.\nNothing to see here, ticket #879 closed.\nNote: addr 007.1.1.1 odd\nNote: addr 007.1.1.1 odd\nDropper md5=7d7022c0a073138ffb051f6e383e64b5 sha256=4F51BBF8F0A6285DFE9FDCAAA9D161AB95F6B945C0D9A592035FB8FE7BEEF5F8 (dccbf29e168f4df1e9efe863ba23b733785026ac)\nNothing to see here, ticket #366 closed.\n",
+    "expected": "hash 4f51bbf8f0a6285dfe9fdcaaa9d161ab95f6b945c0d9a592035fb8fe7beef5f8\nhash 7d7022c0a073138ffb051f6e383e64b5\n"
+  },
+  {
+    "name": "report 4",
+    "stdin": "Beacon to 192[.]0[.]2[.]247 observed from 198[.]51[.]100[.]7.\nContacted 203.0.113.191:8080 and c2-5.example.test/path?x=1\nNothing to see here, ticket #664 closed.\nDNS lookup for login[.]pay-secure[.]test then CDN.UPDATE-CHECK.TEST, repeated.\nNote: build 1.2.3 ok\n",
+    "expected": "ip 192.0.2.247\nip 198.51.100.7\nip 203.0.113.191\ndomain c2-5.example.test\ndomain cdn.update-check.test\ndomain login.pay-secure.test\n"
+  },
+  {
+    "name": "report 5",
+    "stdin": "Nothing to see here, ticket #774 closed.\nDNS lookup for a[.]b[.]c[.]evil[.]test then CDN.UPDATE-CHECK.TEST, repeated.\nDropper md5=b35d87c4a47fe814f17190bc5526d875 sha256=11b5adb68dc906ae49d474e819918333f81afcf7399354e5236e5d3f33894515 (f01cb95ede48812a8a734ef1b0501f6e84425ab7)\nDropper md5=b35d87c4a47fe814f17190bc5526d875 sha256=11B5ADB68DC906AE49D474E819918333F81AFCF7399354E5236E5D3F33894515 (f01cb95ede48812a8a734ef1b0501f6e84425ab7)\nDropper md5=b35d87c4a47fe814f17190bc5526d875 sha256=11b5adb68dc906ae49d474e819918333f81afcf7399354e5236e5d3f33894515 (f01cb95ede48812a8a734ef1b0501f6e84425ab7)\n",
+    "expected": "domain a.b.c.evil.test\ndomain cdn.update-check.test\nhash 11b5adb68dc906ae49d474e819918333f81afcf7399354e5236e5d3f33894515\nhash b35d87c4a47fe814f17190bc5526d875\n"
+  },
+  {
+    "name": "no indicators",
+    "stdin": "Ticket 4411 closed. Version 2.4.1.9.3 is out.\n",
+    "expected": "no indicators\n"
+  }
+]

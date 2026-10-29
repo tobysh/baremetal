@@ -8,8 +8,11 @@ import { hmac } from "@/lib/crypto";
 import type { TutorThreadDoc } from "@/lib/models";
 import { getTutorThread } from "@/lib/progress";
 import { clientIp, ipLimit, rateLimit, rateLimitHit } from "@/lib/rate-limit";
-import { checkBudget, estimateCostMicro, recordSpend } from "@/lib/tutor-budget";
-import { TutorUnavailableError, exposesSolution, buildMessages, lessonContext, responseCacheKey, streamTutor, type TutorUsage } from "@/lib/tutor";
+import { checkBudget, estimateCostMicro, reserveBudget } from "@/lib/tutor-budget";
+import { TUTOR_PROVIDER, TUTOR_SYSTEM, TutorUnavailableError, exposesSolution, buildMessages, lessonContext, planCache, streamTutor, type TutorUsage } from "@/lib/tutor";
+import { POPULAR_HITS, expiryFor, replyLeaks, type CacheKind } from "@/lib/tutor-cache";
+
+type CacheDoc = { key: string; kind?: CacheKind; reply: string; hits?: number };
 
 type Body = { exerciseId?: string; message?: string; code?: string; lastOutput?: string };
 
@@ -23,6 +26,7 @@ const LIMITS = {
   ipPerHour: env("TUTOR_LIMIT_IP_HOUR", 60),
   globalPerHour: env("TUTOR_LIMIT_GLOBAL_HOUR", 2000),
   requestsPerHour: 120, // all requests, including cache hits
+  cacheHitsIpPerHour: env("TUTOR_LIMIT_CACHE_HIT_IP_HOUR", 300), // cache hits cost no dollars but can still be scraped
 };
 const HOUR = 3600;
 
@@ -50,11 +54,32 @@ export async function POST(req: Request) {
   const lessonCtx = lessonContext(found.track, found.lesson, user.experience);
   const thread = await getTutorThread(user.id, found.exercise.id);
   const firstTurn = !thread?.messages.length;
-  const cacheKey = firstTurn ? responseCacheKey({ lessonCtx, message, code, lastOutput, language: found.exercise.language }) : null;
-  const cached = cacheKey ? await db.collection<{ key: string; reply: string }>("tutor_cache").findOne({ key: cacheKey }) : null;
+  // Only the first turn is cached: follow-ups depend on the conversation.
+  const plan = firstTurn ? planCache({ lessonCtx, message, code, lastOutput, language: found.exercise.language, starter: found.exercise.starter }) : null;
+  const cacheCol = db.collection("tutor_cache");
+  let cached: CacheDoc | null = null;
+  if (plan) {
+    const docs = await cacheCol.find<CacheDoc>({ key: { $in: plan.candidates.map((c) => c.key) } }).toArray();
+    // Candidates are in preference order; a stored reply is checked again against the reference solution every time it is served.
+    for (const c of plan.candidates) {
+      const doc = docs.find((d) => d.key === c.key);
+      if (!doc) continue;
+      if (exposesSolution(doc.reply, found.exercise.solution, found.exercise.starter)) await cacheCol.deleteOne({ key: doc.key });
+      else {
+        cached = doc;
+        break;
+      }
+    }
+  }
+  const cacheKind = cached?.kind ?? plan?.candidates.find((c) => c.key === cached?.key)?.kind;
 
   const saveTurn = async (reply: string) => {
     const now = new Date();
+    await db.collection("progress").updateOne(
+      { userId: new ObjectId(user.id), exerciseId: found.exercise.id },
+      { $set: { tutorUsed: true, updatedAt: now }, $setOnInsert: { trackSlug: found.track.slug, code, status: "started", attempts: 0, startedAt: now, startKnown: false } },
+      { upsert: true },
+    );
     await db.collection<TutorThreadDoc>("tutor_threads").updateOne(
       { userId: new ObjectId(user.id), lessonId: found.exercise.id },
       {
@@ -64,14 +89,24 @@ export async function POST(req: Request) {
       { upsert: true },
     );
   };
-  const recordUsage = (usage: Partial<TutorUsage> & { responseCacheHit: boolean; costMicroUsd?: number }) =>
+  const recordUsage = (usage: Partial<TutorUsage> & { responseCacheHit: boolean; costMicroUsd?: number; cacheKind?: string }) =>
     db.collection("tutor_usage").insertOne({ ...usage, exerciseId: found.exercise.id, ts: new Date() });
 
   const encoder = new TextEncoder();
   const headers: Record<string, string> = { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-Tutor-Cache": cached ? "hit" : "miss" };
+  const kindOf = (k: CacheKind | undefined) => k ?? "none";
 
   if (cached) {
-    await Promise.all([saveTurn(cached.reply), recordUsage({ responseCacheHit: true }), db.collection("tutor_cache").updateOne({ key: cacheKey }, { $inc: { hits: 1 } })]);
+    // Hits cost no dollars and use no model quota, but they stay under the request limit above and a per-network limit.
+    if (!(await rateLimit(`tutor:hit-ip:${hmac("rate-ip", clientIp(req.headers))}`, ipLimit(clientIp(req.headers), LIMITS.cacheHitsIpPerHour), HOUR))) return jsonError(429, "Too many tutor questions from your network this hour. Please try again later.");
+    const now = new Date();
+    const hits = (cached.hits ?? 0) + 1;
+    await Promise.all([
+      saveTurn(cached.reply),
+      recordUsage({ responseCacheHit: true, cacheKind: kindOf(cacheKind) }),
+      // Frequently asked answers are promoted: kept longer, and listed for admins (getPopularTutorAnswers).
+      cacheCol.updateOne({ key: cached.key }, { $inc: { hits: 1 }, $set: { lastHitAt: now, ...(hits >= POPULAR_HITS ? { popular: true, expireAt: expiryFor(hits) } : {}) } }),
+    ]);
     return new Response(encoder.encode(cached.reply), { headers });
   }
 
@@ -107,6 +142,12 @@ export async function POST(req: Request) {
   headers["X-Tutor-Remaining"] = String(Math.min(userHour.remaining, userDay.remaining));
   headers["X-Tutor-Limit"] = String(LIMITS.userPerHour);
 
+  const messages = buildMessages(thread?.messages ?? [], message, code, lastOutput, plan?.omitContext ?? false);
+  // UTF-8 bytes conservatively bound input tokens, including cache-write pricing.
+  const inputBound = Buffer.byteLength(TUTOR_SYSTEM + lessonCtx + JSON.stringify(messages), "utf8") + 1024;
+  const settleBudget = await reserveBudget(db, user.id, Math.max(...[false, true].map((cached) => estimateCostMicro({ provider: TUTOR_PROVIDER, inputTokens: cached ? 0 : inputBound, cacheReadTokens: 0, cacheWriteTokens: cached ? inputBound : 0, outputTokens: 500 }))));
+  if (!settleBudget) return jsonError(429, "There is not enough tutor allowance left for another reply today. It resets at midnight UTC; the hints and What probably went wrong notes are still available.");
+
   const abort = new AbortController();
   let cancelled = false;
   const disconnect = () => abort.abort();
@@ -114,7 +155,7 @@ export async function POST(req: Request) {
   if (req.signal.aborted) disconnect();
   let usage: TutorUsage | null = null;
   let cacheable = false;
-  const chunks = streamTutor(lessonCtx, buildMessages(thread?.messages ?? [], message, code, lastOutput), abort.signal, (u, ok) => {
+  const chunks = streamTutor(lessonCtx, messages, abort.signal, (u, ok) => {
     usage = u;
     cacheable = ok;
   });
@@ -128,7 +169,7 @@ export async function POST(req: Request) {
           if (reply.length > 32 * 1024) throw new TutorUnavailableError("The tutor response was too long. Try a more specific question.");
         }
         // Spend is recorded as soon as the API reports usage, even if the client left.
-        if (usage) await recordSpend(db, user.id, usage as TutorUsage).catch((e) => console.error("[tutor] spend", e));
+        await settleBudget(usage).catch((e) => console.error("[tutor] spend", e));
         if (abort.signal.aborted) return;
         if (exposesSolution(reply, found.exercise.solution, found.exercise.starter)) {
           reply = "Let's work through the idea one step at a time. Which part of the task is unclear?";
@@ -136,11 +177,18 @@ export async function POST(req: Request) {
         }
         await saveTurn(reply);
         if (!abort.signal.aborted) controller.enqueue(encoder.encode(reply));
-        if (usage) await recordUsage({ ...(usage as TutorUsage), costMicroUsd: estimateCostMicro(usage as TutorUsage), responseCacheHit: false });
-        if (cacheKey && cacheable && reply.trim()) {
-          await db
-            .collection("tutor_cache")
-            .updateOne({ key: cacheKey }, { $setOnInsert: { key: cacheKey, reply, exerciseId: found.exercise.id, hits: 0, createdAt: new Date() } }, { upsert: true });
+        if (usage) await recordUsage({ ...(usage as TutorUsage), costMicroUsd: estimateCostMicro(usage as TutorUsage), responseCacheHit: false, cacheKind: plan?.omitContext ? "concept-miss" : "none" });
+        if (plan && cacheable && reply.trim()) {
+          const now = new Date();
+          for (const c of plan.candidates) {
+            // Never share a reply that repeats this learner's own identifiers or comment text.
+            if (!c.storable || replyLeaks(reply, c.priv)) continue;
+            await cacheCol.updateOne(
+              { key: c.key },
+              { $setOnInsert: { key: c.key, kind: c.kind, reply, exerciseId: found.exercise.id, ...(c.question ? { question: c.question } : {}), hits: 0, createdAt: now, expireAt: expiryFor(0) } },
+              { upsert: true },
+            );
+          }
         }
       } catch (e) {
         let msg = "The tutor is unavailable right now. Please try again in a moment.";
@@ -150,6 +198,7 @@ export async function POST(req: Request) {
         else if (!abort.signal.aborted) console.error("[tutor]", e);
         if (!abort.signal.aborted) controller.enqueue(encoder.encode(`\n\n__TUTOR_ERROR__${msg}`));
       } finally {
+        await settleBudget(usage).catch((e) => console.error("[tutor] budget settlement", e));
         req.signal.removeEventListener("abort", disconnect);
         if (!cancelled) controller.close();
       }
@@ -172,6 +221,10 @@ export async function DELETE(req: Request) {
   const exerciseId = new URL(req.url).searchParams.get("exerciseId");
   if (!exerciseId) return jsonError(400, "Missing exerciseId.");
   const db = await getDb();
+  const oldThread = await getTutorThread(user.id, exerciseId);
+  if (oldThread?.messages.some((m) => m.role === "user")) await db.collection("progress").updateOne(
+    { userId: new ObjectId(user.id), exerciseId }, { $set: { tutorUsed: true } },
+  );
   await db.collection("tutor_threads").deleteOne({ userId: new ObjectId(user.id), lessonId: exerciseId });
   return NextResponse.json({ ok: true });
 }

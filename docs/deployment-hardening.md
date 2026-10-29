@@ -104,3 +104,60 @@ Delivery is at least once, so a crash after SMTP accepts a message may cause a d
 ## CSP rendering constraint
 
 The installed Next.js guide (`node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md`) explicitly says nonce CSP is incompatible with Partial Prerendering. This app uses Cache Components and partial shells. Strict nonce enforcement remains a separate rendering migration; simply adding a nonce header would block shell scripts and break hydration. The existing CSP remains enforced, including its `script-src 'unsafe-inline'` limitation. The only application inline script is the static theme bootstrap; it receives no learner data. Both Markdown renderers have executable-markup regression fixtures.
+
+## Database backup and restore
+
+`npm run backup-db` writes `<BACKUP_DIR>/<db>-<UTC timestamp>/` with `manifest.json` (per-collection counts and index definitions) and one `<collection>.jsonl.gz` per collection (canonical Extended JSON, so ObjectId, Date, Long and Double types survive). It is pure Node on the `mongodb` driver, so it works where `mongodump` is not installed (it is not installed on the dev machine). It reads `MONGODB_URI` and `MONGODB_DB` exactly as the app does, never prints credentials, and refuses a `BACKUP_DIR` inside the repository. Files are mode 0600 in a 0700 directory, and a backup directory only appears once it is complete.
+
+| Setting | Default |
+| --- | --- |
+| `BACKUP_DIR` | `~/baremetal-backups` |
+| `BACKUP_KEEP` / `--keep N` | 14 newest backups of this database are kept, older ones are pruned |
+
+```sh
+npm run backup-db -- --verify                       # back up, then prove it restores
+npm run restore-db -- ~/baremetal-backups/baremetal-20261029T020000Z --verify   # check any backup, touches only a throwaway db
+npm run restore-db -- <dir>                         # restore into an EMPTY database
+npm run restore-db -- <dir> --force                 # replace the backed-up collections in a non-empty database
+npm run restore-db -- <dir> --db baremetal_copy     # restore somewhere else
+```
+
+`--verify` restores into a throwaway database named `<db>_verify_<id>`, compares per-collection document counts with the manifest, and drops it. Restore refuses to touch a database that already holds documents unless `--force` is given. Stop the site before a real restore. Consistency note: the dump reads collections one after another without a snapshot, so it is a fuzzy point-in-time copy; fine for this app (progress and the XP ledger are idempotent upserts), but for a stricter copy run it during a quiet period or use `mongodump --oplog` on a replica set. TTL collections (`sessions`, `events`, ...) are restored with their indexes, so expired rows disappear again on their own.
+
+**Scheduling (systemd timer).** `/etc/systemd/system/baremetal-backup.service`:
+
+```ini
+[Service]
+Type=oneshot
+User=baremetal-backup
+WorkingDirectory=/srv/baremetal
+EnvironmentFile=/etc/baremetal/backup.env   # MONGODB_URI (read-only role), MONGODB_DB, BACKUP_DIR=/var/backups/baremetal
+ExecStart=/usr/bin/npx tsx scripts/backup-db.mts --verify
+ExecStartPost=/usr/local/bin/baremetal-offsite.sh
+UMask=0077
+```
+
+`/etc/systemd/system/baremetal-backup.timer`:
+
+```ini
+[Timer]
+OnCalendar=*-*-* 03:15:00
+RandomizedDelaySec=10min
+Persistent=true
+[Install]
+WantedBy=timers.target
+```
+
+Enable with `systemctl enable --now baremetal-backup.timer`. A failed backup or failed `--verify` exits non-zero, so the unit shows as failed: alert on that (`OnFailure=` or monitoring of `systemctl is-failed`). Give the backup user a MongoDB role with only `read` (`backup` also works) on the app database, not the app's `readWrite` account.
+
+**Off-host copy.** A backup on the same disk does not survive the disk or the host. Copy the newest directory elsewhere after each run, for example `rclone copy` or `rsync` to another machine or object storage with versioning, and keep at least one copy that the web host cannot delete (append-only or a separate account). Test a real restore from the off-host copy at least once a quarter.
+
+**Encrypt before it leaves the host.** The database holds password hashes, TOTP secrets, session-adjacent data and email addresses. Treat a backup as the most sensitive file on the server. Encrypt the archive before copying, e.g. in `baremetal-offsite.sh`:
+
+```sh
+latest=$(ls -d "$BACKUP_DIR"/baremetal-* | sort | tail -1)
+tar -C "$BACKUP_DIR" -cf - "$(basename "$latest")" | age -r "$AGE_PUBLIC_KEY" > "$latest.tar.age"
+# or: ... | gpg --encrypt --recipient backups@example.org > "$latest.tar.gpg"
+```
+
+Keep the private key off the web host (the host only needs the public key). Pruning on the host removes old plain directories; remove old `.tar.age` files on the same schedule. Note `AUTH_SECRET` is not in the database: back it up separately, since encrypted columns and the email queue need it to be read after a restore.

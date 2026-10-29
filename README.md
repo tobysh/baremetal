@@ -2,7 +2,7 @@
 
 Learn low-level programming from absolute zero. Learners read short lessons, write C, Rust, Go and x86-64 assembly in an in-browser editor, get instant results from hidden tests run in a sandbox, and can ask an AI tutor that guides them without handing over answers.
 
-Courses and lessons (`npm run verify:content` lists them) across six learning paths: Start here, C, Rust, Go, Machine level and Security. Advanced projects include a shell, interpreter, database and OS continuation; security courses cover fixing C bugs, toy cryptography, packet analysis and digital forensics. Captures and forensic evidence are synthetic; fixture generators live in `scripts/content-gen/`.
+Courses and lessons (`npm run verify:content` lists them) across six learning paths: Start here, C, Rust, Go, Machine level and Security. Advanced projects include a shell, interpreter, database and OS continuation; security courses cover fixing C bugs, toy cryptography, packet analysis, digital forensics, detection engineering, inert malware analysis, application defence and simulated authorized assessments. Go services covers context, HTTP and testing. Captures and forensic evidence are synthetic; fixture generators live in `scripts/content-gen/`.
 
 ## Running it locally
 
@@ -57,3 +57,13 @@ Everything needed (reverse proxy and `TRUSTED_PROXY_HOPS`, HTTPS, secrets, SMTP 
 - `CLAUDE.md`: architecture, commands, theme and content rules. `HANDOFF.md`: current status and next steps.
 - `docs/gamification.md`: XP, levels, seals, challenges, Codex, rhythm, reviews.
 - `docs/archive/`: finished plans and superseded designs.
+
+### Tutor limits and maintenance checks
+
+Tutor spend uses UTC days, with atomic reservations before model calls and settlement from reported token usage. `TUTOR_BUDGET_USER_DAY_USD` defaults to `0.25`, and `TUTOR_BUDGET_GLOBAL_DAY_USD` to `20`; `0` disables a ceiling. Pricing estimates are configurable through `TUTOR_PRICE_IN_PER_MTOK` (default `1`), `TUTOR_PRICE_OUT_PER_MTOK` (`5`), `TUTOR_PRICE_CACHE_READ_MULT` (`0.1`) and `TUTOR_PRICE_CACHE_WRITE_MULT` (`1.25`). Set these to your provider's actual rates. Cached answers and local Ollama calls cost no model budget. When funds run out, authored hints and failure explanations remain available.
+
+Shared tutor replies use privacy checks, 30-day expiry and 90-day expiry after five hits. Usage records last 180 days and daily spend counters last 60 days. Clearing a conversation preserves the progress flag recording that tutor help was used.
+
+Run `npm run check:ids` and `npm run check:theme` alongside typecheck, lint and build. Add new lesson ids with `npm run check:ids -- --update`. CI also verifies the curriculum with the required toolchains. `node --conditions=react-server --import tsx scripts/tutor/cost-checks.mts` checks cache and cost helpers; `node --import tsx scripts/tutor/reservation-checks.mts` and `node --import tsx scripts/backup-checks.mts` use temporary MongoDB databases. Backup and restore commands and operational limitations are in [deployment hardening](docs/deployment-hardening.md).
+
+The `/admin/stuck` page shows aggregate pass rates, attempts, hint use and tutor use.

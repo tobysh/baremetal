@@ -67,7 +67,7 @@ export async function recordAttempt(o: AttemptInput): Promise<AttemptOutcome> {
   const db = await getDb();
   if (!o.challenge) {
     const thread = await db.collection<TutorThreadDoc>("tutor_threads").findOne({ userId, lessonId: o.exerciseId }, { projection: { messages: 1 } });
-    const askedTutor = (thread?.messages ?? []).some((m) => m.role === "user");
+    const askedTutor = after?.tutorUsed || (thread?.messages ?? []).some((m) => m.role === "user");
     unaided = hintsUsed === 0 && !askedTutor && (attempts >= 2 || o.difficulty === "hard" || o.difficulty === "impossible");
   }
   const flipped = await c.updateOne(

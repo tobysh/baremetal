@@ -1,6 +1,6 @@
 {
   "title": "Build an Operating System",
-  "summary": "Write the core of a kernel in C: serial and screen drivers, descriptor tables, interrupts, paging, a heap, a scheduler, system calls and an ELF loader.",
+  "summary": "Write the core of a kernel in C: serial and screen drivers, descriptor tables, interrupts, paging and page-fault handling, a heap, a scheduler, system calls, an ELF loader, and the PCI, clock and keyboard drivers around them.",
   "description": "Every operating system is a pile of small, precise pieces that talk to hardware through ports, memory and tables with strange bit layouts. In this course you write those pieces yourself: a serial driver, a text-mode screen, GDT and IDT entries, interrupt controller handling, a physical frame allocator, four-level page tables, a kernel heap, a round-robin scheduler, a real stack-switching context switch, system calls with safe user pointers, and an ELF loader. Your code runs on a simulated machine inside our sandbox: hidden tests play the part of the UART, the VGA buffer, the 8259 PIC and physical RAM, and are strict about the same details real hardware is strict about.",
   "level": "Advanced",
   "language": "kernel",

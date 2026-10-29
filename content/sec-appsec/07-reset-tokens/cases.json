@@ -1,0 +1,27 @@
+[
+  {
+    "name": "ttl=600",
+    "stdin": "600\n1060 issue bob tk169\n1061 use tk000 short\n1081 use tkZZZ correct horse battery\n1141 use tk169 1234567\n1200 issue bob tk310\n1230 use tk000 correct horse battery\n1290 use tk169 longenoughpw\n1351 use tk169 1234567\n1371 use tk310 1234567\n1402 use tk310 longenoughpw\n1403 use tkZZZ correct horse battery\n1433 issue bob tk247\n1434 use tk310 short\n2035 use tk247 1234567\n2096 issue alice tk920\n2116 use tkZZZ correct horse battery\n2145 use tk310 short\n",
+    "expected": "1: ok\n2: invalid\n3: invalid\n"
+  },
+  {
+    "name": "ttl=60",
+    "stdin": "60\n1061 issue bob tk227\n1092 issue bob tk644\n1122 use tk227 longenoughpw\n1723 issue alice tk249\n1752 issue bob tk853\n1781 use tk853 1234567\n1810 use tk853 correct horse battery\n2411 use tk644 longenoughpw\n2442 use tk249 short\n2472 use tk853 correct horse battery\n2531 use tk000 longenoughpw\n2591 use tk853 longenoughpw\n2622 use tk000 short\n",
+    "expected": "1: ok\n2: ok\n3: superseded\n4: ok\n5: ok\n6: weak-password\n7: weak-password\n"
+  },
+  {
+    "name": "ttl=3600",
+    "stdin": "3600\n1061 issue alice tk830\n1081 issue bob tk881\n1140 use tk000 correct horse battery\n1199 issue bob tk678\n1260 issue alice tk420\n1861 use tk678 1234567\n1922 use tk420 correct horse battery\n1953 use tk420 short\n2153 use tkZZZ short\n2184 use tk420 short\n2244 issue bob tk455\n2275 use tk455 longenoughpw\n2305 use tk830 short\n2366 use tk881 1234567\n2425 issue bob tk513\n2455 issue alice tk548\n2515 issue bob tk905\n3116 use tk420 1234567\n",
+    "expected": "1: ok\n2: ok\n3: invalid\n"
+  },
+  {
+    "name": "ttl=30",
+    "stdin": "30\n1200 issue alice tk145\n1229 use tk000 short\n1288 issue bob tk773\n1347 issue bob tk236\n1378 issue alice tk761\n1408 use tk761 short\n1409 use tk236 correct horse battery\n1429 use tk000 short\n2030 issue alice tk454\n2031 issue bob tk477\n2061 issue alice tk446\n2066 issue bob tk914\n2667 use tk145 short\n2727 use tk761 1234567\n2756 use tk761 longenoughpw\n2816 use tk236 longenoughpw\n2836 use tk446 correct horse battery\n2896 use tkZZZ correct horse battery\n2955 use tk145 correct horse battery\n2975 use tkZZZ longenoughpw\n",
+    "expected": "1: ok\n2: invalid\n3: ok\n4: ok\n5: ok\n6: expired\n7: expired\n"
+  },
+  {
+    "name": "ttl=300",
+    "stdin": "300\n1061 issue bob tk897\n1261 issue bob tk687\n1461 use tk687 correct horse battery\n1492 use tk897 correct horse battery\n1553 issue bob tk419\n1753 use tk897 short\n1812 use tk419 correct horse battery\n1873 use tk897 1234567\n1878 issue bob tk630\n1937 issue alice tk682\n1968 issue bob tk177\n2168 issue bob tk717\n2769 use tk630 1234567\n2828 issue bob tk343\n3429 use tkZZZ longenoughpw\n3430 use tkZZZ 1234567\n3435 issue alice tk876\n3465 issue alice tk946\n3466 use tk630 correct horse battery\n",
+    "expected": "1: ok\n2: ok\n3: weak-password\n"
+  }
+]

@@ -1,0 +1,27 @@
+[
+  {
+    "name": "ruleset 1",
+    "stdin": "RULE shell-from-java parent eq java\nRULE netcat image endswith /nc\nRULE encoded-ps cmd contains -enc\nRULE tmp-exec image startswith /tmp/\nRULE root-anything user eq root\n\nhost=db2 user=dave image=/opt/app/run cmd=\"nc -l 4444\" parent=sshd\nhost=app3 user=mallory image=/tmp/x/dropper cmd=\"backup.sh --full\" parent=systemd\nhost=web1 user=deploy image=/usr/bin/nc cmd=\"backup.sh --full\" parent=systemd\nhost=db2 user=carol image=/usr/bin/bash cmd=\"powershell -enc AAAA\" parent=systemd\nhost=app3 user=carol image=/usr/bin/nc cmd=\"powershell -enc AAAA\" parent=sshd\nhost=db2 user=root image=/usr/bin/bash cmd=\"bash -i\" parent=java\nhost=web1 user=mallory image=/tmp/x/dropper cmd=\"python3 app.py\" parent=java\nhost=app3 user=\"svc backup\" image=/opt/app/run cmd=\"backup.sh --full\" parent=cron\n",
+    "expected": "event 1: -\nevent 2: tmp-exec\nevent 3: netcat\nevent 4: encoded-ps\nevent 5: netcat,encoded-ps\nevent 6: shell-from-java,root-anything\nevent 7: shell-from-java,tmp-exec\nevent 8: -\n"
+  },
+  {
+    "name": "ruleset 2",
+    "stdin": "RULE NC image endswith nc\nRULE a cmd contains a b\nRULE nothing host eq web\n\nhost=web1 user=\"svc backup\" image=/usr/bin/bash cmd=sshd parent=systemd\nhost=app3 user=\"j. smith\" image=/tmp/x/dropper cmd=\"python3 app.py\" parent=sshd\nhost=db2 user=erin image=/usr/bin/nc cmd=\"backup.sh --full\" parent=cron\nhost=db2 user=\"j. smith\" image=/usr/bin/nc cmd=sshd parent=java\nhost=web1 user=carol image=/usr/bin/nc cmd=\"nc -l 4444\" parent=cron\nhost=db2 user=deploy image=/usr/bin/nc cmd=\"powershell -enc AAAA\" parent=java\nhost=web1 user=\"svc backup\" image=/opt/app/run cmd=\"backup.sh --full\" parent=sshd\n",
+    "expected": "event 1: -\nevent 2: -\nevent 3: NC\nevent 4: NC\nevent 5: NC\nevent 6: NC\nevent 7: -\n"
+  },
+  {
+    "name": "ruleset 3",
+    "stdin": "RULE ssh-parent parent eq sshd\nRULE bash cmd startswith bash\nRULE dropper image contains dropper\n\nhost=db2 user=bob image=/opt/app/run cmd=\"bash -i\" parent=sshd\nhost=web1 user=\"svc backup\" image=/usr/bin/nc cmd=sshd parent=systemd\nhost=app3 user=\"j. smith\" image=/usr/bin/nc cmd=\"cmd /c whoami\" parent=sshd\nhost=web1 user=erin image=/tmp/x/dropper cmd=sshd parent=java\nhost=web1 user=root image=/tmp/x/dropper cmd=cron parent=systemd\nhost=db2 user=erin image=/opt/app/run cmd=\"backup.sh --full\" parent=java\nhost=web1 user=\"j. smith\" image=/opt/app/run cmd=\"cmd /c whoami\" parent=systemd\nhost=web1 user=erin image=/usr/bin/nc cmd=sshd parent=cron\n",
+    "expected": "event 1: ssh-parent,bash\nevent 2: -\nevent 3: ssh-parent\nevent 4: dropper\nevent 5: dropper\nevent 6: -\nevent 7: -\nevent 8: -\n"
+  },
+  {
+    "name": "ruleset 4",
+    "stdin": "RULE shell-from-java parent eq java\nRULE netcat image endswith /nc\nRULE encoded-ps cmd contains -enc\nRULE tmp-exec image startswith /tmp/\nRULE root-anything user eq root\n\nhost=db2 user=dave image=/usr/bin/nc cmd=\"powershell -enc AAAA\" parent=java\nhost=db2 user=\"svc backup\" image=/usr/bin/bash cmd=\"python3 app.py\" parent=java\nhost=web1 user=erin image=/tmp/x/dropper cmd=\"powershell -enc AAAA\" parent=systemd\nhost=db2 user=root image=/opt/app/run cmd=cron parent=cron\nhost=db2 user=\"svc backup\" image=/usr/bin/bash cmd=\"bash -i\" parent=sshd\nhost=db2 user=\"svc backup\" image=/tmp/x/dropper cmd=\"bash -i\" parent=sshd\nhost=db2 user=mallory image=/opt/app/run cmd=\"bash -i\" parent=cron\nhost=web1 image=/usr/bin/nc\ncmd=\"bash -i\"\n",
+    "expected": "event 1: shell-from-java,netcat,encoded-ps\nevent 2: shell-from-java\nevent 3: encoded-ps,tmp-exec\nevent 4: root-anything\nevent 5: -\nevent 6: tmp-exec\nevent 7: -\nevent 8: netcat\nevent 9: -\n"
+  },
+  {
+    "name": "ruleset 5",
+    "stdin": "RULE NC image endswith nc\nRULE a cmd contains a b\nRULE nothing host eq web\n\nhost=db2 user=bob image=/usr/bin/nc cmd=\"nc -l 4444\" parent=systemd\nhost=app3 user=deploy image=/opt/app/run cmd=\"bash -i\" parent=sshd\nhost=app3 user=dave image=/opt/app/run cmd=\"python3 app.py\" parent=cron\nhost=db2 user=bob image=/tmp/x/dropper cmd=\"cmd /c whoami\" parent=java\nhost=app3 user=root image=/usr/bin/bash cmd=\"bash -i\" parent=sshd\nhost=web1 user=\"j. smith\" image=/tmp/x/dropper cmd=cron parent=sshd\nhost=db2 user=alice image=/usr/bin/nc cmd=sshd parent=cron\n",
+    "expected": "event 1: NC\nevent 2: -\nevent 3: -\nevent 4: -\nevent 5: -\nevent 6: -\nevent 7: NC\n"
+  }
+]

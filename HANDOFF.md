@@ -24,7 +24,7 @@ One section on purpose: see `docs/deployment-hardening.md` (proxy and `TRUSTED_P
 
 1. On any existing database: `npm run recompute-xp` (site stopped), then `npm run backfill-achievements`. Level thresholds changed, so levels drop; XP does not.
 2. Click through the new UI in a real browser at 1440px and 390px (lesson, challenge and review tabs, both celebration dialogs for focus trap, Escape and reduced motion, toasts), then a real phone. Playwright with headless Chromium works; set `CHROME=` to the `chromium_headless_shell` under the Playwright browsers dir.
-3. Tutor token cost is the only per-use cost: less lesson context, shorter replies, tighter caps, a dollar ceiling per user and day, a normalised cache key.
+3. Tutor budget and cache work is implemented: atomic UTC-day reservations in `tutor_spend`, configurable estimated pricing, privacy-checked shared responses, and longer retention for popular answers. See README for variables and validation scripts.
 4. Content: more challenges (only 4), arrays/strings/structs before C memory, more Go (context, `net/http`, testing), intermediate Rust (traits, lifetimes, errors, concurrency).
 5. Admin view of where learners get stuck (pass rates, hints, tutor use) and a screen-reader pass over the dialogs and toasts.
 6. Review the unaudited files listed in `docs/security.md`.
@@ -39,3 +39,13 @@ One section on purpose: see `docs/deployment-hardening.md` (proxy and `TRUSTED_P
 - Scratch scripts that import `mongodb` or repo code only resolve from inside `scripts/`; delete them afterwards.
 - Don't `pkill -f` with a pattern in your own command line; kill by PID.
 - Run `scripts/security/quick-fixes.mts` with Node's `react-server` condition; renderer checks without it.
+
+## Interrupted-work recovery
+
+The curriculum has 35 tracks, 423 lessons (38 reviews), and 4,970 base lesson XP, before challenges. Completed the missing ethical-hacking capstone harness; its absence caused curriculum loading to throw for every exercise, breaking Run and autosave. The 20 ethical-hacking lessons verify, including 148 capstone assertions. Existing lesson ids were retained.
+
+CI, id/theme guards and backup/restore files were recovered from Claude's completed local branches into the working tree. The id snapshot now contains all 423 lessons. Tutor budgets were reconciled into the existing `tutor_spend` implementation rather than adding the branch's competing spend collection. Nested Claude worktrees are excluded from project lint/typecheck. The build can be verified with webpack when Turbopack worker port binding is restricted.
+
+No existing difficulty changed during this recovery, so no XP recomputation was required. No production database recomputation, deployment or push was performed. Host-dependent runner isolation, cgroups, SMTP delivery and off-host backup remain deployment tasks. Anonymous hints cannot prove a learner never received help; the Unaided seal still relies partly on honesty.
+
+Recovery validation passed: all 423 lesson starters/solutions (including challenges), webpack production build, TypeScript, lint (one pre-existing warning), id/theme guards, auth/security e2e, live leap-year Run/Test/autosave, sticky tutor use, concurrent budget reservations, and scratch backup/restore with BSON/index preservation. No new commits or attribution trailers were added.

@@ -1,0 +1,37 @@
+[
+ {
+  "name": "quiet log",
+  "stdin": "1700000176 files04 dave ws-11 OK\n???\n1700000182 web01 dave ws-10 OK\n1700000768 files04 alice ws-16 OK\n1700001100 jump05 alice ws-14 OK\n1700001816 files04 svc-deploy ws-18 OK\n1700001874 jump05 alice ws-15 OK\n1700002725 mail06 dave ws-16 FAIL\n1700002831 app02 bob ws-17 OK\n1700004058 files04 svc-deploy ws-16 OK\n1700004976 web01 svc-deploy ws-14 FAIL\n1700005155 mail06 carol ws-11 FAIL\n1700005623 app02 svc-deploy ws-10 FAIL\n",
+  "expected": "BRUTE none\nPIVOTS 0\n"
+ },
+ {
+  "name": "one guesser who gets in",
+  "stdin": "1700000347 web01 root 203.0.113.25 FAIL\n1700000349 web01 alice 203.0.113.25 FAIL\n1700000351 web01 alice 203.0.113.25 FAIL\n1700000353 web01 admin 203.0.113.25 FAIL\n1700000355 web01 admin 203.0.113.25 FAIL\n1700000377 web01 alice 203.0.113.25 OK\n1700000463 web01 alice ws-15 OK\n1700001119 jump05 dave ws-15 FAIL\n1700001889 web01 bob ws-15 OK\n1700002982 files04 carol ws-16 OK\n1700003644 jump05 carol ws-10 OK\n1700003651 app02 svc-deploy ws-17 FAIL\n1700004303 db03 dave ws-15 OK\n1700004306 app02 dave ws-12 OK\n1700004344 files04 dave ws-17 OK\n1700004876 db03 dave files04 OK\n1700004970 web01 dave ws-12 OK\n1700005230 files04 dave ws-15 FAIL\n1700005240 files04 dave ws-99 FAIL\n1700005486 db03 carol ws-19 OK\n1700005525 jump05 bob ws-17 OK\n",
+  "expected": "BRUTE 203.0.113.25 fails=5 compromised user=alice host=web01 at=1700000377\nPIVOTS 1\n"
+ },
+ {
+  "name": "several guessers",
+  "stdin": "1700000107 files04 carol ws-18 OK\n???\n1700000254 db03 svc-deploy ws-19 FAIL\n1700000293 app02 svc-deploy ws-13 OK\n1700000524 app02 dave ws-10 OK\n1700001242 jump05 svc-deploy ws-10 FAIL\n1700001570 mail06 svc-deploy ws-18 FAIL\n1700001626 web01 root 203.0.113.123 FAIL\n1700001628 web01 root 203.0.113.123 FAIL\n1700001630 web01 alice 203.0.113.123 FAIL\n1700001632 web01 root 203.0.113.123 FAIL\n1700001634 web01 alice 203.0.113.123 FAIL\n1700001636 web01 admin 203.0.113.123 FAIL\n1700001638 web01 alice 203.0.113.123 FAIL\n1700001640 web01 root 203.0.113.123 FAIL\n1700001645 web01 alice 203.0.113.123 OK\n1700001921 web01 alice 203.0.113.5 FAIL\n1700001923 web01 root 203.0.113.5 FAIL\n1700001925 web01 root 203.0.113.5 FAIL\n1700001927 web01 alice 203.0.113.5 FAIL\n1700001929 web01 admin 203.0.113.5 FAIL\n1700001949 jump05 dave ws-12 OK\n1700001949 web01 alice 203.0.113.5 OK\n1700002229 web01 admin 203.0.113.153 FAIL\n1700002231 web01 alice 203.0.113.153 FAIL\n1700002233 web01 admin 203.0.113.153 FAIL\n1700002235 web01 alice 203.0.113.153 FAIL\n1700002257 web01 alice 203.0.113.153 OK\n1700003161 db03 carol ws-13 OK\n1700003175 mail06 svc-deploy ws-16 FAIL\n1700003195 jump05 carol db03 OK\n1700003367 files04 carol jump05 OK\n1700003706 mail06 carol files04 OK\n1700003902 files04 bob ws-13 FAIL\n1700004293 db03 carol ws-99 FAIL\n1700004726 files04 bob ws-15 OK\n1700004947 files04 dave ws-11 FAIL\n1700005505 files04 carol ws-16 FAIL\n",
+  "expected": "BRUTE 203.0.113.123 fails=8 compromised user=alice host=web01 at=1700001645\nBRUTE 203.0.113.5 fails=5 compromised user=alice host=web01 at=1700001949\nPIVOTS 3\n"
+ },
+ {
+  "name": "a success before the fifth failure does not count",
+  "stdin": "1700000236 app02 bob 203.0.113.206 OK\n1700000241 web01 alice 203.0.113.206 FAIL\n1700000243 web01 alice 203.0.113.206 FAIL\n1700000245 web01 admin 203.0.113.206 FAIL\n1700000247 web01 admin 203.0.113.206 FAIL\n1700000417 app02 bob 203.0.113.79 OK\n1700000422 web01 admin 203.0.113.79 FAIL\n1700000424 web01 admin 203.0.113.79 FAIL\n1700000426 web01 root 203.0.113.79 FAIL\n1700000428 web01 root 203.0.113.79 FAIL\n1700000430 web01 root 203.0.113.79 FAIL\n1700000432 web01 root 203.0.113.79 FAIL\n1700000434 web01 admin 203.0.113.79 FAIL\n1700000436 web01 alice 203.0.113.79 FAIL\n1700001269 web01 alice ws-10 OK\n1700001584 app02 carol ws-14 FAIL\n1700001910 db03 svc-deploy ws-10 OK\n1700001933 db03 alice ws-16 OK\n1700002026 files04 carol ws-11 FAIL\n1700002144 app02 alice ws-14 OK\n1700002202 web01 svc-deploy db03 OK\n1700002459 web01 carol ws-19 FAIL\n1700002553 jump05 bob ws-16 OK\n1700002689 jump05 svc-deploy web01 OK\n1700002839 db03 svc-deploy ws-99 FAIL\n1700004396 db03 carol ws-12 OK\n1700004500 db03 alice ws-13 FAIL\n1700004906 db03 svc-deploy ws-17 OK\n1700005502 files04 dave ws-13 OK\n1700005995 db03 alice ws-19 OK\n",
+  "expected": "BRUTE 203.0.113.79 fails=8\nPIVOTS 2\n"
+ },
+ {
+  "name": "exactly five failures",
+  "stdin": "1 web01 root 203.0.113.9 FAIL\n2 web01 root 203.0.113.9 FAIL\n3 web01 root 203.0.113.9 FAIL\n4 web01 root 203.0.113.9 FAIL\n5 web01 root 203.0.113.9 FAIL\n6 web01 alice 203.0.113.9 OK\n7 db03 alice web01 OK\n",
+  "expected": "BRUTE 203.0.113.9 fails=5 compromised user=alice host=web01 at=6\nPIVOTS 1\n"
+ },
+ {
+  "name": "four failures only",
+  "stdin": "1 web01 root 203.0.113.9 FAIL\n2 web01 root 203.0.113.9 FAIL\n3 web01 root 203.0.113.9 FAIL\n4 web01 root 203.0.113.9 FAIL\n5 web01 alice 203.0.113.9 OK\n",
+  "expected": "BRUTE none\nPIVOTS 0\n"
+ },
+ {
+  "name": "larger mixed log",
+  "stdin": "1700000163 mail06 carol ws-18 OK\n1700000516 files04 dave ws-16 OK\n1700000704 files04 dave ws-13 FAIL\n1700000857 web01 alice 203.0.113.131 FAIL\n1700000859 web01 root 203.0.113.131 FAIL\n1700000861 web01 admin 203.0.113.131 FAIL\n1700000863 web01 admin 203.0.113.131 FAIL\n1700000865 web01 admin 203.0.113.131 FAIL\n1700000867 web01 admin 203.0.113.131 FAIL\n1700000876 web01 alice 203.0.113.131 OK\n1700001164 jump05 alice ws-18 OK\n1700001537 web01 root 203.0.113.96 FAIL\n1700001539 web01 alice 203.0.113.96 FAIL\n1700001541 web01 root 203.0.113.96 FAIL\n1700001543 web01 root 203.0.113.96 FAIL\n1700001571 web01 alice 203.0.113.96 OK\n1700001574 files04 alice ws-17 OK\n1700001649 web01 admin 203.0.113.231 FAIL\n1700001651 web01 root 203.0.113.231 FAIL\n1700001653 web01 root 203.0.113.231 FAIL\n1700001669 web01 admin 203.0.113.135 FAIL\n1700001671 web01 alice 203.0.113.135 FAIL\n1700001673 web01 root 203.0.113.135 FAIL\n1700001675 web01 alice 203.0.113.135 FAIL\n1700001677 web01 admin 203.0.113.135 FAIL\n1700001679 web01 root 203.0.113.135 FAIL\n1700001857 db03 svc-deploy ws-12 OK\n1700003737 jump05 svc-deploy ws-15 OK\n1700003880 files04 dave jump05 OK\n1700003885 files04 alice ws-14 OK\n1700003984 db03 dave files04 OK\n1700003992 files04 svc-deploy ws-17 FAIL\n1700004003 mail06 bob ws-12 FAIL\n1700004148 app02 svc-deploy ws-10 OK\n1700004310 mail06 dave db03 OK\n1700004818 jump05 dave ws-99 FAIL\n1700005413 web01 carol ws-13 FAIL\n1700005773 web01 alice ws-12 OK\n",
+  "expected": "BRUTE 203.0.113.131 fails=6 compromised user=alice host=web01 at=1700000876\nBRUTE 203.0.113.135 fails=6\nPIVOTS 3\n"
+ }
+]

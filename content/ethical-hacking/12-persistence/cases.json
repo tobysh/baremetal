@@ -1,0 +1,42 @@
+[
+ {
+  "name": "identical snapshots",
+  "stdin": "# baseline\nstartup tray-helper /usr/bin/tray-helper alice\nschedule backup-nightly /opt/backup/run.sh root\nstartup vendor-updater /opt/vendor/updater root\nschedule log-rotate /usr/sbin/logrotate root\nservice print-spool /usr/sbin/spoold lp\nstartup sound-init /usr/bin/sound-init bob\n\n# current\nstartup tray-helper /usr/bin/tray-helper alice\nschedule backup-nightly /opt/backup/run.sh root\nstartup vendor-updater /opt/vendor/updater root\nschedule log-rotate /usr/sbin/logrotate root\nservice print-spool /usr/sbin/spoold lp\nstartup sound-init /usr/bin/sound-init bob\n",
+  "expected": "no persistence changes\n"
+ },
+ {
+  "name": "two new entries",
+  "stdin": "# baseline\nstartup tray-helper /usr/bin/tray-helper alice\nstartup vendor-updater /opt/vendor/updater root\nschedule backup-nightly /opt/backup/run.sh root\nstartup sound-init /usr/bin/sound-init bob\nservice time-sync /usr/sbin/timesyncd root\n\n# current\nstartup tray-helper /usr/bin/tray-helper alice\nschedule report /home/alice/bin/report.sh alice\nstartup vendor-updater /opt/vendor/updater root\nschedule backup-nightly /opt/backup/run.sh root\nschedule cleanup /usr/local/bin/cleanup svc\nstartup sound-init /usr/bin/sound-init bob\nservice time-sync /usr/sbin/timesyncd root\n",
+  "expected": "NEW schedule report flags=home-path level=medium\nNEW schedule cleanup flags=- level=low\n"
+ },
+ {
+  "name": "changed paths and users",
+  "stdin": "# baseline\nschedule backup-nightly /opt/backup/run.sh root\nstartup sound-init /usr/bin/sound-init bob\nservice print-spool /usr/sbin/spoold lp\nschedule log-rotate /usr/sbin/logrotate root\nstartup vendor-updater /opt/vendor/updater root\nservice db-agent /opt/db/agent dbsvc\n\n# current\nschedule backup-nightly /opt/backup/run.sh alice\nstartup sound-init /usr/bin/sound-init.new root\nservice print-spool /opt/tools/print-spool root\nschedule log-rotate /usr/sbin/logrotate root\nstartup vendor-updater /opt/vendor/updater root\nservice db-agent /opt/db/agent dbsvc\n",
+  "expected": "CHANGED schedule backup-nightly changed=user flags=- level=low\nCHANGED startup sound-init changed=path,user flags=root level=low\nCHANGED service print-spool changed=path,user flags=root level=low\n"
+ },
+ {
+  "name": "new, changed and removed",
+  "stdin": "# baseline\nservice print-spool /usr/sbin/spoold lp\nstartup vendor-updater /opt/vendor/updater root\nservice time-sync /usr/sbin/timesyncd root\nschedule log-rotate /usr/sbin/logrotate root\nstartup sound-init /usr/bin/sound-init bob\nservice db-agent /opt/db/agent dbsvc\n\n# current\nservice updated /usr/sbin/.updated root\nschedule fontcheck /var/tmp/fontcheck.sh alice\nstartup vendor-updater /opt/vendor/updater root\nservice netmon2 /home/bob/.local/netmon root\nschedule log-rotate /home/alice/.log-rotate alice\nstartup sound-init /usr/bin/sound-init bob\nservice db-agent /opt/db/agent dbsvc\n",
+  "expected": "NEW service updated flags=hidden,root level=medium\nNEW schedule fontcheck flags=temp-path level=medium\nNEW service netmon2 flags=home-path,root level=medium\nCHANGED schedule log-rotate changed=path,user flags=home-path,hidden level=high\nREMOVED service print-spool\nREMOVED service time-sync\n"
+ },
+ {
+  "name": "a busy host",
+  "stdin": "# baseline\nservice time-sync /usr/sbin/timesyncd root\nservice db-agent /opt/db/agent dbsvc\nstartup sound-init /usr/bin/sound-init bob\nservice print-spool /usr/sbin/spoold lp\nstartup vendor-updater /opt/vendor/updater root\nstartup tray-helper /usr/bin/tray-helper alice\nschedule log-rotate /usr/sbin/logrotate root\n\n# current\nschedule fontcheck /var/tmp/fontcheck.sh alice\nservice db-agent /opt/db/agent dbsvc\nstartup sound-init /usr/bin/sound-init bob\nstartup clipsvc /opt/tools/clipsvc root\nservice print-spool /usr/sbin/spoold lp\nstartup helper /dev/shm/helper bob\nstartup cachesync /tmp/.cachesync root\nstartup vendor-updater /opt/vendor/updater root\nservice updated /usr/sbin/.updated root\nstartup tray-helper /opt/tools/tray-helper alice\nschedule log-rotate /usr/sbin/logrotate root\n",
+  "expected": "NEW schedule fontcheck flags=temp-path level=medium\nNEW startup clipsvc flags=root level=low\nNEW startup helper flags=temp-path level=medium\nNEW startup cachesync flags=temp-path,hidden,root level=high\nNEW service updated flags=hidden,root level=medium\nCHANGED startup tray-helper changed=path flags=- level=low\nREMOVED service time-sync\n"
+ },
+ {
+  "name": "only the user changes",
+  "stdin": "# baseline\nstartup a /opt/a root\n\n# current\nstartup a /opt/a alice\n",
+  "expected": "CHANGED startup a changed=user flags=- level=low\n"
+ },
+ {
+  "name": "same name, different kind",
+  "stdin": "# baseline\nstartup a /opt/a root\nschedule a /opt/b root\n\n# current\nstartup a /opt/a root\nschedule a /tmp/b root\n",
+  "expected": "CHANGED schedule a changed=path flags=temp-path,root level=high\n"
+ },
+ {
+  "name": "one of each",
+  "stdin": "# baseline\nservice time-sync /usr/sbin/timesyncd root\nschedule backup-nightly /opt/backup/run.sh root\nstartup tray-helper /usr/bin/tray-helper alice\nstartup sound-init /usr/bin/sound-init bob\nstartup vendor-updater /opt/vendor/updater root\nservice print-spool /usr/sbin/spoold lp\nservice db-agent /opt/db/agent dbsvc\nschedule log-rotate /usr/sbin/logrotate root\n\n# current\nservice time-sync /usr/sbin/timesyncd root\nschedule backup-nightly /opt/backup/run.sh root\nstartup tray-helper /usr/bin/tray-helper alice\nstartup sound-init /usr/bin/sound-init bob\nstartup vendor-updater /opt/vendor/updater root\nservice print-spool /tmp/print-spool root\nschedule log-rotate /usr/sbin/logrotate root\nservice netmon2 /home/bob/.local/netmon root\n",
+  "expected": "CHANGED service print-spool changed=path,user flags=temp-path,root level=high\nNEW service netmon2 flags=home-path,root level=medium\nREMOVED service db-agent\n"
+ }
+]

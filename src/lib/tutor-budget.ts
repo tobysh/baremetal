@@ -70,9 +70,42 @@ export async function recordSpend(db: SpendDb, userId: string, usage: Usage, now
   const day = budgetDay(now);
   const col = db.collection(COLLECTION);
   const at = new Date(now);
-  await Promise.all([
-    col.updateOne({ key: `u:${userId}:${day}` }, { $inc: { micro }, $setOnInsert: { createdAt: at } }, { upsert: true }),
-    col.updateOne({ key: `g:${day}` }, { $inc: { micro }, $setOnInsert: { createdAt: at } }, { upsert: true }),
-  ]);
+  // With the unique key index, two first-of-the-day upserts can race; the loser retries as a plain increment.
+  const bump = async (key: string) => {
+    try {
+      await col.updateOne({ key }, { $inc: { micro }, $setOnInsert: { createdAt: at } }, { upsert: true });
+    } catch (e) {
+      if ((e as { code?: number })?.code !== 11000) throw e;
+      await col.updateOne({ key }, { $inc: { micro }, $setOnInsert: { createdAt: at } }, { upsert: true });
+    }
+  };
+  await Promise.all([bump(`u:${userId}:${day}`), bump(`g:${day}`)]);
   return micro;
+}
+
+/** Hold the maximum estimated call cost so concurrent calls cannot all pass the same balance check. */
+export async function reserveBudget(db: import("mongodb").Db, userId: string, amount: number, now = Date.now()) {
+  const c = budgetConfig(), day = budgetDay(now), col = db.collection("tutor_spend");
+  const held: string[] = [];
+  const adjust = (delta: number) => Promise.all(held.map((key) => col.updateOne({ key }, { $inc: { micro: delta } })));
+  try {
+    for (const [key, usd] of [[`u:${userId}:${day}`, c.userDayUsd], [`g:${day}`, c.globalDayUsd]] as const) {
+      if (!usd) continue;
+      let granted = false;
+      if (amount <= usd * 1e6) for (let retry = 0; retry < 2; retry++) {
+        try {
+          await col.updateOne({ key, micro: { $lte: Math.floor(usd * 1e6) - amount } }, { $inc: { micro: amount }, $setOnInsert: { createdAt: new Date(now) } }, { upsert: true });
+          granted = true; break;
+        } catch (e) { if ((e as { code?: number }).code !== 11000) throw e; }
+      }
+      if (!granted) { await adjust(-amount); return null; }
+      held.push(key);
+    }
+  } catch (e) { await adjust(-amount); throw e; }
+  let settled = false;
+  return async (usage: Usage | null) => {
+    if (settled) return;
+    settled = true;
+    await adjust((usage ? estimateCostMicro(usage) : 0) - amount);
+  };
 }

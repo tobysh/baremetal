@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Card, Container, Skeleton } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
+import { getPopularTutorAnswers } from "@/lib/tutor-popular";
 import { getSiteStats } from "@/lib/stats";
 
 export const metadata: Metadata = {
@@ -31,7 +32,7 @@ export default function AdminPage() {
 async function AdminBody() {
   // Authorization happens here, on the server: role must be admin AND 2FA must be on.
   await requireAdmin();
-  const s = await getSiteStats(30);
+  const [s, popular] = await Promise.all([getSiteStats(30), getPopularTutorAnswers(20)]);
   const maxDaily = Math.max(1, ...s.daily.map((d) => d.views));
   return (
     <div className="mt-8 space-y-6">
@@ -48,6 +49,22 @@ async function AdminBody() {
           </Card>
         ))}
       </div>
+
+      <Card as="section" className="p-6">
+        <h2 className="display-sm font-semibold">Popular tutor answers</h2>
+        <p className="mt-2 text-sm text-muted">Shared answers served at least five times. Frequently used entries stay cached for 90 days.</p>
+        {popular.length === 0 ? <p className="mt-3 text-sm text-muted">No popular answers yet.</p> : (
+          <ul className="mt-4 space-y-3">
+            {popular.map((answer, i) => (
+              <li key={`${answer.exerciseId}:${answer.kind}:${i}`} className="rounded border border-border p-3">
+                <p className="text-sm font-medium">{answer.exerciseId} · {answer.kind} · {answer.hits} hits</p>
+                {answer.question && <p className="mt-1 text-sm">{answer.question}</p>}
+                <details className="mt-2 text-sm"><summary className="cursor-pointer text-muted">Show cached reply</summary><p className="mt-2 whitespace-pre-wrap break-words">{answer.reply}</p></details>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       <Card as="section" className="p-6">
         <h2 className="display-sm font-semibold">Pageviews per day</h2>

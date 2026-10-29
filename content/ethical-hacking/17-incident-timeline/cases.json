@@ -1,0 +1,42 @@
+[
+ {
+  "name": "skewed clocks, shuffled input",
+  "stdin": "# sources\nfw 90\nweb01 7\ndb03 5\n# events\n1700000082 web01 login_ok user=alice from 203.0.113.7\n1700000129 db03 hop from web01 user=alice\n1700000054 web01 login_fail user=admin from 203.0.113.7\n1700000246 fw big_upload 42 MB to 198.51.100.4\n1700000106 fw scan 203.0.113.7 touched 40 ports\n1700000125 web01 new_task name=helper\n1700000112 web01 noise cache refresh\n1700000160 db03 logout session closed\nbad line\n",
+  "expected": "TIMELINE\n1700000016 fw scan 203.0.113.7 touched 40 ports\n1700000047 web01 login_fail user=admin from 203.0.113.7\n1700000075 web01 login_ok user=alice from 203.0.113.7\n1700000105 web01 noise cache refresh\n1700000118 web01 new_task name=helper\n1700000124 db03 hop from web01 user=alice\n1700000155 db03 logout session closed\n1700000156 fw big_upload 42 MB to 198.51.100.4\nPHASES\nPHASE recon first=1700000016 last=1700000016 events=1\nPHASE access first=1700000047 last=1700000075 events=2\nPHASE persistence first=1700000118 last=1700000118 events=1\nPHASE lateral first=1700000124 last=1700000124 events=1\nPHASE exfil first=1700000156 last=1700000156 events=1\nDWELL 140\nSEQUENCE in-order\n"
+ },
+ {
+  "name": "another incident",
+  "stdin": "# sources\nfw 90\nweb01 -12\ndb03 5\n# events\n1700000030 web01 login_fail user=admin from 203.0.113.7\n1700000188 db03 logout session closed\n1700000113 fw scan 203.0.113.7 touched 40 ports\n1700000046 web01 login_fail user=admin from 203.0.113.7\n1700000313 fw big_upload 42 MB to 198.51.100.4\n1700000084 web01 login_ok user=alice from 203.0.113.7\n1700000097 web01 noise cache refresh\n1700000134 web01 new_startup name=helper\n1700000161 db03 hop from web01 user=alice\n",
+  "expected": "TIMELINE\n1700000023 fw scan 203.0.113.7 touched 40 ports\n1700000042 web01 login_fail user=admin from 203.0.113.7\n1700000058 web01 login_fail user=admin from 203.0.113.7\n1700000096 web01 login_ok user=alice from 203.0.113.7\n1700000109 web01 noise cache refresh\n1700000146 web01 new_startup name=helper\n1700000156 db03 hop from web01 user=alice\n1700000183 db03 logout session closed\n1700000223 fw big_upload 42 MB to 198.51.100.4\nPHASES\nPHASE recon first=1700000023 last=1700000023 events=1\nPHASE access first=1700000042 last=1700000096 events=3\nPHASE persistence first=1700000146 last=1700000146 events=1\nPHASE lateral first=1700000156 last=1700000156 events=1\nPHASE exfil first=1700000223 last=1700000223 events=1\nDWELL 200\nSEQUENCE in-order\n"
+ },
+ {
+  "name": "a source with no declared offset",
+  "stdin": "# sources\nfw 90\nweb01 7\n# events\n1700000194 web01 new_startup name=helper\n1700000098 fw scan 203.0.113.7 touched 40 ports\n1700000083 web01 login_fail user=admin from 203.0.113.7\n1700000160 web01 login_ok user=alice from 203.0.113.7\n1700000053 web01 login_fail user=admin from 203.0.113.7\n1700000164 web01 noise cache refresh\n1700000342 fw big_upload 42 MB to 198.51.100.4\n1700000238 db03 logout session closed\n1700000203 db03 hop from web01 user=alice\n1700000123 web01 login_fail user=admin from 203.0.113.7\nbad line\n",
+  "expected": "TIMELINE\n1700000008 fw scan 203.0.113.7 touched 40 ports\n1700000046 web01 login_fail user=admin from 203.0.113.7\n1700000076 web01 login_fail user=admin from 203.0.113.7\n1700000116 web01 login_fail user=admin from 203.0.113.7\n1700000153 web01 login_ok user=alice from 203.0.113.7\n1700000157 web01 noise cache refresh\n1700000187 web01 new_startup name=helper\n1700000203 db03 hop from web01 user=alice\n1700000238 db03 logout session closed\n1700000252 fw big_upload 42 MB to 198.51.100.4\nPHASES\nPHASE recon first=1700000008 last=1700000008 events=1\nPHASE access first=1700000046 last=1700000153 events=4\nPHASE persistence first=1700000187 last=1700000187 events=1\nPHASE lateral first=1700000203 last=1700000203 events=1\nPHASE exfil first=1700000252 last=1700000252 events=1\nDWELL 244\nSEQUENCE in-order\n"
+ },
+ {
+  "name": "phases out of order (suspect clocks)",
+  "stdin": "# sources\nfw 90\nweb01 0\ndb03 5\n# events\n1700000043 web01 login_fail user=admin from 203.0.113.7\n1700000159 db03 logout session closed\n1700000034 web01 login_fail user=admin from 203.0.113.7\n1700000104 web01 noise cache refresh\n1700000115 fw scan 203.0.113.7 touched 40 ports\n1700000107 web01 new_task name=helper\n1700000126 db03 hop from web01 user=alice\n1700000278 fw big_upload 42 MB to 198.51.100.4\n1700000039 web01 login_fail user=admin from 203.0.113.7\n1700000044 web01 login_fail user=admin from 203.0.113.7\n1700000069 web01 login_ok user=alice from 203.0.113.7\n",
+  "expected": "TIMELINE\n1700000025 fw scan 203.0.113.7 touched 40 ports\n1700000034 web01 login_fail user=admin from 203.0.113.7\n1700000039 web01 login_fail user=admin from 203.0.113.7\n1700000043 web01 login_fail user=admin from 203.0.113.7\n1700000044 web01 login_fail user=admin from 203.0.113.7\n1700000069 web01 login_ok user=alice from 203.0.113.7\n1700000104 web01 noise cache refresh\n1700000107 web01 new_task name=helper\n1700000121 db03 hop from web01 user=alice\n1700000154 db03 logout session closed\n1700000188 fw big_upload 42 MB to 198.51.100.4\nPHASES\nPHASE recon first=1700000025 last=1700000025 events=1\nPHASE access first=1700000034 last=1700000069 events=5\nPHASE persistence first=1700000107 last=1700000107 events=1\nPHASE lateral first=1700000121 last=1700000121 events=1\nPHASE exfil first=1700000188 last=1700000188 events=1\nDWELL 163\nSEQUENCE in-order\n"
+ },
+ {
+  "name": "tie keeps input order",
+  "stdin": "# sources\n# events\n100 a login_ok x\n100 b login_fail y\n100 a noise z\n",
+  "expected": "TIMELINE\n100 a login_ok x\n100 b login_fail y\n100 a noise z\nPHASES\nPHASE access first=100 last=100 events=2\nDWELL 0\nSEQUENCE in-order\n"
+ },
+ {
+  "name": "no phase events",
+  "stdin": "# sources\na 5\n# events\n10 a noise hello world\n12 a logout bye\n",
+  "expected": "TIMELINE\n5 a noise hello world\n7 a logout bye\nPHASES\nDWELL 0\nSEQUENCE in-order\n"
+ },
+ {
+  "name": "empty input",
+  "stdin": "",
+  "expected": "TIMELINE\nPHASES\nDWELL 0\nSEQUENCE in-order\n"
+ },
+ {
+  "name": "one more incident",
+  "stdin": "# sources\nfw 90\nweb01 0\ndb03 -200\n# events\n1700000015 web01 login_fail user=admin from 203.0.113.7\n1700000063 web01 new_startup name=helper\n1700000098 fw scan 203.0.113.7 touched 40 ports\n1700000214 fw big_upload 42 MB to 198.51.100.4\n1700000010 web01 login_fail user=admin from 203.0.113.7\n1700000038 web01 noise cache refresh\n1700000023 web01 login_ok user=alice from 203.0.113.7\n1699999864 db03 hop from web01 user=alice\n1699999893 db03 logout session closed\n",
+  "expected": "TIMELINE\n1700000008 fw scan 203.0.113.7 touched 40 ports\n1700000010 web01 login_fail user=admin from 203.0.113.7\n1700000015 web01 login_fail user=admin from 203.0.113.7\n1700000023 web01 login_ok user=alice from 203.0.113.7\n1700000038 web01 noise cache refresh\n1700000063 web01 new_startup name=helper\n1700000064 db03 hop from web01 user=alice\n1700000093 db03 logout session closed\n1700000124 fw big_upload 42 MB to 198.51.100.4\nPHASES\nPHASE recon first=1700000008 last=1700000008 events=1\nPHASE access first=1700000010 last=1700000023 events=3\nPHASE persistence first=1700000063 last=1700000063 events=1\nPHASE lateral first=1700000064 last=1700000064 events=1\nPHASE exfil first=1700000124 last=1700000124 events=1\nDWELL 116\nSEQUENCE in-order\n"
+ }
+]

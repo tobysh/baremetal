@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import type { Lesson, Track } from "./curriculum/types";
 import { normalizeCode, normalizeMessage, normalizeOutput } from "./tutor-normalize";
+import { classifyQuestion, codeShape, hasUnvettedComments, normalizeFailureOutput, normalizeQuestion, privateWords, wordsOf, type CacheKind } from "./tutor-cache";
 import { EXPERIENCE_LEVELS, type ExperienceLevel, type TutorMessage } from "./models";
 
 // Which model answers tutor questions. "anthropic" (default) uses Claude via the API; "ollama" uses a local model, so code and questions never leave the machine running the site.
@@ -18,7 +19,7 @@ export const anthropic = () => (client ??= new Anthropic());
 export class TutorUnavailableError extends Error {}
 
 // Stable across every request so it can be prompt-cached.
-const TUTOR_SYSTEM = `You are the tutor inside Baremetal, a site that teaches low-level programming (C, Rust, Go and x86-64 assembly) to people of every background, including people who have never programmed before.
+export const TUTOR_SYSTEM = `You are the tutor inside Baremetal, a site that teaches low-level programming (C, Rust, Go and x86-64 assembly) to people of every background, including people who have never programmed before.
 
 How you teach:
 - Your goal is for the learner to understand and solve the exercise themselves. Guide; don't do the work for them.
@@ -102,10 +103,12 @@ export function exposesSolution(reply: string, solution: string, starter: string
   return [...windows(reply)].some((w) => answer.has(w) && !given.has(w));
 }
 
-export function buildMessages(history: TutorMessage[], message: string, code: string, lastOutput: string): ChatTurn[] {
+export function buildMessages(history: TutorMessage[], message: string, code: string, lastOutput: string, omitContext = false): ChatTurn[] {
   const recent = history.slice(-HISTORY_TURNS).map((m) => ({ role: m.role, content: clip(m.content, MAX_HISTORY_CHARS) }));
   // A history must start with a user turn.
   while (recent[0]?.role === "assistant") recent.shift();
+  // Conceptual questions are answered (and cached) without the learner's code, so the shared answer can't depend on it.
+  if (omitContext) return [...recent, { role: "user", content: `[The learner's code and output are not attached to this question. Answer the concept in general terms, tied to this lesson, and don't assume anything about their code.]\n\n${message}` }];
   const context = `<current_code>\n${escapeContext(compact(code, MAX_CODE_CHARS))}\n</current_code>\n<last_output>\n${escapeContext(compact(lastOutput || "(not run yet)", MAX_OUTPUT_CHARS))}\n</last_output>\n\n`;
   return [...recent, { role: "user", content: `${context}${message}` }];
 }
@@ -132,6 +135,46 @@ export function responseCacheKey(parts: { lessonCtx: string; message: string; co
     )
     .digest("hex");
 }
+
+// ---------- Shared caches: concept questions and generic failures ----------
+// See tutor-cache.ts for the kinds and the privacy rules.
+
+const baseParts = () => [TUTOR_PROVIDER, TUTOR_PROVIDER === "ollama" ? OLLAMA_MODEL : TUTOR_MODEL, sha(TUTOR_SYSTEM)];
+const keyOf = (...parts: unknown[]) => createHash("sha256").update(JSON.stringify(parts)).digest("hex");
+
+/** One question for every learner on a lesson at a level: no code, no output. */
+export function conceptCacheKey(lessonCtx: string, message: string): string {
+  return keyOf("concept", ...baseParts(), sha(lessonCtx), normalizeQuestion(message));
+}
+
+/** A generic "help" message with the same failing output and the same code shape. */
+export function failureCacheKey(p: { lessonCtx: string; code: string; lastOutput: string; language: string; publicWords: Set<string> }): string {
+  return keyOf("failure", ...baseParts(), sha(p.lessonCtx), normalizeFailureOutput(p.lastOutput), sha(codeShape(p.code, p.language, p.publicWords)));
+}
+
+export type CacheCandidate = { kind: CacheKind; key: string; question?: string; priv: Set<string>; storable: boolean };
+export type CachePlan = {
+  /** Look up in this order. */
+  candidates: CacheCandidate[];
+  /** Call the model without the learner's code and output (concept questions). */
+  omitContext: boolean;
+};
+
+/** Which cache entries a first-turn question may read, and may write after a model answer. */
+export function planCache(p: { lessonCtx: string; message: string; code: string; lastOutput: string; language: string; starter: string }): CachePlan {
+  const cls = classifyQuestion(p.message);
+  if (cls === "concept")
+    return { omitContext: true, candidates: [{ kind: "concept", key: conceptCacheKey(p.lessonCtx, p.message), question: normalizeQuestion(p.message).slice(0, 200), priv: new Set(), storable: true }] };
+  const publicWords = wordsOf(`${p.lessonCtx}\n${p.starter}\n${p.lastOutput}`);
+  const vetted = !hasUnvettedComments(p.code, p.language, publicWords);
+  const candidates: CacheCandidate[] = [];
+  const exactKey = responseCacheKey(p);
+  candidates.push({ kind: "exact", key: exactKey, priv: privateWords(p.code, "exact", p.language, publicWords), storable: vetted });
+  if (cls === "generic") candidates.push({ kind: "failure", key: failureCacheKey({ ...p, publicWords }), priv: privateWords(p.code, "failure", p.language, publicWords), storable: vetted });
+  // storable is false for code with comments we have not seen elsewhere: such replies may be served but never stored.
+  return { omitContext: false, candidates };
+}
+
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
 export type TutorUsage = {

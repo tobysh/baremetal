@@ -1,0 +1,7 @@
+Implement three functions with the types given in the editor.
+
+1. **`int assess(const Target *t, const Policy *p, Report *rep)`**: return `-2` if `!p->authorized` (no callback may run); `-1` if the range is invalid (`scope_lo < 1`, `scope_hi > 65535`, `scope_lo > scope_hi`) without any callback; otherwise fill `rep` (set `rep->n`) as described in the lesson and return `rep->n`. At most 16 findings fit; stop adding at 16. Probe only `scope_lo..scope_hi`, retrying `PORT_TIMEOUT` at most twice, never re-probing after a definite answer, and call `banner` once per open port (a `NULL` banner gives no banner finding).
+2. **`int doc_fixed(const DocStore *s, int caller, int id, char *out, size_t cap)`**: `200` with the text copied into `out` (truncated to `cap`, terminated, nothing written if `cap` is 0) when the document exists and `caller` is its owner, otherwise `404` with `out` untouched.
+3. **`int report_text(const Report *rep, char *out, size_t cap)`**: `REPORT: N findings\n\n`, then for each finding in order `FINDING: title\nSEVERITY: name\nROOT CAUSE: ...\nEVIDENCE:\n- evidence\nREMEDIATION: ...\n`, with one blank line between blocks. `N findings` is `1 finding` when there is exactly one. Severity names `Info, Low, Medium, High, Critical` for 0 to 4. Replace `\n` and `\r` inside values with spaces. Return the length, or `-1` (with `out[0] = 0` if `cap > 0`) when the text and its NUL do not fit.
+
+`ver_cmp` is provided. Several simulated hosts are assessed.

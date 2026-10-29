@@ -1,6 +1,6 @@
 ---
 title: Demand Paging: Handling Page Faults
-summary: Treat a page fault as a request, not a crash: reserve virtual regions with permissions, then allocate and map a zeroed frame on first touch and let the instruction retry.
+summary: Treat a page fault as a request: reserve regions with permissions, then allocate and map a zeroed frame on first touch and let the instruction retry.
 minutes: 70
 difficulty: hard
 tags: memory, paging, exceptions

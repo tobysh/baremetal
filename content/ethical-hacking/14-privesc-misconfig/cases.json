@@ -1,0 +1,47 @@
+[
+ {
+  "name": "clean system",
+  "stdin": "G guest staff\nD 0755 root root /\nD 0755 root root /usr/sbin\nF 0755 root root /usr/sbin/backupd\nS backup root /usr/sbin/backupd\nC root /usr/sbin/backupd\n",
+  "expected": "no privilege escalation paths found\n"
+ },
+ {
+  "name": "world-writable service binary",
+  "stdin": "G guest staff\nD 0755 root root /usr/sbin\nF 0757 root root /usr/sbin/backupd\nS backup root /usr/sbin/backupd\n",
+  "expected": "writable-exec backup path=/usr/sbin/backupd fix=chmod 0755\n"
+ },
+ {
+  "name": "sticky directory is not a swap risk",
+  "stdin": "D 1777 root root /srv/tmp\nF 0755 root root /srv/tmp/job.sh\nC root /srv/tmp/job.sh\nD 0777 root root /srv/app\nF 0755 root root /srv/app/run\nS web root /srv/app/run\n",
+  "expected": "writable-dir web dir=/srv/app fix=chmod 0775\n"
+ },
+ {
+  "name": "group access matters only for guest's groups",
+  "stdin": "G guest staff\nF 0775 root staff /opt/a\nF 0775 root wheel /opt/b\nS a root /opt/a\nS b root /opt/b\nF 4775 root staff /usr/bin/helper\nF 4775 root wheel /usr/bin/helper2\n",
+  "expected": "writable-exec a path=/opt/a fix=chmod 0755\nsetuid-writable path=/usr/bin/helper fix=chmod 4755\n"
+ },
+ {
+  "name": "owned by guest",
+  "stdin": "G guest users\nF 0755 guest guest /opt/t\nS t root /opt/t\nF 4755 guest root /opt/u\nF 0770 guest users /opt/v\nC root /opt/v\nS own guest /opt/t\n",
+  "expected": "writable-exec t path=/opt/t fix=chown root\nwritable-exec cron path=/opt/v fix=chown root\n"
+ },
+ {
+  "name": "random listing 1",
+  "stdin": "D 0755 root root /\nF 0644 guest wheel /opt/tools/prog2\nF 0777 svc wheel /opt/jobs/prog6\nF 0755 root staff /srv/app/prog0\nD 0755 root root /srv/app\nG guest users\nF 0644 guest users /opt/jobs/prog8\nS svc5 root /opt/jobs/prog5\nD 0775 guest staff /opt/jobs\nS svc1 root /srv/app/prog1\nF 0664 guest games /srv/app/prog1\nS svc7 svc /var/spool/jobs/prog7\nS svc2 svc /opt/tools/prog2\nF 4757 svc svc /var/spool/jobs/prog7\nF 4775 root svc /var/spool/jobs/prog9\nS ghost root /nowhere/missing\nD 0770 guest wheel /usr/sbin\nS svc0 root /srv/app/prog0\nS svc4 root /opt/jobs/prog4\nD 0755 root games /var/spool/jobs\nS svc3 guest /usr/sbin/prog3\nF 4777 root svc /opt/jobs/prog5\nF 0644 root svc /opt/jobs/prog4\nF 0644 root root\nS svc8 guest /opt/jobs/prog8\nG guest staff\nF 0775 root root /usr/sbin/prog3\nS svc9 svc /var/spool/jobs/prog9\nS svc6 root /opt/jobs/prog6\nD 0757 guest games /opt/tools\nG guest games\n",
+  "expected": "writable-exec svc5 path=/opt/jobs/prog5 fix=chmod 4775\nwritable-exec svc1 path=/srv/app/prog1 fix=chown root\nwritable-exec svc7 path=/var/spool/jobs/prog7 fix=chmod 4755\nwritable-exec svc2 path=/opt/tools/prog2 fix=chown root\nwritable-dir svc4 dir=/opt/jobs fix=chown root\nwritable-exec svc6 path=/opt/jobs/prog6 fix=chmod 0775\nsetuid-writable path=/opt/jobs/prog5 fix=chmod 4775\n"
+ },
+ {
+  "name": "random listing 2",
+  "stdin": "S svc4 svc /opt/tools/prog4\nC guest /srv/app/prog8\nS svc13 root /opt/tools/prog13\nD 0770 root root /srv/app\nF 0700 root games /opt/tools/prog0\nS svc11 root /srv/app/prog11\nF 0700 root games /usr/sbin/prog1\nC svc /srv/app/prog7\nG guest staff\nC root /srv/app/prog2\nC guest /srv/app/prog6\nC root /opt/jobs/prog5\nS svc9 svc /var/spool/jobs/prog9\nF 0755 root svc /srv/app/prog11\nS svc12 svc /usr/sbin/prog12\nS svc1 svc /usr/sbin/prog1\nD 0755 root root /usr/sbin\nF 0757 svc users /srv/app/prog6\nF 0700 root users /srv/app/prog8\nC guest /opt/tools/prog0\nF 4775 guest root /usr/sbin/prog10\nS svc10 root /usr/sbin/prog10\nF 0755 svc staff /opt/tools/prog4\nF 4777 root users /srv/app/prog7\nS svc3 guest /opt/tools/prog3\nF 4777 root svc /opt/tools/prog13\nG guest users\nF 0700 root users /opt/tools/prog3\nF 4775 root users /opt/jobs/prog5\nD 0770 root wheel /opt/tools\nF 0644 guest users /usr/sbin/prog12\nD 0755 root root /\nF 4775 root root /var/spool/jobs/prog9\nF 0644 root root\nD 1777 guest staff /opt/jobs\nD 0755 root root /var/spool/jobs\nF 0777 root root /srv/app/prog2\n",
+  "expected": "writable-exec svc13 path=/opt/tools/prog13 fix=chmod 4775\nwritable-exec cron path=/srv/app/prog7 fix=chmod 4755\nwritable-exec cron path=/srv/app/prog2 fix=chmod 0775\nwritable-exec cron path=/opt/jobs/prog5 fix=chmod 4755\nwritable-exec svc12 path=/usr/sbin/prog12 fix=chown root\nwritable-exec svc10 path=/usr/sbin/prog10 fix=chown root\nsetuid-writable path=/srv/app/prog7 fix=chmod 4755\nsetuid-writable path=/opt/tools/prog13 fix=chmod 4775\nsetuid-writable path=/opt/jobs/prog5 fix=chmod 4755\n"
+ },
+ {
+  "name": "random listing 3",
+  "stdin": "F 0664 guest games /opt/jobs/prog5\nS svc16 guest /usr/sbin/prog16\nS svc11 root /srv/app/prog11\nF 0755 root staff /opt/tools/prog2\nF 0700 root wheel /opt/jobs/prog3\nF 0755 root root /var/spool/jobs/prog7\nD 0755 root root /\nC guest /srv/app/prog1\nF 0755 root games /opt/jobs/prog6\nF 4757 root root /var/spool/jobs/prog0\nD 0770 root users /srv/app\nF 0755 root games /opt/jobs/prog14\nF 0777 root root /opt/tools/prog17\nD 0775 root root /usr/sbin\nS svc7 root /var/spool/jobs/prog7\nS svc9 guest /usr/sbin/prog9\nF 0755 root staff /srv/app/prog13\nF 0775 guest root /srv/app/prog12\nF 0755 guest svc /opt/tools/prog15\nD 1777 root svc /opt/jobs\nS svc12 guest /srv/app/prog12\nG guest users\nC svc /var/spool/jobs/prog8\nS svc5 root /opt/jobs/prog5\nF 0777 root games /srv/app/prog11\nF 0757 svc users /var/spool/jobs/prog8\nS svc10 root /var/spool/jobs/prog10\nS svc14 root /opt/jobs/prog14\nS svc2 svc /opt/tools/prog2\nS svc0 guest /var/spool/jobs/prog0\nS svc4 guest /var/spool/jobs/prog4\nC root /opt/tools/prog17\nD 0777 root staff /opt/tools\nF 0644 root root\nS svc15 root /opt/tools/prog15\nF 0757 guest games /usr/sbin/prog16\nS svc6 root /opt/jobs/prog6\nF 0777 root staff /var/spool/jobs/prog10\nG guest staff\nF 0755 svc wheel /srv/app/prog1\nF 4755 root games /usr/sbin/prog9\nD 0777 root staff /var/spool/jobs\nF 0757 root games /var/spool/jobs/prog4\nS svc3 svc /opt/jobs/prog3\nC root /srv/app/prog13\n",
+  "expected": "writable-exec svc11 path=/srv/app/prog11 fix=chmod 0775\nwritable-dir svc7 dir=/var/spool/jobs fix=chmod 0755\nwritable-exec cron path=/var/spool/jobs/prog8 fix=chmod 0755\nwritable-exec svc5 path=/opt/jobs/prog5 fix=chown root\nwritable-exec svc10 path=/var/spool/jobs/prog10 fix=chmod 0755\nwritable-dir svc2 dir=/opt/tools fix=chmod 0755\nwritable-exec cron path=/opt/tools/prog17 fix=chmod 0775\nwritable-exec svc15 path=/opt/tools/prog15 fix=chown root\nwritable-dir cron dir=/srv/app fix=chmod 0750\nsetuid-writable path=/var/spool/jobs/prog0 fix=chmod 4755\n"
+ },
+ {
+  "name": "random listing 4",
+  "stdin": "C root /opt/jobs/prog10\nG guest staff\nF 4777 root users /opt/jobs/prog7\nS svc17 root /opt/tools/prog17\nF 0755 root games /var/spool/jobs/prog9\nF 4755 root staff /opt/tools/prog12\nF 0644 root staff /opt/tools/prog6\nF 0777 root root /opt/tools/prog13\nF 0777 root svc /srv/app/prog11\nC guest /opt/tools/prog15\nF 4755 root staff /opt/tools/prog17\nC svc /var/spool/jobs/prog8\nC root /srv/app/prog20\nF 0664 guest wheel /srv/app/prog1\nS svc4 svc /opt/jobs/prog4\nF 4777 root users /srv/app/prog20\nF 4777 root games /usr/sbin/prog2\nF 0777 svc staff /usr/sbin/prog5\nF 0755 svc wheel /opt/tools/prog3\nF 4775 guest users /srv/app/prog19\nC root /srv/app/prog0\nS svc7 root /opt/jobs/prog7\nF 0644 guest svc /var/spool/jobs/prog16\nS svc9 root /var/spool/jobs/prog9\nS svc21 root /srv/app/prog21\nD 0757 root staff /usr/sbin\nS svc19 guest /srv/app/prog19\nF 4755 root wheel /opt/jobs/prog4\nF 0755 root svc /var/spool/jobs/prog8\nD 0770 root wheel /opt/tools\nF 4757 guest root /opt/tools/prog14\nF 0664 guest svc /opt/tools/prog15\nD 0775 root svc /var/spool/jobs\nS svc5 svc /usr/sbin/prog5\nS svc6 guest /opt/tools/prog6\nC root /var/spool/jobs/prog18\nF 0755 guest svc /srv/app/prog21\nS svc11 guest /srv/app/prog11\nS svc13 guest /opt/tools/prog13\nG guest users\nS svc3 root /opt/tools/prog3\nF 4777 root users /var/spool/jobs/prog18\nD 0757 root wheel /srv/app\nD 0755 root root /\nD 0755 root staff /opt/jobs\nS svc1 guest /srv/app/prog1\nF 0644 root root\nF 0757 root wheel /opt/jobs/prog10\nS svc2 svc /usr/sbin/prog2\nS svc14 root /opt/tools/prog14\nS svc16 svc /var/spool/jobs/prog16\nC guest /opt/tools/prog12\nF 0664 root root /srv/app/prog0\n",
+  "expected": "writable-exec cron path=/opt/jobs/prog10 fix=chmod 0755\nwritable-exec cron path=/srv/app/prog20 fix=chmod 4755\nwritable-dir cron dir=/srv/app fix=chmod 0755\nwritable-exec svc7 path=/opt/jobs/prog7 fix=chmod 4755\nwritable-exec svc21 path=/srv/app/prog21 fix=chown root\nwritable-exec svc5 path=/usr/sbin/prog5 fix=chmod 0755\nwritable-exec cron path=/var/spool/jobs/prog18 fix=chmod 4755\nwritable-exec svc2 path=/usr/sbin/prog2 fix=chmod 4775\nwritable-exec svc14 path=/opt/tools/prog14 fix=chown root\nwritable-exec svc16 path=/var/spool/jobs/prog16 fix=chown root\nsetuid-writable path=/opt/jobs/prog7 fix=chmod 4755\nsetuid-writable path=/srv/app/prog20 fix=chmod 4755\nsetuid-writable path=/usr/sbin/prog2 fix=chmod 4775\nsetuid-writable path=/var/spool/jobs/prog18 fix=chmod 4755\n"
+ }
+]

@@ -1,3 +1,4 @@
+static int ncase(const char *a, const char *b, size_t n) { for (size_t i = 0; i < n; i++) { int x = tolower((unsigned char)a[i]), y = tolower((unsigned char)b[i]); if (x != y) return x - y; if (!x) return 0; } return 0; }
 typedef struct { const char *name[40]; int id[40]; int n; int text_calls, param_calls; } Toy;
 
 static int match_all(Toy *t, const char *v, int *ids, int cap, int *k) { (void)v; for (int i = 0; i < t->n && *k < cap; i++) ids[(*k)++] = t->id[i]; return *k; }
@@ -10,8 +11,8 @@ static int toy_text(void *db, const char *sql, int *ids, int cap) {
     char val[200]; size_t vl = (size_t)(q - v); if (vl >= sizeof val) return -1;
     memcpy(val, v, vl); val[vl] = 0;
     const char *rest = q + 1; int k = 0;
-    if (!strncasecmp(rest, " OR ", 4)) return match_all(t, val, ids, cap, &k);
-    int unionrow = !strncasecmp(rest, " UNION", 6);
+    if (!ncase(rest, " OR ", 4)) return match_all(t, val, ids, cap, &k);
+    int unionrow = !ncase(rest, " UNION", 6);
     if (*rest && !unionrow && strncmp(rest, "--", 2) && *rest != ';') return -1;
     for (int i = 0; i < t->n && k < cap; i++) if (!strcmp(t->name[i], val)) ids[k++] = t->id[i];
     if (unionrow && k < cap) ids[k++] = 9999;

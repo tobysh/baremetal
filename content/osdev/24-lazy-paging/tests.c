@@ -36,8 +36,6 @@ void kmain(void) {
     CHECK("a fourth region is accepted", vm_region_add(D_BASE, 2 * 4096, 1) == 0, "rejected region D");
     CHECK("a fifth region is rejected", vm_region_add(0xA0000000ull, 4096, 1) == -1, "accepted more than four regions");
 
-    uint64_t frames_before = 0;
-    (void)frames_before;
     CHECK("pf_handle refuses an address outside every region", pf_handle(0x70000000ull, 2) == 0 && pages_faulted == 0, "accepted a wild address");
     CHECK("pf_handle refuses a protection fault (page present)", pf_handle(A_BASE, 3) == 0 && pages_faulted == 0, "mapped over a present page");
     CHECK("pf_handle refuses an instruction fetch", pf_handle(A_BASE, 0x10) == 0 && pages_faulted == 0, "accepted a fetch");

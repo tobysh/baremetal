@@ -109,7 +109,7 @@ export function Workspace({
   const [hintError, setHintError] = useState<string | null>(null);
   const fetchHints = useCallback(async (index: number) => {
     const res = await fetch("/api/hint", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ exerciseId: exercise.id, index }) });
-    const body = await res.json();
+    const body = await res.json().catch(() => { throw new Error(`The server could not complete the request (HTTP ${res.status}). Please try again.`); });
     if (!res.ok) throw new Error(body.error ?? "Could not load the hint. Try again.");
     return body.hints as string[];
   }, [exercise.id]);
@@ -180,7 +180,7 @@ export function Workspace({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ exerciseId: exercise.id, code: codeRef.current, stdin: stdinRef.current, mode, review: variant === "review" }),
         });
-        const body = await res.json();
+        const body = await res.json().catch(() => { throw new Error(`The server could not run your code (HTTP ${res.status}). Please try again.`); });
         if (!res.ok) throw new Error(body.error ?? "Something went wrong running your code.");
         setResult(body);
         if (body.kind === "test" && body.allPassed) {

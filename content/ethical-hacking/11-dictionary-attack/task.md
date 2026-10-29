@@ -1,0 +1,5 @@
+1. **`int dict_attack(uint32_t target, const char *salt, int iters, const char *const *words, int n, long *work)`** tries `words[0..n-1]` in order, using the provided `toy_hash(salt, word, iters)`. Return the index of the first word whose hash equals `target`, or `-1`. Stop at the first match. Set `*work` to the total hash **rounds** performed: each attempted word costs `iters` rounds.
+2. **`int shared_hashes(const uint32_t *hashes, int n)`** returns how many entries share their value with at least one other entry (users with the same stored hash). Three users with value A and two with value B give 5; a unique value counts 0.
+3. **`long iterations_needed(double rate, long words, double seconds)`** returns the smallest iteration count (at least 1) such that trying every word of a list of `words` entries takes at least `seconds`, if the attacker computes `rate` rounds per second. So the answer is the smallest integer `k >= 1` with `words * k / rate >= seconds`.
+
+`toy_hash` is provided; do not change it. Different salts, word lists and iteration counts are used.

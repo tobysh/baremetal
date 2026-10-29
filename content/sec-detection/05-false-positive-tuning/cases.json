@@ -1,0 +1,27 @@
+[
+  {
+    "name": "allowlist 1",
+    "stdin": "ALLOW web-scan scanner-*.test *\nALLOW * 192.0.2.5 svc-*\nALLOW dns-odd * bob\nALLOW rdp-brute 203.0.113.* *\n\nweb-scan 198.51.100.9 alice\nrdp-brute 203.0.113.1 scan.9\nrdp-brute 192.0.2.77 alice\nweb-scan scanner-.test x\nrdp-brute 203.0.113.scan.9 x\nweb-scan scanner-.test 1\nweb-scan 10.1.1.1 -\nx 192.0.2.5 svc-\nweb-scan 192.0.2.77 bob\nrdp-brute 10.1.1.1 -\nrdp-brute 10.1.1.1 alice\nweb-scan scanner-scan.9.test x\nweb-scan 10.1.1.1 alice\nweb-scan 198.51.100.9 -\n",
+    "expected": "kept=8 suppressed=6\nallow 1 hits=3\nallow 2 hits=1\nallow 3 hits=0 stale\nallow 4 hits=2\nkept: web-scan 198.51.100.9 alice\nkept: rdp-brute 192.0.2.77 alice\nkept: web-scan 10.1.1.1 -\nkept: web-scan 192.0.2.77 bob\nkept: rdp-brute 10.1.1.1 -\nkept: rdp-brute 10.1.1.1 alice\nkept: web-scan 10.1.1.1 alice\nkept: web-scan 198.51.100.9 -\n"
+  },
+  {
+    "name": "allowlist 2",
+    "stdin": "ALLOW ? * *\nALLOW * 10.1.1.? alice\n\nscan.9 10.1.1.a alice\ndns-odd 10.1.1.1 -\ndns-odd scanner-1.test svc-monitor\n1 10.1.1.a alice\nweb-scan 192.0.2.5 alice\nweb-scan 198.51.100.9 svc-monitor\nb 1 x\nscan.9 10.1.1.7 alice\n7 x 1\n7 1 x\n",
+    "expected": "kept=4 suppressed=6\nallow 1 hits=4\nallow 2 hits=2\nkept: dns-odd 10.1.1.1 -\nkept: dns-odd scanner-1.test svc-monitor\nkept: web-scan 192.0.2.5 alice\nkept: web-scan 198.51.100.9 svc-monitor\n"
+  },
+  {
+    "name": "allowlist 3",
+    "stdin": "ALLOW web-scan * *\n\nweb-scan x 1\nrdp-brute 192.0.2.5 bob\nweb-scan x scan.9\nrdp-brute 10.1.1.1 -\nweb-scan 198.51.100.9 -\nweb-scan 192.0.2.5 -\nweb-scan 198.51.100.9 alice\nweb-scan x x\nweb-scan scan.9 scan.9\nweb-scan 198.51.100.9 -\nweb-scan scanner-1.test -\ndns-odd scanner-1.test svc-monitor\ndns-odd 198.51.100.9 svc-monitor\n",
+    "expected": "kept=4 suppressed=9\nallow 1 hits=9\nkept: rdp-brute 192.0.2.5 bob\nkept: rdp-brute 10.1.1.1 -\nkept: dns-odd scanner-1.test svc-monitor\nkept: dns-odd 198.51.100.9 svc-monitor\n"
+  },
+  {
+    "name": "allowlist 4",
+    "stdin": "ALLOW *brute* *.9 *\nALLOW * * -\n\nscan.9brute1 scan.9.9 x\nrdp-brute 192.0.2.77 -\n1 x -\ndns-odd 192.0.2.5 -\nweb-scan scanner-1.test svc-monitor\nscan.9brute scan.9.9 x\nweb-scan scanner-1.test bob\nscan.9brute1 1.9 1\nbrutescan.9 1.9 x\nscan.9brute 1.9 x\nrdp-brute 10.1.1.1 -\nscan.9 x -\ndns-odd 192.0.2.5 -\ndns-odd scanner-1.test svc-monitor\nx scan.9 -\n",
+    "expected": "kept=3 suppressed=12\nallow 1 hits=5\nallow 2 hits=7\nkept: web-scan scanner-1.test svc-monitor\nkept: web-scan scanner-1.test bob\nkept: dns-odd scanner-1.test svc-monitor\n"
+  },
+  {
+    "name": "allowlist 5",
+    "stdin": "ALLOW web-scan 192.0.2.5 alice\nALLOW rdp-brute 192.0.2.5 alice\n\nrdp-brute 192.0.2.5 svc-monitor\nweb-scan 198.51.100.9 svc-monitor\nrdp-brute 192.0.2.5 alice\nweb-scan 192.0.2.5 -\nrdp-brute 10.1.1.1 svc-monitor\ndns-odd 192.0.2.77 svc-monitor\nweb-scan 192.0.2.5 alice\nrdp-brute 192.0.2.5 alice\nweb-scan 192.0.2.5 svc-monitor\nrdp-brute 192.0.2.5 alice\nrdp-brute 198.51.100.9 alice\ndns-odd 192.0.2.77 svc-monitor\nrdp-brute 192.0.2.5 alice\nrdp-brute 192.0.2.5 alice\n",
+    "expected": "kept=8 suppressed=6\nallow 1 hits=1\nallow 2 hits=5\nkept: rdp-brute 192.0.2.5 svc-monitor\nkept: web-scan 198.51.100.9 svc-monitor\nkept: web-scan 192.0.2.5 -\nkept: rdp-brute 10.1.1.1 svc-monitor\nkept: dns-odd 192.0.2.77 svc-monitor\nkept: web-scan 192.0.2.5 svc-monitor\nkept: rdp-brute 198.51.100.9 alice\nkept: dns-odd 192.0.2.77 svc-monitor\n"
+  }
+]

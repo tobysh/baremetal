@@ -1,0 +1,7 @@
+- `Clock` is an interface with `Now() time.Time`. `SystemClock` is an empty struct whose `Now` returns `time.Now()`.
+- `FakeClock` is created by `NewFakeClock(start time.Time) *FakeClock`. `Now()` returns the current fake time, and `Advance(d time.Duration)` moves it forward. Both must be safe to call from several goroutines.
+- `TTLCache` is created by `NewTTLCache(clock Clock, ttl time.Duration) *TTLCache`; a `nil` clock means `SystemClock`.
+  - `Set(key, value string)` stores the value; it expires `ttl` after the **latest** `Set` of that key.
+  - `Get(key string) (string, bool)` returns the value if it has not expired. An entry **is expired once the clock reaches `Set time + ttl`** (at exactly `ttl` it is already gone). Expired entries are removed when found.
+  - `Len() int` returns the number of live entries (and removes the expired ones).
+  - The cache is safe for concurrent use.

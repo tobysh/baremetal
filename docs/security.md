@@ -32,7 +32,7 @@ Assets: the web server host (the sandbox shares its uid), MongoDB, accounts (scr
 | CSP | `script-src 'unsafe-inline'` remains. Nonce CSP is incompatible with partial prerendering (Next.js guide); needs a rendering migration. The one inline script is the static theme bootstrap. |
 | Email delivery | At-least-once; duplicates possible after a crash. Needs SMTP and the worker scheduled. |
 | XP recompute | `recompute-xp` must run with the site stopped; it stops for review if a pending decision has no record. |
-| Not reviewed | `achievements.ts`, `rhythm.ts`, `inline-script.tsx` and client workspace code were not audited for XP/seal bypasses or XSS sinks. |
+| Targeted read-only review | Claude reviewed `achievements.ts`, `rhythm.ts`, `inline-script.tsx` and workspace code. Clearing tutor history bypassed the Unaided check; fixed with a sticky progress flag and an API regression check. Anonymous hints, review-reset farming and goal/timezone changes affecting rhythm remain honour-system limitations. This was not a full penetration test. |
 | Optional hardening | `__Host-` cookie prefix, session idle timeout and session list with revoke, seccomp allowlist instead of denylist. |
 
 ## Regression checks

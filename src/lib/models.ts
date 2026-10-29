@@ -79,6 +79,7 @@ export type ProgressDoc = {
   passedAt?: Date;
   /** Highest number of authored hints the learner has opened (recorded by the server). */
   hintsUsed?: number;
+  tutorUsed?: boolean;
   /** Snapshots taken on first pass; they decide the Unaided seal and some achievements. */
   hintsUsedAtPass?: number;
   attemptsAtPass?: number;

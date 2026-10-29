@@ -1,0 +1,27 @@
+[
+  {
+    "name": "plain and quoted fields",
+    "stdin": "ts=1700006565 src= src=203.0.113.235 user=bob username=deploy user=second action=\"read file\"\nts=1700014900 user=second action=login user=mallory\naction=logout src=192.0.2.61 user=carol ts=1700047877\naction=\"read file\" user=root user=second src=203.0.113.24 ts=1700021055\nts=1700000294 src=192.0.2.180 msg=\"x=1\" action=\"read file\" user=second user=\"say \\\"hi\\\"\"\nsrc=192.0.2.174 ts=1700089270 user=mallory action=logout\n",
+    "expected": "user=bob src= action=read file\nuser=second src=- action=login\nuser=carol src=192.0.2.61 action=logout\nuser=root src=203.0.113.24 action=read file\nuser=second src=192.0.2.180 action=read file\nuser=mallory src=192.0.2.174 action=logout\n"
+  },
+  {
+    "name": "key prefixes and decoys",
+    "stdin": "username=alice ts=1700089680 action=sudo user=deploy\nsrc=192.0.2.242 ts=1700029296 action=sudo user=\"say \\\"hi\\\"\"\nts=1700025186 user=\"say \\\"hi\\\"\" user=second src=198.51.100.176 action=login\nts=1700013421 src=198.51.100.44 user=root action=logout\naction=login user=carol msg=\"user=root src=1.1.1.1\" username=erin ts=1700077360\nsrc=198.51.100.84 user=\"svc backup\" ts=1700025474 action=\"read file\"\naction=\"read file\" src=198.51.100.90 user=dave ts=1700045578\nusername=carol src=203.0.113.105 user=dave action=logout ts=1700021052\n",
+    "expected": "user=deploy src=- action=sudo\nuser=say \"hi\" src=192.0.2.242 action=sudo\nuser=say \"hi\" src=198.51.100.176 action=login\nuser=root src=198.51.100.44 action=logout\nuser=carol src=- action=login\nuser=svc backup src=198.51.100.84 action=read file\nuser=dave src=198.51.100.90 action=read file\nuser=dave src=203.0.113.105 action=logout\n"
+  },
+  {
+    "name": "missing keys",
+    "stdin": "src=198.51.100.187 user=erin ts=1700037319\nts=1700030212 src=192.0.2.106 action=\"read file\"\nuser=carol src=198.51.100.67 user=second username=dave action=login ts=1700094702\naction=sudo src=198.51.100.184 ts=1700087833 user=deploy\nsrc=192.0.2.209 action=logout ts=1700042329 msg=\"x=1\"\nuser=carol action=sudo ts=1700095049 username=bob\nuser=deploy src=203.0.113.157 action=login ts=1700002764\naction=login ts=1700061782 user=dave msg=\"user=root src=1.1.1.1\" src=203.0.113.43\naction=sudo user=carol msg=\"a b c\" ts=1700015649\n",
+    "expected": "user=erin src=198.51.100.187 action=-\nuser=- src=192.0.2.106 action=read file\nuser=carol src=198.51.100.67 action=login\nuser=deploy src=198.51.100.184 action=sudo\nuser=- src=192.0.2.209 action=logout\nuser=carol src=- action=sudo\nuser=deploy src=203.0.113.157 action=login\nuser=dave src=203.0.113.43 action=login\nuser=carol src=- action=sudo\n"
+  },
+  {
+    "name": "quoted values hiding fake keys",
+    "stdin": "action=login ts=1700072716 user=carol\nsrc=203.0.113.74 user=\"say \\\"hi\\\"\" ts=1700036694 action=login\nsrc= user=deploy user=second action=logout src=192.0.2.63 ts=1700036725 msg=\"user=root src=1.1.1.1\"\nts=1700059862 src=198.51.100.62 action=\"read file\" user=\"svc backup\" src= user=second\n",
+    "expected": "user=carol src=- action=login\nuser=say \"hi\" src=203.0.113.74 action=login\nuser=deploy src= action=logout\nuser=svc backup src=198.51.100.62 action=read file\n"
+  },
+  {
+    "name": "mixed noise",
+    "stdin": "user=\"say \\\"hi\\\"\" ts=1700091962 action=logout src=192.0.2.249\nsrc=198.51.100.38 user=\"say \\\"hi\\\"\" ts=1700062321\nuser=second ts=1700055977 src=192.0.2.225 user=root action=logout\naction=logout src=192.0.2.202 src= ts=1700018320 msg=\"a b c\" user=\"a=b user=evil\"\n",
+    "expected": "user=say \"hi\" src=192.0.2.249 action=logout\nuser=say \"hi\" src=198.51.100.38 action=-\nuser=second src=192.0.2.225 action=logout\nuser=a=b user=evil src=192.0.2.202 action=logout\n"
+  }
+]

@@ -1,6 +1,6 @@
 ---
 title: Reading a Crash Report
-summary: Turn raw exception numbers and error codes into text a human can act on: vector names, which vectors push an error code, page-fault flags, selector errors and a full report.
+summary: Turn exception numbers and error codes into readable text: vector names, which vectors push an error code, page-fault flags, selector errors and a full report.
 minutes: 35
 difficulty: easy
 tags: cpu, exceptions, debugging

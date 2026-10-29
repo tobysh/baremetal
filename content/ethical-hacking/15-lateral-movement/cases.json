@@ -1,0 +1,37 @@
+[
+ {
+  "name": "quiet network",
+  "stdin": "1700000176 files04 dave ws-11 OK\n1700000182 web01 dave ws-10 OK\njunk\n1700000768 files04 alice ws-16 OK\n1700001100 jump05 alice ws-14 OK\n1700001816 files04 svc-deploy ws-18 OK\n1700001874 jump05 alice ws-15 OK\n1700002725 mail06 dave ws-16 FAIL\n1700002831 app02 bob ws-17 OK\n1700003934 app02 svc-deploy ws-16 FAIL\n1700004058 files04 svc-deploy ws-16 OK\n1700004090 jump05 svc-deploy ws-19 OK\n1700004976 web01 svc-deploy ws-14 FAIL\n1700005155 mail06 carol ws-11 FAIL\n1700005491 app02 carol ws-14 FAIL\n1700005623 app02 svc-deploy ws-10 FAIL\n",
+  "expected": "no lateral movement found\n"
+ },
+ {
+  "name": "one chain among normal logins",
+  "stdin": "1700000463 web01 alice ws-15 OK\n1700001119 jump05 dave ws-15 FAIL\n1700001889 web01 bob ws-15 OK\n1700002982 files04 carol ws-16 OK\n1700003644 jump05 carol ws-10 OK\n1700003651 app02 svc-deploy ws-17 FAIL\n1700004303 db03 dave ws-15 OK\n1700004306 app02 dave ws-12 OK\n1700004344 files04 dave ws-17 OK\n1700004876 db03 dave files04 OK\n1700004970 web01 dave ws-12 OK\n1700005230 files04 dave ws-15 FAIL\n1700005240 files04 dave ws-99 FAIL\n1700005486 db03 carol ws-19 OK\n1700005525 jump05 bob ws-17 OK\n",
+  "expected": "CHAIN ws-17 > files04 > db03 users=dave start=1700004344 end=1700004876 hops=2\n"
+ },
+ {
+  "name": "two chains and failures",
+  "stdin": "1700000107 files04 carol ws-18 OK\n1700000234 db03 dave ws-12 FAIL\njunk\n1700000254 db03 svc-deploy ws-19 FAIL\n1700000293 app02 svc-deploy ws-13 OK\n1700000295 web01 dave ws-19 OK\n1700000332 mail06 dave web01 OK\n1700000524 app02 dave ws-10 OK\n1700000754 jump05 carol mail06 OK\n1700000915 web01 carol ws-99 FAIL\n1700000974 jump05 svc-deploy ws-10 OK\n1700001235 web01 carol ws-16 OK\n1700001242 jump05 svc-deploy ws-10 FAIL\n1700001317 mail06 svc-deploy jump05 OK\n1700001570 mail06 svc-deploy ws-18 FAIL\n1700001604 jump05 svc-deploy ws-99 FAIL\n1700001949 jump05 dave ws-12 OK\n1700002334 web01 alice ws-17 FAIL\n1700002673 jump05 dave ws-19 OK\n1700003161 jump05 carol ws-18 FAIL\n1700003175 mail06 svc-deploy ws-16 FAIL\n1700003338 jump05 bob ws-15 FAIL\n1700003902 files04 bob ws-13 FAIL\n1700003960 web01 carol ws-11 OK\n1700004726 files04 bob ws-15 OK\n1700004947 files04 dave ws-11 FAIL\n1700005505 files04 carol ws-16 FAIL\n1700005847 mail06 bob ws-19 OK\n",
+  "expected": "CHAIN ws-19 > web01 > mail06 > jump05 users=dave,carol start=1700000295 end=1700000754 hops=3\nCHAIN ws-10 > jump05 > mail06 users=svc-deploy start=1700000974 end=1700001317 hops=2\n"
+ },
+ {
+  "name": "gaps over ten minutes break chains",
+  "stdin": "1700001269 web01 alice ws-10 OK\n1700001584 app02 carol ws-14 FAIL\n1700001933 db03 alice ws-16 OK\n1700002026 files04 carol ws-11 FAIL\n1700002144 app02 alice ws-14 OK\n1700002459 web01 carol ws-19 FAIL\n1700002553 app02 svc-deploy ws-14 OK\n1700003020 files04 carol app02 OK\n1700003290 jump05 carol files04 OK\n1700003339 db03 svc-deploy jump05 OK\n1700003982 app02 svc-deploy ws-99 FAIL\n1700004250 mail06 alice ws-13 OK\n1700004396 db03 carol ws-12 OK\n1700004500 db03 alice ws-13 FAIL\n1700004575 db03 bob ws-10 OK\n1700004677 files04 alice mail06 OK\n1700004864 web01 bob db03 OK\n1700005332 db03 alice files04 OK\n1700005496 db03 bob ws-99 FAIL\n1700005502 files04 dave ws-13 OK\n1700005619 web01 svc-deploy db03 OK\n1700005995 db03 alice ws-19 OK\n1700006223 mail06 svc-deploy ws-99 FAIL\n",
+  "expected": "CHAIN ws-14 > app02 > files04 > jump05 > db03 users=svc-deploy,carol start=1700002553 end=1700003339 hops=4\nCHAIN ws-13 > mail06 > files04 users=alice start=1700004250 end=1700004677 hops=2\nCHAIN ws-10 > db03 > web01 users=bob start=1700004575 end=1700004864 hops=2\nCHAIN files04 > db03 > web01 users=alice,svc-deploy start=1700005332 end=1700005619 hops=2\n"
+ },
+ {
+  "name": "busy network, three chains",
+  "stdin": "1700000027 jump05 carol ws-11 OK\n1700000074 files04 alice ws-12 FAIL\njunk\n1700000187 mail06 carol ws-16 OK\n1700000533 db03 carol ws-19 FAIL\n1700000835 jump05 bob ws-10 FAIL\n1700000885 jump05 carol ws-14 OK\n1700001069 mail06 dave ws-12 FAIL\n1700001219 mail06 carol ws-17 OK\n1700001222 web01 svc-deploy ws-14 OK\n1700001307 web01 bob ws-19 FAIL\n1700001475 web01 svc-deploy ws-14 FAIL\n1700001609 web01 bob ws-17 OK\n1700001715 app02 bob ws-12 OK\n1700001775 files04 carol ws-12 OK\n1700002049 files04 svc-deploy ws-12 OK\n1700002384 files04 svc-deploy ws-12 OK\n1700002569 app02 dave ws-13 OK\n1700002595 db03 bob ws-11 FAIL\n1700002911 db03 svc-deploy ws-15 OK\n1700002958 files04 bob ws-12 OK\n1700003045 files04 bob ws-16 FAIL\n1700003088 jump05 bob ws-17 OK\n1700003325 web01 bob ws-19 OK\n1700003390 web01 bob ws-16 OK\n1700003546 web01 bob ws-15 FAIL\n1700003644 app02 bob ws-10 OK\n1700003712 jump05 bob ws-18 OK\n1700003814 app02 alice ws-12 OK\n1700003942 files04 bob ws-10 OK\n1700003998 mail06 carol ws-17 OK\n1700004098 mail06 svc-deploy ws-15 OK\n1700004198 db03 dave ws-14 OK\n1700004336 app02 carol ws-17 OK\n1700004421 db03 carol app02 OK\n1700004461 db03 svc-deploy mail06 OK\n1700004490 jump05 carol ws-11 OK\n1700004497 files04 carol ws-16 FAIL\n1700004581 mail06 carol ws-14 OK\n1700004642 jump05 svc-deploy db03 OK\n1700004768 db03 carol mail06 OK\n1700004784 files04 carol db03 OK\n1700004849 app02 dave ws-99 FAIL\n1700005003 db03 bob ws-15 OK\n1700005045 app02 carol files04 OK\n1700005102 db03 carol ws-18 OK\n1700005107 app02 svc-deploy jump05 OK\n1700005229 web01 svc-deploy ws-15 OK\n1700005327 mail06 carol ws-99 FAIL\n1700005451 mail06 svc-deploy ws-99 FAIL\n1700005657 app02 svc-deploy ws-14 OK\n1700005690 jump05 alice ws-14 OK\n1700005755 jump05 alice ws-14 FAIL\n1700005899 web01 alice ws-19 FAIL\n",
+  "expected": "CHAIN ws-17 > app02 > db03 users=carol start=1700004336 end=1700004421 hops=2\nCHAIN ws-14 > mail06 > db03 > files04 > app02 users=carol start=1700004581 end=1700005045 hops=4\nCHAIN ws-15 > mail06 > db03 > jump05 > app02 users=svc-deploy start=1700004098 end=1700005107 hops=4\n"
+ },
+ {
+  "name": "edge: exactly 600 s",
+  "stdin": "100 web01 alice ws-1 OK\n700 app02 alice web01 OK\n1301 db03 alice app02 OK\n",
+  "expected": "CHAIN ws-1 > web01 > app02 users=alice start=100 end=700 hops=2\n"
+ },
+ {
+  "name": "a login from a host with only a failed login",
+  "stdin": "100 web01 alice ws-1 FAIL\n150 app02 alice web01 OK\n",
+  "expected": "no lateral movement found\n"
+ }
+]

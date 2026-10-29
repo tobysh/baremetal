@@ -1,0 +1,27 @@
+[
+  {
+    "name": "tokens 1",
+    "stdin": "s3cret-key-62\nYWxnPUhTMjU2.c3ViPW1hbGxvcnk7ZXhwPTk5OTk.2988c62bc64c76e8\nYWxnPUhTMjU2.c3ViPW1hbGxvcnk7ZXhwPTk5OTk.2988c62bc64c76e8\nYWxnPUhTMjU2O2FsZz1ub25l.c3ViPWE7ZXhwPTE.7c208a4696404fe5\nYWxnPUhTMjU2O3R5cD1U.c3ViPWNhcm9sO2V4cD0zMzk0.445224019b8e8856.00\nab+d.c3ViPWNhcm9sO2V4cD05MTcx.6e02c4fe6100e3bd\nab+d.c3ViPWJvYjtleHA9MjA1NQ.add9c559aeaf0ace\nab+d.c3ViPWJvYjtleHA9NjY2Mw.95a3c37734a75b4d\nYWxnPUhTMjU2O3R5cD1U.c3ViPWFsaWNAO2V4cD02NTY5.cef37e27e573fbe5\nYWxnPUhTMjU2O2FsZz1ub25l.c3ViPWE7ZXhwPTE.7c208a4696404fe5\n",
+    "expected": "token 1: bad-signature\ntoken 2: bad-signature\ntoken 3: malformed\ntoken 4: malformed\ntoken 5: malformed\ntoken 6: malformed\ntoken 7: malformed\ntoken 8: bad-signature\ntoken 9: malformed\n"
+  },
+  {
+    "name": "tokens 2",
+    "stdin": "s3cret-key-61\nYWxnPUhTMjU2.c3ViPW1hbGxvcnk7ZXhwPTk5OTk.2988c62bc64c76e8\nYWxnPUhTMjU2O3R5cD1U.c3ViPWNhcm9sO2V4cD0yOTA4.8f37cd9515917509.00\nYWxnPUhTMjU2O2FsZz1ub25l.c3ViPWE7ZXhwPTE.3d16106ce86c6b6b\nYWxnPUhTMjU2O3R5cD1U.c3ViPWFsaWNlO2V4cD03NDQ5.f20a1631893555e2\nab+d.c3ViPWNhcm9sO2V4cD01MTM4.650392211bae44db\nYWxnPUhTMjU2O3R5cD1U.c3ViPWNhcm9sA2V4cD0xODk1.78a71546955e527b\nYWxnPUhTMjU2O3R5cD1U.c3ViPWJvYjtleHA9NzczMA.22b3e463a097e841\nYWxnPW5vbmU.c3ViPWFkbWluO2V4cD05OTk5.\nYWxnPUhTNTEy.c3ViPWE7ZXhwPTE.54e6cf4c1c9be37a\n",
+    "expected": "token 1: bad-signature\ntoken 2: malformed\ntoken 3: malformed\ntoken 4: ok\ntoken 5: malformed\ntoken 6: bad-signature\ntoken 7: ok\ntoken 8: bad-alg\ntoken 9: bad-alg\n"
+  },
+  {
+    "name": "tokens 3",
+    "stdin": "s3cret-key-80\nYWxnPWhzMjU2.c3ViPWE7ZXhwPTE.f98d3a19ed5bc804\nYWxnPUhTMjU2.c3ViPW1hbGxvcnk7ZXhwPTk5OTk.2988c62bc64c76e8\nYWxnPUhTMjU2O3R5cD1U.c3ViPWFsaANlO2V4cD0yMTUz.a57515158e6f7802\nYWxnPUhTMjU2O2FsZz1ub25l.c3ViPWE7ZXhwPTE.d84e71c9725c2d69\ndHlwPVQ.c3ViPWE7ZXhwPTE.116d128cce277f87\nYWxnPUhTMjU2O3R5cD1U.c3ViPWNhcm9sO2V4cD03ODUz.221e694640e4d909.00\nYWxnPUhTMjU2O3R5cD1U.c3ViPWNhcm9sO2V4cD01NjY0.700776f8192f95be.00\nYWxnPUhTMjU2O2FsZz1ub25l.c3ViPWE7ZXhwPTE.d84e71c9725c2d69\nYWxnPUhTMjU2.c3ViPW1hbGxvcnk7ZXhwPTk5OTk.2988c62bc64c76e8\nYWxnPUhTMjU2.c3ViPW1hbGxvcnk7ZXhwPTk5OTk.2988c62bc64c76e8\n",
+    "expected": "token 1: bad-alg\ntoken 2: bad-signature\ntoken 3: bad-signature\ntoken 4: malformed\ntoken 5: bad-alg\ntoken 6: malformed\ntoken 7: malformed\ntoken 8: malformed\ntoken 9: bad-signature\ntoken 10: bad-signature\n"
+  },
+  {
+    "name": "tokens 4",
+    "stdin": "s3cret-key-75\nYWxnPUhTMjU2O3R5cD1U.c3ViPWNhcm9sO2V4cD0zNjQ1.4c423986c2620cf8.00\nYWxnPUhTMjU2O3R5cD1U.c3ViPWNhcm9sO2V4cD03NjA3.36a848652d4b3ba9\nYWxnPUhTMjU2O2FsZz1ub25l.c3ViPWE7ZXhwPTE.c8ff9e72feb85025\nab+d.c3ViPWNhcm9sO2V4cD03NDk2.e587a079e973bcce\nYWxnPUhTMjU2IA.c3ViPWE7ZXhwPTE.e12d212154596902\nYWxnPUhTMjU2O3R5cD1U.c3ViPWJvYjtleHA9MjE2Nw.8768886a32ca07a1.00\nYWxnPUhTNTEy.c3ViPWE7ZXhwPTE.48802b4434b6755c\nYWxnPW5vbmU.c3ViPWFkbWluO2V4cD05OTk5.\nYWxnPUhTMjU2O3R5cD1U.c3AiPWFsaWNlO2V4cD0yNDkw.6749f4615cf83bf4\n",
+    "expected": "token 1: malformed\ntoken 2: ok\ntoken 3: malformed\ntoken 4: malformed\ntoken 5: bad-alg\ntoken 6: malformed\ntoken 7: bad-alg\ntoken 8: bad-alg\ntoken 9: bad-signature\n"
+  },
+  {
+    "name": "tokens 5",
+    "stdin": "s3cret-key-66\nab+d.c3ViPWJvYjtleHA9NDk1MA.e4955aa22b94525e\nYWxnPUhTMjU2.c3ViPWE7ZXhwPTE.\nYWxnPUhTMjU2O2FsZz1ub25l.c3ViPWE7ZXhwPTE.de40030a9544e40d\nYWxnPUhTNTEy.c3ViPWE7ZXhwPTE.b3eb07b80708610c\nYWxnPUhTMjU2IA.c3ViPWE7ZXhwPTE.e8588a9d6d141bee\nYWxnPW5vbmU.c3ViPWFkbWluO2V4cD05OTk5.\nYWxnPUhTMjU2.c3ViPW1hbGxvcnk7ZXhwPTk5OTk.2988c62bc64c76e8\nYWxnPUhTMjU2O3R5cD1U.c3ViPWJvYjtleHA9ADA0NQ.51a0eb9e8caabd88\n",
+    "expected": "token 1: malformed\ntoken 2: bad-signature\ntoken 3: malformed\ntoken 4: bad-alg\ntoken 5: bad-alg\ntoken 6: bad-alg\ntoken 7: bad-signature\ntoken 8: bad-signature\n"
+  }
+]

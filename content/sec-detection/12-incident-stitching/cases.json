@@ -1,0 +1,27 @@
+[
+  {
+    "name": "gap 300",
+    "stdin": "300\n12946 vpn bob sudo used\n11832 web1 alice login ok\n11760 web1 bob login ok\n12176 db2 svc-ci query big table\n12265 db2 svc-ci sudo used\n16120 vpn alice login ok\n11755 app3 bob sudo used\n12267 web1 svc-ci sudo used\n11896 web1 alice copy file out\n11828 web1 alice query big table\n17848 vpn alice copy file out\n16019 vpn alice copy file out\n10053 db2 bob copy file out\n13831 vpn alice sudo used\n10043 app3 bob copy file out\n11742 web1 bob query big table\n11879 vpn alice sudo used\n12284 app3 svc-ci sudo used\n",
+    "expected": "bob 10043-10053 n=2 hosts=app3,db2 MULTI-HOST\nbob 11742-11760 n=3 hosts=web1,app3 MULTI-HOST\nalice 11828-11896 n=4 hosts=web1,vpn MULTI-HOST\nsvc-ci 12176-12284 n=4 hosts=db2,web1,app3 MULTI-HOST\nbob 12946-12946 n=1 hosts=vpn\nalice 13831-13831 n=1 hosts=vpn\nalice 16019-16120 n=2 hosts=vpn\nalice 17848-17848 n=1 hosts=vpn\n"
+  },
+  {
+    "name": "gap 60",
+    "stdin": "60\n13421 app3 alice login ok\n10221 vpn bob sudo used\n13815 db2 svc-ci query big table\n10275 db2 bob sudo used\n13562 web1 svc-ci query big table\n12252 web1 bob query big table\n10942 web1 svc-ci sudo used\n10219 web1 bob sudo used\n13398 app3 alice copy file out\n11725 vpn alice sudo used\n13398 web1 alice login ok\n13615 app3 svc-ci sudo used\n",
+    "expected": "bob 10219-10275 n=3 hosts=web1,vpn,db2 MULTI-HOST\nsvc-ci 10942-10942 n=1 hosts=web1\nalice 11725-11725 n=1 hosts=vpn\nbob 12252-12252 n=1 hosts=web1\nalice 13398-13421 n=3 hosts=app3,web1 MULTI-HOST\nsvc-ci 13562-13615 n=2 hosts=web1,app3 MULTI-HOST\nsvc-ci 13815-13815 n=1 hosts=db2\n"
+  },
+  {
+    "name": "gap 900",
+    "stdin": "900\n12756 web1 alice sudo used\n10301 web1 bob copy file out\n14647 vpn bob copy file out\n15640 app3 alice login ok\n15582 vpn svc-ci query big table\n14232 vpn alice copy file out\n15375 web1 svc-ci copy file out\n10131 db2 bob login ok\n14089 vpn alice login ok\n11825 web1 alice login ok\n11466 web1 bob query big table\n11650 web1 bob copy file out\n13031 app3 svc-ci login ok\n14634 vpn bob sudo used\n15791 vpn alice login ok\n13101 db2 svc-ci sudo used\n19877 app3 svc-ci login ok\n12940 db2 alice sudo used\n13139 db2 alice sudo used\n15395 web1 svc-ci login ok\n11454 vpn bob query big table\n15241 db2 svc-ci query big table\n14619 app3 bob copy file out\n18440 app3 svc-ci login ok\n",
+    "expected": "bob 10131-10301 n=2 hosts=db2,web1 MULTI-HOST\nbob 11454-11650 n=3 hosts=vpn,web1 MULTI-HOST\nalice 11825-11825 n=1 hosts=web1\nalice 12756-13139 n=3 hosts=web1,db2 MULTI-HOST\nsvc-ci 13031-13101 n=2 hosts=app3,db2 MULTI-HOST\nalice 14089-14232 n=2 hosts=vpn\nbob 14619-14647 n=3 hosts=app3,vpn MULTI-HOST\nsvc-ci 15241-15582 n=4 hosts=db2,web1,vpn MULTI-HOST\nalice 15640-15791 n=2 hosts=app3,vpn MULTI-HOST\nsvc-ci 18440-18440 n=1 hosts=app3\nsvc-ci 19877-19877 n=1 hosts=app3\n"
+  },
+  {
+    "name": "gap 120",
+    "stdin": "120\n12846 app3 svc-ci login ok\n10057 app3 alice copy file out\n10050 vpn alice copy file out\n15948 db2 svc-ci copy file out\n20406 vpn svc-ci sudo used\n14498 app3 svc-ci query big table\n11714 app3 svc-ci login ok\n17685 vpn svc-ci sudo used\n13070 db2 bob login ok\n17708 web1 svc-ci sudo used\n12996 app3 bob login ok\n12833 web1 bob copy file out\n20436 web1 svc-ci sudo used\n12373 db2 alice login ok\n12832 vpn bob login ok\n12382 vpn alice query big table\n",
+    "expected": "alice 10050-10057 n=2 hosts=vpn,app3 MULTI-HOST\nsvc-ci 11714-11714 n=1 hosts=app3\nalice 12373-12382 n=2 hosts=db2,vpn MULTI-HOST\nbob 12832-12833 n=2 hosts=vpn,web1 MULTI-HOST\nsvc-ci 12846-12846 n=1 hosts=app3\nbob 12996-13070 n=2 hosts=app3,db2 MULTI-HOST\nsvc-ci 14498-14498 n=1 hosts=app3\nsvc-ci 15948-15948 n=1 hosts=db2\nsvc-ci 17685-17708 n=2 hosts=vpn,web1 MULTI-HOST\nsvc-ci 20406-20436 n=2 hosts=vpn,web1 MULTI-HOST\n"
+  },
+  {
+    "name": "gap 1",
+    "stdin": "1\n10023 db2 svc-ci sudo used\n10025 vpn svc-ci query big table\n10018 web1 bob login ok\n10020 web1 bob sudo used\n10021 db2 bob query big table\n10020 web1 bob copy file out\n10021 vpn svc-ci login ok\n10017 app3 bob copy file out\n10046 db2 alice query big table\n10046 vpn alice copy file out\n10044 web1 alice copy file out\n10021 db2 svc-ci copy file out\n10028 web1 svc-ci query big table\n10046 app3 alice sudo used\n10029 db2 svc-ci login ok\n10026 app3 svc-ci copy file out\n10044 app3 alice login ok\n10018 db2 bob copy file out\n10023 db2 bob sudo used\n10028 app3 svc-ci sudo used\n",
+    "expected": "bob 10017-10018 n=3 hosts=app3,web1,db2 MULTI-HOST\nbob 10020-10021 n=3 hosts=web1,db2 MULTI-HOST\nsvc-ci 10021-10021 n=2 hosts=vpn,db2 MULTI-HOST\nbob 10023-10023 n=1 hosts=db2\nsvc-ci 10023-10023 n=1 hosts=db2\nsvc-ci 10025-10026 n=2 hosts=vpn,app3 MULTI-HOST\nsvc-ci 10028-10029 n=3 hosts=web1,app3,db2 MULTI-HOST\nalice 10044-10044 n=2 hosts=web1,app3 MULTI-HOST\nalice 10046-10046 n=3 hosts=db2,vpn,app3 MULTI-HOST\n"
+  }
+]

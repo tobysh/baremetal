@@ -1,6 +1,6 @@
 ---
 title: What Time Is It? The CMOS Clock
-summary: Read the battery-backed real-time clock through the CMOS index and data ports, wait out the update window, handle BCD and 12-hour modes, and convert to a Unix timestamp.
+summary: Read the battery-backed real-time clock through the CMOS ports, wait out the update window, handle BCD and 12-hour modes, and convert to a Unix timestamp.
 minutes: 40
 difficulty: easy
 tags: hardware, io, time
