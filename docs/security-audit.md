@@ -160,7 +160,12 @@ Safety: sandbox tests run only on the audit instance, never on a shared or produ
 
 | ID | Title | Severity | Status | Evidence | Fix | Regression test |
 |---|---|---|---|---|---|---|
-| | | | | | | |
+| R1 | Forged or partial test transcript passes a lesson | High | Mitigated; all five languages verified | Fake PASS then `_exit(0)` passed on the old runner (`fixtures-forgery.mts`, C case) | `testExercise` requires the exact ordered test names the reference solution produces (`expectedTestNames`), fails closed on unavailable reference, requires matched C/kernel RUN/result events and zero normal exit | `scripts/security/integrity/fixtures-forgery.mts` |
+| R2 | Nonce readable from the test binary (C/asm) | High → Medium | Mitigated, residual accepted | Nonce was a string in `.rodata` | Nonce passed in `BM_NONCE`, taken in a `.preinit_array` hook with randomized internal identifiers, wiped from the environment block | same fixtures (`/proc/self/environ` case) |
+| R3 | Hidden harness leaks through compile | Medium | Mitigated | `#include "tests.c"`, `include_str!`, `go:embed`, `.incbin`, diagnostics quoting harness lines | Scan denylist; diagnostics located in harness code are replaced by a note (`redactHarnessDiagnostics`) | same fixtures |
+| R4 | Forged results mass-farm XP | Medium | Mitigated | Results come from the learner process | Rolling 24 h XP cap, atomic per-user pace/daily decision, minimum solve time only with a known prior start; `npm run flagged-accounts` to review and clear | `scripts/security/xp-atomic.mts` |
+
+**L1 re-rated (High → Medium) with accepted residual.** For C and assembly the learner's code runs in the same process as the harness, so a determined learner can scan live memory for the nonce and the test names and print a complete valid transcript. Go and Rust have no nonce at all: a forger needs the exact test names, which sit in the test binary. The kernel runs in ring 0 and can write the debug console and `isa-debug-exit` directly. R1 means a forger must reproduce the whole transcript, not one line; R4 bounds and exposes the XP they can farm. Owner: maintainer. Revisit if the leaderboard gains prizes. A real fix needs the tests to run in a separate process from the learner's code (a result channel the learner cannot write to), which the in-process C/Rust/Go harnesses do not allow without changing the lessons.
 
 Severity scale: **Critical** (host compromise, mass account takeover) · **High** (single account takeover, sandbox DoS of the site, XP integrity broken at scale) · **Medium** (data leak of limited scope, hidden-test leakage, CSP gaps) · **Low** (hardening, information disclosure without direct impact).
 
@@ -171,5 +176,7 @@ Severity scale: **Critical** (host compromise, mass account takeover) · **High*
 - Every lead in section 1 is confirmed with a PoC or rejected with a reason.
 - Every API route and server action is in the WP4 authorization table.
 - No open Critical/High findings, or each has an accepted, dated mitigation.
-- New regression checks pass alongside the existing 45 in `scripts/e2e-auth.mts`, plus `npm run verify:content`, `npx tsc --noEmit`, `npm run lint` and `npm run build`.
+- New regression checks pass alongside the expanded auth suite in `scripts/e2e-auth.mts`, plus `npm run verify:content`, `npx tsc --noEmit`, `npm run lint` and `npm run build`.
 - README "Before going to production" is updated with the deployment requirements from WP8.
+
+Recovery review (29 October 2026): see `docs/security-remediation-plan.md` for phase-by-phase state and `docs/deployment-hardening.md` for unverified host cgroups, email retry setup and the nonce-CSP/PPR constraint. Compiler scratch and artifact output are now bounded; all remaining same-process verdict limitations are retained explicitly above. No production host was altered.

@@ -13,7 +13,7 @@ export default function SignupPage() {
   return (
     <AuthShell
       title="Create your free account"
-      intro="Save your progress and get help from the AI tutor. Takes a minute."
+      intro="Save your progress and get help from the AI tutor. After signing up, verify your email and choose your final password."
       footer={
         <>
           Already have an account?{" "}

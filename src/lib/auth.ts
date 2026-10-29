@@ -169,15 +169,15 @@ export async function adminFromRequest(): Promise<CurrentUser | null> {
 
 // ---------- Pending second factor ----------
 
-export async function startPending2fa(userId: ObjectId, next: string) {
+export async function startPending2fa(userId: ObjectId, next: string, sessionVersion: number) {
   const token = randomToken(32);
   const expiresAt = new Date(Date.now() + PENDING_2FA_MINUTES * 60_000);
   const db = await getDb();
-  await db.collection("pending_2fa").insertOne({ tokenHash: sha256(token), userId, next, attempts: 0, expiresAt });
+  await db.collection("pending_2fa").insertOne({ tokenHash: sha256(token), userId, next, sessionVersion, attempts: 0, expiresAt });
   (await cookies()).set(PENDING_2FA_COOKIE, token, { ...cookieBase, expires: expiresAt });
 }
 
-export type Pending2fa = { _id: ObjectId; userId: ObjectId; next: string; attempts: number };
+export type Pending2fa = { _id: ObjectId; userId: ObjectId; next: string; sessionVersion: number; attempts: number };
 
 export async function getPending2fa(): Promise<Pending2fa | null> {
   const token = (await cookies()).get(PENDING_2FA_COOKIE)?.value;
@@ -198,10 +198,6 @@ export async function clearPending2fa() {
   jar.delete(PENDING_2FA_COOKIE);
 }
 
-/** Only allow same-site relative redirects after login. */
-export function safeNext(next: unknown, fallback = "/dashboard"): string {
-  if (typeof next !== "string" || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return fallback;
-  return next;
-}
+export { safeNext } from "./redirects";
 
 export const toObjectId = (id: string) => new ObjectId(id);

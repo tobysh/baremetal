@@ -1,16 +1,17 @@
 import "server-only";
 import { ObjectId } from "mongodb";
+
 import { getDb } from "./db";
 import { REVIEW_INTERVALS_DAYS } from "./progress-constants";
 import { challengeXpFor, xpFor, type Difficulty } from "./gamification";
-import type { ProgressDoc, ReviewDoc, TutorThreadDoc, UserDoc, XpEventDoc } from "./models";
+import type { ProgressDoc, ReviewDoc, TutorThreadDoc, XpEventDoc } from "./models";
 
 const col = async () => (await getDb()).collection<ProgressDoc>("progress");
 
 export async function saveCode(userId: string, exerciseId: string, trackSlug: string, code: string) {
   await (await col()).updateOne(
     { userId: new ObjectId(userId), exerciseId },
-    { $set: { code, updatedAt: new Date(), trackSlug }, $setOnInsert: { status: "started", attempts: 0 } },
+    { $set: { code, updatedAt: new Date(), trackSlug }, $setOnInsert: { status: "started", attempts: 0, startedAt: new Date(), startKnown: true } },
     { upsert: true },
   );
 }
@@ -24,7 +25,15 @@ export type AttemptOutcome = { firstPass: boolean; xpAwarded: number; totalXp: n
  */
 export const PASS_PACE = { max: 6, windowMs: 10 * 60 * 1000 };
 
-export async function recordAttempt(o: {
+/** First-pass XP over any rolling 24 hours; further passes still count as passed but earn nothing. */
+export const DAILY_XP_CAP = 400;
+
+/** A first pass sooner than this after the learner first touched the exercise is withheld and flagged. */
+export const MIN_SOLVE_MS: Record<Difficulty, number> = { easy: 15_000, medium: 30_000, hard: 60_000, impossible: 120_000 };
+
+export type XpFlag = "pace" | "daily-cap" | "too-fast";
+
+type AttemptInput = {
   userId: string;
   exerciseId: string;
   trackSlug: string;
@@ -33,61 +42,76 @@ export async function recordAttempt(o: {
   difficulty: Difficulty;
   /** True for a lesson's optional challenge (half XP, no seals, no review). */
   challenge: boolean;
-}): Promise<AttemptOutcome> {
+};
+
+/** A claimed first pass is recorded before its atomic per-user XP decision.
+ * A crash between those writes leaves xpPending for administrative reconciliation. */
+export async function recordAttempt(o: AttemptInput): Promise<AttemptOutcome> {
   const now = new Date();
   const c = await col();
   const userId = new ObjectId(o.userId);
   const filter = { userId, exerciseId: o.exerciseId };
-  const after = await c.findOneAndUpdate(
+  const attemptUpdate = await c.findOneAndUpdate(
     filter,
-    { $set: { code: o.code, updatedAt: now, trackSlug: o.trackSlug }, $inc: { attempts: 1 }, $setOnInsert: { status: "started" } },
-    { upsert: true, returnDocument: "after", projection: { code: 0 } },
+    { $set: { code: o.code, updatedAt: now, trackSlug: o.trackSlug }, $inc: { attempts: 1 }, $setOnInsert: { status: "started", startedAt: now, startKnown: false } },
+    { upsert: true, returnDocument: "after", projection: { code: 0 }, includeResultMetadata: true },
   );
-  if (!o.passed) return { firstPass: false, xpAwarded: 0, totalXp: null };
+  const after = attemptUpdate.value;
+  if (!o.passed) {
+    await c.updateOne({ ...filter, startKnown: false }, { $set: { startKnown: true } });
+    return { firstPass: false, xpAwarded: 0, totalXp: null };
+  }
 
-  // Passing is permanent, and XP is granted once: only the request that flips
-  // the status to "passed" awards it, even if Test is pressed twice at once.
-  const recent = await c.countDocuments({ userId, status: "passed", passedAt: { $gte: new Date(now.getTime() - PASS_PACE.windowMs) } });
-  const paced = recent >= PASS_PACE.max;
-  const xp = o.challenge ? challengeXpFor(o.difficulty) : xpFor(o.difficulty);
-  const award = paced ? 0 : xp;
-
-  // Seals are decided from what the server recorded: hints opened and tutor messages sent before this pass.
-  const attempts = after?.attempts ?? 1;
-  const hintsUsed = after?.hintsUsed ?? 0;
+  const attempts = after?.attempts ?? 1, hintsUsed = after?.hintsUsed ?? 0;
   let unaided = false;
+  const db = await getDb();
   if (!o.challenge) {
-    const thread = await (await getDb()).collection<TutorThreadDoc>("tutor_threads").findOne({ userId, lessonId: o.exerciseId }, { projection: { messages: 1 } });
+    const thread = await db.collection<TutorThreadDoc>("tutor_threads").findOne({ userId, lessonId: o.exerciseId }, { projection: { messages: 1 } });
     const askedTutor = (thread?.messages ?? []).some((m) => m.role === "user");
     unaided = hintsUsed === 0 && !askedTutor && (attempts >= 2 || o.difficulty === "hard" || o.difficulty === "impossible");
   }
-
   const flipped = await c.updateOne(
     { ...filter, status: { $ne: "passed" } },
-    { $set: { status: "passed", passedAt: now, xpAwarded: award, hintsUsedAtPass: hintsUsed, attemptsAtPass: attempts, unaided, ...(paced ? { xpWithheld: true } : {}) } },
+    { $set: { status: "passed", passedAt: now, xpAwarded: 0, xpPending: true, hintsUsedAtPass: hintsUsed, attemptsAtPass: attempts, unaided } },
   );
   if (flipped.modifiedCount !== 1) return { firstPass: false, xpAwarded: 0, totalXp: null };
-  if (!o.challenge) await scheduleFirstReview(userId, o.exerciseId, now);
-  if (paced) return { firstPass: true, xpAwarded: 0, totalXp: null, paced: true, unaided };
 
-  const db = await getDb();
-  try {
+  // Seed existing accounts once from their last 24 hours of completed decisions.
+  // Pending passes are omitted; their own atomic quota updates will append them.
+  const users = db.collection("users");
+  const dayStart = new Date(now.getTime() - 24 * 3_600_000);
+  const history = await c.find({ userId, status: "passed", xpPending: { $ne: true }, passedAt: { $gte: dayStart } }, { projection: { exerciseId: 1, passedAt: 1, xpAwarded: 1 } }).toArray();
+  await users.updateOne({ _id: userId, xpQuota: { $exists: false } }, { $set: { xpQuota: history.map((p) => ({ ref: p.exerciseId, at: p.passedAt, xp: p.xpAwarded ?? 0 })) } });
+
+  const xp = o.challenge ? challengeXpFor(o.difficulty) : xpFor(o.difficulty);
+  // A first submission may be the first server contact after solving locally.
+  // Only apply the floor when a previous save, hint or attempt establishes a start.
+  const knownStart = after?.startedAt && after.startKnown !== false && attemptUpdate.lastErrorObject?.updatedExisting === true;
+  const tooFast = !!knownStart && now.getTime() - after!.startedAt!.getTime() < MIN_SOLVE_MS[o.difficulty];
+  const updated = await users.findOneAndUpdate({ _id: userId }, [
+    { $set: { xpQuota: { $filter: { input: { $ifNull: ["$xpQuota", []] }, as: "entry", cond: { $gte: ["$$entry.at", dayStart] } } } } },
+    { $set: { xpDecision: { $let: { vars: {
+      recent: { $size: { $filter: { input: "$xpQuota", as: "entry", cond: { $gte: ["$$entry.at", new Date(now.getTime() - PASS_PACE.windowMs)] } } } },
+      total: { $sum: "$xpQuota.xp" },
+    }, in: { flag: { $cond: [ { $gte: ["$$recent", PASS_PACE.max] }, "pace", { $cond: [tooFast, "too-fast", { $cond: [{ $gt: [{ $add: ["$$total", xp] }, DAILY_XP_CAP] }, "daily-cap", null] }] } ] } } } } } },
+    { $set: { "xpDecision.award": { $cond: [{ $eq: ["$xpDecision.flag", null] }, xp, 0] } } },
+    { $set: { xpQuota: { $concatArrays: ["$xpQuota", [{ ref: { $literal: o.exerciseId }, at: now, xp: "$xpDecision.award", flag: "$xpDecision.flag" }]] }, xp: { $add: [{ $ifNull: ["$xp", 0] }, "$xpDecision.award"] } } },
+  ], { returnDocument: "after", projection: { xp: 1, xpDecision: 1 } });
+  if (!updated) throw new Error("User disappeared while awarding XP; the pending pass needs reconciliation.");
+  const flag = updated.xpDecision.flag as XpFlag | null, award = updated.xpDecision.award as number;
+  if (award) {
     await db.collection<XpEventDoc>("xp_events").insertOne({ userId, source: o.challenge ? "challenge" : "lesson", ref: o.exerciseId, xp: award, at: now } as XpEventDoc);
-  } catch (e) {
-    if ((e as { code?: number }).code === 11000) return { firstPass: false, xpAwarded: 0, totalXp: null }; // already in the ledger
-    throw e;
   }
-  const user = await db
-    .collection<UserDoc>("users")
-    .findOneAndUpdate({ _id: userId }, { $inc: { xp: award } }, { returnDocument: "after", projection: { xp: 1 } });
-  return { firstPass: true, xpAwarded: award, totalXp: user?.xp ?? award, unaided };
+  if (!o.challenge) await scheduleFirstReview(userId, o.exerciseId, now);
+  await c.updateOne(filter, { $set: { xpAwarded: award, ...(flag ? { xpWithheld: true, xpFlag: flag } : {}) }, $unset: { xpPending: "" } });
+  return { firstPass: true, xpAwarded: award, totalXp: award ? updated.xp ?? award : null, ...(flag ? { paced: true } : {}), unaided };
 }
 
 /** Records that the learner opened hint number `index` (0-based). Only ever moves the count up. */
 export async function recordHint(userId: string, exerciseId: string, trackSlug: string, index: number) {
   await (await col()).updateOne(
     { userId: new ObjectId(userId), exerciseId },
-    { $max: { hintsUsed: index + 1 }, $set: { trackSlug }, $setOnInsert: { code: "", status: "started", attempts: 0, updatedAt: new Date() } },
+    { $max: { hintsUsed: index + 1 }, $set: { trackSlug }, $setOnInsert: { code: "", status: "started", attempts: 0, updatedAt: new Date(), startedAt: new Date(), startKnown: true } },
     { upsert: true },
   );
 }

@@ -49,7 +49,10 @@ func WriteTable(w io.Writer, entries []Entry) error {
 	out = binary.BigEndian.AppendUint64(out, uint64(len(data)))
 	out = binary.BigEndian.AppendUint64(out, uint64(len(entries)))
 	out = binary.BigEndian.AppendUint64(out, magic)
-	_, err := w.Write(out)
+	n, err := w.Write(out)
+	if err == nil && n != len(out) {
+		return io.ErrShortWrite
+	}
 	return err
 }
 
@@ -101,6 +104,7 @@ func OpenTable(r io.ReaderAt, size int64) (*Table, error) {
 		return nil, err
 	}
 	t := &Table{r: r}
+	var nextOff uint64
 	for i := uint64(0); i < count; i++ {
 		if len(buf) < 4 {
 			return nil, errBad
@@ -112,13 +116,17 @@ func OpenTable(r io.ReaderAt, size int64) (*Table, error) {
 		key := string(buf[4 : 4+kl])
 		off := binary.BigEndian.Uint64(buf[4+kl:])
 		length := binary.BigEndian.Uint32(buf[12+kl:])
-		if off+uint64(length) > indexOff || length < 9 {
+		if off != nextOff || off > indexOff || uint64(length) > indexOff-off || uint64(length) < 9+kl {
 			return nil, errBad
 		}
+		if len(t.index) > 0 && t.index[len(t.index)-1].key >= key {
+			return nil, errBad
+		}
+		nextOff = off + uint64(length)
 		t.index = append(t.index, indexEntry{key, int64(off), length})
 		buf = buf[16+kl:]
 	}
-	if len(buf) != 0 {
+	if len(buf) != 0 || nextOff != indexOff {
 		return nil, errBad
 	}
 	return t, nil
@@ -138,7 +146,7 @@ func (t *Table) Get(key string) (Entry, bool, error) {
 	}
 	kl := uint64(binary.BigEndian.Uint32(buf[1:5]))
 	vl := uint64(binary.BigEndian.Uint32(buf[5:9]))
-	if 9+kl+vl != uint64(len(buf)) || string(buf[9:9+kl]) != key {
+	if buf[0] > 1 || (buf[0] == 1 && vl != 0) || 9+kl+vl != uint64(len(buf)) || string(buf[9:9+kl]) != key {
 		return Entry{}, false, errBad
 	}
 	e := Entry{Key: key, Delete: buf[0] == 1}

@@ -1,0 +1,1 @@
+Implement `disk_init`, `disk_read(offset, dst, len)` and `disk_write(offset, src, len)`. The disk is 512 bytes, initially zero. Read and write return 0 on success or -1 for a range outside the disk, leaving data unchanged on failure. A zero-length operation at offset 512 succeeds. Buffers are valid for the requested length and do not overlap the disk.

@@ -1,0 +1,38 @@
+[
+  {
+    "name": "encrypts the starter message",
+    "expected": "0b36372763312126652526313d26373a\n"
+  },
+  {
+    "name": "works with key \"KEY\" and a different message",
+    "set": {
+      "message": "\"Attack at dawn!\"",
+      "key": "\"KEY\""
+    },
+    "expected": "0a312d2a26326b242d6b21383c2b78\n"
+  },
+  {
+    "name": "works with key \"Z\" and a different message",
+    "set": {
+      "message": "\"a\"",
+      "key": "\"Z\""
+    },
+    "expected": "3b\n"
+  },
+  {
+    "name": "works with key \"xy\" and a different message",
+    "set": {
+      "message": "\"Meet me at the old bridge at noon\"",
+      "key": "\"xy\""
+    },
+    "expected": "351c1d0d58141d59190d580d101c5816141d581b0a101c1e1d59190d5817171616\n"
+  },
+  {
+    "name": "empty message",
+    "set": {
+      "message": "\"\"",
+      "key": "\"KEY\""
+    },
+    "expected": "\n"
+  }
+]

@@ -8,6 +8,8 @@ tags: log, crc, recovery, compaction
 id: go-database/review-durable-store
 mode: harness
 ---
+This review combines the [key-value map](/learn/go-database/kv-store), [log recovery](/learn/go-database/recovery), [CRC frames](/learn/go-database/checksums) and [compaction](/learn/go-database/compaction).
+
 This is a **review lesson**. It introduces nothing new. In the last four lessons you wrote a length-prefixed record, replayed a log to rebuild a map, protected records with a CRC, and compacted a log down to the live keys. Here you join them into one tiny database, `DB`, that lives entirely in a byte slice.
 
 ## What to combine

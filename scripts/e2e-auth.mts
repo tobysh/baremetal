@@ -2,7 +2,7 @@
 // server by submitting the real forms the way a browser without JavaScript
 // would (server actions support progressive enhancement).
 //
-//   npm run build && npx next start -p 3100   (in another terminal)
+//   npm run build && TRUSTED_PROXY_HOPS=1 npx next start -p 3100   (in another terminal)
 //   npm run test:e2e -- http://localhost:3100
 //
 // Creates throwaway accounts (e2e-*@example.test) and deletes them afterwards.
@@ -10,13 +10,14 @@
 // reverse proxy would, so IP-based limits don't interfere between phases.
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { MongoClient, type ObjectId } from "mongodb";
-import { encrypt, sha256 } from "../src/lib/crypto";
-import { hashBackupCode, newBackupCodes } from "../src/lib/totp";
+import { encrypt, hmac, sha256 } from "../src/lib/crypto";
+import { hashBackupCode, legacyBackupCodeHash, newBackupCodes } from "../src/lib/totp";
+import { clearLoginFailures, finishLoginFailure, refundLoginAttempt, reserveLoginAttempt } from "../src/lib/security";
 
 const BASE = (process.argv[2] ?? "http://localhost:3100").replace(/\/$/, "");
 const mongo = await new MongoClient(process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27017").connect();
 const db = mongo.db(process.env.MONGODB_DB ?? "baremetal");
-const users = db.collection<{ _id: ObjectId; email: string; role?: string; twoFactor?: unknown; passwordHash: string }>("users");
+const users = db.collection<{ _id: ObjectId; email: string; role?: string; twoFactor?: unknown; passwordHash: string; emailVerified?: boolean }>("users");
 
 let failures = 0;
 function check(name: string, ok: boolean, detail = "") {
@@ -132,16 +133,38 @@ try {
     check("sign-up is limited to 5 attempts per 15 min per IP", /Too many attempts/.test(text(r.html)));
     b.ip = ip(13); // a different network
     r = await b.submit("/signup", { ...base, password: PASSWORD, confirm: PASSWORD, captcha: await solveCaptcha(b) });
-    check("valid sign-up redirects to /learn", r.status === 303 && !!r.location?.includes("/learn"), `${r.status} ${r.location}`);
+    check("valid sign-up gives generic confirmation without a session", r.status === 200 && /check your email/i.test(text(r.html)) && !b.cookies.has("bm_session"));
+    const stored = await users.findOne({ email });
+    check("new account requires email verification", stored?.emailVerified === false);
+    check("password stored only as a scrypt hash", !!stored?.passwordHash.startsWith("scrypt$") && !stored.passwordHash.includes(PASSWORD));
+    r = await b.submit("/login", { email, password: PASSWORD });
+    check("unverified account cannot sign in", !b.cookies.has("bm_session") && /verify your email/i.test(text(r.html)));
+    const verifyToken = randomBytes(32).toString("base64url");
+    await db.collection("email_verifications").insertOne({ tokenHash: sha256(verifyToken), userId: stored!._id, expiresAt: new Date(Date.now() + 60000) });
+    r = await b.submit("/verify-email", { token: verifyToken, password: PASSWORD, confirm: PASSWORD });
+    check("verification establishes the owner's password", /Email verified/i.test(text(r.html)) && (await users.findOne({ email }))?.emailVerified === true);
+    r = await b.submit("/verify-email", { token: verifyToken, password: PASSWORD, confirm: PASSWORD });
+    check("verification token is single-use", /invalid|already used/i.test(text(r.html)));
+    r = await b.submit("/login", { email, password: PASSWORD });
+    check("verified account can sign in", r.status === 303 && b.cookies.has("bm_session"));
     const sc = b.setCookieHeaders.find((c) => c.startsWith("bm_session=")) ?? "";
     check("session cookie is HttpOnly", /HttpOnly/i.test(sc), sc);
     check("session cookie is SameSite=Strict", /SameSite=Strict/i.test(sc), sc);
-    const stored = await users.findOne({ email });
-    check("password stored only as a scrypt hash", !!stored?.passwordHash.startsWith("scrypt$") && !stored.passwordHash.includes(PASSWORD));
     const session = stored && (await db.collection("sessions").findOne({ userId: stored._id }));
     check("session token stored hashed, not raw", !!session && session.tokenHash === sha256(b.cookies.get("bm_session")!));
+    await users.updateOne({ email }, { $unset: { emailVerified: "" } });
+    const legacy = new Browser(ip(18));
+    const legacyResult = await legacy.submit("/login", { email, password: PASSWORD });
+    check("legacy account without a verification flag can sign in", legacyResult.status === 303 && legacy.cookies.has("bm_session"));
+    await users.updateOne({ email }, { $set: { emailVerified: true } });
+    const duplicate = new Browser(ip(14));
+    r = await duplicate.submit("/signup", { ...base, password: PASSWORD, confirm: PASSWORD, captcha: await solveCaptcha(duplicate) });
+    check("existing signup gives the same generic response", r.status === 200 && /check your email/i.test(text(r.html)) && !duplicate.cookies.has("bm_session"));
     const dash = await b.get("/dashboard");
     check("dashboard loads when signed in", dash.status === 200 && dash.html.includes("E2E Tester"));
+    const exported = await (await b.fetch("/api/account/export")).json() as { account: { emailVerified?: boolean }, pendingEmailDelivery?: Record<string, unknown>[] };
+    check("account export includes verification status and omits delivery secrets", exported.account.emailVerified === true && Array.isArray(exported.pendingEmailDelivery) && exported.pendingEmailDelivery.every((job) => !("payload" in job) && !("recipientHash" in job)));
+
   }
 
   // ---------- Server-side authorization ----------
@@ -178,6 +201,12 @@ try {
   // ---------- Two-factor authentication ----------
   console.log("\nTwo-factor authentication");
   {
+    const setup = new Browser(ip(17));
+    await setup.submit("/login", { email, password: PASSWORD });
+    let setupResult = await setup.submit("/settings/security", { password: "wrong-password" });
+    check("2FA setup requires the current password", /Incorrect password/.test(text(setupResult.html)) && !(await users.findOne({ email }))?.twoFactor);
+    setupResult = await setup.submit("/settings/security", { password: PASSWORD });
+    check("2FA setup accepts the current password", !!(await users.findOne({ email }))?.twoFactor && !/Incorrect password/.test(text(setupResult.html)));
     const secret = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
     const codes = newBackupCodes();
     await users.updateOne(
@@ -205,14 +234,34 @@ try {
     await b3.submit("/login", { email, password: PASSWORD });
     await b3.submit("/login/verify", { code: codes[0] });
     check("a backup code works only once", !b3.cookies.has("bm_session"));
+    const legacy = "k3f9-x2mq";
+    await users.updateOne({ email }, { $push: { "twoFactor.backupCodeHashes": legacyBackupCodeHash(legacy) } } as never);
+    const old = new Browser(ip(15));
+    await old.submit("/login", { email, password: PASSWORD });
+    await old.submit("/login/verify", { code: legacy });
+    check("legacy backup code remains valid once", old.cookies.has("bm_session"));
     // Too many wrong codes ends the attempt
-    for (let i = 0; i < 4; i++) await b3.submit("/login/verify", { code: "111111" });
-    r = await b3.get("/login/verify");
-    const after = await b3.submit("/login/verify", { code: "222222" }).catch(() => null);
+    let after = null;
+    for (let i = 0; i < 4; i++) after = await b3.submit("/login/verify", { code: "111111" });
     check("5 wrong codes end the sign-in attempt", !!after && (after.location?.includes("/login?expired=1") ?? false), `${after?.status} ${after?.location}`);
+    // Failures count across independent pending sessions and addresses.
+    const peers = Array.from({ length: 3 }, (_, i) => new Browser(ip(20 + i)));
+    const user = await users.findOne({ email });
+    await db.collection("login_failures").deleteOne({ key: `otp:${hmac("login-otp", user!._id.toHexString())}` });
+    for (const peer of peers) await peer.submit("/login", { email, password: PASSWORD });
+    for (const [peer, count] of [[peers[0], 2], [peers[1], 2], [peers[2], 1]] as const)
+      for (let i = 0; i < count; i++) await peer.submit("/login/verify", { code: "wrong-code" });
+    const blocked = await peers[0].submit("/login/verify", { code: codes[1] });
+    check("OTP backoff follows the account across pending sessions", /Too many verification attempts/i.test(text(blocked.html)) && !peers[0].cookies.has("bm_session"));
+    await db.collection("login_failures").deleteOne({ key: `otp:${hmac("login-otp", user!._id.toHexString())}` });
     // Admin with 2FA
     await users.updateOne({ email }, { $set: { role: "admin" } });
     check("admin WITH 2FA can use /api/admin/stats", (await b.fetch("/api/admin/stats")).status === 200);
+    const stale = new Browser(ip(23));
+    await stale.submit("/login", { email, password: PASSWORD });
+    await users.updateOne({ email }, { $inc: { sessionVersion: 1 } });
+    const staleResult = await stale.submit("/login/verify", { code: codes[2] });
+    check("revoking sessions also revokes pending 2FA", staleResult.status === 303 && !stale.cookies.has("bm_session"));
     await users.updateOne({ email }, { $set: { role: "user" }, $unset: { twoFactor: "" } });
   }
 
@@ -234,11 +283,26 @@ try {
     check("locked out after 5 failures", /paused for/.test(text(r.html)), text(r.html).slice(0, 300));
     const fromOtherIp = new Browser(ip(8));
     r = await fromOtherIp.submit("/login", { email: victim, password: "wrong-7", captcha: await solveCaptcha(fromOtherIp) });
-    check("lockout follows the account across IPs", /paused for/.test(text(r.html)));
-    const doc = await db.collection("login_failures").findOne({ key: `email:${sha256(victim)}` });
+    check("lockout is limited to the email and IP pair", /Incorrect email or password/.test(text(r.html)));
+    const doc = await db.collection("login_failures").findOne({ key: `pair:${hmac("login-pair", `${victim}\0${b.ip}`)}` });
     check("lockout grows exponentially (1, 2, 4… minutes)", !!doc?.lockedUntil && doc.count >= 5);
     const logged = await db.collection("auth_events").countDocuments({ email: victim, type: "login_failed" });
     check("every failed attempt is logged", logged >= 5, `logged ${logged}`);
+    const concurrentIp = ip(16);
+    const concurrentEmail = `e2e-${run}-parallel@example.test`;
+    const racers = Array.from({ length: 6 }, () => new Browser(concurrentIp));
+    const captchas = await Promise.all(racers.map(solveCaptcha));
+    await Promise.all(racers.map((browser, i) => browser.submit("/login", { email: concurrentEmail, password: "wrong", captcha: captchas[i] })));
+    const parallelDoc = await db.collection("login_failures").findOne({ key: `pair:${hmac("login-pair", `${concurrentEmail}\0${concurrentIp}`)}` });
+    check("parallel guesses reserve at most five password checks", parallelDoc?.count === 5 && !!parallelDoc.lockedUntil, `count ${parallelDoc?.count}`);
+    const inflightIp = ip(24), inflightEmail = `e2e-${run}-inflight@example.test`;
+    await reserveLoginAttempt(inflightEmail, inflightIp); // failed check still running
+    await reserveLoginAttempt(inflightEmail, inflightIp); // successful check
+    await refundLoginAttempt(inflightEmail, inflightIp);
+    await clearLoginFailures(inflightEmail, inflightIp);
+    await finishLoginFailure(inflightEmail, inflightIp);
+    const inflight = await db.collection("login_failures").findOne({ key: `pair:${hmac("login-pair", `${inflightEmail}\0${inflightIp}`)}` });
+    check("successful login retains simultaneous unfinished failures", inflight?.count === 1 && inflight.inFlight === 0);
     // Real account: lockout applies whether or not the account exists
     const timing = async (addr: string) => {
       const t = performance.now();
@@ -290,12 +354,15 @@ try {
     db.collection("sessions").deleteMany({ userId: { $in: ids } }),
     db.collection("progress").deleteMany({ userId: { $in: ids } }),
     db.collection("password_resets").deleteMany({ userId: { $in: ids } }),
+    db.collection("email_verifications").deleteMany({ userId: { $in: ids } }),
+    db.collection("email_queue").deleteMany({ recipientHash: hmac("email-queue-recipient", email) }),
     db.collection("pending_2fa").deleteMany({ userId: { $in: ids } }),
     db.collection("auth_events").deleteMany({ email: { $regex: `^(e2e|rl|nobody)-.*${run}` } }),
-    // Only the lockout records this run created.
-    db.collection("login_failures").deleteMany({
-      $or: [{ key: { $in: [...usedIps].map((a) => `ip:${a}`) } }, { key: { $in: [email, `e2e-${run}-victim@example.test`, `nobody-${run}@example.test`].map((e) => `email:${sha256(e)}`) } }],
-    }),
+    // Only pair and OTP buckets created by this run.
+    db.collection("login_failures").deleteMany({ key: { $in: [
+      ...[...usedIps].flatMap((ip) => [email, `e2e-${run}-victim@example.test`, `e2e-${run}-parallel@example.test`, `e2e-${run}-inflight@example.test`, `nobody-${run}@example.test`].map((e) => `pair:${hmac("login-pair", `${e}\0${ip}`)}`)),
+      ...ids.map((id) => `otp:${hmac("login-otp", id.toHexString())}`),
+    ] } }),
   ]);
   await mongo.close();
 }

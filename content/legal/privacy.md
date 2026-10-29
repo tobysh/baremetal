@@ -40,8 +40,10 @@ We rely on one of three legal reasons, called lawful bases, for each kind of dat
 | AI tutor conversations | To answer your questions | Contract | Until you clear them or delete your account |
 | Code you run | To compile and run your code | Contract | Deleted straight after the run (only code saved as progress is kept) |
 | Security logs | To spot and stop attacks on accounts | Legitimate interest | 90 days |
-| Rate limiting counters | To slow down abuse | Legitimate interest | Minutes, and never more than 1 hour |
+| Rate limiting counters | To slow down abuse | Legitimate interest | Up to 24 hours, plus the database expiry cleanup delay |
 | Password breach check | To check new passwords against known data breaches | Legitimate interest | See the password section below |
+| Email verification tokens | To confirm ownership of your email address | Contract; legitimate interest in security | 24 hours or until used |
+| Queued account emails: encrypted address, subject and body | To deliver verification, reset and security notifications and retry failures | Contract; legitimate interest in security | Until delivered, or at most 7 days |
 | Password reset emails | To send you a reset link | Contract | Each reset link expires after 30 minutes and works only once |
 | Analytics (only if you say yes) | To understand how pages are used | Consent | 180 days |
 
@@ -75,7 +77,7 @@ If you choose a username, Baremetal shows your username, level, XP, completed le
 
 Security logs record failed sign-in attempts, lockouts, password resets, and two-factor events. Each entry includes your IP address, the email address entered, your browser's user agent, and the time. We use these logs to protect accounts from attacks.
 
-Rate limits count requests by IP address or account for a few minutes. This slows down people who try to abuse the site.
+Rate limits count requests by IP address or account for periods up to 24 hours. Tutor and analytics counter keys use a keyed hash of the IP address; authentication security logs still retain IP addresses for 90 days. Console warnings use keyed hashes of emails and IPs. This slows down people who try to abuse the site.
 
 ### Analytics (only with consent)
 
@@ -94,7 +96,7 @@ Analytics is first-party and runs on our own servers. We do not use third-party 
 
 ## Who we share data with
 
-{{tutorSharing}}- **Our email delivery provider**: sends password reset emails to your address.
+{{tutorSharing}}- **Our email delivery provider**: sends verification, password reset and account security emails to your address.
 - **Have I Been Pwned**: receives only the first 5 characters of a password hash, as described above. It never receives your password.
 
 We do not sell your data.

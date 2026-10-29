@@ -12,3 +12,36 @@ export async function sendEmail(to: string, subject: string, text: string) {
   const transport = nodemailer.createTransport(smtp);
   await transport.sendMail({ from: process.env.EMAIL_FROM ?? "no-reply@example.com", to, subject, text });
 }
+
+// The payload contains reset/verification links, so keep it encrypted at rest.
+// A lease allows a later worker to retry after a crash; delivery is at least once.
+import { after } from "next/server";
+import { getDb } from "./db";
+import { decrypt, encrypt, hmac } from "./crypto";
+
+export async function queueEmail(to: string, subject: string, text: string) {
+  const db = await getDb();
+  await db.collection("email_queue").insertOne({ recipientHash: hmac("email-queue-recipient", to.toLowerCase()), payload: encrypt(JSON.stringify({ to, subject, text })), createdAt: new Date(), nextAttempt: new Date(), expiresAt: new Date(Date.now() + 7 * 86400_000), attempts: 0 });
+}
+
+/** Schedule delivery after the response. Pending messages are retried by future runs. */
+export function scheduleEmailDelivery() {
+  after(async () => { await drainEmailQueue().catch((e) => console.error("[email] queue worker failed", e)); });
+}
+export async function drainEmailQueue() {
+  const col = (await getDb()).collection("email_queue");
+  for (let i = 0; i < 25; i++) {
+    const now = new Date();
+    const job = await col.findOneAndUpdate(
+      { nextAttempt: { $lte: now }, expiresAt: { $gt: now } },
+      { $set: { nextAttempt: new Date(now.getTime() + 5 * 60_000) }, $inc: { attempts: 1 } },
+      { sort: { createdAt: 1 }, returnDocument: "after" },
+    );
+    if (!job) break;
+    try {
+      const data = JSON.parse(decrypt(job.payload)) as { to: string; subject: string; text: string };
+      await sendEmail(data.to, data.subject, data.text);
+      await col.deleteOne({ _id: job._id });
+    } catch (e) { console.error("[email] queued delivery failed", e); }
+  }
+}

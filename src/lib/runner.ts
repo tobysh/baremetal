@@ -2,14 +2,16 @@
 // read-only /usr, a private /tmp and work dir, and CPU/memory/process/output
 // limits. Imported only from route handlers and scripts (no "server-only" so
 // scripts/verify-curriculum.ts can use it directly).
+import { AsyncLocalStorage } from "node:async_hooks";
 import { spawn } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import type { Writable } from "node:stream";
 import { mkdtemp, rm, writeFile, readdir, readFile } from "node:fs/promises";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { tmpdir, homedir, userInfo } from "node:os";
 import path from "node:path";
 import type { Exercise, Language } from "./curriculum/types";
+import { runnerResources } from "./runner-resources";
 
 const MAX_OUTPUT = 64 * 1024;
 const COMPILE_TIMEOUT_MS = 20_000;
@@ -22,16 +24,17 @@ const MAX_CONCURRENT = 4;
 function findRustToolchain(): string | null {
   if (process.env.RUST_TOOLCHAIN_DIR) return process.env.RUST_TOOLCHAIN_DIR;
   const base = path.join(homedir(), ".rustup", "toolchains");
-  if (!existsSync(base)) return null;
-  const stable = readdirSync(base).find((d) => d.startsWith("stable-"));
-  return stable ? path.join(base, stable) : null;
+  const stable = existsSync(base) ? readdirSync(base).find((d) => d.startsWith("stable-")) : undefined;
+  return stable ? path.join(base, stable) : existsSync("/usr/bin/rustc") && existsSync("/usr/lib/rustlib") ? "/usr" : null;
 }
 const RUST_TC = findRustToolchain();
 
 // RLIMIT_NPROC counts every process owned by the real uid, so the limit is
 // "what this user already runs + headroom" to stop fork bombs without
 // breaking the rest of the desktop.
+let cachedNproc: { at: number; limit: number } | undefined;
 function nprocLimit(): number {
+  if (cachedNproc && Date.now() - cachedNproc.at < 10_000) return cachedNproc.limit;
   const uid = userInfo().uid;
   let count = 0;
   try {
@@ -42,25 +45,66 @@ function nprocLimit(): number {
       } catch {}
     }
   } catch {}
-  return count + 48;
+  cachedNproc = { at: Date.now(), limit: count + 48 };
+  return cachedNproc.limit;
 }
 
 let active = 0;
-const queue: (() => void)[] = [];
 export class RunnerBusyError extends Error {}
-/** Waiting requests beyond this are turned away, so a flood can't build an unbounded backlog. */
 const MAX_QUEUED = 24;
-async function withSlot<T>(fn: () => Promise<T>): Promise<T> {
-  if (active >= MAX_CONCURRENT) {
-    if (queue.length >= MAX_QUEUED) throw new RunnerBusyError("The code runner is busy.");
-    await new Promise<void>((r) => queue.push(r));
-  }
-  active++;
+const QUEUE_TIMEOUT_MS = 30_000;
+const requestContext = new AsyncLocalStorage<{ signal: AbortSignal }>();
+const inFlight = new Map<string, number>();
+
+/** Count queued and running requests per account and network, independently. */
+export async function withRunnerRequest<T>(keys: string[], signal: AbortSignal, fn: () => Promise<T>): Promise<T> {
+  const unique = [...new Set(keys)];
+  if (unique.some((key) => (inFlight.get(key) ?? 0) >= 2)) throw new RunnerBusyError("You already have two runs in progress.");
+  signal.throwIfAborted();
+  for (const key of unique) inFlight.set(key, (inFlight.get(key) ?? 0) + 1);
   try {
+    return await requestContext.run({ signal }, fn);
+  } finally {
+    for (const key of unique) {
+      const count = (inFlight.get(key) ?? 1) - 1;
+      if (count) inFlight.set(key, count);
+      else inFlight.delete(key);
+    }
+  }
+}
+
+type Waiter = { grant: () => void };
+const queue: Waiter[] = [];
+async function withSlot<T>(fn: () => Promise<T>): Promise<T> {
+  const signal = requestContext.getStore()?.signal;
+  signal?.throwIfAborted();
+  if (active < MAX_CONCURRENT) active++;
+  else {
+    if (queue.length >= MAX_QUEUED) throw new RunnerBusyError("The code runner is busy.");
+    await new Promise<void>((resolve, reject) => {
+      const clear = () => { clearTimeout(timer); signal?.removeEventListener("abort", abort); };
+      const remove = (error: Error) => {
+        const index = queue.indexOf(waiter);
+        if (index < 0) return;
+        queue.splice(index, 1);
+        clear();
+        reject(error);
+      };
+      const abort = () => remove(new DOMException("Run cancelled", "AbortError"));
+      const waiter: Waiter = { grant: () => { clear(); resolve(); } };
+      const timer = setTimeout(() => remove(new RunnerBusyError("The runner queue timed out.")), QUEUE_TIMEOUT_MS);
+      queue.push(waiter);
+      signal?.addEventListener("abort", abort, { once: true });
+      if (signal?.aborted) abort();
+    });
+  }
+  try {
+    signal?.throwIfAborted();
     return await fn();
   } finally {
-    active--;
-    queue.shift()?.();
+    const next = queue.shift();
+    if (next) next.grant(); // Transfer the occupied slot directly; new arrivals cannot steal it.
+    else active--;
   }
 }
 
@@ -90,6 +134,10 @@ const DENIED_SYSCALLS = [
   321, // bpf
   323, // userfaultfd
   425, 426, 427, // io_uring_setup, io_uring_enter, io_uring_register
+  428, 429, 430, 431, 432, 433, 442, // open_tree, move_mount, fsopen, fsconfig, fsmount, fspick, mount_setattr
+  312, 438, // kcmp, pidfd_getfd
+  172, 173, 154, // iopl, ioperm, modify_ldt
+  305, 447, // clock_adjtime, memfd_secret
 ];
 
 /** A classic-BPF seccomp program: x86-64 only, the syscalls above return EPERM, everything else is allowed. */
@@ -116,7 +164,7 @@ function seccompFilter(): Buffer {
 }
 const SECCOMP = seccompFilter();
 
-function sandboxArgs(work: string, extraEnv: Record<string, string> = {}, opts: { run?: boolean; tmpMb?: number } = {}): string[] {
+function sandboxArgs(work: string, extraEnv: Record<string, string> = {}, opts: { run?: boolean; tmpMb?: number; artifact?: string } = {}): string[] {
   const args = [
     "--unshare-all",
     "--unshare-user",
@@ -135,7 +183,7 @@ function sandboxArgs(work: string, extraEnv: Record<string, string> = {}, opts: 
     "--size", String((opts.tmpMb ?? 256) * MB), "--tmpfs", "/dev/shm",
     "--size", String((opts.tmpMb ?? 256) * MB), "--tmpfs", "/tmp",
     // Running learner code can't write to the work dir, so it can't fill the disk with files.
-    opts.run ? "--ro-bind" : "--bind", work, "/work",
+    ...(opts.artifact ? ["--ro-bind", work, "/input", "--size", String((opts.tmpMb ?? 512) * MB), "--tmpfs", "/work"] : ["--ro-bind", work, "/work"]),
     "--chdir", "/work",
     "--clearenv",
     "--setenv", "PATH", "/usr/bin",
@@ -147,44 +195,74 @@ function sandboxArgs(work: string, extraEnv: Record<string, string> = {}, opts: 
   return args;
 }
 
-function exec(work: string, cmd: string[], opts: { timeoutMs: number; stdin?: string; limits: string[]; env?: Record<string, string>; run?: boolean; tmpMb?: number }): Promise<Exec> {
-  return new Promise((resolve) => {
-    const started = Date.now();
-    const args = [...sandboxArgs(work, opts.env, { run: opts.run, tmpMb: opts.tmpMb ?? (opts.run ? 32 : undefined) }), "--", "/usr/bin/prlimit", ...opts.limits, "--", ...cmd];
-    const child = spawn("bwrap", args, { stdio: ["pipe", "pipe", "pipe", "pipe"] });
-    const seccomp = child.stdio[3] as Writable;
-    seccomp.on("error", () => {});
-    seccomp.end(SECCOMP);
-    let stdout = "";
-    let stderr = "";
-    let truncated = false;
-    let timedOut = false;
-    const take = (which: "out" | "err") => (chunk: Buffer) => {
-      const total = stdout.length + stderr.length;
-      if (total >= MAX_OUTPUT) {
-        if (!truncated) {
-          truncated = true;
-          child.kill("SIGKILL");
-        }
-        return;
+async function exec(work: string, cmd: string[], opts: { timeoutMs: number; stdin?: string; limits: string[]; env?: Record<string, string>; run?: boolean; tmpMb?: number; artifact?: string }): Promise<Exec> {
+  const resources = await runnerResources(!!opts.artifact);
+  try {
+    return await new Promise<Exec>((resolve) => {
+      const signal = requestContext.getStore()?.signal;
+      signal?.throwIfAborted();
+      const started = Date.now();
+      const args = [...sandboxArgs(work, opts.env, { run: opts.run, tmpMb: opts.tmpMb ?? (opts.run ? 32 : undefined), artifact: opts.artifact }), "--", "/usr/bin/prlimit", ...opts.limits, "--",
+        ...(opts.artifact ? ["sh", "-c", 'cp -a /input/. /work/ && "$@" && cat "$BM_ARTIFACT" >&4', "build", ...cmd] : cmd)];
+      if (opts.artifact) {
+        const at = args.indexOf("--clearenv") + 1;
+        args.splice(at, 0, "--setenv", "BM_ARTIFACT", opts.artifact);
       }
-      const s = chunk.toString("utf8").slice(0, MAX_OUTPUT - total);
-      if (which === "out") stdout += s;
-      else stderr += s;
-    };
-    child.stdout.on("data", take("out"));
-    child.stderr.on("data", take("err"));
-    const timer = setTimeout(() => {
-      timedOut = true;
-      child.kill("SIGKILL");
-    }, opts.timeoutMs);
-    child.on("close", (code, signal) => {
-      clearTimeout(timer);
-      resolve({ stdout, stderr, code, signal, timedOut, truncated, ms: Date.now() - started });
+      const child = spawn(resources.command, [...resources.prefix, ...args], { stdio: ["pipe", "pipe", "pipe", "pipe", ...(opts.artifact ? ["pipe" as const] : [])] });
+      const binary: Buffer[] = [];
+      let binarySize = 0;
+      if (opts.artifact) (child.stdio[4] as import("node:stream").Readable).on("data", (chunk: Buffer) => {
+        binarySize += chunk.length;
+        if (binarySize <= 64 * MB) binary.push(chunk);
+        else child.kill("SIGKILL");
+      });
+      const seccomp = child.stdio[3] as Writable;
+      seccomp.on("error", () => {});
+      seccomp.end(SECCOMP);
+      let stdout = "";
+      let stderr = "";
+      let truncated = false;
+      let timedOut = false;
+      const take = (which: "out" | "err") => (chunk: Buffer) => {
+        const total = stdout.length + stderr.length;
+        if (total >= MAX_OUTPUT) {
+          if (!truncated) {
+            truncated = true;
+            child.kill("SIGKILL");
+          }
+          return;
+        }
+        const s = chunk.toString("utf8").slice(0, MAX_OUTPUT - total);
+        if (which === "out") stdout += s;
+        else stderr += s;
+      };
+      child.stdout.on("data", take("out"));
+      child.stderr.on("data", take("err"));
+      const timer = setTimeout(() => {
+        timedOut = true;
+        child.kill("SIGKILL");
+      }, opts.timeoutMs);
+      const abort = () => child.kill("SIGKILL");
+      signal?.addEventListener("abort", abort, { once: true });
+      if (signal?.aborted) abort();
+      child.on("error", (error) => {
+        stderr += `Sandbox could not start: ${error.message}`;
+      });
+      child.on("close", async (code, childSignal) => {
+        clearTimeout(timer);
+        signal?.removeEventListener("abort", abort);
+        if (opts.artifact && code === 0 && binarySize <= 64 * MB) {
+          try { await writeFile(path.join(work, opts.artifact), Buffer.concat(binary), { mode: 0o700 }); }
+          catch (error) { stderr += String(error); code = 1; }
+        }
+        resolve({ stdout, stderr, code, signal: childSignal, timedOut, truncated, ms: Date.now() - started });
+      });
+      child.stdin.on("error", () => {});
+      child.stdin.end(opts.stdin ?? "");
     });
-    child.stdin.on("error", () => {});
-    child.stdin.end(opts.stdin ?? "");
-  });
+  } finally {
+    await resources.cleanup();
+  }
 }
 
 const MB = 1024 * 1024;
@@ -196,6 +274,37 @@ const runLimits = () => [`--as=${256 * MB}`, `--cpu=5`, `--nproc=${nprocLimit()}
 
 // Strip the sandbox paths from compiler output so messages read naturally.
 const cleanCompilerOutput = (s: string) => s.replaceAll("/work/", "").trim();
+
+const HIDDEN_NOTE = "(a diagnostic inside the hidden tests was hidden)";
+
+/**
+ * Compiler diagnostics quote the source line they complain about, and the hidden tests are
+ * compiled into the same unit, so a learner could provoke an error in a harness line to read
+ * it (docs/security-audit.md L2). In test builds, diagnostics located in harness code are
+ * replaced by a one-line note. `learnerLines` is how many lines of main.rs are the learner's
+ * (Rust appends the tests to the same file); the other languages name a separate harness file.
+ */
+export function redactHarnessDiagnostics(output: string, language: Language, learnerLines: number): string {
+  if (language === "rust") {
+    return output
+      .split(/\n\s*\n/)
+      .map((block) => {
+        const at = block.match(/-->\s*main\.rs:(\d+)/);
+        return at && Number(at[1]) > learnerLines ? HIDDEN_NOTE : block;
+      })
+      .join("\n\n");
+  }
+  const harnessFiles = new Set(language === "go" ? ["bm_test.go"] : ["tests.c"]);
+  const out: string[] = [];
+  let hidden = false;
+  for (const line of output.split("\n")) {
+    const head = line.match(/^(?:In file included from )?(?:\.\/)?([^\s:]+\.[a-z]+):(?:\d+|\s+In )/);
+    if (head) hidden = harnessFiles.has(head[1]);
+    if (!hidden) out.push(line);
+    else if (out[out.length - 1] !== HIDDEN_NOTE) out.push(HIDDEN_NOTE);
+  }
+  return out.join("\n");
+}
 
 function signalMessage(signal: string | null, code: number | null): string | null {
   const sig = signal ?? (code !== null && code > 128 ? `signal ${code - 128}` : null);
@@ -217,25 +326,48 @@ function signalMessage(signal: string | null, code: number | null): string | nul
 
 const C_FLAGS = ["-std=c17", "-Wall", "-Wextra", "-g", "-O0", "-fsanitize=undefined", "-fno-sanitize-recover=undefined", "-fstack-protector-strong"];
 
-const cTestPrelude = (nonce: string) => `
+// The nonce is not compiled into the binary (reading the test binary back would reveal it). The
+// run passes it in BM_NONCE; a .preinit_array hook, which runs before any constructor, copies it
+// into a static and overwrites the original string so /proc/self/environ no longer holds it.
+// Learner code in the same process could still scan live memory for it (accepted residual,
+// docs/security-audit.md L1). Completeness rejects truncated transcripts but is not a trust boundary.
+const cTestPrelude = () => {
+  // Fresh unguessable identifiers prevent a learner from naming the harness static
+  // directly in the same translation unit. The process can still inspect its own memory.
+  const suffix = randomBytes(16).toString("hex");
+  const nonceVar = `bm_nonce_${suffix}`, takeNonce = `bm_take_${suffix}`, hook = `bm_hook_${suffix}`;
+  return `
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stddef.h>
+static char ${nonceVar}[40];
+static void ${takeNonce}(int argc, char **argv, char **envp) {
+  (void)argc; (void)argv;
+  for (; envp && *envp; envp++) {
+    if (strncmp(*envp, "BM_NONCE=", 9) == 0) {
+      strncpy(${nonceVar}, *envp + 9, sizeof ${nonceVar} - 1);
+      memset(*envp, 0, strlen(*envp));
+      return;
+    }
+  }
+}
+__attribute__((section(".preinit_array"), used)) static void (*${hook})(int, char **, char **) = ${takeNonce};
 #define CHECK(name, cond, ...) do { \\
-  printf("\\n@@RUN ${nonce} %s\\n", name); fflush(stdout); \\
-  if (cond) { printf("\\n@@PASS ${nonce} %s\\n", name); } \\
-  else { printf("\\n@@FAIL ${nonce} %s\\t", name); printf(__VA_ARGS__); printf("\\n"); } \\
+  printf("\\n@@RUN %s %s\\n", ${nonceVar}, name); fflush(stdout); \\
+  if (cond) { printf("\\n@@PASS %s %s\\n", ${nonceVar}, name); } \\
+  else { printf("\\n@@FAIL %s %s\\t", ${nonceVar}, name); printf(__VA_ARGS__); printf("\\n"); } \\
   fflush(stdout); } while (0)
 `;
+};
 
-function cTestSource(student: string, harness: string, nonce: string) {
+function cTestSource(student: string, harness: string) {
   // Learners may keep their own main() for experimenting; rename it so the
   // test harness's main() is the entry point.
   // main is renamed with -Dmain=... on the command line rather than a #define
   // here, so main.c's line numbers and gcc's source excerpts stay exact.
-  return `${student}\n#undef main\n#line 1 "tests.c"\n${cTestPrelude(nonce)}\n${harness}\n`;
+  return `${student}\n#undef main\n#line 1 "tests.c"\n${cTestPrelude()}\n${harness}\n`;
 }
 
 function rustTestSource(student: string, harness: string) {
@@ -284,7 +416,7 @@ async function compileKernel(dir: string, source: string, test: boolean) {
     `ld -m elf_x86_64 -nostdlib -z max-page-size=4096 -T link.ld -o kernel64.elf boot.o runtime.o kernel.o`,
     `objcopy -O elf32-i386 kernel64.elf kernel.elf`,
   ].join(" && ");
-  return exec(dir, ["sh", "-c", script], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits() });
+  return exec(dir, ["sh", "-c", script], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "kernel.elf" });
 }
 
 // QEMU needs a lot of address space, so no --as limit here; CPU time, process count, file
@@ -297,15 +429,16 @@ async function bootKernel(dir: string): Promise<KernelRun> {
   const qemu = [
     "qemu-system-x86_64", "-machine", "pc,accel=tcg", "-cpu", "qemu64", "-m", "64",
     "-nodefaults", "-vga", "std", "-display", "none", "-no-reboot", "-monitor", "none", "-net", "none",
-    "-kernel", "kernel.elf", "-serial", "stdio", "-debugcon", "file:debug.log",
+    "-kernel", "kernel.elf", "-serial", "file:/tmp/serial.log", "-debugcon", "stdio",
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",
   ];
-  // QEMU writes its debug console to a file in the work dir (one file, capped by --fsize), so this run stays writable.
-  const r = await exec(dir, qemu, { tmpMb: 256, timeoutMs: RUN_TIMEOUT_MS, limits: qemuLimits() });
-  const debug = (await readFile(path.join(dir, "debug.log"), "utf8").catch(() => "")).slice(0, MAX_OUTPUT);
+  // QEMU's stdio backend carries debug results; serial output stays on bounded tmpfs
+  // and is copied to stderr after exit. The kernel image remains read-only.
+  const r = await exec(dir, ["sh", "-c", '"$@"; status=$?; cat /tmp/serial.log >&2; exit "$status"', "boot", ...qemu], { tmpMb: 256, timeoutMs: RUN_TIMEOUT_MS, limits: qemuLimits() });
+  const debug = r.stdout.slice(0, MAX_OUTPUT);
   const exc = debug.match(/^@@EXC (.*)\trip=(0x[0-9a-f]+) err=(0x[0-9a-f]+) cr2=(0x[0-9a-f]+)$/m);
   const exception = exc ? `The CPU raised ${exc[1]} at instruction address ${exc[2]}${exc[1].includes("page fault") ? ` while touching address ${exc[4]}` : ""}.` : null;
-  return { ...r, debug, exception, exitStatus: r.code };
+  return { ...r, stdout: r.stderr, debug, exception, exitStatus: r.code };
 }
 
 /** Why a finished boot counts as a crash, or null if the kernel returned from kmain normally. */
@@ -359,15 +492,15 @@ __attribute__((constructor)) static void __bm_init(void) { setvbuf(stdout, NULL,
 // No UBSan (nothing to instrument); -no-pie so absolute symbol references work;
 // --noexecstack silences the missing .note.GNU-stack linker warning. In test mode
 // the hidden C harness (tests.c, with the CHECK prelude) supplies main().
-async function compileAsm(dir: string, source: string, harness: string | null, nonce = "") {
+async function compileAsm(dir: string, source: string, harness: string | null) {
   await writeFile(path.join(dir, "starter.s"), source);
   await writeFile(path.join(dir, "bm_init.c"), C_STDIO_INIT);
   const files = ["starter.s", "bm_init.c"];
   if (harness !== null) {
-    await writeFile(path.join(dir, "tests.c"), `${cTestPrelude(nonce)}\n#line 1 "tests.c"\n${harness}\n`);
+    await writeFile(path.join(dir, "tests.c"), `${cTestPrelude()}\n#line 1 "tests.c"\n${harness}\n`);
     files.push("tests.c");
   }
-  return exec(dir, ["gcc", "-std=c17", "-Wall", "-Wextra", "-g", "-O0", "-no-pie", "-Wa,--noexecstack", ...files, "-o", "prog"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits() });
+  return exec(dir, ["gcc", "-std=c17", "-Wall", "-Wextra", "-g", "-O0", "-no-pie", "-Wa,--noexecstack", ...files, "-o", "prog"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "prog" });
 }
 
 // Go: the learner's file is main.go (package main) in a throwaway module. Tests are a hidden
@@ -392,24 +525,27 @@ async function compileGo(dir: string, source: string, harness: string | null) {
     await writeFile(path.join(dir, "bm_test.go"), harness);
     cmd.push("test", "-c", "-vet=off", "-o", "prog");
   } else cmd.push("build", "-o", "prog", ".");
-  return exec(dir, cmd, { timeoutMs: GO_COMPILE_TIMEOUT_MS, limits: goCompileLimits(), env: GO_ENV, tmpMb: 1024 });
+  return exec(dir, cmd, { timeoutMs: GO_COMPILE_TIMEOUT_MS, limits: goCompileLimits(), env: GO_ENV, tmpMb: 1024, artifact: "prog" });
 }
 
-async function compile(dir: string, language: Language, source: string, opts: { test?: boolean; harness?: string; nonce?: string } = {}) {
+async function compile(dir: string, language: Language, source: string, opts: { test?: boolean; harness?: string } = {}) {
   if (language === "kernel") return compileKernel(dir, source, !!opts.test);
   if (language === "go") return compileGo(dir, source, opts.test ? (opts.harness ?? "") : null);
-  if (language === "asm") return compileAsm(dir, source, opts.test ? (opts.harness ?? "") : null, opts.nonce);
+  if (language === "asm") return compileAsm(dir, source, opts.test ? (opts.harness ?? "") : null);
   if (language === "c") {
     await writeFile(path.join(dir, "main.c"), source);
     await writeFile(path.join(dir, "bm_init.c"), C_STDIO_INIT);
     const rename = opts.test ? ["-Dmain=__bm_student_main"] : [];
-    return exec(dir, ["gcc", ...C_FLAGS, ...rename, "main.c", "bm_init.c", "-o", "prog", "-lm"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits() });
+    return exec(dir, ["gcc", ...C_FLAGS, ...rename, "main.c", "bm_init.c", "-o", "prog", "-lm"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "prog" });
   }
   if (!RUST_TC) throw new Error("Rust toolchain not found. Install it with rustup or set RUST_TOOLCHAIN_DIR.");
   await writeFile(path.join(dir, "main.rs"), source);
   const args = [`${RUST_TC}/bin/rustc`, "--edition", "2021", "-C", "opt-level=0", "--color", "never", "main.rs", "-o", "prog"];
+  // lld otherwise sizes its worker pool from the host CPU count; under the
+  // compile address-space limit that can intermittently abort even tiny builds.
+  if (existsSync("/usr/bin/ld.lld")) args.push("-C", "link-arg=-fuse-ld=lld", "-C", "link-arg=-Wl,--threads=1");
   if (opts.test) args.push("--test", "-A", "dead_code");
-  return exec(dir, args, { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits() });
+  return exec(dir, args, { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "prog" });
 }
 
 const runEnv = { UBSAN_OPTIONS: "print_stacktrace=0", RUST_BACKTRACE: "0" };
@@ -480,6 +616,8 @@ const TAMPER_PATTERNS: RegExp[] = [
   /__bm_tests|\bbm_test\b|__bm_student/,
   /\.incbin|\.init_array|\.preinit_array|\.fini_array|link_section|__attribute__\s*\(\(\s*(?:constructor|destructor)/,
   /\/proc\/(?:self|\d)/,
+  // Ways to pull the hidden tests into the learner's own build (docs/security-audit.md L2).
+  /\/\/go:embed|\binclude_(?:str|bytes)!|\binclude!\s*[(\[{]|^\s*\.(?:include|incbin)\b|#\s*include\s*"|#\s*include_next\b/m,
 ];
 
 function harnessTampering(code: string): string | null {
@@ -510,14 +648,68 @@ export function testExercise(exercise: Exercise, code: string): Promise<TestResu
       if (exercise.mode === "stdout") return testStdout(dir, exercise, code);
       const tampering = harnessTampering(code);
       if (tampering) return { compiled: true, compileOutput: "", results: [], allPassed: false, output: "", error: tampering };
-      const nonce = randomBytes(12).toString("hex"); // unique to this run, so printed text can't pose as a result
-      if (exercise.language === "kernel") return testKernelHarness(dir, exercise, code, nonce);
-      if (exercise.language === "go") return testGoHarness(dir, exercise, code);
-      if (exercise.language === "asm") return testAsmHarness(dir, exercise, code, nonce);
-      if (exercise.language === "c") return testCHarness(dir, exercise, code, nonce);
-      return testRustHarness(dir, exercise, code);
+      const result = await runHarness(dir, exercise, code);
+      if (!result.allPassed) return result;
+      // Every reported result must match what the harness really emits, so one forged PASS
+      // followed by exit(0) can't pass a lesson.
+      const expected = await expectedTestNames(exercise);
+      if (!expected || !sameNames(expected, result.results.map((r) => r.name))) {
+        return { ...result, allPassed: false, error: TESTS_INCOMPLETE };
+      }
+      return result;
     }),
   );
+}
+
+const TESTS_INCOMPLETE = "The tests did not run to completion: the results don't match the full list of checks for this exercise.";
+
+function runHarness(dir: string, exercise: Exercise, code: string): Promise<TestResult> {
+  const nonce = randomBytes(12).toString("hex"); // unique to this run, so printed text can't pose as a result
+  if (exercise.language === "kernel") return testKernelHarness(dir, exercise, code, nonce);
+  if (exercise.language === "go") return testGoHarness(dir, exercise, code);
+  if (exercise.language === "asm") return testAsmHarness(dir, exercise, code, nonce);
+  if (exercise.language === "c") return testCHarness(dir, exercise, code, nonce);
+  return testRustHarness(dir, exercise, code);
+}
+
+const sameNames = (a: string[], b: string[]) => a.length === b.length && a.every((n, i) => n === b[i]);
+
+/**
+ * The ordered test names an exercise's harness reports, taken from one run of the reference
+ * solution (counting CHECK( calls in the source would miss loops and computed names). Cached
+ * per process and keyed by content, so editing a lesson in dev invalidates it. Null if the
+ * reference solution does not pass, in which case the lesson is broken and verify:content says so.
+ */
+const expectedCache = new Map<string, Promise<string[] | null>>();
+const MAX_EXPECTED_CACHE = 512;
+function expectedTestNames(ex: Exercise): Promise<string[] | null> {
+  const key = `${ex.id}:${createHash("sha256").update(ex.harness ?? "").update("\0").update(ex.solution).digest("hex")}`;
+  let hit = expectedCache.get(key);
+  if (hit) {
+    expectedCache.delete(key);
+    expectedCache.set(key, hit);
+  } else {
+    // This shared reference run stays within the caller's occupied runner slot,
+    // but must not inherit that learner's cancellation signal. Other requests
+    // may be awaiting the same promise after the initiating client disconnects.
+    const reference = requestContext.exit(() => withWorkdir(async (dir) => {
+      const r = await runHarness(dir, ex, ex.solution);
+      return r.allPassed ? r.results.map((t) => t.name) : null;
+    }));
+    hit = reference.catch(() => null).then((names) => {
+      // A transient compiler/resource failure must not disable an exercise for
+      // the lifetime of the process. Retain only successful reference results.
+      if (names === null && expectedCache.get(key) === hit) expectedCache.delete(key);
+      return names;
+    });
+    expectedCache.set(key, hit);
+    while (expectedCache.size > MAX_EXPECTED_CACHE) {
+      const oldest = expectedCache.keys().next().value;
+      if (oldest === undefined) break;
+      expectedCache.delete(oldest);
+    }
+  }
+  return hit;
 }
 
 async function testStdout(dir: string, ex: Exercise, code: string): Promise<TestResult> {
@@ -556,67 +748,75 @@ async function testStdout(dir: string, ex: Exercise, code: string): Promise<Test
 }
 
 function testCHarness(dir: string, ex: Exercise, code: string, nonce: string): Promise<TestResult> {
-  return runCHarness(dir, nonce, () => compile(dir, "c", cTestSource(code, ex.harness ?? "", nonce), { test: true }));
+  return runCHarness(dir, nonce, () => compile(dir, "c", cTestSource(code, ex.harness ?? ""), { test: true }));
 }
 
 function testAsmHarness(dir: string, ex: Exercise, code: string, nonce: string): Promise<TestResult> {
-  return runCHarness(dir, nonce, () => compile(dir, "asm", code, { test: true, harness: ex.harness ?? "", nonce }));
+  return runCHarness(dir, nonce, () => compile(dir, "asm", code, { test: true, harness: ex.harness ?? "" }));
 }
 
 /**
  * Results are only trusted if they carry this run's nonce. A line that merely looks like a
- * result is the learner's own output. The nonce lives in the compiled harness, so this stops
- * copy-pasted or hard-coded forgeries; code that reads the test binary back can still forge
- * (see docs/security-audit.md, L1).
+ * result is the learner's own output. For C and assembly the nonce reaches the harness through
+ * the environment and is wiped before learner code runs (see cTestPrelude); the kernel harness
+ * still compiles it in. Either way this stops copy-pasted or hard-coded forgeries, and testExercise
+ * additionally requires the full expected transcript (docs/security-audit.md, L1).
  */
 function parseHarnessOutput(text: string, nonce: string) {
   const tag = (kind: string) => `@@${kind} ${nonce} `;
   const results: TestCaseResult[] = [];
   let running: string | null = null;
+  let valid = true;
   const userOutput: string[] = [];
   for (const line of text.split("\n")) {
-    if (line.startsWith(tag("RUN"))) running = line.slice(tag("RUN").length);
+    if (line.startsWith(tag("RUN"))) {
+      if (running !== null) valid = false;
+      running = line.slice(tag("RUN").length);
+    }
     else if (line.startsWith(tag("PASS"))) {
-      results.push({ name: line.slice(tag("PASS").length), passed: true });
+      const name = line.slice(tag("PASS").length);
+      if (running !== name) valid = false;
+      results.push({ name, passed: true });
       running = null;
     } else if (line.startsWith(tag("FAIL"))) {
       const [name, ...msg] = line.slice(tag("FAIL").length).split("\t");
+      if (running !== name) valid = false;
       results.push({ name, passed: false, message: msg.join("\t") });
       running = null;
     } else if (line.trim() && !line.startsWith("@@EXC ")) userOutput.push(line);
   }
-  return { results, running, userOutput };
+  return { results, running, userOutput, valid };
 }
 
 async function testKernelHarness(dir: string, ex: Exercise, code: string, nonce: string): Promise<TestResult> {
   const c = await compile(dir, "kernel", kernelTestSource(code, ex.harness ?? "", nonce), { test: true });
-  const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
+  const compileOutput = redactHarnessDiagnostics(cleanCompilerOutput(c.stderr + c.stdout), "kernel", 0);
   if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: "Your code didn't compile." };
   const k = await bootKernel(dir);
-  const { results, running } = parseHarnessOutput(k.debug, nonce);
+  const { results, running, valid } = parseHarnessOutput(k.debug, nonce);
   const error = kernelCrash(k);
   if (running) results.push({ name: running, passed: false, message: error ?? "The kernel stopped during this test." });
-  const allPassed = !error && results.length > 0 && results.every((t) => t.passed);
-  return { compiled: true, compileOutput, results, allPassed, output: k.stdout.trim(), error };
+  const allPassed = !error && valid && running === null && results.length > 0 && results.every((t) => t.passed);
+  return { compiled: true, compileOutput, results, allPassed, output: k.stdout.trim(), error: error ?? (!valid ? TESTS_INCOMPLETE : null) };
 }
 
 async function runCHarness(dir: string, nonce: string, build: () => ReturnType<typeof exec>): Promise<TestResult> {
   const c = await build();
-  const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
+  const compileOutput = redactHarnessDiagnostics(cleanCompilerOutput(c.stderr + c.stdout), "c", 0);
   if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: "Your code didn't compile." };
   await keepOnlyProgram(dir);
-  const r = await exec(dir, ["./prog"], { run: true, timeoutMs: RUN_TIMEOUT_MS, limits: runLimits(), env: runEnv });
-  const { results, running, userOutput } = parseHarnessOutput(r.stdout, nonce);
+  const r = await exec(dir, ["./prog"], { run: true, timeoutMs: RUN_TIMEOUT_MS, limits: runLimits(), env: { ...runEnv, BM_NONCE: nonce } });
+  const { results, running, userOutput, valid } = parseHarnessOutput(r.stdout, nonce);
   const crash = r.timedOut ? `Timed out after ${RUN_TIMEOUT_MS / 1000}s — is there a loop that never ends?` : signalMessage(r.signal, r.code);
-  const error = crash ?? undefinedBehaviour(r.stderr);
+  const error = crash ?? undefinedBehaviour(r.stderr) ?? (r.code !== 0 ? `The program exited with status ${r.code}.` : null);
   if (running) results.push({ name: running, passed: false, message: error ?? "The program stopped during this test." });
-  const allPassed = !error && results.length > 0 && results.every((t) => t.passed);
-  return { compiled: true, compileOutput, results, allPassed, output: [...userOutput, r.stderr.trim()].filter(Boolean).join("\n"), error };
+  const allPassed = !error && valid && running === null && results.length > 0 && results.every((t) => t.passed);
+  return { compiled: true, compileOutput, results, allPassed, output: [...userOutput, r.stderr.trim()].filter(Boolean).join("\n"), error: error ?? (!valid ? TESTS_INCOMPLETE : null) };
 }
 
 async function testGoHarness(dir: string, ex: Exercise, code: string): Promise<TestResult> {
   const c = await compile(dir, "go", code, { test: true, harness: ex.harness ?? "" });
-  const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
+  const compileOutput = redactHarnessDiagnostics(cleanCompilerOutput(c.stderr + c.stdout), "go", 0);
   if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: c.timedOut ? "Compilation took too long." : "Your code didn't compile." };
   await keepOnlyProgram(dir);
   const r = await exec(dir, ["./prog", "-test.v", "-test.timeout=5s", "-test.count=1"], { run: true, timeoutMs: RUN_TIMEOUT_MS * 2, limits: goRunLimits(), env: runEnv });
@@ -648,13 +848,13 @@ async function testGoHarness(dir: string, ex: Exercise, code: string): Promise<T
   const running = [...r.stdout.matchAll(/^=== RUN\s+(\w+)/gm)].map((m) => m[1].replace(/^Test_?/, "").replaceAll("_", " ")).find((n) => !failedNames.has(n));
   if (running && crash) results.push({ name: running, passed: false, message: crash });
   const userOutput = r.stderr.trim();
-  const allPassed = !crash && results.length > 0 && results.every((t) => t.passed);
+  const allPassed = !crash && r.code === 0 && results.length > 0 && results.every((t) => t.passed);
   return { compiled: true, compileOutput, results, allPassed, output: userOutput, error: crash };
 }
 
 async function testRustHarness(dir: string, ex: Exercise, code: string): Promise<TestResult> {
   const c = await compile(dir, "rust", rustTestSource(code, ex.harness ?? ""), { test: true });
-  const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
+  const compileOutput = redactHarnessDiagnostics(cleanCompilerOutput(c.stderr + c.stdout), "rust", code.split("\n").length);
   if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: "Your code didn't compile." };
   await keepOnlyProgram(dir);
   const r = await exec(dir, ["./prog", "--test-threads=1", "--color", "never"], { run: true, timeoutMs: RUN_TIMEOUT_MS * 2, limits: runLimits(), env: runEnv });
@@ -678,11 +878,17 @@ async function testRustHarness(dir: string, ex: Exercise, code: string): Promise
     results.push({ name, passed: m[2] === "ok", message: m[2] === "ok" ? undefined : failures.get(m[1]) || "Test failed." });
   }
   const crash = r.timedOut ? "Timed out — is there a loop that never ends, or a connection that is never closed?" : r.signal ? signalMessage(r.signal, r.code) : null;
-  const allPassed = !crash && results.length > 0 && results.every((t) => t.passed);
+  const allPassed = !crash && r.code === 0 && results.length > 0 && results.every((t) => t.passed);
   return { compiled: true, compileOutput, results, allPassed, output: "", error: crash };
 }
 
 export async function cleanupStaleWorkdirs() {
   const entries = await readdir(tmpdir()).catch(() => [] as string[]);
-  await Promise.all(entries.filter((e) => e.startsWith("bm-run-")).map((e) => rm(path.join(tmpdir(), e), { recursive: true, force: true })));
+  const cutoff = Date.now() - 15 * 60_000;
+  await Promise.all(entries.filter((e) => e.startsWith("bm-run-")).map(async (e) => {
+    const dir = path.join(tmpdir(), e);
+    try {
+      if (statSync(dir).mtimeMs < cutoff) await rm(dir, { recursive: true, force: true });
+    } catch { /* Another server may already have cleaned this directory. */ }
+  }));
 }

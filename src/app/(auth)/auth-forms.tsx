@@ -117,7 +117,7 @@ export function VerifyForm() {
         inputMode="text"
         autoFocus
         required
-        maxLength={12}
+        maxLength={19}
         errors={state.errors?.code}
         hint="Enter the 6-digit code from your authenticator app, or one of your backup codes."
       />

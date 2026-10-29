@@ -1,6 +1,6 @@
 ---
 title: Dropping to Ring 3 with iretq
-summary: Build an iretq frame, jump into user mode, and get back to the kernel through a DPL 3 gate. Watch the CPU refuse privileged instructions and bad addresses from ring 3.
+summary: Enter ring 3 with iretq and return through a user-callable gate.
 minutes: 70
 difficulty: hard
 tags: cpu, privilege, interrupts, assembly

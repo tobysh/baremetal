@@ -170,8 +170,7 @@ function BackupCodes({ codes }: { codes: string[] }) {
 }
 
 export function TwoFactorSetup() {
-  const [setup, setSetup] = useState<FormState | null>(null);
-  const [pending, start] = useTransition();
+  const [setup, setupAction] = useActionState(beginTwoFactorSetup, initialFormState);
   const [state, action] = useActionState(confirmTwoFactor, initialFormState);
 
   if (state.ok && state.data?.backupCodes) {
@@ -188,17 +187,11 @@ export function TwoFactorSetup() {
 
   if (!setup?.data) {
     return (
-      <div className="space-y-3">
-        {setup?.message && <FormAlert state={setup} />}
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => start(async () => setSetup(await beginTwoFactorSetup()))}
-          className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-medium text-accent-ink disabled:opacity-60"
-        >
-          {pending ? "Preparing…" : "Set up two-factor authentication"}
-        </button>
-      </div>
+      <form action={setupAction} className="space-y-3" noValidate>
+        <FormAlert state={setup} />
+        <Field label="Current password" name="password" type="password" autoComplete="current-password" required errors={setup.errors?.password} className="max-w-xs" />
+        <SubmitButton pendingText="Preparing…">Set up two-factor authentication</SubmitButton>
+      </form>
     );
   }
 
@@ -243,7 +236,7 @@ export function TwoFactorManage({ backupCodesLeft, isAdmin }: { backupCodesLeft:
           </div>
         ) : (
           <form action={regenAction} className="mt-3 flex flex-wrap items-end gap-3" noValidate>
-            <Field label="Current authenticator code" name="code" autoComplete="one-time-code" inputMode="numeric" maxLength={12} required errors={regen.errors?.code} className="w-56" />
+            <Field label="Current authenticator code" name="code" autoComplete="one-time-code" inputMode="numeric" maxLength={19} required errors={regen.errors?.code} className="w-56" />
             <SubmitButton pendingText="Generating…">Generate new codes</SubmitButton>
             <div className="w-full">
               <FormAlert state={regen} />
@@ -262,7 +255,7 @@ export function TwoFactorManage({ backupCodesLeft, isAdmin }: { backupCodesLeft:
             <FormAlert state={disable} />
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Password" name="password" type="password" autoComplete="current-password" required errors={disable.errors?.password} />
-              <Field label="Authenticator or backup code" name="code" autoComplete="one-time-code" maxLength={12} required errors={disable.errors?.code} />
+              <Field label="Authenticator or backup code" name="code" autoComplete="one-time-code" maxLength={19} required errors={disable.errors?.code} />
             </div>
             <SubmitButton pendingText="Turning off…" variant="danger">
               Turn off 2FA
@@ -315,7 +308,7 @@ export function PrivacyControls({ twoFactor }: { twoFactor: boolean }) {
           <FormAlert state={state} />
           <Field label='Type "delete my account" to confirm' name="confirm" autoComplete="off" required errors={state.errors?.confirm} />
           <Field label="Password" name="password" type="password" autoComplete="current-password" required errors={state.errors?.password} />
-          {twoFactor && <Field label="Authenticator or backup code" name="code" autoComplete="one-time-code" maxLength={12} required errors={state.errors?.code} />}
+          {twoFactor && <Field label="Authenticator or backup code" name="code" autoComplete="one-time-code" maxLength={19} required errors={state.errors?.code} />}
           <SubmitButton pendingText="Deleting…" variant="danger">
             Permanently delete account
           </SubmitButton>

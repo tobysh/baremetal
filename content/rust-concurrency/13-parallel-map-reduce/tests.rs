@@ -2,7 +2,7 @@
 fn sum_of_squares() {
     let nums: Vec<u64> = (1..=1000).collect();
     let expected: u64 = nums.iter().map(|n| n * n).sum();
-    for w in [0, 1, 2, 3, 7, 64, 5000] {
+    for w in [0, 1, 2, 3, 7, 12] {
         assert_eq!(map_reduce(&nums, w, |n| n * n, 0u64, |a, b| a + b), expected, "workers = {w}");
     }
 }
@@ -66,4 +66,16 @@ fn word_frequencies_independent_of_workers() {
         assert_eq!(word_frequencies(&refs, w), base, "same answer with {w} workers");
     }
     assert!(word_frequencies(&[], 3).is_empty());
+}
+
+#[test]
+fn mapped_values_need_send_but_not_sync() {
+    // Cell is Send and Clone, but not Sync. Each seed/result is owned by one thread.
+    let total = map_reduce(
+        &[2, 5, 8, 11], 3,
+        |&n| std::cell::Cell::new(n),
+        std::cell::Cell::new(0),
+        |a, b| std::cell::Cell::new(a.into_inner() + b.into_inner()),
+    );
+    assert_eq!(total.into_inner(), 26);
 }

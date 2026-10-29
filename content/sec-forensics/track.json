@@ -1,0 +1,10 @@
+{
+  "title": "Digital Forensics in C",
+  "summary": "Inspect synthetic evidence: file signatures, disk structures, metadata, integrity checks, timelines and authentication logs.",
+  "description": "Work only with deterministic, fictional evidence. Parse bytes without trusting lengths, distinguish observations from conclusions, and correlate timestamps and log events. The file carver and metadata reader deliberately cover small teaching subsets; the FNV integrity exercise is noncryptographic. Real investigations require preservation, validated tools and an authenticated chain of custody.",
+  "level": "Intermediate",
+  "language": "c",
+  "path": "security",
+  "order": 4,
+  "prerequisite": "c-systems"
+}

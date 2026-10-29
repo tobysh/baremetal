@@ -1,0 +1,10 @@
+{
+  "title": "Packet Analysis in C",
+  "summary": "Decode synthetic pcap, Ethernet, ARP, IP, TCP, UDP and DNS; rebuild a tiny HTTP stream and review traffic anomalies.",
+  "description": "Inspect offline, deterministic teaching captures using bounds-checked C parsers. Each lesson states its supported protocol subset and equivalent Wireshark display filters. No live capture or network access is involved. Documentation addresses and fictional .test names keep the evidence separate from real traffic.",
+  "language": "c",
+  "level": "Intermediate",
+  "path": "security",
+  "order": 3,
+  "prerequisite": "c-systems"
+}

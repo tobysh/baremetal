@@ -9,7 +9,7 @@ int main(void) {
     for (size_t i = 0; ok && i < p; i++) if (a[i] > pv) ok = 0;
     for (size_t i = p + 1; ok && i < 7; i++) if (a[i] < pv) ok = 0;
     CHECK("partition around the pivot 6", ok, "returned %zu: %d %d %d %d %d %d %d", p, a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
-    CHECK("the pivot 6 ends at index 4 (four values are smaller)", p == 4, "returned %zu", p);
+    CHECK("the pivot 6 ends at index 3 (three values are smaller)", p == 3, "returned %zu", p);
     long sum = 0;
     for (int i = 0; i < 7; i++) sum += a[i];
     CHECK("partition keeps the same elements", sum == 37, "sum is %ld, expected 37", sum);

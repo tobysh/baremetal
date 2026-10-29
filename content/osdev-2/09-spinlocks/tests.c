@@ -1,0 +1,3 @@
+static unsigned long flags_now(void) { unsigned long f; __asm__ volatile("pushfq; popq %0":"=r"(f)); return f; }
+void kmain(void) { Spinlock l={0}; __asm__ volatile("cli" ::: "memory"); unsigned long f=lock_irqsave(&l); CHECK("lock with interrupts disabled",l.held==1 && !(flags_now()&0x200) && !(f&0x200),"wrong state"); unlock_irqrestore(&l,f); CHECK("preserve disabled",l.held==0 && !(flags_now()&0x200),"wrong state");
+ __asm__ volatile("sti" ::: "memory"); f=lock_irqsave(&l); CHECK("save enabled and disable",(f&0x200) && !(flags_now()&0x200) && l.held,"wrong state"); unlock_irqrestore(&l,f); CHECK("restore enabled",!l.held && (flags_now()&0x200),"wrong state"); __asm__ volatile("cli" ::: "memory"); }

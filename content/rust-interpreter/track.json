@@ -1,0 +1,10 @@
+{
+  "title": "Build an Interpreter in Rust",
+  "summary": "Build a lexer, Pratt parser, lexical closures and diagnostics, then compile a language to bytecode and run it on your own VM.",
+  "description": "Construct a small language in fourteen cumulative, standalone exercises: tokenization with source positions, a peekable token stream, Pratt expression parsing, checked evaluation, a calculator review, shared environments, statements, control flow, functions and mutable closures, readable diagnostics, a persistent-session review, bytecode compilation, a stack virtual machine and jump backpatching. Every starter includes the previous working layers; hidden tests vary programs and error cases. The bytecode engine deliberately supports a smaller, flat-scope subset of the tree interpreter.",
+  "level": "Advanced",
+  "language": "rust",
+  "path": "rust",
+  "order": 6,
+  "prerequisite": "rust-traits"
+}

@@ -10,16 +10,13 @@ where
 {
     let workers = workers.max(1);
     let size = ((items.len() + workers - 1) / workers).max(1);
-    let (map, reduce, identity_ref) = (&map, &reduce, &identity);
+    let (map, reduce) = (&map, &reduce);
     let partials: Vec<U> = thread::scope(|s| {
         let handles: Vec<_> = items
             .chunks(size)
             .map(|chunk| {
-                s.spawn(move || {
-                    chunk
-                        .iter()
-                        .fold(identity_ref.clone(), |acc, x| reduce(acc, map(x)))
-                })
+                let seed = identity.clone(); // cloned here, then moved into the thread
+                s.spawn(move || chunk.iter().fold(seed, |acc, x| reduce(acc, map(x))))
             })
             .collect();
         handles.into_iter().map(|h| h.join().unwrap()).collect()

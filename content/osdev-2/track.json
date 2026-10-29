@@ -1,7 +1,7 @@
 {
   "title": "Build an Operating System, Part 2",
   "summary": "Take your kernel from a single privileged program to a real multitasking system: ring 3, the syscall instruction, address spaces, preemption, locks, a filesystem and pipes.",
-  "description": "In Part 1 you wrote the pieces a kernel is made from. In Part 2 you make them work together the way a real operating system does. You build the GDT and TSS that let user code run in ring 3, enter it with iretq, accept system calls through the syscall instruction, give each process its own page tables, preempt tasks from the timer interrupt, block and wake them on queues, protect shared data with spinlocks and mutexes, store files on a RAM disk with inodes, hand out file descriptors, and connect tasks with pipes. Everything runs on a simulated PC inside our sandbox, and the hidden tests check real hardware state: segment registers, descriptor bits, model-specific registers, CR3, live page tables and real timer interrupts.",
+  "description": "Continue Part 1 with ring 3, the syscall instruction, per-process page tables and timer-driven preemption. Then implement a physical frame bitmap, a small heap, wait queues, an interrupt-safe spinlock, a RAM disk and a pipe. Finish by reviewing independent file offsets. The sandbox boots your freestanding C under QEMU; several lessons inspect real processor state, while later exercises isolate kernel data structures.",
   "level": "Advanced",
   "language": "kernel",
   "path": "low",

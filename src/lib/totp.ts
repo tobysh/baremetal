@@ -1,6 +1,6 @@
 import "server-only";
 import { createHmac, randomBytes } from "node:crypto";
-import { safeEqual, sha256 } from "./crypto";
+import { hmac, safeEqual, sha256 } from "./crypto";
 
 // RFC 6238 TOTP (SHA-1, 6 digits, 30s) — what Google Authenticator, 1Password,
 // Authy etc. expect.
@@ -74,15 +74,16 @@ export function otpauthUrl(secret: string, account: string, issuer: string) {
   return `otpauth://totp/${label}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=${STEP}`;
 }
 
-// Backup codes: 10 single-use codes like "k3f9-x2mq". 40 bits of entropy each,
-// stored as SHA-256 hashes.
+// Backup codes are single-use and keyed so a database leak cannot verify guesses offline.
 const CODE_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 export function newBackupCodes(n = 10): string[] {
   return Array.from({ length: n }, () => {
-    const bytes = randomBytes(8);
+    const bytes = randomBytes(16);
     const chars = Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join("");
-    return `${chars.slice(0, 4)}-${chars.slice(4, 8)}`;
+    return `${chars.slice(0, 4)}-${chars.slice(4, 8)}-${chars.slice(8, 12)}-${chars.slice(12, 16)}`;
   });
 }
 export const normalizeBackupCode = (code: string) => code.toLowerCase().replace(/[^a-z0-9]/g, "");
-export const hashBackupCode = (code: string) => sha256(`backup:${normalizeBackupCode(code)}`);
+export const hashBackupCode = (code: string) => `v2:${hmac("backup-code", normalizeBackupCode(code))}`;
+// Old SHA-256 entries are accepted once and removed atomically when used.
+export const legacyBackupCodeHash = (code: string) => sha256(`backup:${normalizeBackupCode(code)}`);

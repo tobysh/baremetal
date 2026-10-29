@@ -11,6 +11,7 @@
     "db": "mongod --dbpath .data/db --bind_ip 127.0.0.1 --port 27017 --quiet",
     "make-admin": "tsx --env-file=.env.local scripts/make-admin.mts",
     "test:e2e": "tsx --conditions=react-server --env-file=.env.local scripts/e2e-auth.mts",
+    "flagged-accounts": "tsx --env-file=.env.local scripts/flagged-accounts.mts",
     "recompute-xp": "tsx --env-file=.env.local scripts/recompute-xp.mts",
     "backfill-achievements": "tsx --env-file=.env.local scripts/backfill-achievements.mts"
   },

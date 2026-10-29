@@ -80,13 +80,13 @@ func TestGroup_returns_first_error_and_cancels_the_rest(t *testing.T) {
 }
 
 func TestGroup_first_of_several_errors(t *testing.T) {
-	g, _ := WithContext(context.Background())
+	g, ctx := WithContext(context.Background())
 	first := errors.New("first")
 	second := errors.New("second")
 	gate := make(chan struct{})
 	g.Go(func() error { return first })
 	g.Go(func() error { <-gate; return second })
-	time.Sleep(100 * time.Millisecond) // let the first error land
+	within(t, 3*time.Second, "first error cancellation", func() { <-ctx.Done() })
 	close(gate)
 	var err error
 	within(t, 3*time.Second, "Wait", func() { err = g.Wait() })

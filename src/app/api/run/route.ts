@@ -5,8 +5,8 @@ import { levelFor, titleBlurb } from "@/lib/gamification";
 import { jsonError, readJson, sameOrigin } from "@/lib/http";
 import { getProgress, recordAttempt, recordReviewPass } from "@/lib/progress";
 import { evaluateAchievements, trackCompleteFor, type TrackComplete, type Unlocked } from "@/lib/rewards";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { runProgram, testExercise, RunnerBusyError } from "@/lib/runner";
+import { clientIp, ipLimit, rateLimit } from "@/lib/rate-limit";
+import { runProgram, testExercise, RunnerBusyError, withRunnerRequest } from "@/lib/runner";
 
 type Body = { exerciseId?: string; code?: string; stdin?: string; mode?: "run" | "test"; review?: boolean };
 
@@ -22,8 +22,9 @@ export async function POST(req: Request) {
 
   const user = await getCurrentUser();
   // Signed-in learners get a higher limit; anyone can try the editor.
-  const key = user ? `run:user:${user.id}` : `run:ip:${clientIp(req.headers)}`;
-  if (!(await rateLimit(key, user ? 120 : 30, 10 * 60))) {
+  const ip = clientIp(req.headers);
+  const key = user ? `run:user:${user.id}` : `run:ip:${ip}`;
+  if (!(await rateLimit(key, user ? 120 : ipLimit(ip, 30), 10 * 60))) {
     return jsonError(429, user ? "You're running code very fast — take a breath and try again in a few minutes." : "Run limit reached. Create a free account for more runs.");
   }
 
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
 
   try {
     if (body.mode === "test") {
-      const result = await testExercise(found.exercise, body.code);
+      const result = await withRunnerRequest([`ip:${ip}`, ...(user ? [`user:${user.id}`] : [])], req.signal, () => testExercise(found.exercise, body.code!));
       const isReview = !!body.review && !found.isChallenge;
       let achievements: Unlocked[] = [];
       let trackComplete: TrackComplete | null = null;
@@ -76,9 +77,10 @@ export async function POST(req: Request) {
       });
     }
     const stdin = typeof body.stdin === "string" ? body.stdin.slice(0, 16 * 1024) : "";
-    const result = await runProgram(found.exercise.language, body.code, stdin);
+    const result = await withRunnerRequest([`ip:${ip}`, ...(user ? [`user:${user.id}`] : [])], req.signal, () => runProgram(found.exercise.language, body.code!, stdin));
     return NextResponse.json({ kind: "run", ...result });
   } catch (e) {
+    if (req.signal.aborted) return new Response(null, { status: 499 });
     if (e instanceof RunnerBusyError) return jsonError(503, "The code runner is busy right now. Please try again in a few seconds.");
     console.error("[run] runner failure", e);
     return jsonError(500, "The code runner hit a problem on our side. Please try again.");

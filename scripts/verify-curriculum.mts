@@ -9,7 +9,9 @@ const only = process.argv[2];
 let failed = 0;
 const ids = new Set<string>();
 
-for (const track of getTracks()) {
+const tracks = getTracks(only);
+if (only && tracks.length === 0) throw new Error(`Unknown track: ${only}`);
+for (const track of tracks) {
   if (only && track.slug !== only) continue;
   console.log(`\n${track.title} (${track.slug}) — ${track.lessons.length} lessons`);
   for (const lesson of track.lessons) {

@@ -16,7 +16,7 @@ Reading a sorted file by scanning from the start is slow. So the table ends with
 ```
 [ entry 0 ][ entry 1 ] ... [ entry N-1 ][ index ][ footer ]
 
-entry : flag u8 (1 = tombstone) | keyLen u32 | valLen u32 | key | value
+entry : flag u8 (0 = value, 1 = tombstone) | keyLen u32 | valLen u32 | key | value
 index : for each entry:  keyLen u32 | key | offset u64 | length u32
 footer: indexOffset u64 | count u64 | magic u64      (24 bytes)
 ```
@@ -42,8 +42,12 @@ if n < len(buf) { return err }  // a short read is the real failure
 
 ## Validate what you open
 
-A table can be cut short or from another program. `OpenTable` must return an error, not panic, if the file is smaller than a footer, the magic is wrong, the index offset points outside the file, or the index does not parse to exactly `count` entries.
+A table can be cut short or from another program. `OpenTable` must return an error, not panic, if the file is smaller than a footer, the magic is wrong, the index offset points outside the file, or the index does not parse to exactly `count` entries. Index keys must be strictly ascending and the indexed byte ranges must exactly cover the entry region in order, with no gaps or overlaps. Every length must fit its header and indexed key. Check `off <= indexOffset` first, then compare `length <= indexOffset - off`; adding untrusted offsets can wrap around.
+
+`Get` validates the entry it reads: lengths and key must agree with the index, the flag must be 0 or 1, and tombstones must have no value bytes. Opening validates the in-memory index, while lookup validates entry data lazily so it still costs one read.
 
 ## Sorted input
 
 The writer needs strictly ascending keys: no duplicates (a table has one entry per key), no disorder (binary search would silently break). Return an error rather than writing a broken table.
+
+Even a single `Write` is not a durability guarantee. Check the returned byte count as well as its error, mapping a short result without an error to `io.ErrShortWrite`. Filesystem durability would also require a real file and a synchronization policy; these exercises use in-memory buffers.

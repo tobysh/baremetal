@@ -105,7 +105,9 @@ func TestRunJobs_first_error_stops_later_jobs(t *testing.T) {
 func TestRunJobs_error_cancels_running_jobs(t *testing.T) {
 	boom := errors.New("boom")
 	var cancelled int32
+	started := make(chan struct{}, 2)
 	waiter := func(ctx context.Context) (string, error) {
+		started <- struct{}{}
 		select {
 		case <-ctx.Done():
 			atomic.AddInt32(&cancelled, 1)
@@ -117,7 +119,8 @@ func TestRunJobs_error_cancels_running_jobs(t *testing.T) {
 	jobs := []job{
 		waiter, waiter,
 		func(ctx context.Context) (string, error) {
-			time.Sleep(60 * time.Millisecond) // let the waiters start
+			<-started
+			<-started
 			return "", boom
 		},
 	}

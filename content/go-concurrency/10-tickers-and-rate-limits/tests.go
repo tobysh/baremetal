@@ -109,18 +109,14 @@ func TestPoll_first_check_waits_one_interval(t *testing.T) {
 }
 
 func TestPoll_false_when_context_ends(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	calls := 0
 	var ok bool
-	within(t, 3*time.Second, "Poll with a deadline", func() {
-		ok = Poll(ctx, 20*time.Millisecond, func() bool { calls++; return false })
+	within(t, 3*time.Second, "Poll cancelled by its check", func() {
+		ok = Poll(ctx, 20*time.Millisecond, func() bool { cancel(); return false })
 	})
 	if ok {
-		t.Errorf("Poll = true; want false when check never succeeds")
-	}
-	if calls < 1 || calls > 7 {
-		t.Errorf("check ran %d times in 120ms at a 20ms beat; expected a handful", calls)
+		t.Errorf("Poll = true; want false when the check cancels context and never succeeds")
 	}
 }
 

@@ -17,13 +17,13 @@ import {
 } from "@/lib/auth";
 import { decrypt, randomToken, sha256 } from "@/lib/crypto";
 import { verifyCaptcha } from "@/lib/captcha";
-import { sendEmail } from "@/lib/email";
+import { queueEmail, scheduleEmailDelivery, sendEmail } from "@/lib/email";
 import { fieldErrors, formValues, type FormState } from "@/lib/forms";
 import { usernameProblem } from "@/lib/gamification";
 import { EXPERIENCE_LEVELS, TERMS_VERSION, type UserDoc } from "@/lib/models";
 import { checkPassword } from "@/lib/password";
-import { authRateLimit, clearLoginFailures, formatWait, logAuthEvent, loginGuard, recordLoginFailure, requestContext } from "@/lib/security";
-import { hashBackupCode, verifyTotp } from "@/lib/totp";
+import { authRateLimit, clearLoginFailures, finishLoginFailure, finishOtpFailure, formatWait, logAuthEvent, loginGuard, otpGuard, refundLoginAttempt, refundOtpAttempt, reserveLoginAttempt, reserveOtpAttempt, requestContext } from "@/lib/security";
+import { hashBackupCode, legacyBackupCodeHash, verifyTotp } from "@/lib/totp";
 import { absoluteUrl } from "@/lib/site";
 
 const email = z.email("Enter a valid email address, like you@example.com").max(254).transform((e) => e.trim().toLowerCase());
@@ -73,32 +73,36 @@ export async function signup(_prev: FormState, formData: FormData): Promise<Form
 
   const db = await getDb();
   const now = new Date();
+  // The same visible response covers new, existing and unavailable usernames.
+  const done: FormState = { ok: true, message: "If your account can be created, check your email for a verification link. If you already have an account, you can sign in or reset your password." };
   try {
     const res = await db.collection<Omit<UserDoc, "_id">>("users").insertOne({
-      email: d.email,
-      name: d.name,
-      username: d.username,
-      xp: 0,
-      profilePublic: true,
-      passwordHash: await hashPassword(d.password),
-      experience: d.experience,
-      role: "user",
-      createdAt: now,
-      termsAcceptedAt: now,
-      termsVersion: TERMS_VERSION,
-      sessionVersion: 0,
-      passwordChangedAt: now,
+      email: d.email, name: d.name, username: d.username, xp: 0, profilePublic: true,
+      passwordHash: await hashPassword(d.password), experience: d.experience, role: "user",
+      createdAt: now, termsAcceptedAt: now, termsVersion: TERMS_VERSION, sessionVersion: 0,
+      passwordChangedAt: now, emailVerified: false,
     });
+    const token = randomToken(32);
+    await db.collection("email_verifications").insertOne({ tokenHash: sha256(token), userId: res.insertedId, expiresAt: new Date(Date.now() + 24 * 3600_000) });
+    await queueEmail(d.email, "Verify your Baremetal email", `Use this link within 24 hours to verify your email:\n\n${absoluteUrl("/verify-email")}#${token}\n\nIf you did not request this account, ignore this email.`);
     await logAuthEvent("signup", { email: d.email, userId: res.insertedId.toHexString() });
-    const { userAgent } = await requestContext();
-    await createSession({ _id: res.insertedId, sessionVersion: 0 }, userAgent);
   } catch (e) {
-    const dup = duplicateField(e);
-    if (dup === "username") return { errors: { username: ["That username is taken — try another"] }, values, captchaRequired: true };
-    if (dup) return { errors: { email: ["An account with this email already exists. Try signing in instead."] }, values, captchaRequired: true };
-    throw e;
+    if (!duplicateField(e)) throw e;
+    const existing = await db.collection<UserDoc>("users").findOne({ email: d.email });
+    const { rateLimit } = await import("@/lib/rate-limit");
+    if (existing && await rateLimit(`signup-email:${sha256(d.email)}`, 3, 3600)) {
+      if (existing.emailVerified === false) {
+        const token = randomToken(32);
+        await db.collection("email_verifications").deleteMany({ userId: existing._id });
+        await db.collection("email_verifications").insertOne({ tokenHash: sha256(token), userId: existing._id, expiresAt: new Date(Date.now() + 24 * 3600_000) });
+        await queueEmail(existing.email, "Verify your Baremetal email", `A signup was requested for this address. To verify your existing account within 24 hours, use:\n\n${absoluteUrl("/verify-email")}#${token}\n\nIf this was not you, ignore this email.`);
+      } else {
+        await queueEmail(existing.email, "Baremetal signup requested", "Someone requested a signup using your email address. Your existing account has not changed. If this was you, sign in or request a password reset.");
+      }
+    }
   }
-  redirect("/learn?welcome=1");
+  scheduleEmailDelivery();
+  return done;
 }
 
 // ---------- Sign in ----------
@@ -129,22 +133,25 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
     return { message: "Please complete the security check, then sign in again.", values, captchaRequired: true };
   }
 
+  if (!(await reserveLoginAttempt(addr, ip))) return { message: "Too many failed sign-in attempts. Please wait and try again.", values, captchaRequired: true };
   const db = await getDb();
   const user = await db.collection<UserDoc>("users").findOne({ email: addr });
   // Always run scrypt so response time doesn't reveal whether the email exists.
   const valid = await verifyPassword(password, user?.passwordHash ?? (await getDummyHash()));
   if (!user || !valid) {
-    await recordLoginFailure(addr, ip);
+    await finishLoginFailure(addr, ip);
     await logAuthEvent("login_failed", { email: addr, reason: user ? "bad_password" : "unknown_email" });
     const after = await loginGuard(addr, ip);
     return { message: "Incorrect email or password.", values, captchaRequired: after.captchaRequired };
   }
 
-  await clearLoginFailures(addr, ip);
+  await refundLoginAttempt(addr, ip);
+  if (user.emailVerified === false) return { message: "Please verify your email before signing in. Check your inbox for the link.", values };
   if (user.twoFactor?.enabled) {
-    await startPending2fa(user._id, next);
+    await startPending2fa(user._id, next, user.sessionVersion ?? 0);
     redirect("/login/verify");
   }
+  await clearLoginFailures(addr, ip, user._id.toHexString());
   await createSession(user, userAgent);
   await logAuthEvent("login_success", { email: addr, userId: user._id.toHexString() });
   redirect(next);
@@ -165,11 +172,14 @@ export async function verifySecondFactor(_prev: FormState, formData: FormData): 
   const db = await getDb();
   const users = db.collection<UserDoc>("users");
   const user = await users.findOne({ _id: pending.userId });
-  if (!user?.twoFactor?.enabled) {
+  if (!user?.twoFactor?.enabled || pending.sessionVersion !== (user.sessionVersion ?? 0)) {
     await clearPending2fa();
     redirect("/login");
   }
 
+  const userKey = user._id.toHexString();
+  const otpStatus = await otpGuard(userKey);
+  if (otpStatus.locked || !(await reserveOtpAttempt(userKey))) return { message: "Too many verification attempts. Please wait and try again." };
   let ok = false;
   let usedBackup = false;
   if (/^\d{6}$/.test(code.replace(/\s/g, ""))) {
@@ -180,17 +190,16 @@ export async function verifySecondFactor(_prev: FormState, formData: FormData): 
       ok = res.modifiedCount === 1;
     }
   } else {
-    const res = await users.updateOne({ _id: user._id }, { $pull: { "twoFactor.backupCodeHashes": hashBackupCode(code) } });
+    const res = await users.updateOne({ _id: user._id }, { $pull: { "twoFactor.backupCodeHashes": { $in: [hashBackupCode(code), legacyBackupCodeHash(code)] } } });
     ok = usedBackup = res.modifiedCount === 1;
   }
 
   if (!ok) {
+    await finishOtpFailure(userKey);
     const updated = await db
       .collection("pending_2fa")
       .findOneAndUpdate({ _id: pending._id }, { $inc: { attempts: 1 } }, { returnDocument: "after" });
     await logAuthEvent("otp_failed", { email: user.email, userId: user._id.toHexString() });
-    const { ip } = await requestContext();
-    await recordLoginFailure(user.email, ip);
     if ((updated?.attempts ?? MAX_OTP_ATTEMPTS) >= MAX_OTP_ATTEMPTS) {
       await clearPending2fa();
       redirect("/login?expired=1");
@@ -198,8 +207,10 @@ export async function verifySecondFactor(_prev: FormState, formData: FormData): 
     return { errors: { code: ["That code didn't work. Codes change every 30 seconds — try the newest one."] } };
   }
 
+  await refundOtpAttempt(userKey);
   await clearPending2fa();
-  const { userAgent } = await requestContext();
+  const { ip, userAgent } = await requestContext();
+  await clearLoginFailures(user.email, ip, userKey);
   await createSession(user, userAgent);
   await logAuthEvent(usedBackup ? "backup_code_used" : "login_success", { email: user.email, userId: user._id.toHexString() });
   redirect(safeNext(pending.next));
@@ -226,7 +237,7 @@ export async function requestPasswordReset(_prev: FormState, formData: FormData)
   const db = await getDb();
   const user = await db.collection<UserDoc>("users").findOne({ email: addr });
   await logAuthEvent("password_reset_requested", { email: addr, reason: user ? undefined : "unknown_email" });
-  if (!user) return done;
+  if (!user) { scheduleEmailDelivery(); return done; }
 
   const token = randomToken(32);
   await db.collection("password_resets").deleteMany({ userId: user._id });
@@ -238,11 +249,8 @@ export async function requestPasswordReset(_prev: FormState, formData: FormData)
   });
   // Delivery failures are logged, never surfaced: a different response for
   // registered emails would reveal which accounts exist.
-  await sendEmail(
-    user.email,
-    "Reset your Baremetal password",
-    `Hi ${user.name},\n\nSomeone (hopefully you) asked to reset your Baremetal password. Use this link within ${RESET_MINUTES} minutes:\n\n${absoluteUrl(`/reset-password?token=${token}`)}\n\nIf you didn't ask for this, you can ignore this email — your password won't change.\n`,
-  ).catch((e) => console.error("[auth] password reset email failed", e));
+  await queueEmail(user.email, "Reset your Baremetal password", `Hi ${user.name},\n\nSomeone asked to reset your password. Use this link within ${RESET_MINUTES} minutes:\n\n${absoluteUrl("/reset-password")}#${token}\n\nIf you didn't ask for this, ignore this email.`);
+  scheduleEmailDelivery();
   return done;
 }
 
@@ -273,7 +281,7 @@ export async function resetPassword(_prev: FormState, formData: FormData): Promi
   await db.collection<UserDoc>("users").updateOne({ _id: user._id }, { $set: { passwordHash: await hashPassword(password), passwordChangedAt: new Date() } });
   await revokeAllSessions(user._id);
   const { ip } = await requestContext();
-  await clearLoginFailures(user.email, ip);
+  await clearLoginFailures(user.email, ip, user._id.toHexString());
   await logAuthEvent("password_reset", { email: user.email, userId: user._id.toHexString() });
   await sendEmail(user.email, "Your Baremetal password was changed", `Hi ${user.name},\n\nYour password was just reset and all devices were signed out. If this wasn't you, reset your password again immediately and contact us.\n`).catch((e) =>
     console.error("[auth] password-changed email failed", e),
@@ -284,4 +292,25 @@ export async function resetPassword(_prev: FormState, formData: FormData): Promi
 export async function logout() {
   await destroySession();
   redirect("/");
+}
+
+export async function verifyEmail(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (!(await authRateLimit("verify-email", 10))) return { message: TOO_MANY };
+  const token = String(formData.get("token") ?? "");
+  if (token.length < 20 || token.length > 100) return { message: "This verification link is invalid or expired." };
+  const parsed = resetSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+  const db = await getDb();
+  const record = await db.collection("email_verifications").findOne({ tokenHash: sha256(token), expiresAt: { $gt: new Date() } });
+  if (!record) return { message: "This verification link is invalid, expired, or already used." };
+  const user = await db.collection<UserDoc>("users").findOne({ _id: record.userId, emailVerified: false });
+  if (!user) return { message: "This verification link is invalid or already used." };
+  const pwError = await checkPassword(parsed.data.password, [user.email, user.name, user.username ?? ""]);
+  if (pwError) return { errors: { password: [pwError] } };
+  const passwordHash = await hashPassword(parsed.data.password);
+  const claimed = await db.collection("email_verifications").deleteOne({ _id: record._id, expiresAt: { $gt: new Date() } });
+  if (!claimed.deletedCount) return { message: "This verification link is invalid or already used." };
+  const result = await db.collection<UserDoc>("users").updateOne({ _id: user._id, emailVerified: false }, { $set: { emailVerified: true, passwordHash, passwordChangedAt: new Date() } });
+  if (!result.matchedCount) return { message: "This verification link is invalid or already used." };
+  return { ok: true, message: "Email verified. You can now sign in." };
 }

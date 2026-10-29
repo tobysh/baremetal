@@ -27,7 +27,7 @@ binary.BigEndian.PutUint32(hdr[0:4], uint32(len(key)))
 binary.BigEndian.PutUint32(hdr[4:8], uint32(len(value)))
 ```
 
-Build the whole record in one slice and call `w.Write` **once**. Two separate writes can be interleaved with another writer, or half-finished if the program dies in between.
+Build the whole record in one slice and call `w.Write` **once**. This reduces opportunities for separate header and body writes to interleave, but does not make a record atomic or durable. A writer can still return a short count or an error, and a crash can leave a torn tail. Propagate its error; if its count is short without an error, return `io.ErrShortWrite`. Concurrent writers would need coordination, and durable files would need an explicit synchronization policy.
 
 ## Reading it back
 

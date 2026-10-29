@@ -1,0 +1,1 @@
+Implement `lock_irqsave` and `unlock_irqrestore`. Atomically exchange the lock word with 1 until it was 0; use acquire ordering. Unlock with a release store of 0 before restoring the saved flags. Preserve whether interrupts were enabled on entry. The caller never recursively acquires the same lock.

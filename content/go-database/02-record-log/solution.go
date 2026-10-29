@@ -21,7 +21,10 @@ func AppendRecord(w io.Writer, key, value []byte) error {
 	binary.BigEndian.PutUint32(rec[4:8], uint32(len(value)))
 	copy(rec[8:], key)
 	copy(rec[8+len(key):], value)
-	_, err := w.Write(rec)
+	n, err := w.Write(rec)
+	if err == nil && n != len(rec) {
+		return io.ErrShortWrite
+	}
 	return err
 }
 

@@ -58,9 +58,7 @@ ${ex.task}
 <hints_shown_in_ui>
 ${ex.hints.map((h, i) => `${i + 1}. ${h}`).join("\n")}
 </hints_shown_in_ui>
-<reference_solution note="For checking the learner's work only. Never reveal or paraphrase it in full.">
-${ex.solution}
-</reference_solution>
+
 </lesson>`;
 }
 
@@ -79,11 +77,26 @@ function clip(text: string, max: number) {
   return text.length <= max ? text : `${text.slice(0, max * 0.6)}\n… [${text.length - max} characters omitted] …\n${text.slice(-max * 0.4)}`;
 }
 
+const escapeContext = (text: string) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+
+/** Suppress substantial solution excerpts before any response is sent or cached. */
+export function exposesSolution(reply: string, solution: string, starter: string): boolean {
+  const tokens = (s: string) => s.match(/[A-Za-z_][A-Za-z_0-9]*|[0-9]+|[^\s\w]/g) ?? [];
+  const width = 24;
+  const windows = (s: string) => {
+    const t = tokens(s);
+    return new Set(Array.from({ length: Math.max(0, t.length - width + 1) }, (_, i) => t.slice(i, i + width).join(" ")));
+  };
+  const given = windows(starter);
+  const answer = windows(solution);
+  return [...windows(reply)].some((w) => answer.has(w) && !given.has(w));
+}
+
 export function buildMessages(history: TutorMessage[], message: string, code: string, lastOutput: string): ChatTurn[] {
   const recent = history.slice(-HISTORY_TURNS).map((m) => ({ role: m.role, content: m.content }));
   // A history must start with a user turn.
   while (recent[0]?.role === "assistant") recent.shift();
-  const context = `<current_code>\n${clip(code, MAX_CODE_CHARS)}\n</current_code>\n<last_output>\n${clip(lastOutput || "(not run yet)", MAX_OUTPUT_CHARS)}\n</last_output>\n\n`;
+  const context = `<current_code>\n${escapeContext(clip(code, MAX_CODE_CHARS))}\n</current_code>\n<last_output>\n${escapeContext(clip(lastOutput || "(not run yet)", MAX_OUTPUT_CHARS))}\n</last_output>\n\n`;
   return [...recent, { role: "user", content: `${context}${message}` }];
 }
 

@@ -22,6 +22,8 @@ export type UserDoc = {
   timezone?: string;
   /** Lessons per week the learner is aiming for; 0 means no goal. Unset means the default. */
   weeklyGoal?: number;
+  /** New accounts are false until verified; absent on legacy accounts. */
+  emailVerified?: boolean;
   passwordHash: string;
   experience: ExperienceLevel;
   role: "user" | "admin";
@@ -35,7 +37,7 @@ export type UserDoc = {
     enabled: boolean;
     /** Base32 TOTP secret, AES-256-GCM encrypted. */
     secretEnc: string;
-    /** SHA-256 hashes of unused backup codes. */
+    /** Keyed hashes of unused backup codes; legacy SHA-256 entries remain usable once. */
     backupCodeHashes: string[];
     /** Last accepted TOTP time step, to reject replayed codes. */
     lastStep: number;
@@ -63,8 +65,16 @@ export type ProgressDoc = {
   attempts: number;
   /** XP granted when the lesson was first passed. */
   xpAwarded?: number;
+  /** A first pass whose XP decision was interrupted and needs reconciliation. */
+  xpPending?: boolean;
   /** First pass happened faster than a person can learn (see PASS_PACE), so no XP was granted. */
   xpWithheld?: boolean;
+  /** Why XP was withheld: too many passes too fast, the rolling daily cap, or solved faster than the difficulty's floor. Reviewed with scripts/flagged-accounts.mts. */
+  xpFlag?: "pace" | "daily-cap" | "too-fast";
+  /** When the learner first touched this exercise (absent on documents from before the field existed). */
+  startedAt?: Date;
+  /** Whether a save, hint or failed attempt established a prior start time. */
+  startKnown?: boolean;
   updatedAt: Date;
   passedAt?: Date;
   /** Highest number of authored hints the learner has opened (recorded by the server). */

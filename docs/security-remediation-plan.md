@@ -1,5 +1,24 @@
 # Security remediation plan — Baremetal
 
+## Recovery status — 29 October 2026
+
+The interrupted work has been continued in the main working tree; no recovery commits, merges or PRs have been created. Original security worktrees remain available. This status supersedes the original implementation instructions below.
+
+| Phase | Current state |
+|---|---|
+| 1 | Complete transcript checks fail closed when the reference is unavailable; C/asm nonce identifiers are randomized and environment values wiped before constructors; nonzero exits and unmatched C/kernel result events fail. Hidden-source include/embed scans and diagnostic redaction are in place. XP pace/daily decisions are atomic per user; unknown first-submit start times are not automatically flagged. In-process full transcript forgery remains a limitation. |
+| 2 | Short proxy chains use a strict process-specific unknown bucket. Production boot requires a valid positive integer hop count. Proxy/Mongo/maintenance contract documented. |
+| 3 | Tutor types/size checks precede quota; solution removed from context; learner tags escaped; responses buffered for excerpt filtering; verified/aged newcomer model admission reserves established-user capacity; DELETE limited. Runner caps user/IP admission, transfers queue slots directly, supports cancellation/timeouts, and cleans only old workdirs at boot. Public payloads omit hints; `/api/hint` records access before returning them. |
+| 4 | Compiler scratch is capped tmpfs, exported executable is capped, runtime kernel image is read-only, syscall denylist expanded, process scanning cached. Optional delegated cgroup-v2 per-job limits are implemented. Host delegation, enforcement/memory-bomb testing and dedicated runner uid remain deployment tasks. |
+| 5 | Password-gated 2FA setup and notifications; atomic password/OTP reservations; pair-scoped password locks; OTP counters shared across pending sessions; verification signup and generic signup/reset responses; encrypted durable email delivery; longer HMAC backup codes with legacy single-use support; fragment reset links. |
+| 6 | Console identities and tutor/analytics IP keys use keyed hashes; retention notice updated; both Markdown renderers pass injection fixtures; production dependency audit has zero advisories. Nonce CSP remains deferred because the installed Next.js guide explicitly excludes PPR; the current enforced CSP retains unsafe-inline. |
+
+Checks: full curriculum (26 courses/276 lessons), production build, expanded auth e2e, API admission/quota/hint/deletion suite, browser hint/mobile/auth smoke, XP concurrency fixtures, forged-result fixtures, reference-cache cancellation, redirect/tutor checks, auth crypto checks, Markdown fixtures, TypeScript, lint (zero errors; one pre-existing warning), and production dependency audit. Final verification outputs are summarized in `HANDOFF.md`.
+
+Fresh review caught and fixed cold-reference cache poisoning after cancellation, tutor cancellation enqueue/close errors, newcomer-pool consumption before user/IP admission, asynchronous cgroup removal without retries, concurrent XP-cap races, and first-submit false positives. A full harness-process trust boundary and strict CSP rendering migration are **not** claimed complete. Production cgroups and SMTP delivery require verification on the actual host.
+
+XP updates claim the first pass before the atomic account quota decision. A crash between writes leaves `xpPending`; recorded decisions include an exercise reference so `recompute-xp` can reconcile them while offline. If no decision exists, recomputation stops for review rather than inventing an award. The quota cache is pruned on the next pass, not by a TTL index.
+
 Result of the four-area review (auth, sandbox, API/web, tutor/data). It was a read-only code review: nothing was run, and every finding below still needs a proof-of-concept before the fix is declared done. `docs/security-audit.md` is the audit plan (L1–L10); this document is the fix order. "Ref" gives the L-number it extends.
 
 ## Order of work

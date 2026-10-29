@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type KeyboardEvent, Suspense, lazy, useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { type KeyboardEvent, Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { LANGUAGE_FILE, LANGUAGE_LABEL, type PublicExercise } from "@/lib/curriculum/types";
 import { track } from "../analytics";
 import { MiniMarkdown } from "./mini-markdown";
@@ -103,7 +103,24 @@ export function Workspace({
   const [requestError, setRequestError] = useState<string | null>(null);
   const [passed, setPassed] = useState(alreadyPassed);
   const [tab, setTab] = useState<Tab>("output");
-  const [hintsShown, setHintsShown] = useState(variant === "lesson" ? Math.min(initialHints, exercise.hints.length) : 0);
+  const [hints, setHints] = useState<string[]>([]);
+  const hintsShown = hints.length;
+  const [hintBusy, setHintBusy] = useState(false);
+  const [hintError, setHintError] = useState<string | null>(null);
+  const fetchHints = useCallback(async (index: number) => {
+    const res = await fetch("/api/hint", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ exerciseId: exercise.id, index }) });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error ?? "Could not load the hint. Try again.");
+    return body.hints as string[];
+  }, [exercise.id]);
+  useEffect(() => {
+    if (variant !== "lesson" || initialHints <= 0) return;
+    let cancelled = false;
+    fetchHints(Math.min(initialHints, exercise.hintCount) - 1).then((loaded) => {
+      if (!cancelled) setHints((current) => current.length > loaded.length ? current : loaded);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [fetchHints, initialHints, exercise.hintCount, variant]);
   const [toasts, setToasts] = useState<Unlocked[]>([]);
   const [celebration, setCelebration] = useState<{ levelUp: Reward | null; trackComplete: TrackComplete | null } | null>(null);
   const dismissToast = useCallback((id: string) => setToasts((t) => t.filter((x) => x.id !== id)), []);
@@ -183,13 +200,19 @@ export function Workspace({
     },
     [exercise.id, router, variant, onPassed],
   );
-  const openHint = () => {
-    // Remembered on the server (it decides the Unaided seal), but only for the real lesson and never to the learner's cost.
-    if (signedIn && variant === "lesson") {
-      fetch("/api/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ exerciseId: exercise.id, event: "hint", index: hintsShown }) }).catch(() => {});
+  const openHint = async () => {
+    if (hintBusy || hintsShown >= exercise.hintCount) return;
+    setHintBusy(true);
+    setHintError(null);
+    try {
+      const loaded = await fetchHints(hintsShown);
+      setHints((current) => current.length > loaded.length ? current : loaded);
+      track("hint_open");
+    } catch (error) {
+      setHintError((error as Error).message);
+    } finally {
+      setHintBusy(false);
     }
-    setHintsShown((n) => n + 1);
-    track("hint_open");
   };
   const run = useCallback(() => execute("run"), [execute]);
   const test = useCallback(() => execute("test"), [execute]);
@@ -209,7 +232,7 @@ export function Workspace({
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "output", label: "Output" },
-    { id: "hints", label: `Hints (${hintsShown}/${exercise.hints.length})` },
+    { id: "hints", label: `Hints (${hintsShown}/${exercise.hintCount})` },
     { id: "tutor", label: "AI tutor" },
   ];
 
@@ -367,23 +390,25 @@ export function Workspace({
           />
         </div>
         <div role="tabpanel" id="panel-hints" aria-labelledby="tab-hints" tabIndex={0} hidden={tab !== "hints"} className="h-full overflow-y-auto p-4">
+          {hintError && <p role="alert" className="mb-3 text-sm text-err">{hintError}</p>}
           <ol className="space-y-3">
-            {exercise.hints.slice(0, hintsShown).map((h, i) => (
+            {hints.map((h, i) => (
               <li key={i} className="rounded-lg border border-border bg-bg p-3 text-sm">
                 <p className="mb-1 text-xs font-medium text-muted">Hint {i + 1}</p>
                 <MiniMarkdown text={h} />
               </li>
             ))}
           </ol>
-          {hintsShown < exercise.hints.length ? (
+          {hintsShown < exercise.hintCount ? (
             <button
               type="button"
-              className="mt-3 h-9 rounded-lg border border-border px-3 text-sm hover:bg-surface-2"
+              disabled={hintBusy}
+              className="mt-3 h-9 rounded-lg border border-border px-3 text-sm hover:bg-surface-2 disabled:opacity-50"
               onClick={() => {
                 openHint();
               }}
             >
-              {hintsShown === 0 ? "Show a hint" : "Show the next hint"}
+              {hintBusy ? "Loading hint…" : hintsShown === 0 ? "Show a hint" : "Show the next hint"}
             </button>
           ) : (
             <p className="mt-3 text-sm text-muted">
@@ -400,7 +425,7 @@ export function Workspace({
             controlRef={tutorRef}
             loginHref={loginHref}
             onShowHint={
-              hintsShown < exercise.hints.length
+              hintsShown < exercise.hintCount
                 ? () => {
                     // Authored hints cost nothing — offer them before a model call.
                     openHint();
@@ -590,7 +615,7 @@ function SuccessBanner({
       </p>
       {unaided && <p className="mt-1">You earned the Unaided seal: no hints and no tutor.</p>}
       {variant === "review" && <p className="mt-1">{reviewed ? "Review recorded. Your next one is scheduled further out." : "Nicely done. This review wasn't due yet, so the schedule is unchanged."}</p>}
-      {paced && <p className="mt-1">This lesson is saved as passed, but no XP was added because you passed several lessons in a few minutes. XP resumes automatically.</p>}
+      {paced && <p className="mt-1">This lesson is saved as passed, but no XP was added because you passed lessons unusually fast or reached the daily XP limit. XP resumes automatically.</p>}
       {reward?.levelUp && (
         <p className="mt-1 font-medium">
           Level up! You&apos;re now level {reward.level}: {reward.title}.

@@ -2,11 +2,11 @@
 
 Learn low-level programming from absolute zero. Learners read short lessons, write C, Rust, Go and x86-64 assembly in an in-browser editor, get instant results from hidden tests run in a sandbox, and can ask an AI tutor that guides them without handing over answers.
 
-**Courses (97 lessons):** Programming from Zero (C) → Pointers & Memory in C → Systems Programming in C → C in Practice → Rust Foundations → Rust Traits & Lifetimes → Rust in Practice → Build an HTTP Server in Rust → Go Foundations → Assembly: First Steps → Build an Operating System (in progress).
+**26 courses, 276 lessons** across six learning paths: Start here, C, Rust, Go, Machine level and Security. Advanced projects include a shell, interpreter, database and OS continuation; security courses cover fixing C bugs, toy cryptography, packet analysis and digital forensics. Captures and forensic evidence are synthetic; fixture generators live in `scripts/content-gen/`.
 
 ## Running it locally
 
-Prerequisites (already installed on this machine): Node 24 via nvm, MongoDB 8 in `~/.local/opt` (linked into `~/.local/bin`), Rust via rustup, Go (`/usr/bin/go`, used by the sandbox), `gcc`, `bwrap` (bubblewrap) for the code sandbox, and `qemu-system-x86_64` (`pacman -S qemu-system-x86`) for the OS-development track.
+Prerequisites (already installed on this machine): Node 24 via nvm, MongoDB 8, Rust via rustup or a system installation at `/usr` (detected automatically), Go (`/usr/bin/go`, used by the sandbox), `gcc`, `bwrap` (bubblewrap) for the code sandbox, and `qemu-system-x86_64` (`pacman -S qemu-system-x86`) for the OS-development track.
 
 ```bash
 npm install
@@ -29,7 +29,7 @@ npm run make-admin -- you@example.com
 | `npm run dev` / `build` / `start` | Next.js dev server, production build, production server |
 | `npm run db` | Start the local MongoDB |
 | `npm run verify:content [-- track]` | Checks every lesson: the reference solution passes, the starter compiles but fails |
-| `npm run test:e2e -- <url>` | 46 end-to-end security checks against a running server (sign-up, 2FA, lockout, CAPTCHA, reset, authorization) |
+| `npm run test:e2e -- <url>` | Expanded end-to-end security checks against a running server (sign-up, 2FA, lockout, CAPTCHA, reset, authorization) |
 | `npm run make-admin -- <email>` | Promote an account to admin |
 
 ## How it fits together
@@ -44,9 +44,11 @@ npm run make-admin -- you@example.com
 
 ## Before going to production
 
-1. **Run behind a reverse proxy** that sets `X-Forwarded-For` (nginx: `proxy_set_header X-Forwarded-For $remote_addr;`), and set `TRUSTED_PROXY_HOPS`. Without one, clients can fake their IP and get around the per-IP limits (per-account limits still hold).
+1. **Run behind a reverse proxy** that sets `X-Forwarded-For` (nginx: `proxy_set_header X-Forwarded-For $remote_addr;`), and set `TRUSTED_PROXY_HOPS` (production refuses to start without it; the proxy must overwrite, not append to, `X-Forwarded-For` — see `docs/deployment-hardening.md`). Without one, clients can fake their IP and get around the per-IP limits (per-account limits still hold).
 2. **HTTPS**, and set `NEXT_PUBLIC_SITE_URL` to the real origin (canonical URLs, sitemap, og:image).
-3. **Secrets:** a fresh `AUTH_SECRET` (`openssl rand -base64 48`), `ANTHROPIC_API_KEY`, `SMTP_URL` and `EMAIL_FROM` for password-reset emails.
+3. **Secrets:** a fresh `AUTH_SECRET` (`openssl rand -base64 48`), `ANTHROPIC_API_KEY`, `SMTP_URL` and `EMAIL_FROM` for account-verification, password-reset and security emails; schedule the delivery worker described in `docs/deployment-hardening.md`.
 4. **MongoDB** with authentication enabled and not exposed publicly; back it up.
 5. **Legal:** fill in `LEGAL_ENTITY_NAME`, `LEGAL_ADDRESS`, `LEGAL_CONTACT_EMAIL`, `LEGAL_JURISDICTION`. The Terms, Privacy Notice and Cookie Policy are drafts written from what the code actually does. Have them reviewed by a qualified lawyer before launch.
 6. **Code sandbox:** bubblewrap is solid for a learning site, but for a public deployment consider running the runner on separate, disposable hosts or VMs (e.g. Firecracker or gVisor) so a kernel exploit can't reach the web server.
+
+Per-job cgroup setup, compile scratch limits, email retries, and the remaining CSP rendering constraint are documented in [Deployment hardening](docs/deployment-hardening.md).

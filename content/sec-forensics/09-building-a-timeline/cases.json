@@ -1,0 +1,22 @@
+[
+  {
+    "name": "a few events, one hour of quiet",
+    "stdin": "1771247699 web GET /index.html 200\n1771215549 web POST /login 302\n1771202563 mtime modified /home/dana/notes.txt\n1771202910 web GET /index.html 200\n1771209395 mtime modified /var/www/example.test/upload.php\n1771243610 mtime modified /home/dana/notes.txt\n1771202910 web GET /robots.txt 200\n",
+    "expected": "2026-02-16T00:42:43Z [mtime] modified /home/dana/notes.txt\n2026-02-16T00:48:30Z [web] GET /index.html 200\n2026-02-16T00:48:30Z [web] GET /robots.txt 200\n-- quiet for 1h 48m --\n2026-02-16T02:36:35Z [mtime] modified /var/www/example.test/upload.php\n-- quiet for 1h 42m --\n2026-02-16T04:19:09Z [web] POST /login 302\n-- quiet for 7h 47m --\n2026-02-16T12:06:50Z [mtime] modified /home/dana/notes.txt\n-- quiet for 1h 08m --\n2026-02-16T13:14:59Z [web] GET /index.html 200\n7 events over 12h 32m\n"
+  },
+  {
+    "name": "busy morning, no gaps",
+    "stdin": "1784362994 web GET /robots.txt 200\n1784366667 web GET /index.html 200\n1784366271 auth logout user=dana\n1784365173 mtime modified /etc/cron.d/backup\n1784362994 auth logout user=dana\n1784363622 auth sudo by dana: cat /etc/shadow\n1784368352 auth login ok user=dana from 192.0.2.10\n1784366936 web GET /../../etc/passwd 403\n1784364474 auth logout user=dana\n1784362061 mtime modified /var/www/example.test/upload.php\n",
+    "expected": "2026-07-18T08:07:41Z [mtime] modified /var/www/example.test/upload.php\n2026-07-18T08:23:14Z [web] GET /robots.txt 200\n2026-07-18T08:23:14Z [auth] logout user=dana\n2026-07-18T08:33:42Z [auth] sudo by dana: cat /etc/shadow\n2026-07-18T08:47:54Z [auth] logout user=dana\n2026-07-18T08:59:33Z [mtime] modified /etc/cron.d/backup\n2026-07-18T09:17:51Z [auth] logout user=dana\n2026-07-18T09:24:27Z [web] GET /index.html 200\n2026-07-18T09:28:56Z [web] GET /../../etc/passwd 403\n2026-07-18T09:52:32Z [auth] login ok user=dana from 192.0.2.10\n10 events over 1h 44m\n"
+  },
+  {
+    "name": "a single event",
+    "stdin": "1769542623 auth logout user=dana\n",
+    "expected": "2026-01-27T19:37:03Z [auth] logout user=dana\n1 events over 0h 00m\n"
+  },
+  {
+    "name": "a quiet night then activity",
+    "stdin": "1770435606 mtime modified /etc/cron.d/backup\n1770403282 auth sudo by dana: cat /etc/shadow\n1770414579 auth logout user=dana\n1770389099 mtime modified /etc/cron.d/backup\n1770412794 auth logout user=dana\n1770414031 auth sudo by dana: cat /etc/shadow\n1770441016 auth login ok user=dana from 192.0.2.10\n1770442136 web POST /upload.php 200\n1770403282 web GET /robots.txt 200\n",
+    "expected": "2026-02-06T14:44:59Z [mtime] modified /etc/cron.d/backup\n-- quiet for 3h 56m --\n2026-02-06T18:41:22Z [auth] sudo by dana: cat /etc/shadow\n2026-02-06T18:41:22Z [web] GET /robots.txt 200\n-- quiet for 2h 38m --\n2026-02-06T21:19:54Z [auth] logout user=dana\n2026-02-06T21:40:31Z [auth] sudo by dana: cat /etc/shadow\n2026-02-06T21:49:39Z [auth] logout user=dana\n-- quiet for 5h 50m --\n2026-02-07T03:40:06Z [mtime] modified /etc/cron.d/backup\n-- quiet for 1h 30m --\n2026-02-07T05:10:16Z [auth] login ok user=dana from 192.0.2.10\n2026-02-07T05:28:56Z [web] POST /upload.php 200\n9 events over 14h 43m\n"
+  }
+]

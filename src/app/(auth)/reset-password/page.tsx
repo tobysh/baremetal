@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui";
 import { AuthShell } from "../auth-shell";
-import { ResetForm } from "../auth-forms";
+import { FragmentResetForm } from "../fragment-forms";
 
 export const metadata: Metadata = {
   title: "Choose a new password",
@@ -25,16 +24,5 @@ export default function ResetPasswordPage({ searchParams }: PageProps<"/reset-pa
 
 async function ResetBody({ searchParams }: { searchParams: PageProps<"/reset-password">["searchParams"] }) {
   const { token } = await searchParams;
-  if (typeof token !== "string" || token.length < 20) {
-    return (
-      <p className="text-sm">
-        This reset link is incomplete.{" "}
-        <Link href="/forgot-password" className="text-accent underline underline-offset-2">
-          Request a new one
-        </Link>
-        .
-      </p>
-    );
-  }
-  return <ResetForm token={token} />;
+  return <FragmentResetForm legacyToken={typeof token === "string" ? token : undefined} />;
 }

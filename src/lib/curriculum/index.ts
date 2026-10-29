@@ -85,9 +85,9 @@ function loadLesson(trackDir: string, dirName: string, language: Track["language
   };
 }
 
-function loadTracks(): Track[] {
+function loadTracks(only?: string): Track[] {
   if (!existsSync(CONTENT_DIR)) return [];
-  const present = readdirSync(CONTENT_DIR).filter((d) => existsSync(path.join(CONTENT_DIR, d, "track.json")));
+  const present = readdirSync(CONTENT_DIR).filter((d) => (!only || d === only) && existsSync(path.join(CONTENT_DIR, d, "track.json")));
   return present.map((slug) => {
     const dir = path.join(CONTENT_DIR, slug);
     const meta = JSON.parse(read(path.join(dir, "track.json")));
@@ -100,7 +100,8 @@ function loadTracks(): Track[] {
 
 const globalForContent = globalThis as unknown as { __tracks?: Track[] };
 // Reload on every call in dev so edits to content/ show up without a restart.
-export function getTracks(): Track[] {
+export function getTracks(only?: string): Track[] {
+  if (only) return loadTracks(only);
   if (process.env.NODE_ENV !== "production") return loadTracks();
   return (globalForContent.__tracks ??= loadTracks());
 }

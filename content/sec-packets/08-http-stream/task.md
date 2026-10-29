@@ -1,0 +1,3 @@
+Keep Segment as supplied. Implement `int http_path(const Segment *s,size_t count,uint32_t base,char *out,size_t cap)`. Reassemble <=1024 bytes using the stated overlap/gap rules; reject NULL data with positive length, out-of-range segments or invalid/incomplete GET headers. Segments are one direction, with no sequence wrap. Ignore zero-length segments. Return path length and terminate on success; return -1 and leave out unchanged on error. Require a non-NULL output and space for the terminator. Only printable ASCII and CR/LF are accepted in the stream.
+
+Tests use several inputs, including boundary values. Keep the supplied function names and types.

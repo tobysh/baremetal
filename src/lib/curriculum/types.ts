@@ -60,13 +60,8 @@ export type Track = {
 };
 
 /** What the browser is allowed to see of an exercise. */
-export type PublicExercise = Pick<Exercise, "id" | "language" | "task" | "starter" | "hints" | "mode">;
+export type PublicExercise = Pick<Exercise, "id" | "language" | "task" | "starter" | "mode"> & { hintCount: number };
 
 export const toPublicExercise = ({ id, language, task, starter, hints, mode }: Exercise): PublicExercise => ({
-  id,
-  language,
-  task,
-  starter,
-  hints,
-  mode,
+  id, language, task, starter, hintCount: hints.length, mode,
 });

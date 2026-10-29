@@ -1,6 +1,6 @@
 ---
 title: Binary Search
-summary: Find things in a sorted array by repeatedly halving the search range. Write lower_bound and upper_bound, the two functions every other binary search is built from.
+summary: Find values in sorted arrays with lower and upper bounds.
 minutes: 25
 difficulty: easy
 tags: searching, arrays, algorithms

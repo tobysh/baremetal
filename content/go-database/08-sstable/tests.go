@@ -199,3 +199,64 @@ func TestOpenTable_rejects_damaged_files(t *testing.T) {
 	binary.BigEndian.PutUint64(bad[len(bad)-16:], 21)
 	try("count larger than the index", bad)
 }
+
+func TestOpenTable_rejects_invalid_index_ranges_and_order(t *testing.T) {
+	base := writeTable(t, []Entry{{Key: "a", Value: []byte("one")}, {Key: "b", Value: []byte("two")}})
+	index := int(binary.BigEndian.Uint64(base[len(base)-24:]))
+	for _, mutation := range []struct {
+		name string
+		edit func([]byte)
+	}{
+		{"descending keys", func(b []byte) { b[index+4] = 'z' }},
+		{"duplicate keys", func(b []byte) { b[index+17+4] = 'a' }},
+		{"overflowing offset", func(b []byte) { binary.BigEndian.PutUint64(b[index+5:], ^uint64(0)-4) }},
+		{"overlapping entries", func(b []byte) { binary.BigEndian.PutUint64(b[index+17+5:], 0) }},
+		{"gap before entry", func(b []byte) { binary.BigEndian.PutUint64(b[index+5:], 1) }},
+		{"short header", func(b []byte) { binary.BigEndian.PutUint32(b[index+13:], 8) }},
+		{"entry crosses index", func(b []byte) { binary.BigEndian.PutUint32(b[index+13:], ^uint32(0)) }},
+	} {
+		t.Run(mutation.name, func(t *testing.T) {
+			data := append([]byte(nil), base...)
+			mutation.edit(data)
+			if _, err := OpenTable(bytes.NewReader(data), int64(len(data))); err == nil {
+				t.Fatal("damaged index was accepted")
+			}
+		})
+	}
+}
+
+func TestGet_rejects_damaged_entry_headers(t *testing.T) {
+	base := writeTable(t, []Entry{{Key: "a", Value: []byte("one")}})
+	for _, mutation := range []struct {
+		name string
+		edit func([]byte)
+	}{
+		{"unknown flag", func(b []byte) { b[0] = 7 }},
+		{"tombstone with value", func(b []byte) { b[0] = 1 }},
+		{"wrong indexed key", func(b []byte) { b[9] = 'x' }},
+		{"oversized key length", func(b []byte) { binary.BigEndian.PutUint32(b[1:5], ^uint32(0)) }},
+		{"wrong value length", func(b []byte) { binary.BigEndian.PutUint32(b[5:9], 0) }},
+	} {
+		t.Run(mutation.name, func(t *testing.T) {
+			data := append([]byte(nil), base...)
+			mutation.edit(data)
+			tbl, err := OpenTable(bytes.NewReader(data), int64(len(data)))
+			if err != nil {
+				t.Fatalf("index should still open: %v", err)
+			}
+			if _, _, err := tbl.Get("a"); err == nil {
+				t.Fatal("damaged entry was accepted")
+			}
+		})
+	}
+}
+
+type shortTableWriter struct{}
+
+func (shortTableWriter) Write(p []byte) (int, error) { return len(p) - 1, nil }
+
+func TestWriteTable_reports_short_writes(t *testing.T) {
+	if err := WriteTable(shortTableWriter{}, []Entry{{Key: "x"}}); err != io.ErrShortWrite {
+		t.Fatalf("short write returned %v; want io.ErrShortWrite", err)
+	}
+}

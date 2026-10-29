@@ -30,7 +30,7 @@ Pick `RwLock` when reads far outnumber writes and each read takes real time. If 
 
 ## Read-modify-write needs the write lock
 
-Reading under a read lock and then writing under a write lock is the same check-then-act bug as in the previous lesson, and worse: you cannot upgrade a read guard to a write guard while holding it, and trying to take `write()` while you hold `read()` on the same thread deadlocks. For an increment, take the **write** lock once and use the map's `entry` API:
+Reading under a read lock and then writing under a write lock is the same check-then-act bug as in the [Mutex lesson](/learn/rust-concurrency/arc-mutex), and worse: you cannot upgrade a read guard to a write guard while holding it, and trying to take `write()` while you hold `read()` on the same thread deadlocks. For an increment, take the **write** lock once and use the map's `entry` API:
 
 ```rust
 *map.write().unwrap().entry(key.to_string()).or_insert(0) += 1;

@@ -6,13 +6,14 @@ import { z } from "zod";
 import QRCode from "qrcode";
 import { getDb } from "@/lib/db";
 import { destroySession, getUserDoc, hashPassword, revokeAllSessions, verifyPassword } from "@/lib/auth";
-import { decrypt, encrypt } from "@/lib/crypto";
+import { decrypt, encrypt, hmac } from "@/lib/crypto";
+import { queueEmail, scheduleEmailDelivery } from "@/lib/email";
 import { fieldErrors, formValues, type FormState } from "@/lib/forms";
 import { usernameProblem } from "@/lib/gamification";
 import { EXPERIENCE_LEVELS, type UserDoc } from "@/lib/models";
 import { checkPassword } from "@/lib/password";
 import { authRateLimit, logAuthEvent, requestContext } from "@/lib/security";
-import { hashBackupCode, newBackupCodes, newTotpSecret, otpauthUrl, verifyTotp } from "@/lib/totp";
+import { hashBackupCode, legacyBackupCodeHash, newBackupCodes, newTotpSecret, otpauthUrl, verifyTotp } from "@/lib/totp";
 import { SITE } from "@/lib/site";
 import { validTimezone, WEEKLY_GOALS } from "@/lib/rhythm";
 
@@ -32,7 +33,7 @@ async function checkSecondFactor(user: UserDoc, code: string): Promise<boolean> 
     const res = await (await users()).updateOne({ _id: user._id, "twoFactor.lastStep": { $lt: step } }, { $set: { "twoFactor.lastStep": step } });
     return res.modifiedCount === 1;
   }
-  const res = await (await users()).updateOne({ _id: user._id }, { $pull: { "twoFactor.backupCodeHashes": hashBackupCode(code) } });
+  const res = await (await users()).updateOne({ _id: user._id }, { $pull: { "twoFactor.backupCodeHashes": { $in: [hashBackupCode(code), legacyBackupCodeHash(code)] } } });
   return res.modifiedCount === 1;
 }
 
@@ -116,14 +117,17 @@ export async function changePassword(_prev: FormState, formData: FormData): Prom
 // ---------- Two-factor authentication ----------
 
 /** Step 1: generate a secret (stored but not yet enabled) and return a QR code. */
-export async function beginTwoFactorSetup(): Promise<FormState> {
+export async function beginTwoFactorSetup(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await mustUser();
   if (user.twoFactor?.enabled) return { message: "Two-factor authentication is already on." };
+  if (!(await authRateLimit("begin-2fa", 5))) return { message: "Too many attempts. Please wait 15 minutes." };
+  if (!(await verifyPassword(String(formData.get("password") ?? ""), user.passwordHash))) return { errors: { password: ["Incorrect password"] } };
   const secret = newTotpSecret();
-  await (await users()).updateOne(
-    { _id: user._id },
+  const started = await (await users()).updateOne(
+    { _id: user._id, "twoFactor.enabled": { $ne: true } },
     { $set: { twoFactor: { enabled: false, secretEnc: encrypt(secret), backupCodeHashes: [], lastStep: -1 } } },
   );
+  if (!started.matchedCount) return { message: "Two-factor authentication is already on." };
   const url = otpauthUrl(secret, user.email, SITE.name);
   const qrSvg = await QRCode.toString(url, { type: "svg", margin: 1, errorCorrectionLevel: "M" });
   return { ok: true, data: { qrSvg, secret: secret.match(/.{1,4}/g)?.join(" ") } };
@@ -141,8 +145,8 @@ export async function confirmTwoFactor(_prev: FormState, formData: FormData): Pr
     return { errors: { code: ["That code didn't match. Check your phone's clock is set automatically and use the newest code."] } };
   }
   const codes = newBackupCodes();
-  await (await users()).updateOne(
-    { _id: user._id },
+  const enabled = await (await users()).updateOne(
+    { _id: user._id, "twoFactor.enabled": false, "twoFactor.secretEnc": user.twoFactor.secretEnc },
     {
       $set: {
         "twoFactor.enabled": true,
@@ -152,9 +156,12 @@ export async function confirmTwoFactor(_prev: FormState, formData: FormData): Pr
       },
     },
   );
+  if (!enabled.modifiedCount) return { message: "Setup changed. Start again." };
   const { userAgent } = await requestContext();
   await revokeAllSessions(user._id, { userAgent });
   await logAuthEvent("2fa_enabled", { email: user.email, userId: user._id.toHexString() });
+  await queueEmail(user.email, "Two-factor authentication enabled", "Two-factor authentication was enabled on your Baremetal account. If this was not you, reset your password and contact us.");
+  scheduleEmailDelivery();
   return { ok: true, message: "Two-factor authentication is on.", data: { backupCodes: codes } };
 }
 
@@ -171,6 +178,7 @@ export async function regenerateBackupCodes(_prev: FormState, formData: FormData
 export async function disableTwoFactor(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await mustUser();
   if (user.role === "admin") return { message: "Admin accounts must keep two-factor authentication on." };
+  if (!user.twoFactor?.enabled) return { message: "Two-factor authentication is already off." };
   if (!(await authRateLimit("verify-otp", 10))) return { message: "Too many attempts. Please wait 15 minutes." };
   if (!(await verifyPassword(String(formData.get("password") ?? ""), user.passwordHash))) return { errors: { password: ["Incorrect password"] } };
   if (!(await checkSecondFactor(user, String(formData.get("code") ?? "")))) return { errors: { code: ["That code didn't work"] } };
@@ -178,6 +186,8 @@ export async function disableTwoFactor(_prev: FormState, formData: FormData): Pr
   const { userAgent } = await requestContext();
   await revokeAllSessions(user._id, { userAgent });
   await logAuthEvent("2fa_disabled", { email: user.email, userId: user._id.toHexString() });
+  await queueEmail(user.email, "Two-factor authentication disabled", "Two-factor authentication was disabled on your Baremetal account. If this was not you, reset your password and contact us.");
+  scheduleEmailDelivery();
   return { ok: true, message: "Two-factor authentication is off." };
 }
 
@@ -200,6 +210,8 @@ export async function deleteAccount(_prev: FormState, formData: FormData): Promi
     db.collection("reviews").deleteMany({ userId: user._id }),
     db.collection("sessions").deleteMany({ userId: user._id }),
     db.collection("password_resets").deleteMany({ userId: user._id }),
+    db.collection("email_verifications").deleteMany({ userId: user._id }),
+    db.collection("email_queue").deleteMany({ recipientHash: hmac("email-queue-recipient", user.email.toLowerCase()) }),
     db.collection("pending_2fa").deleteMany({ userId: user._id }),
   ]);
   await db.collection("users").deleteOne({ _id: user._id });

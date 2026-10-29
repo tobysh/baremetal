@@ -126,14 +126,26 @@ func TestFanOut_with_Merge_computes_everything(t *testing.T) {
 
 func TestFanOut_runs_in_parallel(t *testing.T) {
 	in := make([]int, 12)
-	start := time.Now()
-	within(t, 5*time.Second, "FanOut with slow f", func() {
-		drain(Merge(FanOut(source(in...), 4, func(n int) int { time.Sleep(60 * time.Millisecond); return n })...))
-	})
-	// sequentially 12 x 60ms = 720ms; 4 workers need about 180ms
-	if el := time.Since(start); el > 600*time.Millisecond {
-		t.Errorf("12 items x 60ms with 4 workers took %v; the workers do not seem to run in parallel", el)
-	}
+	started := make(chan struct{}, len(in))
+	release := make(chan struct{})
+	finished := make(chan struct{})
+	go func() {
+		drain(Merge(FanOut(source(in...), 4, func(n int) int {
+			started <- struct{}{}
+			<-release
+			return n
+		})...))
+		close(finished)
+	}()
+	func() {
+		defer close(release)
+		within(t, 3*time.Second, "four workers overlap before release", func() {
+			for i := 0; i < 4; i++ {
+				<-started
+			}
+		})
+	}()
+	within(t, 3*time.Second, "FanOut finishes after release", func() { <-finished })
 }
 
 func TestFanOut_closes_outputs_when_input_closes(t *testing.T) {

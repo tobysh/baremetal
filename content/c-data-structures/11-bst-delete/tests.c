@@ -50,7 +50,7 @@ int main(void) {
 
     t = bst_delete(t, 30);
     int a3[] = {35, 40, 45, 50, 65, 70, 80};
-    CHECK("delete a node with a left child only (30 after 20 left)", same(t, a3, 7) && bst_is_valid(t), "wrong result");
+    CHECK("delete a node with a right child only (30 after 20 is gone)", same(t, a3, 7) && bst_is_valid(t), "wrong result");
 
     t = bst_delete(t, 50);
     int a4[] = {35, 40, 45, 65, 70, 80};

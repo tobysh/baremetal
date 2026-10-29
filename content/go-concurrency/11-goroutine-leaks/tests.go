@@ -28,28 +28,39 @@ func settle(base int) int {
 }
 
 func TestFirst_returns_fastest(t *testing.T) {
-	slow := func(d time.Duration, v int) func() int {
-		return func() int { time.Sleep(d); return v }
-	}
-	var got int
-	within(t, 3*time.Second, "First", func() {
-		got = First(slow(400*time.Millisecond, 1), slow(10*time.Millisecond, 2), slow(300*time.Millisecond, 3))
-	})
-	if got != 2 {
-		t.Errorf("First = %d; want 2 (the fastest function)", got)
+	// Only the chosen function can return until First has produced its result.
+	// Vary its index so a sequential or first-argument implementation cannot pass.
+	for winner := 0; winner < 3; winner++ {
+		func() {
+			release := make(chan struct{})
+			defer close(release)
+			functions := make([]func() int, 3)
+			for i := range functions {
+				functions[i] = func() int {
+					if i != winner {
+						<-release
+					}
+					return 10 + i
+				}
+			}
+			var got int
+			within(t, 3*time.Second, "First with blocked competitors", func() { got = First(functions...) })
+			if got != 10+winner {
+				t.Errorf("First = %d; want ready function %d", got, 10+winner)
+			}
+		}()
 	}
 }
 
 func TestFirst_does_not_wait_for_the_others(t *testing.T) {
-	start := time.Now()
-	within(t, 3*time.Second, "First", func() {
-		First(
-			func() int { return 7 },
-			func() int { time.Sleep(1500 * time.Millisecond); return 8 },
-		)
+	release := make(chan struct{})
+	defer close(release)
+	var got int
+	within(t, 3*time.Second, "First before slower task is released", func() {
+		got = First(func() int { return 7 }, func() int { <-release; return 8 })
 	})
-	if el := time.Since(start); el > time.Second {
-		t.Errorf("First took %v; it must return as soon as the first result is in", el)
+	if got != 7 {
+		t.Errorf("First = %d; want 7", got)
 	}
 }
 

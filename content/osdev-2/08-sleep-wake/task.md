@@ -1,0 +1,1 @@
+Implement `wait_init`, `sleep_on` and `wake_one`. Tasks start READY; `sleep_on` appends a READY task and marks it BLOCKED, returning 0. Reject a non-READY task or a full queue with -1 and no change. `wake_one` removes the oldest task, marks it READY and returns its pointer, or NULL when empty. Queue capacity is 8. Tests exercise multiple queues and reuse.

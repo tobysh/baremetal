@@ -8,6 +8,8 @@ tags: threads, channels, mutex
 id: rust-concurrency/review-word-census
 mode: harness
 ---
+This review combines [threads](/learn/rust-concurrency/spawn-and-join), [channels](/learn/rust-concurrency/channels) and [shared locking](/learn/rust-concurrency/arc-mutex).
+
 This is a **review lesson**. Nothing here is new: you have spawned threads, moved data into closures, passed messages over channels and shared a counter behind `Arc<Mutex<_>>`. Now use them together.
 
 The job is a *census*: given many lines of text, count how often each word occurs. The plan:

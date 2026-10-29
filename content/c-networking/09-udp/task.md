@@ -1,0 +1,6 @@
+Implement four functions (UDP over `127.0.0.1`):
+
+- `int udp_bind(uint16_t port, uint16_t *bound_port)` creates a UDP socket bound to `127.0.0.1:port` (`0` means any free port), stores the real port in `*bound_port` and returns the descriptor, or `-1` on failure.
+- `int udp_send(uint16_t port, const void *buf, size_t n)` creates a UDP socket, sends the `n` bytes as one datagram to `127.0.0.1:port`, closes the socket and returns `n`, or `-1` on failure.
+- `int upper_reply_once(int fd, uint16_t *from_port)` receives **one** datagram (up to 512 bytes) on the bound socket `fd`, sends back to the sender a datagram with every lowercase letter converted to upper case, stores the sender's port in `*from_port` and returns the datagram's length. Return `-1` on an error. A datagram of length 0 is valid: reply with an empty datagram and return `0`.
+- `int udp_request(uint16_t port, const void *req, size_t n, void *resp, size_t cap, int timeout_ms)` sends `req` as a datagram to the port and waits up to `timeout_ms` milliseconds for one reply datagram, which it copies into `resp` (at most `cap` bytes). Returns the number of bytes copied, or `-1` if there is no reply in time or anything fails. Close your socket on every path.

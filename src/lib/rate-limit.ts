@@ -1,4 +1,5 @@
 import "server-only";
+import { randomBytes } from "node:crypto";
 import { getDb } from "./db";
 
 /**
@@ -38,7 +39,9 @@ export async function rateLimitHit(key: string, limit: number, windowSeconds: nu
  *
  * Next.js only fills this header in itself when it's missing, so in production
  * the app must run behind a proxy that sets it (nginx:
- * `proxy_set_header X-Forwarded-For $remote_addr;`). Per-account limits and
+ * `proxy_set_header X-Forwarded-For $remote_addr;`). The proxy must overwrite
+ * the header, not append, and production refuses to boot without
+ * TRUSTED_PROXY_HOPS (see src/instrumentation.ts). Per-account limits and
  * lockouts don't depend on the IP, so they hold even if this is misconfigured.
  */
 export function clientIp(headers: Headers): string {
@@ -47,5 +50,20 @@ export function clientIp(headers: Headers): string {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  return chain[chain.length - hops] ?? chain[0] ?? "unknown";
+  // A chain shorter than the configured hop count means the proxy contract is
+  // broken (or the request skipped the proxy). Never fall back to chain[0]: that
+  // entry is client-controlled.
+  return chain[chain.length - hops] ?? UNKNOWN_IP;
+}
+
+/**
+ * Bucket for requests whose IP can't be determined. It is per-process, so a
+ * missing header can't become one allowance shared with (and depleted by)
+ * other users, and limits keyed on it are quartered.
+ */
+export const UNKNOWN_IP = `unknown-${process.pid}-${randomBytes(8).toString("hex")}`;
+
+/** Divides a per-IP limit for the unknown bucket; pass-through otherwise. */
+export function ipLimit(ip: string, limit: number): number {
+  return ip === UNKNOWN_IP ? Math.max(1, Math.floor(limit / 4)) : limit;
 }

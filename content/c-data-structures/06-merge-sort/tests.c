@@ -21,7 +21,7 @@ int main(void) {
     CHECK("merge when one side is entirely smaller", out[0] == 1 && out[2] == 3 && out[3] == 10 && out[4] == 20, "got %d %d %d %d %d", out[0], out[1], out[2], out[3], out[4]);
     int d1[] = {5, 5, 7}, d2[] = {5, 7, 7};
     merge(d1, 3, d2, 3, out);
-    CHECK("merge keeps duplicates", sorted(out, 6) && out[0] == 5 && out[3] == 5 && out[5] == 7, "got %d %d %d %d %d %d", out[0], out[1], out[2], out[3], out[4], out[5]);
+    CHECK("merge keeps duplicates", sorted(out, 6) && out[0] == 5 && out[2] == 5 && out[3] == 7 && out[5] == 7, "got %d %d %d %d %d %d", out[0], out[1], out[2], out[3], out[4], out[5]);
 
     int tiny[] = {3, 1, 2};
     CHECK("merge_sort on three elements", merge_sort(tiny, 3) == 0 && tiny[0] == 1 && tiny[1] == 2 && tiny[2] == 3, "got %d %d %d", tiny[0], tiny[1], tiny[2]);

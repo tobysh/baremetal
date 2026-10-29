@@ -1,0 +1,22 @@
+[
+  {
+    "name": "breaks a message shifted by 3",
+    "stdin": "Wkh wuhdvxuh lv exulhg ehqhdwk wkh rog rdn wuhh, wzhqwb sdfhv qruwk ri wkh zhoo.\n",
+    "expected": "shift: 3\nThe treasure is buried beneath the old oak tree, twenty paces north of the well.\n"
+  },
+  {
+    "name": "breaks a message shifted by 13",
+    "stdin": "Zrrg zr ng gur uneobhe ng zvqavtug, naq oevat gur yrggre, ohg gryy abobql ng nyy.\n",
+    "expected": "shift: 13\nMeet me at the harbour at midnight, and bring the letter, but tell nobody at all.\n"
+  },
+  {
+    "name": "breaks a message shifted by 25",
+    "stdin": "Z rdbqds hr nmkx rzed vghkd sgd jdx rszxr rdbqds, rn oqnsdbs sgd jdx, mns sgd ldsgnc.\n",
+    "expected": "shift: 25\nA secret is only safe while the key stays secret, so protect the key, not the method.\n"
+  },
+  {
+    "name": "breaks a message shifted by 9",
+    "stdin": "Fqjcnena qjyynwb, mx wxc xynw cqn anm mxxa knoxan cqn bdw lxvnb dy xena cqn qruub.\n",
+    "expected": "shift: 9\nWhatever happens, do not open the red door before the sun comes up over the hills.\n"
+  }
+]

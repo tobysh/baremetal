@@ -132,3 +132,13 @@ func TestReadRecord_rejects_huge_lengths(t *testing.T) {
 		t.Errorf("a 2 GB value length gave err = %v; want a different, non-nil error", err)
 	}
 }
+
+type shortRecordWriter struct{}
+
+func (shortRecordWriter) Write(p []byte) (int, error) { return len(p) - 1, nil }
+
+func TestAppendRecord_reports_short_writes(t *testing.T) {
+	if err := AppendRecord(shortRecordWriter{}, []byte("k"), []byte("v")); err != io.ErrShortWrite {
+		t.Fatalf("short write returned %v; want io.ErrShortWrite", err)
+	}
+}

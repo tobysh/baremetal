@@ -1,6 +1,7 @@
 use std::collections::HashSet;
+use std::sync::Barrier;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 #[test]
 fn reports_size() {
@@ -51,10 +52,18 @@ fn jobs_run_on_worker_threads_not_the_caller() {
 
 #[test]
 fn execute_does_not_block() {
-    let pool = ThreadPool::new(1);
-    let t = Instant::now();
-    pool.execute(|| std::thread::sleep(Duration::from_millis(300)));
-    assert!(t.elapsed() < Duration::from_millis(200), "execute must return before the job finishes, took {:?}", t.elapsed());
+    let (returned_tx, returned_rx) = mpsc::channel();
+    let (release_tx, release_rx) = mpsc::channel();
+    let owner = std::thread::spawn(move || {
+        let pool = ThreadPool::new(1);
+        pool.execute(move || { let _ = release_rx.recv(); });
+        returned_tx.send(()).unwrap();
+    });
+    let returned = returned_rx.recv_timeout(Duration::from_secs(2));
+    // Always release before asserting: even a synchronous implementation can unwind.
+    let _ = release_tx.send(());
+    owner.join().unwrap();
+    assert!(returned.is_ok(), "execute must return while the submitted job is still blocked");
 }
 
 #[test]

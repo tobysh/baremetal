@@ -32,7 +32,7 @@ where
     R: Fn(U, U) -> U + Sync,
 ```
 
-Look at how the bounds trace back to the previous lessons: `Sync` where something is *borrowed* from several threads, `Send` where something is *moved* to or from one. With `thread::scope` there is no `'static` bound, so closures may borrow `map` and `reduce` directly and the caller can pass closures that borrow local variables.
+Look at how the bounds trace back to the [Send and Sync](/learn/rust-concurrency/send-and-sync) and [scoped-thread lessons](/learn/rust-concurrency/scoped-threads): `Sync` where something is *borrowed* from several threads, `Send` where something is *moved* to or from one. With `thread::scope` there is no `'static` bound, so closures may borrow `map` and `reduce` directly and the caller can pass closures that borrow local variables.
 
 ## Why associativity matters
 

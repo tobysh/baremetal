@@ -37,5 +37,55 @@ Learner code runs as the web server's uid (inside a user namespace with no netwo
 
 ## Also
 
-- A reverse proxy must overwrite `X-Forwarded-For` (`TRUSTED_PROXY_HOPS`), otherwise IP rate limits can be bypassed.
+- A reverse proxy must overwrite `X-Forwarded-For` (`TRUSTED_PROXY_HOPS`), otherwise IP rate limits can be bypassed. See "Proxy contract" below.
 - Check the runner after a kernel or bubblewrap upgrade: `npm run verify:content`.
+
+## Proxy contract
+
+Per-IP limits (anonymous runs, tutor IP quota, CAPTCHA, auth endpoints) read the entry of `X-Forwarded-For` that *your* proxy added. For that to be safe:
+
+- The proxy **overwrites** `X-Forwarded-For` with the peer address (nginx: `proxy_set_header X-Forwarded-For $remote_addr;`). `$proxy_add_x_forwarded_for` appends, which keeps the client's own entries.
+- The proxy drops any client-supplied `X-Forwarded-Host` (`proxy_set_header X-Forwarded-Host "";`).
+- Use `TRUSTED_PROXY_HOPS=1` when nginx overwrites the header with its direct peer address. With a CDN, either validate its signed/client-IP header against trusted CDN ranges and overwrite with the verified client address (still one hop), or explicitly configure every trusted hop to preserve an authenticated chain and set the matching hop count. Do not combine an overwritten one-entry header with a two-hop setting.
+- In production the app **refuses to start** if `TRUSTED_PROXY_HOPS` is unset, and logs the value at boot. If a request arrives with a shorter chain than the hop count, it is treated as "unknown": a per-process bucket with a quarter of the normal limit.
+
+## MongoDB authentication
+
+```js
+// mongosh, once, as an admin
+use baremetal
+db.createUser({ user: "baremetal", pwd: passwordPrompt(), roles: [{ role: "readWrite", db: "baremetal" }] })
+```
+
+Start `mongod` with `--auth --bind_ip 127.0.0.1` (or a Unix socket), then set
+`MONGODB_URI=mongodb://baremetal:<password>@127.0.0.1:27017/baremetal?authSource=baremetal` in the root-owned environment file.
+
+## Maintenance scripts
+
+`npm run recompute-xp` rewrites XP from progress. Run it with the site **stopped**, or a pass recorded during the run can be lost or counted twice.
+
+## Per-job cgroup v2 limits
+
+Set `RUNNER_CGROUP_ROOT` to an empty cgroup-v2 subtree delegated to the runner service uid, with the `memory`, `pids`, `cpu` and `io` controllers enabled in its `cgroup.subtree_control`. The parent containing the web process must remain outside that subtree (cgroup v2's no-internal-process rule). Ask the service manager to delegate these controllers (`Delegate=memory pids cpu io`); create the empty jobs subtree during service setup. Do not make the cgroup hierarchy generally writable.
+
+The runner creates a fresh child per compiler or execution process, sets `memory.max` (2 GiB compile / 512 MiB execution), `memory.swap.max=0`, `pids.max` (512 / 128), `cpu.max=200000 100000`, and `io.weight=default 100`, and joins it before starting Bubblewrap. Failure to create or configure a requested cgroup stops the job; there is no silent fallback. Descendants are killed and the child removed when the sandbox exits. These are per-job limits in addition to the service-wide limits above. Go compilation and QEMU use this path too.
+
+Without `RUNNER_CGROUP_ROOT`, only the existing rlimits, sandbox limits and service-wide cgroup apply. This is the local development default. **Production deployment remains incomplete until the delegated subtree and a memory-bomb check have been exercised on the actual host.** This workspace exposes `/sys/fs/cgroup` read-only, so per-job enforcement could not be tested here.
+
+Compilation now happens entirely on size-capped private tmpfs, with read-only input sources. Only the executable is copied back over a pipe, capped at 64 MiB. Normal compile scratch is 512 MiB and Go scratch is 1 GiB; `/tmp` and `/dev/shm` have separate explicit caps. Runtime work directories, including the QEMU kernel image, are read-only. QEMU serial output goes through bounded scratch; debug results use its stdio backend. Keep the aggregate service memory cap because separate tmpfs mounts can consume their limits together.
+
+## Account email delivery
+
+Signup now requires email verification; new users choose their final password using the verification email. Existing accounts without the verification field remain accepted. Verification tokens expire after 24 hours. Reset links use a fragment so the token is not sent in the initial page request; existing query links remain valid until they expire. SMTP is required for production signup and recovery.
+
+Account emails are queued with encrypted payloads, leased for delivery, and removed on success or after seven days. Requests trigger delivery after their response. Schedule this command every minute under the app uid with the same database and `AUTH_SECRET` settings, so failures and restarts are retried:
+
+```sh
+node --conditions=react-server --env-file=.env.local --import tsx scripts/deliver-email.mts
+```
+
+Delivery is at least once, so a crash after SMTP accepts a message may cause a duplicate. Monitor delivery failures and expired jobs. Use `npm ci` for deployment so the committed lockfile controls dependency versions; production dependency audit on 29 October 2026 reported zero advisories.
+
+## CSP rendering constraint
+
+The installed Next.js guide (`node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md`) explicitly says nonce CSP is incompatible with Partial Prerendering. This app uses Cache Components and partial shells. Strict nonce enforcement remains a separate rendering migration; simply adding a nonce header would block shell scripts and break hydration. The existing CSP remains enforced, including its `script-src 'unsafe-inline'` limitation. The only application inline script is the static theme bootstrap; it receives no learner data. Both Markdown renderers have executable-markup regression fixtures.

@@ -4,7 +4,8 @@ fn sums_in_parts() {
     assert_eq!(parallel_sum(&v, 4), 5050, "1..=100 summed in 4 parts");
     assert_eq!(parallel_sum(&v, 1), 5050, "one part");
     assert_eq!(parallel_sum(&v, 7), 5050, "7 parts do not divide 100 evenly");
-    assert_eq!(parallel_sum(&v, 500), 5050, "more parts than items");
+    let few: Vec<u64> = vec![1, 2, 3];
+    assert_eq!(parallel_sum(&few, 10), 6, "more parts than items");
 }
 
 #[test]
