@@ -1,0 +1,57 @@
+[
+  {
+    "name": "intact chain",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n2|dave|login failed|0ff91684c4b74bef\n3|alice|create report-7|8f9f2732423d1f53\n4|carol|grant admin to dave|fd5f509e58ecc7d1\n5|alice|create report-7|5809389d2ceda9be\n6|bob|logout|500948b5f8009469\n7|bob|logout|c7644f92aade7660\n8|bob|logout|9af7f86982cce8a9\n",
+    "expected": "chain ok: 8 entries head=9af7f86982cce8a9\n"
+  },
+  {
+    "name": "empty log",
+    "stdin": "",
+    "expected": "chain ok: 0 entries head=0000000000000000\n"
+  },
+  {
+    "name": "edited action",
+    "stdin": "1|alice|login|c6bbde5881517df3\n2|alice|create report-7|16a89227fbd76aa7\n3|alice|create report-7|ffc00411cb7b139c\n4|dave|export users|53b3ae19a0f0de74\n5|bob|grant admin to mallory|c5c9bf7886091900\n6|carol|grant admin to dave|82839b87d81f4352\n7|carol|grant admin to dave|875d0abce1fea2a5\n8|dave|login failed|b2a3c7c46a19393f\n9|bob|delete report-3|a1cb5bee7497eca9\n",
+    "expected": "BROKEN at line 5: hash mismatch\n"
+  },
+  {
+    "name": "a deleted entry",
+    "stdin": "1|bob|delete report-3|b4b76246870ea1de\n2|dave|login failed|b6152645e09004ab\n3|carol|rotate key k2|ee0b9728fcfa4f5e\n5|dave|export users|d73b60b7f1765e45\n6|dave|login failed|7dd8799f5766bcfb\n7|bob|logout|71fe5ffb186f9082\n8|dave|login failed|2305243f536e714d\n9|alice|create report-7|8e03e35877d204ce\n",
+    "expected": "BROKEN at line 4: sequence (expected 4, found 5)\n"
+  },
+  {
+    "name": "two entries swapped",
+    "stdin": "1|bob|delete report-3|b4b76246870ea1de\n2|carol|grant admin to dave|1afc90e35b4632ee\n4|alice|logout|cbb2161e51fa2765\n3|alice|create report-7|c3bb89266c328470\n5|bob|logout|ae3853bcb332167e\n6|bob|login|b18775ce1ac8026e\n7|alice|create report-7|ecf14bd805ef4e1c\n",
+    "expected": "BROKEN at line 3: sequence (expected 3, found 4)\n"
+  },
+  {
+    "name": "a malformed tail",
+    "stdin": "1|dave|login failed|5211dc901f41beea\n2|carol|grant admin to dave|a9800db7b08fca80\n3|dave|export users|0ea3f91b5d449f01\n4|carol|rotate key k2|d24229d672114499\n5|alice|login|022f1ecf06b9c3b5\n6|bob|logout|38df9227081465c5\n7|eve|oops\n",
+    "expected": "BROKEN at line 7: malformed\n"
+  },
+  {
+    "name": "a flipped hash digit",
+    "stdin": "1|dave|login failed|5211dc901f41beea\n2|alice|create report-7|a79f8204a06a81af\n3|bob|logout|c390718224067b78\n4|carol|grant admin to dave|2bac4f3339cd4e6b\n5|alice|login|34d6a0db6745051f\n6|alice|login|4b7033870c450cc0\n",
+    "expected": "BROKEN at line 6: hash mismatch\n"
+  },
+  {
+    "name": "a fully recomputed chain still verifies",
+    "stdin": "1|dave|export users|ea6e639c3dd54b7a\n2|bob|login|c70f6d33581f8ee7\n3|bob|delete report-9|c94261b9b02573db\n4|alice|login|4ac24f2c435c5f25\n5|alice|create report-7|b620a73f5e080970\n6|carol|rotate key k2|d01fdd95d1d47a4e\n7|alice|create report-7|48a60a76c9686873\n",
+    "expected": "chain ok: 7 entries head=48a60a76c9686873\n"
+  },
+  {
+    "name": "seq text with a leading zero",
+    "stdin": "01|bob|delete report-3|b4b76246870ea1de\n2|dave|export users|1f6dc0fe524bbf9b\n3|alice|logout|d49af65bdd84050d\n4|bob|login|74881f65e6f8edcd\n5|bob|delete report-3|9b9c8f8e87de527c\n",
+    "expected": "BROKEN at line 1: malformed\n"
+  },
+  {
+    "name": "blank line in the middle",
+    "stdin": "1|bob|logout|7ab2d1ef94307d99\n2|dave|login failed|382aec7f0ce9348c\n\n3|dave|export users|18e322fe8e7f7282\n4|carol|grant admin to dave|f635486d59090081\n5|bob|login|732571d54a580d14\n",
+    "expected": "BROKEN at line 3: malformed\n"
+  },
+  {
+    "name": "a pipe smuggled into a field",
+    "stdin": "1|dave|login failed|5211dc901f41beea\n2|alice|login|2721f353fcec6be4\n3|alice|logout|x|3b207945fcfb2cf7\n4|bob|logout|9dbcb5d9dba9a5cd\n5|dave|login failed|67ea1c2e43f275af\n6|alice|login|0965599da0789bc8\n",
+    "expected": "BROKEN at line 3: malformed\n"
+  }
+]

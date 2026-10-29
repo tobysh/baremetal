@@ -1,0 +1,5 @@
+- `int best_index(Entry e[], int n)` returns the index of the record with the highest `score`. On a tie, the first one. `n` is at least 1.
+- `int total_score(Entry e[], int n)` returns the sum of all scores.
+- `int count_passing(Entry e[], int n, int pass_mark)` returns how many records have a score of at least `pass_mark`.
+- `void add_bonus(Entry e[], int n, int bonus)` adds `bonus` to every record's score, in place.
+- `void sort_by_score(Entry e[], int n)` sorts the records so scores go from highest to lowest. It must be **stable**: records with equal scores keep their original relative order.

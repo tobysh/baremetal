@@ -6,5 +6,5 @@
   "language": "c",
   "path": "c",
   "order": 1,
-  "prerequisite": "first-steps"
+  "prerequisite": "c-data"
 }

@@ -1,0 +1,5 @@
+- `Greet(w http.ResponseWriter, r *http.Request)` answers a GET with `Hello, NAME!` followed by a newline, where NAME is the `name` query parameter, or `world` when it is missing or empty. The content type is `text/plain; charset=utf-8`. Any other method gets status 405 and an `Allow: GET` header.
+- `NewMux() *http.ServeMux` returns a router with:
+  - `GET /greet`: the `Greet` handler.
+  - `GET /health`: status 200 with body `ok`.
+  - `GET /users/{id}`: if the id is made only of digits, respond 200 with body `user <id>`; otherwise respond 400. (No other path or method should be handled by you; the mux's 404 and 405 do the rest.)

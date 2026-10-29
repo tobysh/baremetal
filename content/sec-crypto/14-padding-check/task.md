@@ -1,0 +1,3 @@
+Implement `int pkcs7_unpad(const uint8_t *blk,size_t n,size_t bs,size_t *datalen,size_t *work)`. The input has `n` bytes made of whole blocks of size `bs`. The shape is valid when `blk` is not NULL, `1<=bs<=255`, `n>0` and `n%bs==0`; an invalid shape returns 0 with `*datalen=0` and `*work=0`. For a valid shape, let `p` be the last byte. The padding is correct when `1<=p<=bs` and the last `p` bytes all equal `p`. Return 1 and set `*datalen=n-p` for correct padding; otherwise return 0 with `*datalen=0`. In every valid-shape case examine all `bs` bytes of the final block without returning early and set `*work=bs`. `datalen` and `work` may be NULL.
+
+Tests use many generated blocks. Keep the supplied function names and types.

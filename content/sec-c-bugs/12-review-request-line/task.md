@@ -1,0 +1,3 @@
+Implement `int parse_request(const char *line,char *method,size_t mcap,char *path,size_t pcap)`. Accept `METHOD SP TARGET SP VERSION` only: METHOD is exactly `GET`, `HEAD` or `POST`; VERSION is exactly `HTTP/1.0` or `HTTP/1.1` (nothing after it, not even `\r`); there is exactly one space between fields; TARGET starts with `/`, contains only bytes 0x21 to 0x7e, and has no segment (split on `/` only) equal to `..`. On success copy the method and target to the outputs and return 1; both strings must fit with the terminating zero. Otherwise return 0 and set `method[0]` and `path[0]` to zero (when the pointer is non-NULL and the capacity above zero). NULL arguments return 0.
+
+Tests use fixed and generated lines. Keep the supplied function names and types.

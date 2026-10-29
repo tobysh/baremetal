@@ -5,6 +5,6 @@
   "level": "Advanced",
   "language": "asm",
   "path": "low",
-  "order": 2,
-  "prerequisite": "asm-first-steps"
+  "order": 3,
+  "prerequisite": "asm-intermediate"
 }

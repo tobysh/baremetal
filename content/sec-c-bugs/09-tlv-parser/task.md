@@ -1,0 +1,3 @@
+Implement `int tlv_find(const uint8_t *buf,size_t len,uint8_t type,size_t *off,size_t *vlen)`. Records are 1 type byte, 2 length bytes (big endian), then the value. Scan from offset 0. Return 1 and set `*off`/`*vlen` (value offset and length) for the first record whose type matches. Return 0 if the buffer is consumed exactly without a match. Return -1 if a header is truncated or a record's length exceeds the bytes remaining before the match is found. On 0 and -1 set both outputs to 0. NULL `buf` with `len>0` returns -1. `off` and `vlen` may be NULL.
+
+Tests use many generated buffers, including truncated and corrupted ones. Keep the supplied function names and types.

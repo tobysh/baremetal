@@ -1,0 +1,10 @@
+{
+  "title": "Context, HTTP and Testing in Go",
+  "summary": "Cancel work with context, build and test net/http servers and clients in-process, and write table-driven tests, helpers and fakes.",
+  "description": "This course covers the three things almost every Go service needs. First, context: cancellation, deadlines, values, causes and cancel callbacks, and how they travel through a call tree. Second, net/http: handlers, routing, JSON APIs, middleware, panic recovery, request contexts and a client you can test without a network, all exercised in-process with httptest recorders and fake transports. Third, testing: writing table-driven cases that catch mutants, assertion helpers built on testing.TB, and fakes that replace the clock. Every exercise is checked by a hidden test suite that uses synchronization instead of sleeps.",
+  "level": "Advanced",
+  "language": "go",
+  "path": "go",
+  "order": 4,
+  "prerequisite": "go-practice"
+}

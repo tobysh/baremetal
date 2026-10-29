@@ -1,0 +1,32 @@
+[
+  {
+    "name": "three students, a tie",
+    "stdin": "3\nada 91\ngrace 78\nlinus 91\n",
+    "expected": "1. ada 91\n2. linus 91\n3. grace 78\naverage: 86.67\npassed: 3 of 3\n"
+  },
+  {
+    "name": "one student",
+    "stdin": "1\nzed 50\n",
+    "expected": "1. zed 50\naverage: 50.00\npassed: 1 of 1\n"
+  },
+  {
+    "name": "nobody",
+    "stdin": "0\n",
+    "expected": "average: 0.00\npassed: 0 of 0\n"
+  },
+  {
+    "name": "failing and passing, ties in input order",
+    "stdin": "6\nmo 49\nli 50\nsu 49\nbo 100\ncy 0\ndi 50\n",
+    "expected": "1. bo 100\n2. li 50\n3. di 50\n4. mo 49\n5. su 49\n6. cy 0\naverage: 49.67\npassed: 3 of 6\n"
+  },
+  {
+    "name": "full 20 with long names",
+    "stdin": "20\nstudent00name0 0\nstudent01name1 37\nstudent02name2 74\nstudent03name0 10\nstudent04name1 47\nstudent05name2 84\nstudent06name0 20\nstudent07name1 57\nstudent08name2 94\nstudent09name0 30\nstudent10name1 67\nstudent11name2 3\nstudent12name0 40\nstudent13name1 77\nstudent14name2 13\nstudent15name0 50\nstudent16name1 87\nstudent17name2 23\nstudent18name0 60\nstudent19name1 97\n",
+    "expected": "1. student19name1 97\n2. student08name2 94\n3. student16name1 87\n4. student05name2 84\n5. student13name1 77\n6. student02name2 74\n7. student10name1 67\n8. student18name0 60\n9. student07name1 57\n10. student15name0 50\n11. student04name1 47\n12. student12name0 40\n13. student01name1 37\n14. student09name0 30\n15. student17name2 23\n16. student06name0 20\n17. student14name2 13\n18. student03name0 10\n19. student11name2 3\n20. student00name0 0\naverage: 48.50\npassed: 10 of 20\n"
+  },
+  {
+    "name": "all equal",
+    "stdin": "4\na 70\nb 70\nc 70\nd 70\n",
+    "expected": "1. a 70\n2. b 70\n3. c 70\n4. d 70\naverage: 70.00\npassed: 4 of 4\n"
+  }
+]

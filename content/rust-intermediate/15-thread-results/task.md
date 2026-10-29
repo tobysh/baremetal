@@ -1,0 +1,5 @@
+Implement three functions.
+
+- `fn run_guarded<F>(f: F) -> Result<i32, String>` where `F: FnOnce() -> i32 + Send + 'static`: run `f` on a new thread and wait for it. `Ok(value)` if it returns, `Err(message)` if it panics, where `message` is the panic text (from a `&str` or `String` payload; `"unknown panic"` for any other payload).
+- `fn collect_ordered<F>(n: usize, f: Arc<F>) -> Result<Vec<u32>, String>` where `F: Fn(usize) -> Result<u32, String> + Send + Sync + 'static`: run `f(i)` for `i` in `0..n`, each on its own thread. If all succeed, return the values in index order. Otherwise return the error of the **lowest index** that failed. A worker that panics counts as an error with the message `"worker panicked"`. Every worker must have finished before the function returns.
+- `fn parse_chunks(chunks: Vec<Vec<String>>) -> Result<Vec<i64>, String>`: parse each chunk on its own thread (every string is an `i64` after trimming) and return all numbers, chunk by chunk, in order. The error for a bad chunk is `"chunk <index>: <parse error message>"` for the lowest bad chunk index (the first bad string in that chunk). All threads are joined before returning.

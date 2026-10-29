@@ -1,0 +1,22 @@
+[
+  {
+    "name": "a short mixed batch",
+    "stdin": "yooqsgfzqputzf\naaaBBB111!\n\na1bbbbbb1aaa\nnrcw\nMyLetmeinsbe!\nnLXicaBAg8WY1j=z\nRlNQb0prFmbh7!\n",
+    "expected": "1: classes\n2: repeat\n3: short,classes\n4: classes,repeat\n5: short,classes\n6: common\n7: ok\n8: ok\n"
+  },
+  {
+    "name": "many lines with long and common ones",
+    "stdin": "qvlemalpiuzowth\naaaBBB111!\n\nBBBBBBBBBBaaaa\n1111BBB111\ndW3e%dC2fXAn-CwjJe3J@Sg$6VARK689Ev7-UxyCaIRwEb#fFoU*#tdPJpD^#9!TH4u5Lf\nxx123456xxn=s7q\n\n_I1rEz38h_=H\n3lZz_SVX=uctdej1\nWmTyNI*!pB&YFj0TPkQslN\n3UwdA!4!whR6EPmCaUUJz3LC%s#Qu#7X#F66gD0&Y%4gn-+NScP@UNvr9C*rG@f2UK0KXP\nubvt\n02HR0W@XZxvAGoI%\n11111aaa1a\nwzj\nbaaaaBBBbaaa\nzm\nL7TX1%dJct!Un2-ZVjqS\nn\n\nbaaaaaabbbBBBb\n*OEYlRhUsMp!rJbz\nxx123456xx=vz\nW!Ry&UiDRXI=q*4\nR1np@wU-t+JWQN\n#6jwZAPUSsLRQYf%Q&j^mGu!lNv4DKiDyzJpBx9N6q9Y47XUIzE^!#RTZNrdjLXL9t%1+OwH20g\ndqjhfgd\nW$!NlysDW^G^UyqA-n\ne&*4n!%x=h3Mc@\n",
+    "expected": "1: classes\n2: repeat\n3: short,classes\n4: classes,repeat\n5: classes,repeat\n6: long\n7: common\n8: short,classes\n9: ok\n10: ok\n11: ok\n12: long\n13: short,classes\n14: ok\n15: classes,repeat\n16: short,classes\n17: classes,repeat\n18: short,classes\n19: ok\n20: short,classes\n21: short,classes\n22: classes,repeat\n23: ok\n24: common\n25: ok\n26: ok\n27: long\n28: short,classes\n29: ok\n30: ok\n"
+  },
+  {
+    "name": "another batch",
+    "stdin": "MyLetmeino&jo^\naaaBBB111!\n\nzuiwortxe\norfjgfqliloitim\nBBBbbbb1aB\nbhepzw\n1BBB1bbb111bbb\n@BfeT=RxLyv_oCvi2_*e4\naaaa1B111a\neaOQt@_&%8CALeW#usH2BH2\nFK2AS2eOY6lifaN\nrmkbjqn\nbab1Ba\npossn\njezbkfrx\n\nbBa1aaabbb\nbbbBBBBaaaabbb\n&YMt*MHlVgdvbn^\n",
+    "expected": "1: common\n2: repeat\n3: short,classes\n4: short,classes\n5: classes\n6: repeat\n7: short,classes\n8: repeat\n9: ok\n10: repeat\n11: ok\n12: ok\n13: short,classes\n14: short\n15: short,classes\n16: short,classes\n17: short,classes\n18: repeat\n19: classes,repeat\n20: ok\n"
+  },
+  {
+    "name": "boundary lengths",
+    "stdin": "Abcdefg1!\nAbcdefg12!\naB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3x\naB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3aB3xy\n",
+    "expected": "1: short\n2: ok\n3: ok\n4: long\n"
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "title": "Assembly: Toolbox",
+  "summary": "The everyday instructions between your first functions and full programs: sign extension, cmov and setcc, lea, shifts, div, carries, string instructions, callbacks, sorting and a checksum.",
+  "description": "You can write loops and recursion. Now you build the toolbox that compilers reach for all the time: movsx and movzx for mixed-width data, branch-free code with cmov and setcc, lea as a tiny calculator, shifts and rotates for bit fields, div and idiv for the quotient and the remainder, the carry and overflow flags for big numbers and checked arithmetic, decimal conversion, the rep string instructions, calling function pointers, insertion sort and the Internet checksum. Every routine is checked by hidden C programs on many different inputs.",
+  "level": "Intermediate",
+  "language": "asm",
+  "path": "low",
+  "order": 2,
+  "prerequisite": "asm-first-steps"
+}

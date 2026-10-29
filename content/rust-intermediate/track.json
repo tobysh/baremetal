@@ -1,0 +1,10 @@
+{
+  "title": "Intermediate Rust: Traits, Errors & Threads",
+  "summary": "Practise the four ideas that carry real Rust programs: traits, lifetimes, error handling with Result and ?, and thread-based concurrency.",
+  "description": "You can write Rust; now write it well. You will give traits default methods and associated constants, overload operators, implement Iterator, build pipelines of trait objects and keep borrowed data alive with lifetimes. You will design error types with Display, Error and From, use ? everywhere and walk error chains. Then you will run work on threads, pass results through channels, share state with Arc and Mutex without deadlock, and turn thread panics and failures into ordinary Results. Three review lessons combine the ideas, and every concurrency test is deterministic: it synchronises with joins and channels, never with sleeps.",
+  "level": "Intermediate",
+  "language": "rust",
+  "path": "rust",
+  "order": 7,
+  "prerequisite": "rust-traits"
+}

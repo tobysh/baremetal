@@ -1,0 +1,10 @@
+{
+  "title": "Arrays, Strings & Structs in C",
+  "summary": "Before pointers: store many values in arrays, treat text as arrays of characters, and bundle related data into structs. Plain index-based C that sets up the memory course.",
+  "description": "A single variable holds a single value, but real programs handle lists of numbers, lines of text and records with several fields. You'll store and search arrays, change them in place, lay numbers out in grids, work with text as arrays of characters (length, copying, comparing, words, parsing numbers), and group related values into structs, including arrays of structs and structs that carry text. Everything here uses plain indexing, with no pointer syntax, so it is the gentle step between Programming from Zero and the pointers-and-memory course. It ends with a small gradebook that reads records from input, sorts them and reports.",
+  "level": "Beginner",
+  "language": "c",
+  "path": "c",
+  "order": 0,
+  "prerequisite": "first-steps"
+}

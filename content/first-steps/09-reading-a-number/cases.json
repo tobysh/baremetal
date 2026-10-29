@@ -1,0 +1,7 @@
+[
+  { "name": "positive number", "stdin": "4\n", "expected": "8\n" },
+  { "name": "different number", "stdin": "10\n", "expected": "20\n" },
+  { "name": "zero", "stdin": "0\n", "expected": "0\n" },
+  { "name": "negative number", "stdin": "-7\n", "expected": "-14\n" },
+  { "name": "surrounding whitespace", "stdin": "  12  \n", "expected": "24\n" }
+]

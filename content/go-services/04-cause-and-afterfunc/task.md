@@ -1,0 +1,4 @@
+- `NewAbortable(parent context.Context) (context.Context, func(reason string))` returns a child context and an `abort` function. Calling `abort("disk full")` cancels the context with a cause whose `Error()` is exactly the reason. The first call wins; later calls change nothing.
+- `Why(ctx context.Context) string` explains the state of a context: `""` while it is live, `"canceled"` when it was cancelled without a custom cause, `"timed out"` for a plain deadline, and otherwise the text of the cause.
+- `TimeoutWithCause(parent context.Context, d time.Duration, what string) (context.Context, context.CancelFunc)` returns a context that times out after `d` with a cause whose `Error()` is `"<what> timed out"`, so `Why` reports it.
+- `OnCancel(ctx context.Context, f func()) (stop func() bool)` arranges for `f` to run (once, in another goroutine) after `ctx` ends, and returns a function that cancels that registration and reports whether it succeeded.

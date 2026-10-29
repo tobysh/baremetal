@@ -1,0 +1,3 @@
+Read stdin line by line (at most 100 lines, at most 200 characters each; remove the trailing newline and any `\r`). For line number N (starting at 1, empty lines count) print `N: ` followed by either `ok` or the comma-separated names of failed rules in this order: `short` (fewer than 10 bytes), `long` (more than 64 bytes), `classes` (fewer than 3 of: lowercase, uppercase, digit, other), `common` (contains `password`, `letmein`, `qwerty` or `123456`, ignoring letter case), `repeat` (the same byte three times in a row).
+
+Tests use several different inputs. Keep the supplied function names and types.

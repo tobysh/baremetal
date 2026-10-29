@@ -1,0 +1,37 @@
+[
+  {
+    "name": "every nonce is fresh",
+    "stdin": "key=k1 nonce=3FEFC63F msg=m1\nkey=k1 nonce=e873a0000c6d msg=m2\nkey=k2 nonce=7b77e90d3593 msg=m3\nkey=k2 nonce=699fc1f7cd5b msg=m4\nkey=k2 nonce=e35cbf msg=m5\nkey=k2 nonce=557067cbbe80 msg=m6\nkey=k1 nonce=6d1fb6dfbdb0 msg=m7\nkey=k2 nonce=0755281220e0 msg=m8\nkey=k1 nonce=92558589 msg=m9\nkey=k1 nonce=cad68386 msg=m10\nkey=k1 nonce=c415ed msg=m11\nkey=k2 nonce=0CAD19 msg=m12\n",
+    "expected": "no nonce reuse\n"
+  },
+  {
+    "name": "one pair reused, upper case hides it",
+    "stdin": "key=k1 nonce=2b5986 msg=m1\nkey=k2 nonce=cbe810beacd5 msg=m2\nkey=k2 nonce=CBE810BEACD5 msg=m3\nkey=k-prod nonce=5EDBBBE5CE7F msg=m4\nkey=k2 nonce=eebef7a58f99 msg=m5\nkey=k-prod nonce=D96FB2A06311 msg=m6\nkey=k1 nonce=48761d11bb57 msg=m7\nkey=k1 nonce=2B5986 msg=m1\nkey=k2 nonce=EEBEF7A58F99 msg=m8\nkey=k-prod nonce=0C17410B39AF msg=m9\nkey=k-prod nonce=8c4f72 msg=m10\nkey=k1 nonce=2b5986 msg=m11\nkey=k2 nonce=a4a88d04 msg=m12\nkey=k2 nonce=CBE810BEACD5 msg=m13\nkey=k-prod nonce=77e282 msg=m14\nkey=k-prod nonce=8D8041CD msg=m15\nkey=k-prod nonce=5EDBBBE5CE7F msg=m16\nkey=k1 nonce=ee9c66 msg=m17\nkey=k-prod nonce=1D53FB03B9B9 msg=m18\nkey=k-prod nonce=0C17410B39AF msg=m19\n",
+    "expected": "k-prod nonce=0c17410b39af msgs=m9,m19\nk-prod nonce=5edbbbe5ce7f msgs=m4,m16\nk1 nonce=2b5986 msgs=m1,m11\nk2 nonce=cbe810beacd5 msgs=m2,m3,m13\nk2 nonce=eebef7a58f99 msgs=m5,m8\n"
+  },
+  {
+    "name": "same nonce under different keys is fine",
+    "stdin": "key=gamma nonce=bf20f8 msg=m1\nkey=gamma nonce=bf20f8 msg=m1\nkey=alpha nonce=4c0251 msg=m2\nkey=k1 nonce=zz91 msg=bad1\nkey=beta nonce=dce4b314f68d msg=m3\nkey=beta nonce=BD7A085A3689 msg=m4\nkey=beta nonce=b2d409 msg=m5\nkey=gamma nonce=1ca871902316 msg=m6\nkey=gamma nonce=aab4cc msg=m7\nkey=gamma nonce=38D79D89A0DA msg=m8\nkey=alpha nonce=AEBB8F010B8E msg=m9\nkey=alpha nonce=b89c3049 msg=m10\nkey=beta nonce=d33aa7 msg=m11\nkey=beta nonce=6e87316a58a2 msg=m12\nkey=beta nonce=8ebd9dd1d460 msg=m13\nkey=gamma nonce=71E9A729 msg=m14\nkey=beta nonce=6e87316a58a2 msg=m15\nkey=beta nonce=10F35970D13A msg=m16\nkey=alpha nonce=76335784 msg=m17\nKEY=k1 nonce=aa msg=x\nkey=gamma nonce=38D79D89A0DA msg=m18\nkey=alpha nonce=a0141312 msg=m19\n\nkey=alpha nonce=2bcc9b86 msg=m20\nkey=alpha nonce=c251bec1d1bf msg=m21\n",
+    "expected": "beta nonce=6e87316a58a2 msgs=m12,m15\ngamma nonce=38d79d89a0da msgs=m8,m18\n"
+  },
+  {
+    "name": "retransmissions and junk lines",
+    "stdin": "key=k1 nonce=cf4220c917b8 msg=m1\nkey=k1 nonce=886599B2AC75 msg=m2\nkey=k2 nonce=996dd9 msg=m3\nkey=k1 nonce=886599B2AC75 msg=m2\nkey=k1 nonce=886599b2ac75 msg=m4\nkey=k2 nonce=a462d6e85bda msg=m5\nkey=k2 nonce=996DD9 msg=m3\ngarbage line\nkey=k1 nonce=a59e01 msg=m6\nkey=k1 nonce=zz91 msg=bad1\nkey=k1 nonce=9A4D296E msg=m7\nkey=k1 nonce=0b1e5bb9 msg=m8\nkey=k1 nonce=111541 msg=m9\nkey=k1 nonce=9d6f67 msg=m10\nkey=k2 nonce=D6F611 msg=m11\nkey=k1 nonce=886599b2ac75 msg=m2\nkey=k2 nonce=A3C1FC msg=m12\nkey=k1 nonce=886599b2ac75 msg=m2\nkey=k2 nonce=fad68acf2861 msg=m13\nkey=k2 nonce=15EFCC606508 msg=m14\nkey=k1 nonce=165afe0213f8 msg=m15\nkey=k1 nonce=zz91 msg=bad1\nKEY=k1 nonce=aa msg=x\nkey=k2 nonce=2EC69C msg=m16\nkey=k1 nonce=3bdde2 msg=m17\nkey=k2 nonce=35b554af msg=m18\nkey=k1 nonce=50933FF27D9B msg=m19\nkey=k1 nonce=3BDDE2 msg=m17\nkey=k1 nonce=zz91 msg=bad1\nkey=k2 nonce=EEC48BA4D245 msg=m20\n",
+    "expected": "k1 nonce=886599b2ac75 msgs=m2,m4\n"
+  },
+  {
+    "name": "heavy reuse across three keys",
+    "stdin": "key=m nonce=0e7153bf msg=m1\nkey=m nonce=0E7153BF msg=m2\nkey=m nonce=0E7153BF msg=m3\nkey=m nonce=0e7153bf msg=m4\nkey=m nonce=0E7153BF msg=m1\nkey=z nonce=a6656c90 msg=m5\nkey=m nonce=0e7153bf msg=m6\nkey=m nonce=A29B9FA5FF51 msg=m7\nkey=a nonce=0dbc0e15 msg=m8\nkey=m nonce=0e7153bf msg=m9\nkey=z nonce=a6656c90 msg=m10\nkey=m nonce=b91d26ab4a82 msg=m11\nkey=m nonce=0e7153bf msg=m12\nkey=m nonce=A29B9FA5FF51 msg=m13\nKEY=k1 nonce=aa msg=x\nkey=z nonce=b8ed411fa644 msg=m14\nkey=m nonce=0e7153bf msg=m15\nkey=m nonce=A29B9FA5FF51 msg=m13\nkey=z nonce=efaf89fc43c5 msg=m16\nkey=m nonce=0e7153bf msg=m17\nkey=m nonce=2b19b8f8 msg=m18\nkey=z nonce=a6656c90 msg=m19\nkey=z nonce=efaf89fc43c5 msg=m20\nkey=m nonce=0e7153bf msg=m21\nkey=a nonce=bdb5eba4 msg=m22\nkey=a nonce=2D5D9806 msg=m23\nkey=z nonce=51f75143a5f6 msg=m24\nkey=m nonce=267b0bc8d3b1 msg=m25\nkey=m nonce=a29b9fa5ff51 msg=m26\nkey=z nonce=dbe45cf6 msg=m27\nkey=m nonce=c3a4ac msg=m28\nkey=a nonce=cc589f8d0a9f msg=m29\nkey=m nonce=0E7153BF msg=m1\nkey=a nonce=4c0f87 msg=m30\nkey=z nonce=efaf89fc43c5 msg=m31\nkey=m nonce=0e7153bf msg=m32\nkey=m nonce=30499A90EBB4 msg=m33\nkey=z nonce=60ddfcfc69e2 msg=m34\nkey=k2 nonce=ab12\nkey=a nonce=45FFA4D1 msg=m35\n",
+    "expected": "m nonce=0e7153bf msgs=m1,m2,m3,m4,m6,m9,m12,m15,m17,m21,m32\nm nonce=a29b9fa5ff51 msgs=m7,m13,m26\nz nonce=a6656c90 msgs=m5,m10,m19\nz nonce=efaf89fc43c5 msgs=m16,m20,m31\n"
+  },
+  {
+    "name": "empty input",
+    "stdin": "",
+    "expected": "no nonce reuse\n"
+  },
+  {
+    "name": "identical record twice is not reuse",
+    "stdin": "key=k1 nonce=00ff msg=a\nkey=k1 nonce=00FF msg=a\nkey=k2 nonce=00ff msg=b\n",
+    "expected": "no nonce reuse\n"
+  }
+]

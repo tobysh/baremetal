@@ -1,0 +1,5 @@
+`Middleware` and `ErrNotFound` are defined in the starter.
+
+- `Timeout(d time.Duration) Middleware` runs the next handler with a request whose context times out after `d`. Release the timer when the handler returns.
+- `RequestID(gen func() string) Middleware` takes the ID from the `X-Request-ID` request header, or calls `gen()` when the header is empty. It stores the ID in the request context (use your own unexported key type), sets the `X-Request-ID` response header, and calls the next handler. `IDFrom(ctx context.Context) string` reads it back (empty if absent).
+- `Lookup(find func(ctx context.Context, key string) (string, error)) http.Handler` serves `GET`: the `key` query parameter is required (400 `missing key` if empty). It calls `find` with **the request's context**. On success: 200 and the value as the body. Errors: `ErrNotFound` (use `errors.Is`) gives 404; `context.DeadlineExceeded` gives 504; `context.Canceled` gives 499; anything else gives 500. Check the error type, not the text.

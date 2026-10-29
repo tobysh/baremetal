@@ -1,0 +1,6 @@
+Complete these in the starter. `VecDeque`, `BinaryHeap` and `Reverse` are imported:
+
+- `fn josephus(n: usize, k: usize) -> Vec<usize>`: people numbered `1..=n` stand in a circle. Starting from person 1, count `k` people and remove the k-th, continue counting from the next person. Return the removal order. `n == 0` or `k == 0` gives an empty vector. Use a `VecDeque` and `rotate_left`.
+- `fn k_smallest(v: &[i32], k: usize) -> Vec<i32>`: the `k` smallest values, ascending, using a `BinaryHeap` that never holds more than `k` items (a max-heap of the best so far: when it grows beyond `k`, pop the largest). Duplicates count.
+- `fn run_tasks(tasks: &[(u32, &str)]) -> Vec<String>`: each task is `(priority, name)`. Return the names in the order they would run: highest priority first, and among equal priorities, the name that sorts **last** alphabetically first (just let the tuple ordering decide).
+- `fn window_maxima(v: &[i32], w: usize) -> Vec<i32>`: the maximum of every window of `w` consecutive items. `w == 0` or `w > v.len()` gives an empty vector. Use a `VecDeque` of indices that you keep in decreasing order of value (the monotonic queue), so each item is pushed and popped at most once.

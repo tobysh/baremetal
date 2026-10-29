@@ -1,0 +1,4 @@
+- `RoundTripFunc` is a function type that implements `http.RoundTripper`. `NewTestClient(fn RoundTripFunc) *http.Client` returns a client that uses it as its transport.
+- `HTTPError` has fields `Status int` and `Body string`. Its `Error()` returns `http <status>: <body>`.
+- `FetchJSON(ctx context.Context, c *http.Client, url string, out any) error` sends a GET with the header `Accept: application/json` and the given context. A status outside 200 to 299 returns an `*HTTPError` with the status and the first 100 bytes of the body (read with `io.LimitReader`). Otherwise decode the JSON body into `out`. Always close the body.
+- `PostJSON(ctx context.Context, c *http.Client, url string, in, out any) error` sends `in` encoded as JSON with `Content-Type: application/json` using POST. The response is handled as in `FetchJSON`; if `out` is `nil` the body is ignored.

@@ -1,0 +1,10 @@
+{
+  "title": "Ethical Hacking for Defenders",
+  "summary": "Learn how attackers work, inside a simulated lab, so you can detect, fix and report what they find. Starts with law and ethics.",
+  "description": "Start with authorization, written scope and coordinated disclosure, then play the attacker's role only against toy, in-process targets: a simulated network, canned logs, made-up banners and synthetic samples. For every offensive idea you write the detection, the fix or the finding report. Nothing here touches a real system, and nothing in the course may be used against a system you do not own or lack written permission to test.",
+  "level": "Advanced",
+  "language": "c",
+  "path": "security",
+  "order": 5,
+  "prerequisite": "sec-forensics"
+}

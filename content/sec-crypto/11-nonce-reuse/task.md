@@ -1,0 +1,3 @@
+Read stdin (at most 500 lines, each field at most 63 characters, at most 16 distinct message ids per pair). Parse lines of the form `key=K nonce=N msg=M` separated by single spaces; ignore any line that does not parse or whose nonce contains a non-hex character. Lowercase the nonce. A pair is (key, lowercase nonce). For each pair with at least two distinct message ids print `K nonce=N msgs=M1,M2,...` with the ids in first-seen order, one per line, sorted by key and then nonce using `strcmp`. If no pair qualifies print `no nonce reuse`.
+
+Tests use several different logs. Keep the supplied function names and types.

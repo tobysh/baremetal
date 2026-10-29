@@ -1,0 +1,4 @@
+- `void prefix_sums(int a[], int n, int out[])` stores in `out[i]` the sum of `a[0]` to `a[i]` for each `i` below `n`. `out` has room for `n` values and is a different array from `a`.
+- `int second_largest(int a[], int n)` returns the second largest **distinct** value. The array always has at least two distinct values. For `5 9 9 3` the answer is 5.
+- `int arrays_equal(int a[], int b[], int n)` returns `1` if the first `n` elements are the same in both arrays, otherwise `0`.
+- `int count_peaks(int a[], int n)` counts the indexes `i` with `0 < i < n - 1` where `a[i]` is strictly greater than both `a[i - 1]` and `a[i + 1]`. Fewer than 3 elements means 0 peaks.

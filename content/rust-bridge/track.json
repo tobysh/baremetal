@@ -1,0 +1,10 @@
+{
+  "title": "Rust Bridge: Everyday Standard Library",
+  "summary": "Fill the gaps between the Rust basics and the harder tracks: iterator adaptors, Option, strings, slices, collections, derives, integer arithmetic and patterns.",
+  "description": "After the foundations you know what Rust looks like; this track makes the standard library feel familiar. You'll chain iterator adaptors, return iterators from functions, tame Option with combinators, handle UTF-8 strings and slices, sort and search, and reach for HashSet, BTreeMap, VecDeque and BinaryHeap at the right moment. Then you'll derive ordering and defaults, do integer arithmetic that never silently overflows, and use patterns with guards, bindings and let-else. One review lesson combines the ideas.",
+  "level": "Intermediate",
+  "language": "rust",
+  "path": "rust",
+  "order": 1.5,
+  "prerequisite": "rust-foundations"
+}

@@ -1,0 +1,3 @@
+Read stdin (at most 1000 lines, at most 256 clients, at most 256 distinct targets per client; names at most 63 characters). A record is five whitespace-separated fields: an integer time (ignored), client, server, port (1 to 65535) and outcome (`open`, `closed` or `filtered`). Ignore every other line. For each client count distinct (server, port) targets, taking the first outcome seen for each target. Print `CLIENT targets=N open=O closed=C filtered=F` for every client with N at least 5 and `closed+filtered` greater than `open`, sorted by N descending then `strcmp` on the client. If none qualify print `no scans detected`.
+
+Tests use several different inputs. Keep the supplied function names and types.

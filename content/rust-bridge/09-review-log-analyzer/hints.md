@@ -1,0 +1,5 @@
+`parse_line`: `let line = line.trim(); let (level, rest) = line.split_once(char::is_whitespace)?; let rest = rest.trim_start(); let (module, msg) = match rest.split_once(char::is_whitespace) { Some(p) => p, None => (rest, "") };` then `let module = module.strip_suffix(':')?;` and reject an empty module.
+===
+`parse_all`: `for (i, line) in text.lines().enumerate()`, skip when `line.trim().is_empty()`, then `match parse_line(line) { Some(e) => entries.push(e), None => bad.push(i + 1) }`. Note a line like `WARN` alone has no whitespace to split on; `split_once` returning `None` means "no level and module", so it fails.
+===
+`count_levels`: `*m.entry(e.level.clone()).or_insert(0) += 1`. `busiest_module`: count into a `BTreeMap<String, usize>`, then take the largest count; because a BTreeMap iterates alphabetically, `max_by_key` returns the LAST maximum, so use `min_by_key(|(m, c)| (Reverse(**c), (*m).clone()))` or fold manually. `messages_for`: `entries.iter().filter(|e| e.level.eq_ignore_ascii_case(level) && !e.message.is_empty()).map(|e| e.message.clone()).collect()`.
