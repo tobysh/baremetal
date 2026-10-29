@@ -48,12 +48,14 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+      - name: Install C compiler
+        run: sudo apt-get update && sudo apt-get install -y gcc   
       - name: Expose Go toolchain to Bubblewrap
         run: echo "GO_TOOLCHAIN_DIR=$(go env GOROOT)" >> "$GITHUB_ENV"
       - name: Install toolchains
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc make bubblewrap qemu-system-x86 rustc
+          sudo apt-get install -y make bubblewrap qemu-system-x86 rustc
       - name: Allow unprivileged user namespaces
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - run: npm ci
