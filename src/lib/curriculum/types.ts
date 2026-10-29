@@ -6,7 +6,8 @@ export type Language = "c" | "rust" | "asm" | "go" | "kernel";
 export const LANGUAGE_LABEL: Record<Language, string> = { c: "C", rust: "Rust", asm: "x86-64 assembly", go: "Go", kernel: "C (bare-metal kernel)" };
 export const LANGUAGE_FILE: Record<Language, string> = { c: "main.c", rust: "main.rs", asm: "starter.s", go: "main.go", kernel: "kernel.c" };
 
-export type StdoutCase = { name: string; stdin?: string; expected: string };
+/** `set` rewrites the initial value of the named variables in the learner's source (`int minutes = 275;`), so a program that prints hardcoded text fails the case. */
+export type StdoutCase = { name: string; stdin?: string; expected: string; set?: Record<string, string> };
 
 export type Exercise = {
   /** Stable id, used as the progress key. Never change once published. */

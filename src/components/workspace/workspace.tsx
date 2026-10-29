@@ -8,6 +8,7 @@ import { track } from "../analytics";
 import { MiniMarkdown } from "./mini-markdown";
 import { explainFailure, type Explanation } from "@/lib/diagnostics";
 import { errorLines } from "@/lib/error-lines";
+import { OutputDiff } from "./output-diff";
 import { TutorChat, type ChatMessage, type TutorControl } from "./tutor-chat";
 import { AchievementToasts, Celebration, type Reward, type TrackComplete, type Unlocked } from "../celebrations";
 
@@ -39,7 +40,7 @@ function Kbd({ children }: { children: string }) {
   return <kbd className="rounded border border-current/30 px-1 font-sans text-[10px] leading-4 opacity-80">{children}</kbd>;
 }
 
-type TestCase = { name: string; passed: boolean; message?: string };
+type TestCase = { name: string; passed: boolean; message?: string; expected?: string; actual?: string };
 type RunResponse =
   | { kind: "run"; ok: boolean; phase: "compile" | "run"; compileOutput: string; stdout: string; stderr: string; exitCode: number | null; error: string | null; durationMs: number }
   | {
@@ -529,7 +530,9 @@ function OutputPanel({
                   <span aria-hidden="true">{r.passed ? "✓" : "✗"}</span>
                   <span className="sr-only">{r.passed ? "Passed:" : "Failed:"}</span> {r.name}
                 </span>
-                {r.message && <pre className="mt-1 ml-5 overflow-auto rounded-md bg-bg p-2 font-mono text-xs whitespace-pre-wrap text-muted">{r.message}</pre>}
+                {r.expected !== undefined && r.actual !== undefined ? (
+                  <OutputDiff expected={r.expected} actual={r.actual} />
+                ) : r.message && <pre className="mt-1 ml-5 overflow-auto rounded-md bg-bg p-2 font-mono text-xs whitespace-pre-wrap text-muted">{r.message}</pre>}
               </li>
             ))}
           </ul>

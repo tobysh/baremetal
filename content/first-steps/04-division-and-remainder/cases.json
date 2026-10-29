@@ -2,5 +2,15 @@
   {
     "name": "prints the three conversions",
     "expected": "4 hours 35 minutes\n12 dollars and 34 cents\nlast digit of 1234: 4\n"
+  },
+  {
+    "name": "still right with other numbers (500, 999, 907)",
+    "set": { "minutes": "500", "cents": "999", "number": "907" },
+    "expected": "8 hours 20 minutes\n9 dollars and 99 cents\nlast digit of 907: 7\n"
+  },
+  {
+    "name": "still right with 120, 5, 10",
+    "set": { "minutes": "120", "cents": "5", "number": "10" },
+    "expected": "2 hours 0 minutes\n0 dollars and 5 cents\nlast digit of 10: 0\n"
   }
 ]

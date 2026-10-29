@@ -2,5 +2,25 @@
   {
     "name": "prints the average and the temperature",
     "expected": "Average: 8.33\nFahrenheit: 97.88\n"
+  },
+  {
+    "name": "still right with 3, 4, 6 and 100 degrees",
+    "set": {
+      "a": "3",
+      "b": "4",
+      "c": "6",
+      "celsius": "100.0"
+    },
+    "expected": "Average: 4.33\nFahrenheit: 212.00\n"
+  },
+  {
+    "name": "still right with 1, 2, 2 and -40 degrees",
+    "set": {
+      "a": "1",
+      "b": "2",
+      "c": "2",
+      "celsius": "-40.0"
+    },
+    "expected": "Average: 1.67\nFahrenheit: -40.00\n"
   }
 ]

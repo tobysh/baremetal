@@ -7,6 +7,7 @@ export const PATHS = [
   { id: "rust", title: "Rust", blurb: "The same low-level control, with the compiler checking your memory use." },
   { id: "go", title: "Go", blurb: "A small, fast language with concurrency built in." },
   { id: "low", title: "Machine level", blurb: "Go below the language: assembly and a kernel of your own." },
+  { id: "security", title: "Security", blurb: "Break it, fix it, and read the evidence: memory bugs, cryptography, packets and forensics." },
 ] as const;
 
 export type PathId = (typeof PATHS)[number]["id"];

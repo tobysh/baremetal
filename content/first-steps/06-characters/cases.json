@@ -2,5 +2,19 @@
   {
     "name": "prints the five lines",
     "expected": "letter: h\ncode: 104\nnext: i\nupper: H\nword: hello\n"
+  },
+  {
+    "name": "still right with letter = 'x'",
+    "set": {
+      "letter": "'x'"
+    },
+    "expected": "letter: x\ncode: 120\nnext: y\nupper: X\nword: hello\n"
+  },
+  {
+    "name": "still right with letter = 'a'",
+    "set": {
+      "letter": "'a'"
+    },
+    "expected": "letter: a\ncode: 97\nnext: b\nupper: A\nword: hello\n"
   }
 ]

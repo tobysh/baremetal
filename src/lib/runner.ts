@@ -330,7 +330,7 @@ export type RunResult = {
   durationMs: number;
 };
 
-export type TestCaseResult = { name: string; passed: boolean; message?: string };
+export type TestCaseResult = { name: string; passed: boolean; message?: string; expected?: string; actual?: string };
 export type TestResult = {
   compiled: boolean;
   compileOutput: string;
@@ -487,6 +487,20 @@ function harnessTampering(code: string): string | null {
   return "Your code contains text that belongs to the test harness (its result lines, internal names, load-time hooks or a read of /proc). Tests can't be checked while it's there. Remove it and run the tests again.";
 }
 
+/**
+ * Replace the value in the first declaration of each variable (`int a = 7, b = 8;`, `let n: i32 = 3;`,
+ * `x := 3`). Null if a variable can't be found.
+ */
+function setInitialValues(code: string, set: Record<string, string>): string | null {
+  let out = code;
+  for (const [name, value] of Object.entries(set)) {
+    const re = new RegExp(`(\\b${name}\\b[^=;\\n]*?:?=\\s*)("[^"\\n]*"|'[^'\\n]*'|[^;\\n,]+)`);
+    if (!re.test(out)) return null;
+    out = out.replace(re, (_, head) => `${head}${value}`);
+  }
+  return out;
+}
+
 const normalizeOut = (s: string) => s.replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, "").trimEnd();
 
 /** Run an exercise's tests against learner code. */
@@ -514,6 +528,18 @@ async function testStdout(dir: string, ex: Exercise, code: string): Promise<Test
   let output = "";
   let error: string | null = null;
   for (const tc of ex.cases ?? []) {
+    if (tc.set) {
+      const changed = setInitialValues(code, tc.set);
+      if (changed === null) {
+        results.push({ name: tc.name, passed: false, message: `Keep the starter's variables (${Object.keys(tc.set).join(", ")}) and calculate from them, so the program works for other numbers too.` });
+        continue;
+      }
+      const cc = await compile(dir, ex.language, changed);
+      if (cc.code !== 0) {
+        results.push({ name: tc.name, passed: false, message: "The program stopped compiling once the starting numbers changed." });
+        continue;
+      }
+    }
     const r = await exec(dir, ["./prog"], { run: true, timeoutMs: RUN_TIMEOUT_MS, stdin: tc.stdin ?? "", limits: ex.language === "go" ? goRunLimits() : runLimits(), env: runEnv });
     output = r.stdout + r.stderr;
     const crash = r.timedOut ? "Timed out." : (signalMessage(r.signal, r.code) ?? undefinedBehaviour(r.stderr));
@@ -523,6 +549,7 @@ async function testStdout(dir: string, ex: Exercise, code: string): Promise<Test
       name: tc.name,
       passed,
       message: passed ? undefined : crash ?? `Expected output:\n${tc.expected}\n\nYour output:\n${r.stdout || "(nothing)"}`,
+      ...(!passed && !crash ? { expected: tc.expected, actual: r.stdout } : {}),
     });
   }
   return { compiled: true, compileOutput, results, allPassed: results.every((r) => r.passed), output, error };

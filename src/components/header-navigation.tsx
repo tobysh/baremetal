@@ -59,10 +59,10 @@ export function HeaderNavigation({ user }: { user: NavigationUser | null }) {
             {user && <span className="hidden max-w-28 truncate lg:block">{user.name}</span>}
             <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" className={`h-4 w-4 text-muted transition-transform ${open ? "rotate-180" : ""}`}><path d="m4 6 4 4 4-4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </button>
-          {open && <div id="header-account-panel" className="absolute right-0 top-full z-50 mt-2 max-h-[calc(100dvh-6rem)] w-64 max-w-[calc(100vw-2rem)] overflow-y-auto panel p-2 shadow-xl shadow-black/15">
+          {open && <div id="header-account-panel" className="absolute right-0 top-full z-50 mt-2 max-h-[calc(100dvh-6rem)] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto panel p-2 shadow-xl shadow-black/15">
             <nav aria-label="Mobile navigation" className="mb-2 grid border-b border-border pb-2 lg:hidden">{links.map(({ href, label }) => navLink(href, label, true))}</nav>
             {user ? <>
-              <div className="px-3 py-2"><p className="truncate text-sm font-semibold">{user.name}</p><p className="mt-0.5 text-xs text-muted">Level {levelFor(user.xp).level} · {user.xp.toLocaleString()} XP</p></div>
+              <UserCard name={user.name} xp={user.xp} />
               <nav aria-label="Account" className="grid">
                 {user.username && navLink(`/u/${user.username}`, "Your profile", true)}
                 {navLink("/settings", "Settings", true)}
@@ -73,6 +73,36 @@ export function HeaderNavigation({ user }: { user: NavigationUser | null }) {
             {user && <form action={logout} className="mt-2 border-t border-border pt-2"><button type="submit" className="flex min-h-11 w-full items-center rounded-lg px-3 text-sm text-muted hover:bg-surface-2 hover:text-text">Sign out</button></form>}
           </div>}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function UserCard({ name, xp }: { name: string; xp: number }) {
+  const info = levelFor(xp);
+  const percent = Math.round(info.progress * 100);
+  return (
+    <div className="mb-2 rounded-2xl border border-border bg-surface-2 p-4">
+      <div className="flex items-center gap-4">
+        <span aria-hidden="true" className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent text-xl font-semibold text-accent-ink">{name.charAt(0).toUpperCase()}</span>
+        <div className="min-w-0">
+          <p className="truncate text-lg font-semibold leading-tight">{name}</p>
+          <p className="mt-0.5 text-sm font-medium text-accent">Level {info.level}</p>
+        </div>
+      </div>
+      <div className="mt-4 border-t border-border pt-4">
+        {info.next === null ? (
+          <p className="text-sm"><span className="font-semibold">{xp.toLocaleString()}</span> <span className="text-muted">XP · max level</span></p>
+        ) : <>
+          <div className="flex items-baseline justify-between gap-2 text-sm">
+            <p><span className="font-semibold">{xp.toLocaleString()}</span> <span className="text-muted">/ {info.next.toLocaleString()} XP</span></p>
+            <p className="font-semibold text-accent">{percent}%</p>
+          </div>
+          <div role="progressbar" aria-label={`Progress to level ${info.level + 1}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} className="mt-2 h-2 overflow-hidden rounded-full bg-accent-soft">
+            <div className="h-full rounded-full bg-gradient-to-r from-accent to-[color-mix(in_srgb,var(--accent),var(--hard)_55%)]" style={{ width: `${percent}%` }} />
+          </div>
+          <p className="mt-2 text-sm text-muted"><span className="font-semibold text-text">{(info.next - xp).toLocaleString()} XP</span> to Level {info.level + 1}</p>
+        </>}
       </div>
     </div>
   );
