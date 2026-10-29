@@ -20,6 +20,9 @@ const COMPILE_TIMEOUT_MS = 20_000;
 const GO_COMPILE_TIMEOUT_MS = 60_000;
 const RUN_TIMEOUT_MS = 5_000;
 const MAX_CONCURRENT = 4;
+// CI may install Go outside /usr (for example, actions/setup-go's tool cache).
+// When set, mount that toolchain into the sandbox at /go.
+const GO_TOOLCHAIN_DIR = process.env.GO_TOOLCHAIN_DIR;
 
 function findRustToolchain(): string | null {
   if (process.env.RUST_TOOLCHAIN_DIR) return process.env.RUST_TOOLCHAIN_DIR;
@@ -191,6 +194,7 @@ function sandboxArgs(work: string, extraEnv: Record<string, string> = {}, opts: 
     "--setenv", "LANG", "C.UTF-8",
   ];
   if (RUST_TC) args.push("--ro-bind", RUST_TC, RUST_TC);
+  if (GO_TOOLCHAIN_DIR) args.push("--dir", "/go", "--ro-bind", GO_TOOLCHAIN_DIR, "/go");
   for (const [k, v] of Object.entries(extraEnv)) args.push("--setenv", k, v);
   return args;
 }
@@ -507,6 +511,7 @@ async function compileAsm(dir: string, source: string, harness: string | null) {
 // bm_test.go in the same package, built with `go test -c` and run with -test.v. No network,
 // no cgo; the build cache lives in the sandbox's private /tmp.
 const GO_ENV = {
+  ...(GO_TOOLCHAIN_DIR ? { GOROOT: "/go" } : {}),
   GOCACHE: "/tmp/gocache",
   GOPATH: "/tmp/gopath",
   GOFLAGS: "-mod=mod -buildvcs=false",
@@ -520,7 +525,7 @@ const GO_ENV = {
 async function compileGo(dir: string, source: string, harness: string | null) {
   await writeFile(path.join(dir, "go.mod"), "module bm\n\ngo 1.24\n");
   await writeFile(path.join(dir, "main.go"), source);
-  const cmd = ["go"];
+  const cmd = [GO_TOOLCHAIN_DIR ? "/go/bin/go" : "go"];
   if (harness !== null) {
     await writeFile(path.join(dir, "bm_test.go"), harness);
     cmd.push("test", "-c", "-vet=off", "-o", "prog");
@@ -540,7 +545,10 @@ async function compile(dir: string, language: Language, source: string, opts: { 
   }
   if (!RUST_TC) throw new Error("Rust toolchain not found. Install it with rustup or set RUST_TOOLCHAIN_DIR.");
   await writeFile(path.join(dir, "main.rs"), source);
-  const args = [`${RUST_TC}/bin/rustc`, "--edition", "2021", "-C", "opt-level=0", "--color", "never", "main.rs", "-o", "prog"];
+  // The sandbox intentionally hides most of /etc. On Ubuntu, `cc` can resolve
+  // through /etc/alternatives and appear missing even though GCC is installed.
+  // Use the concrete compiler path, which is already available in the read-only /usr bind.
+  const args = [`${RUST_TC}/bin/rustc`, "--edition", "2021", "-C", "opt-level=0", "-C", "linker=/usr/bin/gcc", "--color", "never", "main.rs", "-o", "prog"];
   // lld otherwise sizes its worker pool from the host CPU count; under the
   // compile address-space limit that can intermittently abort even tiny builds.
   if (existsSync("/usr/bin/ld.lld")) args.push("-C", "link-arg=-fuse-ld=lld", "-C", "link-arg=-Wl,--threads=1");

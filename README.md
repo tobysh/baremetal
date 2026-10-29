@@ -29,7 +29,7 @@ Baremetal is a Linux-first project. To run the app and its exercises, install:
 
 - Node.js 22 or newer and npm.
 - MongoDB.
-- GCC, Rust, Go, and [Bubblewrap](https://github.com/containers/bubblewrap) for the code runner.
+- GCC (the Rust linker), Rust, Go, and [Bubblewrap](https://github.com/containers/bubblewrap) for the code runner.
 - QEMU (`qemu-system-x86_64`) to run the operating-system lessons.
 
 Clone the repository, install dependencies, and create the local MongoDB data directory:
@@ -76,7 +76,7 @@ Open [http://localhost:3000](http://localhost:3000). To enable account email ver
 | `npm run check:theme` | Check the design-token rules |
 | `npm run test:e2e -- http://localhost:3100` | Run the auth and security checks against a running server |
 
-The full content verifier needs the relevant compiler toolchains, Bubblewrap, and QEMU. See [CI](.github/workflows/ci.yml) for the automated checks.
+The full content verifier needs the relevant compiler toolchains, Bubblewrap, and QEMU. See [CI](.github/workflows/ci.yml) for the automated checks and toolchain setup.
 
 ## For contributors
 

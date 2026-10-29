@@ -48,6 +48,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+      - name: Expose Go toolchain to Bubblewrap
+        run: echo "GO_TOOLCHAIN_DIR=$(go env GOROOT)" >> "$GITHUB_ENV"
       - name: Install toolchains
         run: |
           sudo apt-get update
