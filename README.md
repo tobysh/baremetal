@@ -2,7 +2,7 @@
 
 Learn low-level programming from absolute zero. Learners read short lessons, write C, Rust, Go and x86-64 assembly in an in-browser editor, get instant results from hidden tests run in a sandbox, and can ask an AI tutor that guides them without handing over answers.
 
-**26 courses, 276 lessons** across six learning paths: Start here, C, Rust, Go, Machine level and Security. Advanced projects include a shell, interpreter, database and OS continuation; security courses cover fixing C bugs, toy cryptography, packet analysis and digital forensics. Captures and forensic evidence are synthetic; fixture generators live in `scripts/content-gen/`.
+Courses and lessons (`npm run verify:content` lists them) across six learning paths: Start here, C, Rust, Go, Machine level and Security. Advanced projects include a shell, interpreter, database and OS continuation; security courses cover fixing C bugs, toy cryptography, packet analysis and digital forensics. Captures and forensic evidence are synthetic; fixture generators live in `scripts/content-gen/`.
 
 ## Running it locally
 
@@ -14,13 +14,17 @@ npm run db            # terminal 1: MongoDB, data in .data/db
 npm run dev           # terminal 2: http://localhost:3000
 ```
 
+On Arch, either enable MongoDB at boot (`sudo systemctl enable --now mongodb.service`) or start it per session; `npm run db` needs `.data/db` to exist. `.env.local` and `.data/` are git-ignored.
+
 Settings live in `.env.local` (never commit it). For the AI tutor, either set `ANTHROPIC_API_KEY`, or install [Ollama](https://ollama.com), run `ollama pull qwen2.5-coder:7b`, and set `TUTOR_PROVIDER=ollama`.
 
-Make yourself an admin (then turn on 2FA at `/settings/security` to open `/admin`):
+Make yourself an admin (then turn on 2FA with an authenticator app at `/settings/security`, save the backup codes, and `/admin` opens with analytics, tutor usage and security events):
 
 ```bash
 npm run make-admin -- you@example.com
 ```
+
+Pick a username in `/settings` to appear on `/leaderboard` and at `/u/<username>` (untick "Public profile" to hide it).
 
 ## Scripts
 
@@ -31,6 +35,8 @@ npm run make-admin -- you@example.com
 | `npm run verify:content [-- track]` | Checks every lesson: the reference solution passes, the starter compiles but fails |
 | `npm run test:e2e -- <url>` | Expanded end-to-end security checks against a running server (sign-up, 2FA, lockout, CAPTCHA, reset, authorization) |
 | `npm run make-admin -- <email>` | Promote an account to admin |
+| `npm run recompute-xp` | Rebuild XP after changing a difficulty or level table (site stopped) |
+| `npm run backfill-achievements` | Award earned Codex entries |
 
 ## How it fits together
 
@@ -44,11 +50,10 @@ npm run make-admin -- you@example.com
 
 ## Before going to production
 
-1. **Run behind a reverse proxy** that sets `X-Forwarded-For` (nginx: `proxy_set_header X-Forwarded-For $remote_addr;`), and set `TRUSTED_PROXY_HOPS` (production refuses to start without it; the proxy must overwrite, not append to, `X-Forwarded-For` — see `docs/deployment-hardening.md`). Without one, clients can fake their IP and get around the per-IP limits (per-account limits still hold).
-2. **HTTPS**, and set `NEXT_PUBLIC_SITE_URL` to the real origin (canonical URLs, sitemap, og:image).
-3. **Secrets:** a fresh `AUTH_SECRET` (`openssl rand -base64 48`), `ANTHROPIC_API_KEY`, `SMTP_URL` and `EMAIL_FROM` for account-verification, password-reset and security emails; schedule the delivery worker described in `docs/deployment-hardening.md`.
-4. **MongoDB** with authentication enabled and not exposed publicly; back it up.
-5. **Legal:** fill in `LEGAL_ENTITY_NAME`, `LEGAL_ADDRESS`, `LEGAL_CONTACT_EMAIL`, `LEGAL_JURISDICTION`. The Terms, Privacy Notice and Cookie Policy are drafts written from what the code actually does. Have them reviewed by a qualified lawyer before launch.
-6. **Code sandbox:** bubblewrap is solid for a learning site, but for a public deployment consider running the runner on separate, disposable hosts or VMs (e.g. Firecracker or gVisor) so a kernel exploit can't reach the web server.
+Everything needed (reverse proxy and `TRUSTED_PROXY_HOPS`, HTTPS, secrets, SMTP and the email worker, MongoDB auth, runner isolation and cgroups, legal details and review) is one checklist in [docs/deployment-hardening.md](docs/deployment-hardening.md). The threat model and known limitations are in [docs/security.md](docs/security.md).
 
-Per-job cgroup setup, compile scratch limits, email retries, and the remaining CSP rendering constraint are documented in [Deployment hardening](docs/deployment-hardening.md).
+## More docs
+
+- `CLAUDE.md`: architecture, commands, theme and content rules. `HANDOFF.md`: current status and next steps.
+- `docs/gamification.md`: XP, levels, seals, challenges, Codex, rhythm, reviews.
+- `docs/archive/`: finished plans and superseded designs.

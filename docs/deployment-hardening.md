@@ -1,4 +1,19 @@
-# Deployment hardening
+# Deployment
+
+This is the single place for everything that must happen before Baremetal is exposed publicly. Local development needs none of it. Threat model and open limitations: `docs/security.md`.
+
+## Checklist
+
+1. **Reverse proxy** that overwrites `X-Forwarded-For`; set `TRUSTED_PROXY_HOPS` (production refuses to start without it). See "Proxy contract".
+2. **HTTPS**, and `NEXT_PUBLIC_SITE_URL` set to the real origin (canonical URLs, sitemap, og:image).
+3. **Secrets:** fresh `AUTH_SECRET` (`openssl rand -base64 48`), `ANTHROPIC_API_KEY`, `SMTP_URL` and `EMAIL_FROM`; schedule the email worker ("Account email delivery"). Keep them in a root-owned environment file.
+4. **MongoDB** with authentication, bound to loopback, backed up.
+5. **Runner isolation:** systemd cgroup limits, a delegated `RUNNER_CGROUP_ROOT` subtree tested with a memory bomb on the real host, ideally a separate runner uid or service. For a public site consider disposable hosts or VMs (Firecracker, gVisor) so a kernel exploit cannot reach the web server.
+6. **Legal:** set `LEGAL_ENTITY_NAME`, `LEGAL_ADDRESS`, `LEGAL_CONTACT_EMAIL`, `LEGAL_JURISDICTION` (the footer shows "operator name to be confirmed" until then). The Terms, Privacy Notice and Cookie Policy are drafts written from what the code does; have a lawyer review them.
+7. Use `npm ci` so the lockfile controls versions; re-run `npm audit --omit=dev`.
+8. On an existing database after upgrading: `npm run recompute-xp` (site stopped), then `npm run backfill-achievements`.
+
+## Runner limits
 
 The app-level sandbox limits (bubblewrap, seccomp, rlimits, size-capped tmpfs) are in `src/lib/runner.ts`. These need the host or service manager. Do them before exposing the runner to the public.
 
