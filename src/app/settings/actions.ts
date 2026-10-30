@@ -202,19 +202,23 @@ export async function deleteAccount(_prev: FormState, formData: FormData): Promi
   if (!(await checkSecondFactor(user, String(formData.get("code") ?? "")))) return { errors: { code: ["That code didn't work"] } };
 
   const db = await getDb();
+  // The account and its sessions go first, so getCurrentUser() returns null from here on and an
+  // in-flight autosave or tutor turn can't recreate rows behind the cleanup below.
+  await db.collection("sessions").deleteMany({ userId: user._id });
+  await db.collection("users").deleteOne({ _id: user._id });
+  const id = user._id.toHexString();
   await Promise.all([
     db.collection("progress").deleteMany({ userId: user._id }),
     db.collection("tutor_threads").deleteMany({ userId: user._id }),
     db.collection("xp_events").deleteMany({ userId: user._id }),
     db.collection("achievements").deleteMany({ userId: user._id }),
     db.collection("reviews").deleteMany({ userId: user._id }),
-    db.collection("sessions").deleteMany({ userId: user._id }),
     db.collection("password_resets").deleteMany({ userId: user._id }),
     db.collection("email_verifications").deleteMany({ userId: user._id }),
     db.collection("email_queue").deleteMany({ recipientHash: hmac("email-queue-recipient", user.email.toLowerCase()) }),
     db.collection("pending_2fa").deleteMany({ userId: user._id }),
+    db.collection("tutor_spend").deleteMany({ key: { $regex: `^u:${id}:` } }),
   ]);
-  await db.collection("users").deleteOne({ _id: user._id });
   // Security log entries are kept for their 90-day retention (legitimate interest), not linked to an account any more.
   await logAuthEvent("account_deleted", { userId: user._id.toHexString() });
   await destroySession();

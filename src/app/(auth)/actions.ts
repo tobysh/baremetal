@@ -15,7 +15,7 @@ import {
   startPending2fa,
   verifyPassword,
 } from "@/lib/auth";
-import { decrypt, randomToken, sha256 } from "@/lib/crypto";
+import { decrypt, hmac, randomToken, sha256 } from "@/lib/crypto";
 import { verifyCaptcha } from "@/lib/captcha";
 import { queueEmail, scheduleEmailDelivery, sendEmail } from "@/lib/email";
 import { fieldErrors, formValues, type FormState } from "@/lib/forms";
@@ -244,7 +244,7 @@ export async function requestPasswordReset(_prev: FormState, formData: FormData)
   await db.collection("password_resets").insertOne({
     tokenHash: sha256(token),
     userId: user._id,
-    requestedIp: ip,
+    requestedIp: hmac("rate-ip", ip),
     expiresAt: new Date(Date.now() + RESET_MINUTES * 60_000),
   });
   // Delivery failures are logged, never surfaced: a different response for
@@ -278,7 +278,9 @@ export async function resetPassword(_prev: FormState, formData: FormData): Promi
   const del = await db.collection("password_resets").deleteOne({ _id: reset._id });
   if (del.deletedCount !== 1) return { message: "This reset link has expired or was already used. Request a new one." };
 
-  await db.collection<UserDoc>("users").updateOne({ _id: user._id }, { $set: { passwordHash: await hashPassword(password), passwordChangedAt: new Date() } });
+  await db.collection<UserDoc>("users").updateOne({ _id: user._id }, { $set: { passwordHash: await hashPassword(password), passwordChangedAt: new Date(), emailVerified: true } });
+  // The link was mailed to this address, so following it proves control of the mailbox.
+  await db.collection("email_verifications").deleteMany({ userId: user._id });
   await revokeAllSessions(user._id);
   const { ip } = await requestContext();
   await clearLoginFailures(user.email, ip, user._id.toHexString());

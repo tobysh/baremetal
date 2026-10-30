@@ -10,7 +10,7 @@
 // reverse proxy would, so IP-based limits don't interfere between phases.
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { MongoClient, type ObjectId } from "mongodb";
-import { encrypt, hmac, sha256 } from "../src/lib/crypto";
+import { encrypt, hmac, randomToken, sha256 } from "../src/lib/crypto";
 import { hashBackupCode, legacyBackupCodeHash, newBackupCodes } from "../src/lib/totp";
 import { clearLoginFailures, finishLoginFailure, refundLoginAttempt, reserveLoginAttempt } from "../src/lib/security";
 
@@ -68,11 +68,11 @@ class Browser {
     return res;
   }
   /** Loads `path`, finds the form containing `fields`' first key, and submits it. */
-  async submit(path: string, fields: Record<string, string>) {
+  async submit(path: string, fields: Record<string, string>, formContains?: string) {
     const page = await this.get(path);
     const forms = page.html.split(/<form\b/).slice(1).map((f) => f.split("</form>")[0]);
     const firstKey = Object.keys(fields)[0];
-    const form = forms.find((f) => f.includes(`name="${firstKey}"`));
+    const form = forms.find((f) => f.includes(`name="${firstKey}"`) && (!formContains || f.includes(formContains)));
     if (!form) throw new Error(`No form with field "${firstKey}" on ${path}`);
     const data = new FormData();
     for (const m of form.matchAll(/<input type="hidden" name="([^"]+)"(?: value="([^"]*)")?/g)) data.append(decode(m[1]), decode(m[2] ?? ""));
@@ -346,6 +346,51 @@ try {
     let last;
     for (let i = 0; i < 6; i++) last = await b.submit("/forgot-password", { email: `rl-${i}-${run}@example.test` });
     check("forgot-password limited to 5 per 15 min per IP", /Too many attempts/.test(text(last!.html)));
+  }
+
+  // ---------- Account deletion and reset of unverified accounts ----------
+  console.log("\nAccount deletion and verification by reset");
+  {
+    const base = await users.findOne({ email });
+    const clone = async (tag: string, extra: Record<string, unknown>) => {
+      const { _id, twoFactor, ...rest } = base! as typeof base & { username?: string };
+      void _id; void twoFactor;
+      delete (rest as { username?: string }).username;
+      const doc = { ...rest, email: `e2e-${run}-${tag}@example.test`, ...extra };
+      return (await users.insertOne(doc as never)).insertedId;
+    };
+    // S7: following a reset link proves the mailbox, so an unverified account is verified by it.
+    const unverifiedId = await clone("unverified", { emailVerified: false });
+    const unverifiedEmail = `e2e-${run}-unverified@example.test`;
+    const resetToken = randomToken();
+    await db.collection("password_resets").insertOne({ tokenHash: sha256(resetToken), userId: unverifiedId, expiresAt: new Date(Date.now() + 30 * 60_000) });
+    const rb = new Browser(ip(30));
+    const NEWPW = "Marble-Kettle-Sunrise-58";
+    await rb.submit(`/reset-password?token=${resetToken}`, { token: resetToken, password: NEWPW, confirm: NEWPW });
+    const lb = new Browser(ip(31));
+    const lr = await lb.submit("/login", { email: unverifiedEmail, password: NEWPW });
+    check("reset marks an unverified account verified, and login then succeeds", (await users.findOne({ _id: unverifiedId }))?.emailVerified === true && lr.status === 303 && lb.cookies.has("bm_session"), `${lr.status} ${lr.location}`);
+
+    // S5: deleting an account leaves nothing behind and refuses late writes.
+    const delId = await clone("delete", { emailVerified: true });
+    const delEmail = `e2e-${run}-delete@example.test`;
+    const b = new Browser(ip(32));
+    await b.submit("/login", { email: delEmail, password: PASSWORD });
+    const save = () => b.fetch("/api/progress", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ exerciseId: "first-steps/hello-world", code: "x" }) });
+    const first = await save();
+    await db.collection("tutor_spend").insertOne({ key: `u:${delId.toHexString()}:2099-01-01`, micro: 5, createdAt: new Date() });
+    await db.collection("xp_events").insertOne({ userId: delId, exerciseId: "x", xp: 1 });
+    const del = await b.submit("/settings", { confirm: "delete my account", password: PASSWORD }, "Permanently delete account");
+    void del;
+    const counts = await Promise.all(
+      ["users", "sessions", "progress", "tutor_threads", "xp_events", "achievements", "reviews", "password_resets", "email_verifications", "pending_2fa"].map(async (c) => [c, await db.collection(c).countDocuments(c === "users" ? { _id: delId } : { userId: delId })] as const),
+    );
+    const spend = await db.collection("tutor_spend").countDocuments({ key: { $regex: `^u:${delId.toHexString()}:` } });
+    check("the first autosave worked (precondition)", first.status === 200, String(first.status));
+    check("account deletion leaves no rows for the user, including tutor_spend", counts.every(([, n]) => n === 0) && spend === 0, JSON.stringify(counts.filter(([, n]) => n)) + ` spend=${spend}`);
+    const late = await save();
+    check("a late autosave with the old cookie is refused (401)", late.status === 401, String(late.status));
+    check("…and recreates no progress row", (await db.collection("progress").countDocuments({ userId: delId })) === 0);
   }
 
   // ---------- Password reset ----------

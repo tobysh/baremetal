@@ -12,6 +12,7 @@
     "make-admin": "tsx --env-file=.env.local scripts/make-admin.mts",
     "test:e2e": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/e2e-auth.mts",
     "flagged-accounts": "tsx --env-file=.env.local scripts/flagged-accounts.mts",
+    "sweep-orphans": "tsx --env-file-if-exists=.env.local scripts/sweep-orphans.mts",
     "recompute-xp": "tsx --env-file=.env.local scripts/recompute-xp.mts",
     "backfill-achievements": "tsx --env-file=.env.local scripts/backfill-achievements.mts",
     "check:ids": "tsx scripts/check-lesson-ids.mts",

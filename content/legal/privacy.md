@@ -78,7 +78,7 @@ If you choose a username, Baremetal shows your username, level, XP, completed le
 
 Security logs record failed sign-in attempts, lockouts, password resets, and two-factor events. Each entry includes your IP address, the email address entered, your browser's user agent, and the time. We use these logs to protect accounts from attacks.
 
-Rate limits count requests by IP address or account for periods up to 24 hours. Tutor and analytics counter keys use a keyed hash of the IP address; authentication security logs still retain IP addresses for 90 days. Console warnings use keyed hashes of emails and IPs. This slows down people who try to abuse the site.
+Rate limits count requests by IP address or account for periods up to 24 hours. Rate-limit counter keys (runs, hints, tutor, analytics, sign-in, CAPTCHA and password-reset requests) use a keyed hash of the IP address; authentication security logs still retain IP addresses for 90 days. Console warnings use keyed hashes of emails and IPs. This slows down people who try to abuse the site.
 
 ### Analytics (only with consent)
 

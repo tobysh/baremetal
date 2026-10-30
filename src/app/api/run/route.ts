@@ -5,6 +5,7 @@ import { levelFor, titleBlurb } from "@/lib/gamification";
 import { jsonError, readJson, sameOrigin } from "@/lib/http";
 import { getProgress, recordAttempt, recordReviewPass } from "@/lib/progress";
 import { evaluateAchievements, trackCompleteFor, type TrackComplete, type Unlocked } from "@/lib/rewards";
+import { hmac } from "@/lib/crypto";
 import { clientIp, ipLimit, rateLimit } from "@/lib/rate-limit";
 import { executeRun, executeTest, RunnerBusyError, RunnerUnavailableError } from "@/lib/runner-client";
 
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
   const user = await getCurrentUser();
   // Signed-in learners get a higher limit; anyone can try the editor.
   const ip = clientIp(req.headers);
-  const key = user ? `run:user:${user.id}` : `run:ip:${ip}`;
+  const key = user ? `run:user:${user.id}` : `run:ip:${hmac("rate-ip", ip)}`;
   if (!(await rateLimit(key, user ? 120 : ipLimit(ip, 30), 10 * 60))) {
     return jsonError(429, user ? "You're running code very fast — take a breath and try again in a few minutes." : "Run limit reached. Create a free account for more runs.");
   }

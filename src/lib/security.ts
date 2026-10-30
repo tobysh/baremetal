@@ -101,7 +101,7 @@ export async function clearLoginFailures(email: string, ip: string, userId?: str
 /** IP-based limit for auth endpoints: `limit` requests per 15 minutes. */
 export async function authRateLimit(endpoint: string, limit: number): Promise<boolean> {
   const { ip } = await requestContext();
-  const ok = await rateLimit(`auth:${endpoint}:${ip}`, ipLimit(ip, limit), 15 * 60);
+  const ok = await rateLimit(`auth:${endpoint}:${hmac("rate-ip", ip)}`, ipLimit(ip, limit), 15 * 60);
   if (!ok) await logAuthEvent("rate_limited", { reason: endpoint });
   return ok;
 }
