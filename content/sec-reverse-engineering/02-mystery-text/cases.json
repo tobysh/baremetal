@@ -1,0 +1,27 @@
+[
+  {
+    "name": "short runs",
+    "stdin": "abc\naab\nhello\n\nmississippi\n",
+    "expected": "abc\naab\nhello\n\nmississippi\n"
+  },
+  {
+    "name": "runs of three",
+    "stdin": "aaab\nooops\nxxxxx\naabbbcc\n",
+    "expected": "a3b\no3ps\nx5\naab3cc\n"
+  },
+  {
+    "name": "long run",
+    "stdin": "zzzzzzzzzzzz\nqqqqqqqqqqqqqqqqqqqqqqqqq\n",
+    "expected": "z12\nq25\n"
+  },
+  {
+    "name": "case and spaces",
+    "stdin": "AAAaaa\na    b\nab  cd   ef\n",
+    "expected": "A3a3\na 4b\nab  cd 3ef\n"
+  },
+  {
+    "name": "whole line",
+    "stdin": "kkk\nkk\nk\nlllmmmnnn\n",
+    "expected": "k3\nkk\nk\nl3m3n3\n"
+  }
+]

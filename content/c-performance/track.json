@@ -1,0 +1,18 @@
+{
+  "title": "Performance Engineering",
+  "summary": "Compare data layouts, allocation strategies, strides and algorithms with deterministic counters and a simulated cache instead of an unstable stopwatch.",
+  "description": "Every lesson gives you instruments written in C: operation counters and a small simulated cache. You change a program, predict what the instruments will say, and prove the gain by counting. The course says plainly that a model is not a hardware measurement: the cache is one level, 4 KiB and has no prefetcher, so results show what the model charges for, which is a strong hint about real machines and not a promise. Lessons cover loop order, strides and set conflicts, array-of-structs against struct-of-arrays, arena allocation, choosing an algorithm by input shape, a design comparison where you build two approaches and choose between them with evidence, and a capstone that combines layout, allocation and indexing. Written justifications cannot be graded by a machine; tests check results and counters.",
+  "level": "Advanced",
+  "language": "c",
+  "path": "c",
+  "order": 6,
+  "prerequisite": "c-debugging",
+  "outcomes": [
+    "Predict and measure cache misses for different access orders and strides with a simulated cache.",
+    "Choose between array-of-structs and struct-of-arrays layouts using evidence from access counts.",
+    "Replace per-object allocation with an arena and account for system allocations.",
+    "Pick an algorithm by input shape and prove the gain with operation counters.",
+    "Build two designs with equal results and defend a tradeoff with measured costs, stating what the model leaves out."
+  ],
+  "draft": true
+}

@@ -30,6 +30,7 @@ jobs:
       - name: Theme guard (no hex colours, no left accent stripes)
         run: npm run check:theme
       - run: npm run check:learning
+      - run: npm run check:curriculum
       - run: npm run check:set-values
       - run: npm run build
         env:

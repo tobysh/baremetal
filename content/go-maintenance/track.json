@@ -1,0 +1,19 @@
+{
+  "title": "Software Maintenance",
+  "summary": "Work in code you did not write: read it before changing it, patch one thing without disturbing the rest, migrate stored data, pin behaviour with characterisation tests, review for defects and keep old callers working.",
+  "description": "Most professional programming happens in code somebody else wrote. In this course every lesson hands you an existing Go codebase of a hundred lines or more and asks for a careful change. You'll answer questions about what the code does by reading it, fix one bug without altering any quirk that callers may depend on, add a field to a stored record format while old and new records coexist, write inputs that expose deliberately broken copies of a function before you touch it, review a service against an authored inventory of defects (with executable counterexamples), extend a parser without breaking a single existing caller, and finish with a capstone that migrates stored data and adds a feature while hidden regression tests pin everything that worked before. Hidden tests carry their own independent reference implementations, so agreement between your own functions is never enough.",
+  "level": "Advanced",
+  "language": "go",
+  "path": "go",
+  "order": 5,
+  "prerequisite": "go-practice",
+  "outcomes": [
+    "Read an unfamiliar Go codebase and predict its behaviour before running it.",
+    "Make a minimal change that fixes a bug and leaves documented quirks intact.",
+    "Add a field to a stored format while old and new records are read side by side.",
+    "Pin legacy behaviour with characterisation inputs that expose broken variants.",
+    "Review code against a defect inventory and back each claim with a counterexample.",
+    "Extend an API without breaking existing callers."
+  ],
+  "draft": true
+}

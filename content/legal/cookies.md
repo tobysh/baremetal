@@ -47,6 +47,8 @@ If you say yes, our analytics records page visits and some device details. It us
 
 We may update this page if we change the cookies or storage we use.
 
+The editor also remembers text size under bm:editor:font-size (12–24 pixels), tab width under bm:editor:tab-width (2, 4 or 8 spaces), and whether you dismissed the introductory workspace tour under bm:workspace:tour-done. These functional preferences remain in this browser until you clear site storage; they are not sent to our servers. If browser storage is blocked, these controls still work for the current page session.
+
 ## Contact
 
 {{entity}}, {{address}}, {{contactEmail}}

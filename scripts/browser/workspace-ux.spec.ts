@@ -15,7 +15,7 @@ test("a running program can be cancelled", async ({ page }) => {
   await reject(page);
   await edit(page, "int main(void) { for (;;) {} }\n");
   await page.getByRole("button", { name: /^Run/ }).click();
-  await expect(page.getByText("Compiling and running…")).toBeVisible();
+  await expect(page.getByRole("tabpanel", { name: "Output", exact: true }).getByText(/^(Compiling|Running)…/)).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
   await expect(page.getByText("Cancelled.", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: /^Run/ })).toBeEnabled();
@@ -53,7 +53,9 @@ test("failing tests come first and passing ones fold away", async ({ page }) => 
 test("the output panel is not itself a live region", async ({ page }) => {
   await page.goto(lesson);
   await reject(page);
-  expect(await page.locator("#panel-output [aria-live], #panel-tutor [aria-live]").count()).toBe(0);
+  // A small copy-button status may announce changes; full output and tutor text must not.
+  await expect(page.locator("#panel-output")).not.toHaveAttribute("aria-live");
+  expect(await page.locator("#panel-output pre[aria-live], #panel-output [aria-live] pre, #panel-tutor [aria-live]").count()).toBe(0);
 });
 
 test("the reading pane divider works from the keyboard on wide screens", async ({ page }) => {
@@ -90,4 +92,36 @@ test("course filters are plain links that hide non-matching courses", async ({ p
   await expect(page).toHaveURL(/lang=rust&level=Advanced/);
   await filters.getByRole("link", { name: "All" }).first().click();
   await expect(page).toHaveURL(/\/learn\?level=Advanced/);
+});
+
+test("command palette searches lessons and opens a result from the keyboard", async ({ page }) => {
+  await page.goto("/learn");
+  await reject(page);
+  await page.keyboard.press("ControlOrMeta+k");
+  const dialog = page.getByRole("dialog", { name: "Search", exact: true });
+  await expect(dialog).toBeVisible();
+  const input = dialog.getByRole("combobox", { name: "Search lessons, courses and pages" });
+  await input.fill("Your first program");
+  await expect(dialog.getByRole("option").filter({ hasText: "Your first program" }).first()).toBeVisible();
+  await input.press("Enter");
+  await expect(page).toHaveURL(/\/learn\/first-steps\/hello-world$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your first program");
+  await expect(dialog).not.toBeVisible();
+});
+
+test("output controls remain clickable with a tall editor on a short desktop", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(lesson);
+  await reject(page);
+  const divider = page.getByRole("separator", { name: "Resize the editor and the panel below it" });
+  await divider.focus();
+  await page.keyboard.press("End");
+  await expect(divider).toHaveAttribute("aria-valuenow", "75");
+  await page.route("**/api/run", (route) => route.fulfill({ json: { kind: "test", compiled: true, compileOutput: "", results: [
+    { name: "visible failure", passed: false }, { name: "folded pass", passed: true },
+  ], allPassed: false, output: "", error: null, saved: false, reward: null } }));
+  await page.getByRole("button", { name: /^Test/ }).click();
+  const panel = page.getByRole("tabpanel", { name: "Output", exact: true });
+  await panel.getByText("1 passed ✓", { exact: true }).click();
+  await expect(panel.getByText("folded pass")).toBeVisible();
 });

@@ -92,7 +92,7 @@ async function HomeContent() {
             </div>
             <p className="mt-4 text-sm text-muted">No install. No card. Runs in your browser.</p>
           </div>
-          <WorkspacePreview />
+          <RunDemo />
         </Container>
       </section>
 
@@ -219,37 +219,76 @@ function TypedSlogan() {
   );
 }
 
-/** A static, server-rendered picture of the workspace — no JavaScript or images. */
-function WorkspacePreview() {
+const DEMO_SECONDS = 12;
+const demoPct = (t: number) => Math.round((t / DEMO_SECONDS) * 10000) / 100;
+
+/** Code lines for the demo. Each is [indent, parts]; a string is plain text, [text] is a keyword. */
+const DEMO_CODE: Array<Array<string | [string]>> = [
+  [[ "// Reverse a string in place" ]],
+  [["void"], " reverse(", ["char"], " *s) {"],
+  ["    ", ["size_t"], " i = 0, j = strlen(s);"],
+  ["    ", ["while"], " (i < j) {"],
+  ["        ", ["char"], " t = s[i];"],
+  ["        s[i++] = s[--j];"],
+  ["        s[j] = t;"],
+  ["    }"],
+  ["}"],
+];
+const DEMO_TESTS = ['reverse("hello") gives "olleh"', 'reverse("") leaves an empty string', 'reverse("ab") gives "ba"'];
+const DEMO_DESCRIPTION =
+  "Animated example of a lesson. Code for a function that reverses a string is typed into the editor, the Run button is pressed, and three tests appear one by one, all passing: 3 of 3 passed. With reduced motion the finished state is shown without animation.";
+
+/**
+ * A looping write, Run, tests-pass demo in plain CSS (no JavaScript, no images). Each moving piece
+ * gets its own generated keyframes so it can start at its own moment in one 12 s timeline. The
+ * default styles are the finished frame, and the animation is only attached when motion is
+ * welcome, so reduced-motion visitors see a static, complete picture. It plays four times and
+ * pauses under the pointer, then rests on the final frame.
+ */
+function RunDemo() {
+  const codeAt = (i: number) => 0.4 + i * 0.45;
+  const runAt = 5.2;
+  const testAt = (i: number) => 6.2 + i * 0.6;
+  const doneAt = 8.2;
+  const reveal = (t: number, d: number, hidden: string, shown: string) =>
+    `0%,${demoPct(t)}%{${hidden}}${demoPct(t + d)}%,100%{${shown}}`;
+  const frames: string[] = [];
+  DEMO_CODE.forEach((_, i) => frames.push(`@keyframes demo-c${i}{${reveal(codeAt(i), 0.4, "clip-path:inset(0 100% 0 0)", "clip-path:inset(0 0 0 0)")}}`));
+  DEMO_TESTS.forEach((_, i) => frames.push(`@keyframes demo-t${i}{${reveal(testAt(i), 0.15, "opacity:0", "opacity:1")}}`));
+  frames.push(`@keyframes demo-done{${reveal(doneAt, 0.15, "opacity:0", "opacity:1")}}`);
+  frames.push(`@keyframes demo-run{0%,${demoPct(runAt)}%{background:transparent;transform:none}${demoPct(runAt + 0.15)}%{background:var(--accent);color:var(--accent-ink);transform:translateY(1px)}${demoPct(runAt + 0.9)}%,100%{background:transparent;color:var(--text);transform:none}}`);
+  frames.push(`@keyframes demo-reset{0%,95%{opacity:1}98%,99.9%{opacity:0}100%{opacity:1}}`);
   return (
-    <div className="min-w-0 overflow-hidden panel" aria-label="Example lesson workspace" role="img">
-      <div className="flex items-center gap-2 border-b border-border px-4 py-2.5 text-xs text-muted">
-        <span className="font-mono">reverse.c</span>
-        <span className="ml-auto">Pointers &amp; Memory · Lesson 4</span>
-      </div>
-      <pre className="overflow-x-auto px-4 py-4 font-mono text-[13px] leading-6">
-        <code>
-          <span className="text-muted">{"// Reverse a string in place"}</span>
-          {"\n"}
-          <span className="text-accent">void</span> reverse(<span className="text-accent">char</span> *s) {"{"}
-          {"\n"}    <span className="text-accent">size_t</span> i = 0, j = strlen(s);
-          {"\n"}    <span className="text-accent">while</span> (i {"<"} j) {"{"}
-          {"\n"}        <span className="text-accent">char</span> t = s[i];
-          {"\n"}        s[i++] = s[--j];
-          {"\n"}        s[j] = t;
-          {"\n"}    {"}"}
-          {"\n"}
-          {"}"}
-        </code>
-      </pre>
-      <div className="space-y-1.5 border-t border-border px-4 py-3 font-mono text-[13px]">
-        <p className="text-ok">✓ reverse(&quot;hello&quot;) gives &quot;olleh&quot;</p>
-        <p className="text-ok">✓ reverse(&quot;&quot;) leaves an empty string</p>
-        <p className="text-err">✗ reverse(&quot;ab&quot;) gives &quot;ba&quot; — got &quot;ab&quot;</p>
-      </div>
-      <div className="border-t border-border bg-surface-2 px-4 py-3 text-sm">
-        <p className="text-xs font-medium text-muted">Tutor</p>
-        <p className="mt-1">Nice — two of three pass. Trace the loop by hand for &quot;ab&quot;: what are i and j before the first swap?</p>
+    <div className="min-w-0 overflow-hidden panel" role="img" aria-label={DEMO_DESCRIPTION}>
+      <style>{frames.join("")}</style>
+      <div aria-hidden="true" className="demo">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-2.5 text-xs text-muted">
+          <span className="font-mono">reverse.c</span>
+          <span className="ml-auto hidden sm:inline">Pointers &amp; Memory · Lesson 4</span>
+          <span className="demo-run ml-auto rounded-md border border-line-strong px-3 py-1 font-medium text-text sm:ml-3" style={{ animationName: "demo-run" }}>
+            Run ▸
+          </span>
+        </div>
+        <div className="demo-reset" style={{ animationName: "demo-reset" }}>
+          <pre className="overflow-hidden px-4 py-4 font-mono text-[13px] leading-6">
+            <code>
+              {DEMO_CODE.map((line, i) => (
+                <span key={i} className="demo-a block whitespace-pre" style={{ animationName: `demo-c${i}` }}>
+                  {line.map((part, k) => (typeof part === "string" ? part : <span key={k} className={i === 0 ? "text-muted" : "text-accent"}>{part[0]}</span>))}
+                  {"\u200b"}
+                </span>
+              ))}
+            </code>
+          </pre>
+          <div className="space-y-1.5 border-t border-border px-4 py-3 font-mono text-[13px]">
+            {DEMO_TESTS.map((t, i) => (
+              <p key={t} className="demo-a text-ok" style={{ animationName: `demo-t${i}` }}>✓ {t}</p>
+            ))}
+          </div>
+          <div className="demo-a border-t border-border bg-surface-2 px-4 py-3 text-sm font-medium text-ok" style={{ animationName: "demo-done" }}>
+            3 of 3 tests passed · +10 XP
+          </div>
+        </div>
       </div>
     </div>
   );

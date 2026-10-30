@@ -1,0 +1,1 @@
+Re-implement `bitflip`. Read unsigned 32-bit decimal numbers from standard input, one per line (until the end of input), and print one result per line, matching every observation in the lesson. Hidden tests use many other values, including ones near the edges of the 32-bit range, so only the correct rule will pass. Writing a lookup table of the observed pairs will not work.

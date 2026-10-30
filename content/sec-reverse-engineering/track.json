@@ -1,0 +1,18 @@
+{
+  "title": "Reverse Engineering",
+  "summary": "Infer behaviour from input and output, decode an unknown record format, rebuild C from assembly listings and re-implement a toy protocol, backing every claim with evidence.",
+  "description": "Reverse engineering is the discipline of working out what something does when nobody tells you. You will infer a mystery function from observed input and output pairs and then revise it when counterexamples arrive, eliminate hypotheses against evidence, work out an undocumented binary record format from sample dumps and write a parser for it, read x86-64 assembly listings and reconstruct the C that produced them, and separate what you have confirmed from what you merely assume. The capstone reverses a toy request and reply protocol from captured frames and re-implements it. Every sample, dump, listing and capture is synthetic and fictional, written for this course. No real software is analysed, nothing is executed from outside the test harness, and the goal throughout is understanding and defensible reporting. Malware Analysis for Defenders is assumed.",
+  "level": "Advanced",
+  "language": "c",
+  "path": "security",
+  "order": 12,
+  "prerequisite": "sec-malware",
+  "outcomes": [
+    "Infer a function's behaviour from input and output pairs and revise the hypothesis when counterexamples appear.",
+    "Eliminate candidate explanations against observations without mistaking consistency for proof.",
+    "Work out an undocumented binary record format from sample dumps and write a strict parser.",
+    "Reconstruct equivalent C from an assembly listing.",
+    "Label findings as confirmed, supported, assumed or refuted, and re-implement a toy protocol from captures."
+  ],
+  "draft": true
+}

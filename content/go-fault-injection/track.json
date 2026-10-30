@@ -1,0 +1,19 @@
+{
+  "title": "Testing and Fault Injection in Go",
+  "summary": "Make code correct when operations fail partway: short writes, failing allocations, interrupted updates, jumping clocks and retries, then test a storage engine under a deterministic failure schedule.",
+  "description": "Real systems fail in the middle of things. A write accepts half its bytes, an allocation is refused on the third call, the power dies between two file operations, the clock steps backwards, a reply is lost after the work was done. This course teaches you to write code that survives those moments and to prove it by injecting the failures yourself. Every failure is deterministic: scripted writers, counting allocators, a crashing in-memory disk, an explicit fake clock and a lossy transport. The hidden tests move the failure to every position and check invariants such as committed data preserved, retries bounded and recovery successful. The last lesson hands you a small storage engine and asks you to write the failure-schedule checker that tells good engines from broken ones.",
+  "level": "Advanced",
+  "language": "go",
+  "path": "go",
+  "order": 5,
+  "prerequisite": "go-database",
+  "outcomes": [
+    "Handle short and truncated writes without losing or duplicating bytes.",
+    "Clean up correctly when an operation fails at any boundary.",
+    "Update stored state so a crash at any step leaves a consistent, recoverable result.",
+    "Design time-dependent code that tolerates clocks moving backwards or jumping forwards.",
+    "Retry safely with idempotency keys and bounded attempts.",
+    "Write a deterministic failure-schedule checker that exposes broken storage engines."
+  ],
+  "draft": true
+}

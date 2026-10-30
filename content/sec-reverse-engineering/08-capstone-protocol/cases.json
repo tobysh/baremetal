@@ -1,0 +1,52 @@
+[
+  {
+    "name": "echo and reverse",
+    "stdin": "b7 01 00 01 78 95\nb7 01 c8 07 63 61 70 74 75 72 65 47\nb7 02 09 08 73 74 72 65 73 73 65 64 ff\nb7 02 0a 00 e5\n",
+    "expected": "b7 81 00 01 78 15\nb7 81 c8 07 63 61 70 74 75 72 65 c7\nb7 82 09 08 64 65 73 73 65 72 74 73 7f\nb7 82 0a 00 65\n"
+  },
+  {
+    "name": "sum",
+    "stdin": "b7 03 01 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ef\nb7 03 02 00 ec\nb7 03 03 03 01 02 03 ee\n",
+    "expected": "b7 83 01 02 fe 01 92\nb7 83 02 02 00 00 6e\nb7 83 03 02 00 06 69\n"
+  },
+  {
+    "name": "upper",
+    "stdin": "b7 04 01 10 6d 69 78 65 64 20 43 61 73 65 20 31 32 33 20 7e df\nb7 04 02 06 60 61 7a 7b 40 5b f6\n",
+    "expected": "b7 84 01 10 4d 49 58 45 44 20 43 41 53 45 20 31 32 33 20 7e 5f\nb7 84 02 06 60 41 5a 7b 40 5b 76\n"
+  },
+  {
+    "name": "unknown ops",
+    "stdin": "b7 00 01 00 ec\nb7 05 02 01 78 93\nb7 81 03 01 78 16\n",
+    "expected": "b7 ff 01 01 01 13\nb7 ff 02 01 01 10\nb7 ff 03 01 01 11\n"
+  },
+  {
+    "name": "bad checksum",
+    "stdin": "b7 01 01 03 61 62 63 9e\nb7 02 02 03 61 62 63 9e\nb7 07 03 03 61 62 63 9a\n",
+    "expected": "b7 ff 01 01 02 10\nb7 ff 02 01 02 13\nb7 ff 03 01 02 12\n"
+  },
+  {
+    "name": "length faults",
+    "stdin": "b7 01 01 04 61 62 63 89\nb7 01 02 02 61 62 63 8c\nb7 07 03 09 61 62 63 90\nb7 01 04 01 e9\n",
+    "expected": "b7 ff 01 01 03 11\nb7 ff 02 01 03 12\nb7 ff 03 01 03 13\nb7 ff 04 01 03 14\n"
+  },
+  {
+    "name": "drops",
+    "stdin": "b6 01 01 03 61 62 63 8f\nb7 01 02\n\nb7\n00 01 01 03 61 62 63 39\n",
+    "expected": "drop\ndrop\ndrop\ndrop\ndrop\n"
+  },
+  {
+    "name": "mixed bag",
+    "stdin": "b7 03 a2 12 20 82 3c fd e6 f1 c2 6b 30 f9 0e c7 dd 01 e4 88 75 34 72\nb7 01 0d 00 e1\nb7 09 c3 00 27\nb7 04 0b 0d 61 20 58 39 39 20 58 5a 58 2e 58 39 59 9a\nb7 01 c9 11 2e 62 63 2e 59 62 5a 20 30 20 2e 58 59 59 2c 39 20 27\nb7 00 7c 01 39 a9\nb7 01 c9 0d 2e 63 5a 20 2e 5a 62 39 2e 20 62 63 20 1f\nb7 02 76 0f 61 39 61 59 2c 2c 2c 30 2e 63 63 20 58 61 58 85\nb7 01 1c 10 5a 2c 5a 39 59 2e 20 2c 61 30 20 63 20 20 58 30 f4\nb7 03 5a 0b 66 d3 f8 b6 d4 b1 00 a9 ea 0e 75 19\nb7 09 94 12 63 62 20 59 61 2e 62 62 61 39 61 59 58 59 62 2c 63 5a 43\nb7 02 8b 05 63 59 20 63 2e 36\nb7 04 6b 0e 5a 39 39 62 61 59 30 5a 30 58 59 62 59 20 cc\nb7 00 e6 0d 61 58 61 30 63 61 63 39 20 2e 30 20 58 70\nb7 04 27 10 2e 61 30 2e 2c 5a 2e 2e 30 61 59 63 58 61 59 62 90\nb7 04 6f 09 63 30 2c 59 63 61 20 61 2c c6\nb7 00 fc 0e 63 2c 20 61 30 58 5a 62 58 2c 2e 30 2c 58 5f\nb7 02 45 0c 59 20 39 61 5a 2c 30 59 61 63 58 5a 98\nb7 02 14 0d 58 59 2e 62 30 20 5a 2e 20 39 20 58 62 dc\nb7 02 89 04 63 63 20 58 1a\nb7 02 4b 13 20 59 5a 5a 5a 62 59 58 2c 39 63 2c 20 62 5a 61 30 62 30 b6\nb7 03 8d 0a 3a c1 27 72 29 88 ba 97 3a ea 9b\nb7 02 06 01 59 b1\nb7 00 2e 00 c3\nb7 01 d7 03 61 58 58 59\nb7 03 51 03 e6 55 7b 74\nb7 02 05 0d 30 20 59 20 59 39 5a 62 58 2e 5a 61 61 fa\nb7 04 5d 13 5a 39 30 5a 30 62 62 5a 2c 39 62 59 58 2c 20 39 2e 5a 59 aa\nb7 09 2d 06 59 58 58 5a 62 59 f7\nb7 03 c7 02 ad 74 f2\n",
+    "expected": "b7 83 a2 02 09 d0 17\nb7 81 0d 00 61\nb7 ff c3 01 01 d1\nb7 84 0b 0d 41 20 58 39 39 20 58 5a 58 2e 58 39 59 3a\nb7 81 c9 11 2e 62 63 2e 59 62 5a 20 30 20 2e 58 59 59 2c 39 20 a7\nb7 ff 7c 01 01 6e\nb7 81 c9 0d 2e 63 5a 20 2e 5a 62 39 2e 20 62 63 20 9f\nb7 82 76 0f 58 61 58 20 63 63 2e 30 2c 2c 2c 59 61 39 61 05\nb7 81 1c 10 5a 2c 5a 39 59 2e 20 2c 61 30 20 63 20 20 58 30 74\nb7 83 5a 02 06 82 b2\nb7 ff 94 01 01 86\nb7 82 8b 05 2e 63 20 59 63 b6\nb7 84 6b 0e 5a 39 39 42 41 59 30 5a 30 58 59 42 59 20 6c\nb7 ff e6 01 01 f4\nb7 84 27 10 2e 41 30 2e 2c 5a 2e 2e 30 41 59 43 58 41 59 42 30\nb7 84 6f 09 43 30 2c 59 43 41 20 41 2c 46\nb7 ff fc 01 01 ee\nb7 82 45 0c 5a 58 63 61 59 30 2c 5a 61 39 20 59 18\nb7 82 14 0d 62 58 20 39 20 2e 5a 20 30 62 2e 59 58 5c\nb7 82 89 04 58 20 63 63 9a\nb7 82 4b 13 30 62 30 61 5a 62 20 2c 63 39 2c 58 59 62 5a 5a 5a 59 20 36\nb7 83 8d 02 04 ba 5f\nb7 82 06 01 59 31\nb7 ff 2e 01 01 3c\nb7 81 d7 03 61 58 58 d9\nb7 83 51 02 01 b6 8a\nb7 82 05 0d 61 61 5a 2e 58 62 5a 39 59 20 59 20 30 7a\nb7 84 5d 13 5a 39 30 5a 30 42 42 5a 2c 39 42 59 58 2c 20 39 2e 5a 59 0a\nb7 ff 2d 01 01 3f\nb7 83 c7 02 01 21 8b\n"
+  },
+  {
+    "name": "mixed bag 2",
+    "stdin": "b7 01 56 02 62 5a 80\nb7 04 c9 08 2c 58 2c 61 2c 2e 63 30 40\nb7 09 54 0b 20 39 20 59 61 61 5a 39 5a 30 30 e2\nb7 09 58 05 58 58 61 63 5a e1\nb7 03 e8 10 b8 5d e4 d4 ba b5 b9 e4 52 cc ec 7f fa 8e ff b5 a2\nb7 03 6a 0b e9 f9 71 a6 55 89 f5 9e 9b d0 9f 2b\nb7 03 d8 10 bb 26 ae 04 61 36 1e 19 8b 74 36 45 88 7d 6b 1e 4d\nb7 01 b8 01 5a 0f\nb7 03 bf 07 0c 2a 3a 22 0c 14 0a 7a\nb7 04 c5 04 63 63 20 61 69\nb7 00 4d 01 58 f9\nb7 01 b0 00 5c\nb7 00 0f 03 59 5a 39 db\nb7 04 0c 0e 20 2c 61 59 30 2c 63 39 58 62 2e 2e 5a 62 9b\nb7 03 ae 04 c9 f9 a7 49 9a\nb7 04 81 08 2c 30 2e 61 20 63 2e 61 3f\nb7 01 76 04 63 63 62 39 c5\nb7 09 77 01 58 ca\nb7 03 74 02 80 29 31\nb7 00 5d 13 5a 59 2e 30 59 20 61 63 61 30 30 63 62 20 62 58 62 62 61 de\nb7 04 ed 03 58 61 20 1e\nb7 03 30 09 c2 6c 6b de d9 0a 1a d6 5c 8f\nb7 03 65 0b 09 3c bb 94 be 9d 09 d3 33 35 9c f9\nb7 01 27 0e 61 30 2e 39 39 58 2c 2c 62 61 59 61 5a 59 da\nb7 04 ab 0f 58 62 2c 5a 30 39 63 5a 30 62 59 62 62 62 2c 74\nb7 01 fe 06 62 61 2c 2e 39 61 4d\nb7 04 ca 0b 39 63 5a 59 39 20 39 30 39 2e 59 2f\nb7 04 2b 05 39 2c 59 20 30 9b\nb7 00 a8 12 62 62 5a 63 20 63 30 62 62 2e 2e 61 63 59 30 58 2e 2e 2e\nb7 03 a8 05 92 39 4f d8 31 4e\n",
+    "expected": "b7 81 56 02 62 5a 00\nb7 84 c9 08 2c 58 2c 41 2c 2e 43 30 c0\nb7 ff 54 01 01 46\nb7 ff 58 01 01 4a\nb7 83 e8 02 0b 9e 11\nb7 83 6a 02 07 74 75\nb7 83 d8 02 05 69 d8\nb7 81 b8 01 5a 8f\nb7 83 bf 02 00 bc 6f\nb7 84 c5 04 43 43 20 41 c9\nb7 ff 4d 01 01 5f\nb7 81 b0 00 dc\nb7 ff 0f 01 01 1d\nb7 84 0c 0e 20 2c 41 59 30 2c 43 39 58 42 2e 2e 5a 42 1b\nb7 83 ae 02 02 b2 72\nb7 84 81 08 2c 30 2e 41 20 43 2e 41 9f\nb7 81 76 04 63 63 62 39 45\nb7 ff 77 01 01 65\nb7 83 74 02 00 a9 b1\nb7 ff 5d 01 01 4f\nb7 84 ed 03 58 41 20 be\nb7 83 30 02 04 a6 fe\nb7 83 65 02 04 cf c2\nb7 81 27 0e 61 30 2e 39 39 58 2c 2c 62 61 59 61 5a 59 5a\nb7 84 ab 0f 58 42 2c 5a 30 39 43 5a 30 42 59 42 42 42 2c f4\nb7 81 fe 06 62 61 2c 2e 39 61 cd\nb7 84 ca 0b 39 43 5a 59 39 20 39 30 39 2e 59 8f\nb7 84 2b 05 39 2c 59 20 30 1b\nb7 ff a8 01 01 ba\nb7 83 a8 02 02 23 e5\n"
+  },
+  {
+    "name": "wrong magic with bad content",
+    "stdin": "c7 09 04 02 7a 7a 82\n",
+    "expected": "drop\n"
+  }
+]

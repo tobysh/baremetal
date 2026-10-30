@@ -1,5 +1,7 @@
 # Handoff
 
+Latest interrupted-work recovery: [30 October usability recovery](docs/usability-recovery-2026-10-30.md). Read it before the older state notes below.
+
 Dev environment, as of 29 October 2026. Read `CLAUDE.md` (architecture, commands, theme and content rules) and `README.md` first. Current state of the big subsystems: `docs/security.md`, `docs/gamification.md`. Old handoffs and finished plans: `docs/archive/`.
 
 ## State

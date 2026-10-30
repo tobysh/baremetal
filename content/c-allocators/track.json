@@ -1,0 +1,17 @@
+{
+  "title": "Memory Allocators in C",
+  "summary": "Build allocators from nothing: alignment, bump arenas, fixed-size pools, a splitting and coalescing free-list heap, fit policies and a fragmentation map.",
+  "description": "malloc is not magic: it is bookkeeping over a block of memory. In this course you work on a static buffer and write the pieces yourself. You start with alignment arithmetic, then a bump arena with reset and rewind, a fixed-size pool with an in-place free list, and a general heap with block headers, splitting and coalescing. You compare first-fit and best-fit with deterministic counters, draw the heap as an ASCII fragmentation map, and finish by combining pools and the heap into a size-class allocator. Hidden tests replay seeded random operation sequences against an independent reference model and check invariants: no overlap, alignment, contents preserved, full coalescing and bounded overhead. These are teaching allocators on a single thread; the kernel heap lessons in the osdev tracks cover the same ideas on bare metal, so here the focus is the algorithms and how to test them.",
+  "level": "Intermediate",
+  "language": "c",
+  "path": "c",
+  "order": 7,
+  "prerequisite": "c-memory",
+  "outcomes": [
+    "Compute aligned addresses and struct layouts without overflow.",
+    "Write a bump arena, a fixed-size pool and a splitting, coalescing free-list heap.",
+    "Compare allocation policies with deterministic counters and read a fragmentation map.",
+    "Test an allocator against a reference model with seeded random operation sequences."
+  ],
+  "draft": true
+}

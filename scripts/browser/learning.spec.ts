@@ -54,7 +54,7 @@ test("anonymous final lesson offers the C course transition", async ({ page }) =
   await page.goto(`/learn/first-steps/${zero.lessons.at(-1)!.slug}`);
   await page.route("**/api/run", (route) => route.fulfill({ json: { kind: "test", compiled: true, compileOutput: "", results: [{ name: "example", passed: true }], allPassed: true, output: "", error: null, saved: false, reward: null } }));
   await page.getByRole("button", { name: /^Test/ }).click();
-  await expect(page.getByRole("link", { name: /Next course:/ })).toHaveAttribute("href", "/learn/c-data/arrays");
+  await expect(page.locator("[data-primary-action]")).toHaveAttribute("href", "/learn/c-data/arrays");
 });
 
 test("failed saves can be retried without losing the editor draft", async ({ page }) => {
@@ -182,7 +182,7 @@ test("lesson navigation resets completed state", async ({ page }) => {
   await expect(page.getByText("You've completed this lesson.")).not.toBeVisible();
 });
 
-test("celebration contains focus and returns it to the Test action", async ({ page }) => {
+test("celebration contains focus and returns it to the replacement primary action", async ({ page }) => {
   await page.goto("/learn/first-steps/hello-world");
   await page.route("**/api/run", (route) => route.fulfill({ json: {
     kind: "test", compiled: true, compileOutput: "", results: [], allPassed: true, output: "", error: null, saved: false, reward: null,
@@ -197,7 +197,7 @@ test("celebration contains focus and returns it to the Test action", async ({ pa
   expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);
   await page.keyboard.press("Escape");
   await expect(dialog).not.toBeVisible();
-  await expect(action).toBeFocused();
+  await expect(page.locator("[data-primary-action]")).toBeFocused();
 });
 
 test("account autosave works when browser storage is unavailable", async ({ page }) => {

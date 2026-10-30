@@ -87,7 +87,7 @@ async function Results({ searchParams }: { searchParams: PageProps<"/leaderboard
         Top learners
       </h2>
       {rows.length === 0 ? (
-        <Card className="mt-3 p-6 text-sm text-muted">No one is on the board yet. Pass a lesson to be first.</Card>
+        <Card className="mt-3 p-6 text-sm text-muted">No one is on the board yet, so the first place is open. <Link href="/dashboard" className="text-accent underline underline-offset-2">Pass a lesson</Link> and set a public username in settings to claim it.</Card>
       ) : (
         <ol className="mt-3 divide-y divide-border overflow-hidden panel">
           {rows.map((r) => (

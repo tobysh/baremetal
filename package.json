@@ -24,6 +24,7 @@
     "test:concurrent-go": "tsx scripts/runner/concurrent-go.mts",
     "load:run-mix": "tsx scripts/load/run-mix.mts",
     "check:learning": "tsx scripts/checks/learning.mts",
+    "check:curriculum": "tsx scripts/checks/curriculum-drafts.mts",
     "test:regressions": "tsx scripts/checks/regressions.mts",
     "test:runner": "node --conditions=react-server --import tsx scripts/runner/transport-checks.mts",
     "test:browser": "playwright test",

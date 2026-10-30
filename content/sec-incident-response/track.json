@@ -1,0 +1,19 @@
+{
+  "title": "Incident Response",
+  "summary": "Investigate a fictional compromise from synthetic logs, filesystem snapshots and identity graphs, then verify the cleanup.",
+  "description": "Work like a responder on invented data. Merge skewed logs into one timeline, link web sessions to accounts, separate observations from assumptions, diff filesystem snapshots, trace new privilege paths to audit records, scope credential spread over time and verify remediation. Finish with an end-to-end investigation graded against an authored answer key that includes decoys. Every host, user, address and file is fictional; no real systems or networks are touched, and the lessons only read synthetic data.",
+  "level": "Advanced",
+  "language": "go",
+  "path": "security",
+  "order": 12,
+  "prerequisite": "sec-infra-offense",
+  "outcomes": [
+    "Build one UTC timeline from sources with different time zones and known clock skew.",
+    "Correlate web, authentication and audit records and state how confident each link is.",
+    "Separate observations, reports and assumptions, and refuse conclusions the evidence does not support.",
+    "Find persistence and privilege changes by diffing snapshots, allowing for expected changes and timestamp tampering.",
+    "Scope how far a stolen credential spread, and verify that remediation actually closed each finding.",
+    "Produce an evidence package whose findings, citations and timeline hold up against decoys."
+  ],
+  "draft": true
+}

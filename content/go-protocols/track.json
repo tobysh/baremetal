@@ -1,0 +1,16 @@
+{
+  "title": "Protocol Engineering in Go",
+  "summary": "Design a framed wire protocol over in-memory streams: checksummed frames, incremental parsing at any chunk boundary, partial I/O, version negotiation, backpressure and malformed-input handling.",
+  "description": "Real network protocols fail in the gaps between the happy path and the specification: bytes arrive in arbitrary pieces, peers speak different versions, senders outrun receivers and some input is simply garbage. You'll build one small protocol end to end. First a length-prefixed, checksummed frame codec, then an incremental parser that gives identical answers at every chunk boundary, readers and writers that survive short reads and short writes, version and feature negotiation that stays compatible with older and newer peers, a sender with bounded buffers and credit-based backpressure, and a scanner that survives corrupted or hostile input without panicking and without unbounded memory. The capstone is a complete client and server exchanging requests over a deterministic fault-injecting in-memory pipe that splits, drops, corrupts and duplicates bytes. Everything is in-memory and simulated: no sockets, no real clocks. The pipe demonstrates the fault model the tests describe, not the behaviour of a real network.",
+  "level": "Advanced",
+  "language": "go",
+  "path": "go",
+  "order": 5,
+  "prerequisite": "go-services",
+  "outcomes": [
+    "Encode and parse framed, checksummed messages correctly at any chunk boundary.",
+    "Negotiate versions and features compatibly, bound buffers and apply backpressure.",
+    "Handle malformed input without panics and run a client and server over a faulty link."
+  ],
+  "draft": true
+}

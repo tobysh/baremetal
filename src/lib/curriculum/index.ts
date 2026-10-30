@@ -26,11 +26,14 @@ function parseFrontmatter(src: string): { meta: Record<string, string>; body: st
 
 const read = (p: string) => readFileSync(p, "utf8");
 
-function loadLesson(trackDir: string, dirName: string, language: Track["language"]): Lesson {
+function loadLesson(trackDir: string, dirName: string, language: Track["language"]): Lesson | null {
   const dir = path.join(trackDir, dirName);
   const ext = { c: "c", asm: "s", go: "go", rust: "rs", kernel: "c" }[language];
   const harnessExt = language === "asm" || language === "kernel" ? "c" : ext;
   const { meta, body } = parseFrontmatter(read(path.join(dir, "lesson.md")));
+  // Explicit drafts may be incomplete. Published lessons still fail closed on
+  // missing files, so an accidental content regression cannot disappear silently.
+  if (meta.draft === "true") return null;
   const mode = meta.mode === "stdout" ? "stdout" : "harness";
   const exercise: Exercise = {
     id: meta.id,
@@ -88,13 +91,14 @@ function loadLesson(trackDir: string, dirName: string, language: Track["language
 function loadTracks(only?: string): Track[] {
   if (!existsSync(CONTENT_DIR)) return [];
   const present = readdirSync(CONTENT_DIR).filter((d) => (!only || d === only) && existsSync(path.join(CONTENT_DIR, d, "track.json")));
-  return present.map((slug) => {
+  return present.flatMap((slug) => {
     const dir = path.join(CONTENT_DIR, slug);
     const meta = JSON.parse(read(path.join(dir, "track.json")));
+    if (meta.draft === true) return [];
     const lessonDirs = readdirSync(dir)
       .filter((d) => /^\d+-/.test(d))
       .sort();
-    return { slug, ...meta, lessons: lessonDirs.map((d) => loadLesson(dir, d, meta.language)) } as Track;
+    return [{ slug, ...meta, lessons: lessonDirs.map((d) => loadLesson(dir, d, meta.language)).filter((lesson) => lesson !== null) } as Track];
   }).sort(compareTracks);
 }
 

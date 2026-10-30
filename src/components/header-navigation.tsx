@@ -7,10 +7,11 @@ import { logout } from "@/app/(auth)/actions";
 import { levelFor } from "@/lib/gamification";
 import { ButtonLink } from "./ui";
 import { ThemeToggle } from "./theme-toggle";
+import { CommandPalette } from "./command-palette";
 
 type NavigationUser = { name: string; username: string | null; xp: number; role: "user" | "admin" };
 
-export function HeaderNavigation({ user }: { user: NavigationUser | null }) {
+export function HeaderNavigation({ user, rhythm = null }: { user: NavigationUser | null; rhythm?: { goal: number; thisWeek: number } | null }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
@@ -51,6 +52,8 @@ export function HeaderNavigation({ user }: { user: NavigationUser | null }) {
         {links.map(({ href, label }) => navLink(href, label))}
       </nav>
       <div className="flex items-center gap-2">
+        {user && rhythm && rhythm.goal > 0 && <RhythmDots goal={rhythm.goal} done={rhythm.thisWeek} />}
+        <CommandPalette signedIn={!!user} username={user?.username ?? null} />
         {!user && <div className="hidden items-center gap-2 lg:flex"><ThemeToggle /><ButtonLink href="/login" variant="ghost">Sign in</ButtonLink><ButtonLink href="/signup">Start learning</ButtonLink></div>}
         <div ref={panel} className={`relative ${!user ? "lg:hidden" : ""}`} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
           <button ref={trigger} type="button" aria-expanded={open} aria-controls="header-account-panel" onClick={() => setOpen(!open)} className="inline-flex min-h-11 items-center gap-2.5 rounded-lg border border-line-strong px-3 text-sm font-medium hover:bg-surface-2">
@@ -75,6 +78,18 @@ export function HeaderNavigation({ user }: { user: NavigationUser | null }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Quiet weekly progress: one dot per lesson of the goal. Empty dots are plain outlines, never a warning. */
+function RhythmDots({ goal, done }: { goal: number; done: number }) {
+  const label = `This week: ${Math.min(done, goal)} of ${goal} lessons`;
+  return (
+    <Link href="/dashboard" aria-label={label} title={label} className="hidden min-h-11 items-center gap-1 rounded-lg px-2 sm:inline-flex">
+      {Array.from({ length: goal }, (_, i) => (
+        <span key={i} aria-hidden="true" className={`h-2 w-2 rounded-full border ${i < done ? "border-accent bg-accent" : "border-muted"}`} />
+      ))}
+    </Link>
   );
 }
 

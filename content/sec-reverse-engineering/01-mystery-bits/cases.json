@@ -1,0 +1,27 @@
+[
+  {
+    "name": "small values",
+    "stdin": "1\n2\n3\n6\n128\n255\n0\n16\n",
+    "expected": "128\n64\n192\n96\n1\n255\n0\n8\n"
+  },
+  {
+    "name": "above 255",
+    "stdin": "256\n257\n1000\n65535\n",
+    "expected": "0\n128\n23\n255\n"
+  },
+  {
+    "name": "large",
+    "stdin": "65536\n4294967295\n4294967040\n123456789\n",
+    "expected": "0\n255\n0\n168\n"
+  },
+  {
+    "name": "single bits",
+    "stdin": "4\n8\n32\n64\n",
+    "expected": "32\n16\n4\n2\n"
+  },
+  {
+    "name": "palindromic bytes",
+    "stdin": "129\n24\n102\n90\n",
+    "expected": "129\n24\n102\n90\n"
+  }
+]

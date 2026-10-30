@@ -62,13 +62,13 @@
     --accent: #9a5b00;
     --accent-ink: #ffffff;
     --accent-soft: rgb(154 91 0 / 0.1);
-    --ok: #0f7a4a;
-    --ok-soft: rgb(15 122 74 / 0.1);
+    --ok: #0c7142;
+    --ok-soft: rgb(12 113 66 / 0.1);
     --err: #c62f2f;
     --err-ink: #ffffff;
     --err-soft: rgb(198 47 47 / 0.08);
     --focus: #1f6fd1;
-    --easy: #0f7a4a;
+    --easy: #0c7142;
     --medium: #9a5b00;
     --hard: #c62828;
     --impossible: #7f0f1d;
@@ -107,13 +107,13 @@
   --accent: #9a5b00;
   --accent-ink: #ffffff;
   --accent-soft: rgb(154 91 0 / 0.1);
-  --ok: #0f7a4a;
-  --ok-soft: rgb(15 122 74 / 0.1);
+  --ok: #0c7142;
+  --ok-soft: rgb(12 113 66 / 0.1);
   --err: #c62f2f;
   --err-ink: #ffffff;
   --err-soft: rgb(198 47 47 / 0.08);
   --focus: #1f6fd1;
-  --easy: #0f7a4a;
+  --easy: #0c7142;
   --medium: #9a5b00;
   --hard: #c62828;
   --impossible: #7f0f1d;
@@ -390,4 +390,14 @@ input:hover:not(:disabled), textarea:hover:not(:disabled), select:hover:not(:dis
 @media (prefers-reduced-motion: reduce) {
   .page-in { animation: none; }
   .nav-progress { display: none; }
+}
+
+/* Landing-page demo (see RunDemo in page.tsx). The base styles are the finished frame; the
+   animation is only attached when motion is welcome, so reduced motion shows a static result.
+   It plays four times, pauses while hovered or focused within, then rests on the final frame. */
+@media (prefers-reduced-motion: no-preference) {
+  .demo-a { animation-duration: 12s; animation-iteration-count: 4; animation-timing-function: steps(14); animation-fill-mode: backwards; }
+  .demo-run { animation-duration: 12s; animation-iteration-count: 4; animation-timing-function: ease-out; }
+  .demo-reset { animation-duration: 12s; animation-iteration-count: 4; animation-timing-function: linear; }
+  .demo:hover *, .demo:hover { animation-play-state: paused; }
 }

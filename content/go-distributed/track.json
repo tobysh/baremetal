@@ -1,0 +1,16 @@
+{
+  "title": "Distributed Systems in Go",
+  "summary": "Retries and idempotency, quorum replication, term-based leader election, log replication, durable restarts and a replicated key-value store, all tested against seeded, deterministic failure schedules.",
+  "description": "Distributed systems fail in ways a single process never does: messages are lost, duplicated and reordered, nodes crash and come back with only what they wrote to disk, and a network split leaves two halves that cannot see each other. This course builds the core ideas as small deterministic state machines in standard-library Go. You will make retried requests safe with idempotency, replicate a register with quorums, elect a leader with terms, replicate a log with the Raft-style consistency check, persist the right state so a restart cannot break a promise, and finish with a replicated key-value store. Nothing uses real networks or clocks. A hidden, seeded scheduler delivers, drops, duplicates and reorders messages, partitions the cluster and restarts nodes, and the tests assert safety invariants after every step across many different schedules.",
+  "level": "Advanced",
+  "language": "go",
+  "path": "go",
+  "order": 5,
+  "prerequisite": "go-concurrency",
+  "outcomes": [
+    "Reason about safety under message loss, duplication, partitions and restarts.",
+    "Build term-based leader election, log replication and durable recovery as deterministic state machines.",
+    "Check a replicated store against invariants across many seeded failure schedules."
+  ],
+  "draft": true
+}

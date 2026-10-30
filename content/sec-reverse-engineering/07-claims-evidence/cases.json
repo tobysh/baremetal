@@ -1,0 +1,47 @@
+[
+  {
+    "name": "mixed",
+    "stdin": "C1|beacons every 60 seconds\nC2|uses a hard-coded key\nC3|deletes its own file\nE1|static|C1|supports\nE2|dynamic|C1|supports\nE3|report|C2|supports\nE4|dynamic|C3|contradicts\n",
+    "expected": "C1: confirmed - beacons every 60 seconds\nC2: assumption - uses a hard-coded key\nC3: refuted - deletes its own file\nconfirmed=1 supported=0 assumption=1 refuted=1 disputed=0\n"
+  },
+  {
+    "name": "single source",
+    "stdin": "C1|reads the config section\nC2|talks to port 8443\nE1|static|C1|supports\nE2|static|C1|supports\nE3|dynamic|C2|supports\n",
+    "expected": "C1: supported (static) - reads the config section\nC2: supported (dynamic) - talks to port 8443\nconfirmed=0 supported=2 assumption=0 refuted=0 disputed=0\n"
+  },
+  {
+    "name": "disputed report",
+    "stdin": "C1|packer is custom\nE1|report|C1|contradicts\nE2|static|C1|supports\n",
+    "expected": "C1: disputed - packer is custom\nconfirmed=0 supported=0 assumption=0 refuted=0 disputed=1\n"
+  },
+  {
+    "name": "report only",
+    "stdin": "C1|author is the same as sample 4\nE1|report|C1|supports\n",
+    "expected": "C1: assumption - author is the same as sample 4\nconfirmed=0 supported=0 assumption=1 refuted=0 disputed=0\n"
+  },
+  {
+    "name": "contradiction wins",
+    "stdin": "C1|sleeps before connecting\nE1|static|C1|supports\nE2|dynamic|C1|supports\nE3|dynamic|C1|contradicts\n",
+    "expected": "C1: refuted - sleeps before connecting\nconfirmed=0 supported=0 assumption=0 refuted=1 disputed=0\n"
+  },
+  {
+    "name": "unknown claim",
+    "stdin": "C1|writes a log\nE1|static|C9|supports\nE2|static|C1|supports\nE3|dynamic|C1|supports\n",
+    "expected": "warning: evidence E1 references unknown claim C9\nC1: confirmed - writes a log\nconfirmed=1 supported=0 assumption=0 refuted=0 disputed=0\n"
+  },
+  {
+    "name": "no claims",
+    "stdin": "E1|static|C1|supports\n",
+    "expected": "warning: evidence E1 references unknown claim C1\nconfirmed=0 supported=0 assumption=0 refuted=0 disputed=0\n"
+  },
+  {
+    "name": "empty",
+    "stdin": "",
+    "expected": "confirmed=0 supported=0 assumption=0 refuted=0 disputed=0\n"
+  },
+  {
+    "name": "static refutes",
+    "stdin": "C1|checks for a debugger\nE1|static|C1|contradicts\nE2|report|C1|supports\n",
+    "expected": "C1: refuted - checks for a debugger\nconfirmed=0 supported=0 assumption=0 refuted=1 disputed=0\n"
+  }
+]

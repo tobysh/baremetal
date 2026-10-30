@@ -1,0 +1,19 @@
+{
+  "title": "Embedded Systems in C",
+  "summary": "Write device drivers against simulated memory-mapped hardware: register contracts, write-one-to-clear flags, bounded polling, state machines, interrupts and a buffered UART driver.",
+  "description": "Real hardware is a set of registers whose reads and writes have side effects. Here every device is a deterministic simulation that models those side effects, so you can practise the habits that matter on a real board: touch a register exactly as often as its contract says, never block forever, clear flags the way the device expects, survive transient faults, and keep interrupt handlers short. Each lesson gives you a small bus interface and a public example; the hidden tests drive a stricter simulator with fake clocks and scheduled faults. A simulation shows only its stated model: it cannot reproduce real timing, bus errors or compiler optimisation of volatile accesses, and the lessons say where those limits are. Port-mapped x86 I/O is covered in the osdev track and is not repeated here.",
+  "level": "Intermediate",
+  "language": "c",
+  "path": "c",
+  "order": 6,
+  "prerequisite": "c-memory",
+  "outcomes": [
+    "Read and modify bit fields in a device register without disturbing neighbouring bits or touching the register more often than its contract allows.",
+    "Clear write-one-to-clear status flags exactly, and use read-sensitive registers once per event.",
+    "Bound every wait on hardware with a tick-counter deadline that survives counter wraparound.",
+    "Drive a device state machine through unlock, command, completion and error-retry sequences.",
+    "Write an interrupt dispatcher and handlers that acknowledge before they run and stay short.",
+    "Build a buffered UART driver with ring buffers, error counters and failure handling."
+  ],
+  "draft": true
+}

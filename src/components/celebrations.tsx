@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type Reward = { xp: number; totalXp: number; level: number; title: string; blurb: string; levelUp: boolean };
 export type Unlocked = { id: string; name: string; description: string };
@@ -48,19 +49,49 @@ function Toast({ item, onDismiss }: { item: Unlocked; onDismiss: (id: string) =>
   );
 }
 
-/** Level-up and course-complete moments. A real dialog: focus moves in, Tab stays inside, Escape closes. */
-export function Celebration({ levelUp, trackComplete, onClose, returnFocus }: { levelUp: Reward | null; trackComplete: TrackComplete | null; onClose: () => void; returnFocus?: HTMLElement | null }) {
+export type NextLesson = { href: string; title: string };
+type CelebrationItem = { id: number; levelUp: Reward | null; trackComplete: TrackComplete | null; nextLesson: NextLesson | null };
+type FocusReturn = HTMLElement | (() => HTMLElement | null) | null;
+
+/**
+ * Level-up and course-complete moments, queued: a new pass while one is open waits its turn instead of
+ * replacing or stacking. `onClose` fires once, when the queue is empty.
+ */
+export function Celebration({ levelUp, trackComplete, nextLesson = null, onClose, returnFocus }: { levelUp: Reward | null; trackComplete: TrackComplete | null; nextLesson?: NextLesson | null; onClose: () => void; returnFocus?: FocusReturn }) {
+  const [queue, setQueue] = useState<CelebrationItem[]>([{ id: 0, levelUp, trackComplete, nextLesson }]);
+  const [seen, setSeen] = useState({ levelUp, trackComplete });
+  // Props that change identity while open are a fresh celebration: append it (adjusting state during render).
+  if (seen.levelUp !== levelUp || seen.trackComplete !== trackComplete) {
+    setSeen({ levelUp, trackComplete });
+    if (levelUp || trackComplete) setQueue((q) => [...q, { id: (q[q.length - 1]?.id ?? 0) + 1, levelUp, trackComplete, nextLesson }]);
+  }
+  const advance = useCallback(() => {
+    if (queue.length > 1) setQueue((q) => q.slice(1));
+    else onClose();
+  }, [queue.length, onClose]);
+  const current = queue[0];
+  return <CelebrationDialog key={current.id} item={current} remaining={queue.length - 1} onClose={advance} returnFocus={returnFocus} />;
+}
+
+/** A real dialog: focus moves in, Tab stays inside, Escape or Enter/Space on the card closes, N goes to the next lesson. */
+function CelebrationDialog({ item, remaining, onClose, returnFocus }: { item: CelebrationItem; remaining: number; onClose: () => void; returnFocus?: FocusReturn }) {
+  const { levelUp, trackComplete, nextLesson } = item;
+  const router = useRouter();
   const ref = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState<"track" | "level">(trackComplete ? "track" : "level");
   const titleId = "celebration-title";
+  const descId = "celebration-desc";
   // Confetti only for finishing a course or reaching the top level, and only if motion is welcome (see globals.css).
   const confetti = (page === "track" && !!trackComplete) || (page === "level" && levelUp?.level === 10);
 
   // Remember the trigger once, and give focus back to it when the dialog goes away.
   useEffect(() => {
-    const previous = returnFocus ?? document.activeElement as HTMLElement | null;
+    const previous = typeof returnFocus === "function" ? null : returnFocus ?? document.activeElement as HTMLElement | null;
     return () => {
-      if (previous?.isConnected) previous.focus();
+      // A pass can replace the trigger with the next-lesson action. Resolve a
+      // caller-provided fallback at dismissal, after that replacement commits.
+      const target = typeof returnFocus === "function" ? returnFocus() : previous;
+      if (target?.isConnected) target.focus();
     };
   }, [returnFocus]);
 
@@ -70,11 +101,22 @@ export function Celebration({ levelUp, trackComplete, onClose, returnFocus }: { 
     (node?.querySelector<HTMLElement>("[data-autofocus]") ?? node)?.focus();
   }, [page]);
 
-  // Escape closes; Tab stays inside the dialog.
+  // Escape closes; N opens the next lesson; Enter or Space on the card itself closes; Tab stays inside the dialog.
   useEffect(() => {
     const node = ref.current;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        return onClose();
+      }
+      if ((e.key === "n" || e.key === "N") && nextLesson && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+        return router.push(nextLesson.href);
+      }
+      if ((e.key === "Enter" || e.key === " ") && document.activeElement === node) {
         e.preventDefault();
         e.stopPropagation();
         return onClose();
@@ -98,12 +140,12 @@ export function Celebration({ levelUp, trackComplete, onClose, returnFocus }: { 
     };
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
-  }, [onClose]);
+  }, [onClose, nextLesson, router]);
 
   const hasBoth = !!trackComplete && !!levelUp;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 p-4 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="celebrate-in outline-none panel relative w-full max-w-md overflow-hidden p-7 text-center">
+      <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descId} tabIndex={-1} className="celebrate-in outline-none panel relative w-full max-w-md overflow-hidden p-7 text-center">
         {confetti && <Confetti />}
         {page === "track" && trackComplete ? (
           <>
@@ -111,7 +153,7 @@ export function Celebration({ levelUp, trackComplete, onClose, returnFocus }: { 
             <h2 id={titleId} className="display mt-2 text-3xl font-bold">
               {trackComplete.title}
             </h2>
-            <p className="mt-3 text-muted">
+            <p id={descId} className="mt-3 text-muted">
               You passed all {trackComplete.lessons} lessons.
               {trackComplete.unaided > 0 && <> {trackComplete.unaided} with an Unaided seal.</>}
               {trackComplete.challenges > 0 && <> {trackComplete.challenges} challenge{trackComplete.challenges === 1 ? "" : "s"} passed.</>}
@@ -144,19 +186,23 @@ export function Celebration({ levelUp, trackComplete, onClose, returnFocus }: { 
               <h2 id={titleId} className="display mt-2 text-4xl font-bold">
                 {levelUp.title}
               </h2>
-              <p className="mt-3 text-muted">{levelUp.blurb}</p>
+              <p id={descId} className="mt-3 text-muted">{levelUp.blurb}</p>
               <p className="mt-2 text-sm text-muted">{levelUp.totalXp} XP in total</p>
               <div className="mt-6 flex flex-col gap-2">
                 {trackComplete?.next && page === "level" && hasBoth ? (
                   <Link data-autofocus href={`/learn/${trackComplete.next.slug}`} onClick={onClose} className="inline-flex h-11 items-center justify-center rounded-lg bg-accent px-5 font-medium text-accent-ink hover:brightness-110">
                     Next course: {trackComplete.next.title}
                   </Link>
+                ) : nextLesson ? (
+                  <Link data-autofocus href={nextLesson.href} onClick={onClose} className="inline-flex h-11 items-center justify-center rounded-lg bg-accent px-5 font-medium text-accent-ink hover:brightness-110">
+                    Next lesson: {nextLesson.title}
+                  </Link>
                 ) : (
                   <button type="button" data-autofocus onClick={onClose} className="h-11 rounded-lg bg-accent px-5 font-medium text-accent-ink hover:brightness-110">
                     Keep going
                   </button>
                 )}
-                {trackComplete?.next && hasBoth && (
+                {((trackComplete?.next && hasBoth) || nextLesson) && (
                   <button type="button" onClick={onClose} className="h-11 rounded-lg px-5 text-sm text-muted hover:bg-surface-2 hover:text-text">
                     Stay here
                   </button>
@@ -165,6 +211,8 @@ export function Celebration({ levelUp, trackComplete, onClose, returnFocus }: { 
             </>
           )
         )}
+        {remaining > 0 && <p className="mt-3 text-xs text-muted">{remaining} more after this</p>}
+        {nextLesson && <p className="mt-3 text-xs text-muted">Press N for the next lesson, Esc to close.</p>}
       </div>
     </div>
   );

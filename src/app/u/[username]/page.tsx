@@ -109,7 +109,7 @@ async function Profile({ params }: { params: Params }) {
         Achievements <span className="text-sm font-normal text-muted">· {profile.achievements.length}</span>
       </h2>
       {profile.achievements.length === 0 ? (
-        <p className="mt-3 text-sm text-muted">None yet.</p>
+        <p className="mt-3 text-sm text-muted">No achievements yet. They show up here as they are earned.</p>
       ) : (
         <ul className="mt-3 grid gap-3 sm:grid-cols-2">
           {profile.achievements.map((a) => (
@@ -123,7 +123,7 @@ async function Profile({ params }: { params: Params }) {
 
       <h2 className="display-sm mt-10 text-lg font-bold">Recently completed</h2>
       {profile.recent.length === 0 ? (
-        <p className="mt-3 text-sm text-muted">No lessons completed yet.</p>
+        <p className="mt-3 text-sm text-muted">No lessons completed yet. Finished lessons will appear here.</p>
       ) : (
         <ul className="mt-3 divide-y divide-border overflow-hidden panel">
           {profile.recent.map((r) => (

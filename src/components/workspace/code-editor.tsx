@@ -4,7 +4,7 @@ import CodeMirror from "@uiw/react-codemirror";
 import { HighlightStyle, indentUnit, syntaxHighlighting } from "@codemirror/language";
 import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate, keymap } from "@codemirror/view";
 import { indentLess, indentMore } from "@codemirror/commands";
-import { EditorSelection, Prec, StateEffect, StateField, type Extension } from "@codemirror/state";
+import { EditorSelection, EditorState, Prec, StateEffect, StateField, type Extension } from "@codemirror/state";
 import { tags as t } from "@lezer/highlight";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Language } from "@/lib/curriculum/types";
@@ -29,9 +29,9 @@ const C = {
   fn: "var(--code-fn)",
 };
 
-const theme = EditorView.theme(
+const makeTheme = (fontSize: number) => EditorView.theme(
   {
-    "&": { backgroundColor: C.bg, color: C.text, fontSize: "15px", height: "100%" },
+    "&": { backgroundColor: C.bg, color: C.text, fontSize: `${fontSize}px`, height: "100%" },
     ".cm-content": { fontFamily: "var(--font-mono)", caretColor: C.cursor, padding: "12px 0", lineHeight: "1.65" },
     ".cm-gutters": { backgroundColor: C.gutterBg, color: C.muted, border: "none", paddingRight: "4px" },
     ".cm-activeLine": { backgroundColor: C.activeLine },
@@ -107,14 +107,12 @@ const NO_LANGUAGE: Extension = [];
 
 const NO_LINES: number[] = [];
 
-const TAB_WIDTH = 4;
-
 /**
  * Tab behaves like a typical code editor: with no selection it inserts spaces
  * at the cursor up to the next tab stop; with a selection it indents the
  * selected lines. Shift+Tab outdents.
  */
-const tabKeymap = keymap.of([
+const makeTabKeymap = (tabWidth: number) => keymap.of([
   {
     key: "Tab",
     run: (view) => {
@@ -124,7 +122,7 @@ const tabKeymap = keymap.of([
         state.changeByRange((range) => {
           const line = state.doc.lineAt(range.head);
           const col = range.head - line.from;
-          const spaces = " ".repeat(TAB_WIDTH - (col % TAB_WIDTH));
+          const spaces = " ".repeat(tabWidth - (col % tabWidth));
           return { changes: { from: range.head, insert: spaces }, range: EditorSelection.cursor(range.head + spaces.length) };
         }),
         { scrollIntoView: true, userEvent: "input" },
@@ -143,6 +141,8 @@ export default function CodeEditor({
   onTest,
   label,
   errorLines = NO_LINES,
+  fontSize = 15,
+  tabWidth = 4,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -151,6 +151,8 @@ export default function CodeEditor({
   onTest: () => void;
   label: string;
   errorLines?: number[];
+  fontSize?: number;
+  tabWidth?: number;
 }) {
   const view = useRef<EditorView | null>(null);
   const [grammar, setGrammar] = useState<{ language: Language; ext: Extension } | null>(null);
@@ -163,17 +165,19 @@ export default function CodeEditor({
   }, [language]);
   const languageExt = grammar?.language === language ? grammar.ext : NO_LANGUAGE;
 
+  const theme = useMemo(() => makeTheme(fontSize), [fontSize]);
   const extensions = useMemo(
     () => [
       languageExt,
       syntaxHighlighting(highlight),
       activeLine,
       errorLineField,
-      indentUnit.of("    "),
+      indentUnit.of(" ".repeat(tabWidth)),
+      EditorState.tabSize.of(tabWidth),
       EditorView.contentAttributes.of({ "aria-label": `${label}. Tab indents; press Escape then Tab to leave the editor.` }),
       // CodeMirror's built-in escape hatch (Esc, then Tab) keeps keyboard users
       // from getting trapped in the editor.
-      tabKeymap,
+      makeTabKeymap(tabWidth),
       Prec.highest(
         keymap.of([
           { key: "Mod-Enter", run: () => (onTest(), true) },
@@ -181,7 +185,7 @@ export default function CodeEditor({
         ]),
       ),
     ],
-    [languageExt, label, onRun, onTest],
+    [languageExt, label, onRun, onTest, tabWidth],
   );
   useEffect(() => {
     view.current?.dispatch({ effects: setErrorLines.of(errorLines) });
@@ -198,7 +202,7 @@ export default function CodeEditor({
       theme={theme}
       height="100%"
       className="h-full"
-      basicSetup={{ foldGutter: false, highlightActiveLine: false, autocompletion: false, searchKeymap: true, tabSize: 4 }}
+      basicSetup={{ foldGutter: false, highlightActiveLine: false, autocompletion: false, searchKeymap: true }}
       indentWithTab={false}
     />
   );

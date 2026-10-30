@@ -1,0 +1,6 @@
+Implement `Register` in `starter.go` over a list of `Peer`s. A quorum is `len(peers)/2 + 1`.
+
+- `Write(val)`: read the versions from the peers, requiring a quorum of successful `Get`s, otherwise return `ErrNoQuorum`. Choose a version higher than every version seen **and** higher than any version this register has already attempted, even in a write that failed. Send `Put({version, val})` to all peers and return nil only if at least a quorum of `Put` calls returned no error; otherwise `ErrNoQuorum`.
+- `Read()`: `Get` from all peers, requiring a quorum of successes (else `ErrNoQuorum`). Take the value with the highest version (a register that was never written reads as `""`, version 0). Write that value back with `Put` to all peers and require a quorum of successful `Put`s (else `ErrNoQuorum`) before returning it. You may skip the write-back for version 0.
+
+The hidden tests run many seeded schedules with 3 and 5 replicas. Replicas go down, and some `Put` calls are applied but report an error. They check that a successful read returns the last acknowledged value or a later attempted one, that reads never go backwards, that a reported success always had a quorum of acknowledgements, that no two different values share a version, and that operations with a reachable quorum succeed.

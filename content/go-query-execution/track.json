@@ -1,0 +1,16 @@
+{
+  "title": "Database Query Execution",
+  "summary": "Build the iterator-model executor of a small relational database: scans, filters with NULL logic, projections, three join algorithms, an index scan, aggregation and a cost-based planner.",
+  "description": "A query is a tree of operators and every row is pulled up through it one at a time. You build that executor in Go: table scans and filters with SQL's three-valued NULL logic, projection and limit, nested-loop, hash and sort-merge joins, a range index scan, grouping and aggregation, and finally a rule-based planner that picks between plans with a cost model. Tests compare your results with independent brute-force references and read work counters (rows read, opens, comparisons), never the clock, so a correct but wasteful operator fails and a fast machine can't hide it. NULLs and duplicate keys are the edge cases throughout.",
+  "level": "Advanced",
+  "language": "go",
+  "path": "go",
+  "order": 5,
+  "prerequisite": "go-database",
+  "outcomes": [
+    "Explain and implement the iterator (pull) model of query execution.",
+    "Apply SQL three-valued logic correctly in filters, joins and aggregates.",
+    "Choose between scan, index, nested-loop, hash and merge strategies using a stated cost model and verify the choice with work counters."
+  ],
+  "draft": true
+}

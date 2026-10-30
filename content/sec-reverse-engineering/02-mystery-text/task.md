@@ -1,0 +1,1 @@
+Re-implement `squeeze`. Read lines from standard input (each at most 255 characters, letters and spaces only) and print the transformed line for each. Reproduce every observation in the lesson; the hidden tests use other lines that exercise the same rule, including whole-line runs and runs of exactly two and three.

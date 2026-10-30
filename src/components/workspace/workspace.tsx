@@ -32,6 +32,41 @@ function readSplit() {
     return Number.isFinite(value) ? clampSplit(value) : 55;
   } catch { return 55; }
 }
+
+// Per-viewer preferences (editor font size, tab width, tour dismissal). Every storage access is guarded; an
+// in-memory copy keeps the controls working when storage is blocked.
+const fontKey = "bm:editor:font-size";
+const tabKey = "bm:editor:tab-width";
+const tourKey = "bm:workspace:tour-done";
+const FONT_MIN = 12, FONT_MAX = 24, FONT_DEFAULT = 15;
+const TAB_WIDTHS = [2, 4, 8] as const;
+const TAB_DEFAULT = 4;
+const memoryPrefs = new Map<string, string>();
+const prefListeners = new Set<() => void>();
+function readPref(key: string): string | null {
+  try { return localStorage.getItem(key) ?? memoryPrefs.get(key) ?? null; } catch { return memoryPrefs.get(key) ?? null; }
+}
+function writePref(key: string, value: string | null) {
+  if (value === null) memoryPrefs.delete(key); else memoryPrefs.set(key, value);
+  try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); } catch { /* keep the in-memory copy */ }
+  prefListeners.forEach((listener) => listener());
+}
+const subscribePrefs = (listener: () => void) => {
+  prefListeners.add(listener);
+  window.addEventListener("storage", listener);
+  return () => { prefListeners.delete(listener); window.removeEventListener("storage", listener); };
+};
+const readFont = () => {
+  const n = Number(readPref(fontKey));
+  return Number.isInteger(n) && n >= FONT_MIN && n <= FONT_MAX ? n : FONT_DEFAULT;
+};
+const readTab = () => {
+  const n = Number(readPref(tabKey));
+  return (TAB_WIDTHS as readonly number[]).includes(n) ? n : TAB_DEFAULT;
+};
+const prefersReducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+const formatSeconds = (ms: number) => (ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1)} s`);
+
 const useIsClient = () => useSyncExternalStore(noop, () => true, () => false);
 
 function readDraft(key: string): string | null {
@@ -43,8 +78,8 @@ function readDraft(key: string): string | null {
 }
 
 // Matches the editor's colours so there's no flash while it loads.
-function CodeFallback({ code }: { code: string }) {
-  return <pre className="h-full overflow-auto bg-[var(--code-bg)] p-4 pl-12 font-mono text-[15px] leading-[1.65] text-[var(--code-text)]">{code}</pre>;
+function CodeFallback({ code, fontSize = FONT_DEFAULT, tabWidth = TAB_DEFAULT }: { code: string; fontSize?: number; tabWidth?: number }) {
+  return <pre style={{ fontSize, tabSize: tabWidth }} className="h-full overflow-auto bg-[var(--code-bg)] p-4 pl-12 font-mono leading-[1.65] text-[var(--code-text)]">{code}</pre>;
 }
 
 const isMac = () => /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
@@ -138,6 +173,13 @@ export function Workspace({
     event.preventDefault();
     resizeSplit(next);
   }
+  const fontSize = useSyncExternalStore(subscribePrefs, readFont, () => FONT_DEFAULT);
+  const tabWidth = useSyncExternalStore(subscribePrefs, readTab, () => TAB_DEFAULT);
+  const tourDone = useSyncExternalStore(subscribePrefs, () => readPref(tourKey) === "1", () => true);
+  const [tourStep, setTourStep] = useState(0);
+  const showTour = isClient && !tourDone && variant === "lesson" && !alreadyPassed;
+  const activeTour = showTour ? TOUR[tourStep]?.id : undefined;
+  const ring = (id: string) => (activeTour === id ? " ring-2 ring-accent ring-offset-2 ring-offset-surface" : "");
   const [stdin, setStdin] = useState("");
   const [busy, setBusy] = useState<null | "run" | "test">(null);
   const router = useRouter();
@@ -167,8 +209,15 @@ export function Workspace({
   const [celebration, setCelebration] = useState<{ levelUp: Reward | null; trackComplete: TrackComplete | null; returnFocus: HTMLElement | null } | null>(null);
   const dismissToast = useCallback((id: string) => setToasts((t) => t.filter((x) => x.id !== id)), []);
   const closeCelebration = useCallback(() => setCelebration(null), []);
+  const celebrationFocus = useCallback(() => {
+    const previous = celebration?.returnFocus;
+    return previous?.isConnected ? previous : rootRef.current?.querySelector<HTMLElement>("[data-primary-action]") ?? null;
+  }, [celebration]);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [cancelled, setCancelled] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [elapsedMs, setElapsedMs] = useState<number | null>(null);
+  const [passedCode, setPassedCode] = useState<string | null>(null);
   // Reset keeps the previous code for a few seconds instead of asking first (the editor's own undo history can't restore it).
   const [undoReset, setUndoReset] = useState<string | null>(null);
   const tutorRef = useRef<TutorControl>(null);
@@ -205,7 +254,7 @@ export function Workspace({
           try { if (localStorage.getItem(storageKey) === value) localStorage.removeItem(storageKey); }
           catch { /* A successful account save must not depend on browser storage. */ }
         }
-        if (alive.current) setSaveState("saved");
+        if (alive.current) { setSaveState("saved"); setSavedAt(Date.now()); }
       } catch {
         if (alive.current && version === revision.current) setSaveState("error");
       }
@@ -271,7 +320,10 @@ export function Workspace({
       setBusy(mode);
       setRequestError(null);
       setCancelled(false);
+      setElapsedMs(null);
       setTab("output");
+      const startedAt = performance.now();
+      const sentCode = codeRef.current;
       track("run");
       try {
         if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -287,8 +339,11 @@ export function Workspace({
         if (!res.ok) throw new Error(res.status === 503 ? "The code runner is unavailable or busy. Your draft is still here; try again shortly." : body.error ?? "Something went wrong running your code.");
         if (!alive.current || controller.signal.aborted) return;
         setResult(body);
+        setElapsedMs(performance.now() - startedAt);
         if (body.kind === "test" && body.allPassed) {
           setPassed(true);
+          setPassedCode(sentCode);
+          writePref(tourKey, "1"); // the tour is for the very first lessons only
           track("test_passed");
           if (body.reward || body.reviewed) router.refresh(); // header XP chip and dashboard read the user at request time
           if (variant === "lesson") onPassed?.();
@@ -328,8 +383,26 @@ export function Workspace({
       setHintBusy(false);
     }
   };
+  // After a pass (and until the code is edited) the primary action is the next lesson.
+  const ready = passed && !!nextHref && variant === "lesson" && (passedCode !== null ? code === passedCode : edited === null);
+  const readyRef = useRef(false);
+  const nextRef = useRef<string | null>(nextHref);
+  useLayoutEffect(() => {
+    readyRef.current = ready;
+    nextRef.current = nextHref;
+  }, [ready, nextHref]);
   const run = useCallback(() => execute("run"), [execute]);
-  const test = useCallback(() => execute("test"), [execute]);
+  const test = useCallback(() => {
+    if (readyRef.current && nextRef.current) router.push(nextRef.current);
+    else void execute("test");
+  }, [execute, router]);
+  const retest = useCallback(() => execute("test"), [execute]);
+
+  // Bring the first failing test into view once results arrive.
+  useEffect(() => {
+    if (!result || busy || result.kind !== "test" || result.allPassed) return;
+    document.getElementById("first-failing-test")?.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+  }, [result, busy]);
 
   const errorLinesOf = useMemo(() => {
     if (!result || busy) return NO_LINES;
@@ -365,12 +438,12 @@ export function Workspace({
       <div className="sticky top-16 z-10 flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-surface px-3 py-3 lg:static">
         <span className="font-mono text-xs text-muted">{LANGUAGE_FILE[exercise.language]}</span>
         <span className="text-xs text-muted" aria-live="polite">
-          {variant === "review" ? "Review draft: saved solution unchanged" : recovered ? "Recovered browser draft. Save it to your account." : saveState === "error" ? "Couldn't save. Your draft is still in the editor." : signedIn ? { idle: "", saving: "Saving…", saved: "Saved" }[saveState] : "Saved in this browser only"}
+          {variant === "review" ? "Review draft: saved solution unchanged" : recovered ? "Recovered browser draft. Save it to your account." : saveState === "error" ? "Couldn't save. Your draft is still in the editor." : signedIn ? (saveState === "saved" && savedAt !== null ? <SavedAgo key={savedAt} at={savedAt} /> : saveState === "saving" ? "Saving…" : edited !== null ? "Unsaved changes" : "") : saveState === "saved" && savedAt !== null ? <SavedAgo key={savedAt} at={savedAt} where=" in this browser" /> : "Saved in this browser only"}
         </span>
         {(saveState === "error" || recovered) && <button type="button" onClick={retrySave} className="min-h-11 rounded-md px-2 text-xs text-accent underline underline-offset-2">{recovered ? "Save recovered draft" : "Retry save"}</button>}
         <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-          <button type="button" className="min-h-11 rounded-md px-2 text-xs text-muted hover:bg-surface-2 hover:text-text sm:min-h-9" onClick={resetCode}>
-            Reset
+          <button type="button" title="Replace your code with the starter. You can undo it for a few seconds." className="min-h-11 rounded-md border border-border px-2.5 text-xs text-muted hover:bg-surface-2 hover:text-text sm:min-h-9" onClick={resetCode}>
+            Reset code
           </button>
           {/* Rendered right after Reset so the next Tab reaches Undo, though it is positioned over the page. */}
           {undoReset !== null && <UndoToast onUndo={() => { onChange(undoReset); setUndoReset(null); }} onDismiss={() => setUndoReset(null)} />}
@@ -385,46 +458,101 @@ export function Workspace({
             disabled={!!busy}
             title={`Compile and run your own main() (${mod}+Shift+Enter)`}
             aria-keyshortcuts={mod === "⌘" ? "Meta+Shift+Enter" : "Control+Shift+Enter"}
-            className="inline-flex h-11 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium hover:bg-surface-2 disabled:opacity-60 sm:h-9"
+            className={`inline-flex h-11 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium hover:bg-surface-2 disabled:opacity-60 sm:h-9${ring("run")}`}
           >
             {busy === "run" ? "Running…" : "Run"}
-            <span className="hidden items-center gap-0.5 sm:inline-flex">
+            <span className="inline-flex items-center gap-0.5 max-sm:hidden">
               <Kbd>{mod}</Kbd>
               <Kbd>⇧</Kbd>
               <Kbd>↵</Kbd>
             </span>
           </button>
-          <button
-            type="button"
-            onClick={test}
-            disabled={!!busy}
-            title={`Check your solution against the tests (${mod}+Enter)`}
-            aria-keyshortcuts={mod === "⌘" ? "Meta+Enter" : "Control+Enter"}
-            className="inline-flex h-11 items-center gap-2 rounded-lg bg-accent px-3 text-sm font-medium text-accent-ink hover:brightness-110 disabled:opacity-60 sm:h-9"
-          >
-            {busy === "test" ? "Testing…" : "Test"}
-            <span className="hidden items-center gap-0.5 sm:inline-flex">
-              <Kbd>{mod}</Kbd>
-              <Kbd>↵</Kbd>
-            </span>
-          </button>
+          {ready ? (
+            <>
+              <button
+                type="button"
+                onClick={retest}
+                disabled={!!busy}
+                title="Run the tests again"
+                className="inline-flex h-11 items-center rounded-lg border border-border px-3 text-sm font-medium hover:bg-surface-2 disabled:opacity-60 sm:h-9"
+              >
+                {busy === "test" ? "Testing…" : "Re-test"}
+              </button>
+              <Link
+                data-primary-action
+                href={nextHref!}
+                title={`Go to the next lesson (${mod}+Enter)`}
+                aria-keyshortcuts={mod === "⌘" ? "Meta+Enter" : "Control+Enter"}
+                className="inline-flex h-11 items-center gap-2 rounded-lg bg-accent px-3 text-sm font-medium text-accent-ink hover:brightness-110 sm:h-9"
+              >
+                {nextLabel ?? "Next lesson →"}
+                <span className="inline-flex items-center gap-0.5 max-sm:hidden">
+                  <Kbd>{mod}</Kbd>
+                  <Kbd>↵</Kbd>
+                </span>
+              </Link>
+            </>
+          ) : (
+            <button
+              data-primary-action
+              type="button"
+              onClick={test}
+              disabled={!!busy}
+              title={`Check your solution against the tests (${mod}+Enter)`}
+              aria-keyshortcuts={mod === "⌘" ? "Meta+Enter" : "Control+Enter"}
+              className={`inline-flex h-11 items-center gap-2 rounded-lg bg-accent px-3 text-sm font-medium text-accent-ink hover:brightness-110 disabled:opacity-60 sm:h-9${ring("test")}`}
+            >
+              {busy === "test" ? "Testing…" : "Test"}
+              <span className="inline-flex items-center gap-0.5 max-sm:hidden">
+                <Kbd>{mod}</Kbd>
+                <Kbd>↵</Kbd>
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="h-[22rem] min-h-0 lg:h-auto lg:min-h-[8rem] lg:shrink-0 lg:grow-0 lg:basis-(--split)" style={{ "--split": `${split}%` } as CSSProperties}>
+      {showTour && (
+        <Tour
+          step={tourStep}
+          mod={mod}
+          onStep={setTourStep}
+          onClose={() => writePref(tourKey, "1")}
+        />
+      )}
+      <div className="h-[22rem] min-h-0 lg:h-auto lg:min-h-[8rem] lg:shrink lg:grow-0 lg:basis-(--split)" style={{ "--split": `${split}%` } as CSSProperties}>
         {isClient ? (
-          <Suspense fallback={<CodeFallback code={code} />}>
-            <CodeEditor value={code} onChange={onChange} language={exercise.language} onRun={run} onTest={test} label={`${LANGUAGE_LABEL[exercise.language]} code editor`} errorLines={errorLinesOf} />
+          <Suspense fallback={<CodeFallback code={code} fontSize={fontSize} tabWidth={tabWidth} />}>
+            <CodeEditor value={code} onChange={onChange} language={exercise.language} onRun={run} onTest={test} label={`${LANGUAGE_LABEL[exercise.language]} code editor`} errorLines={errorLinesOf} fontSize={fontSize} tabWidth={tabWidth} />
           </Suspense>
         ) : (
-          <CodeFallback code={code} />
+          <CodeFallback code={code} fontSize={fontSize} tabWidth={tabWidth} />
         )}
       </div>
 
-      <p className="hidden shrink-0 border-t border-border px-3 py-1 text-[11px] text-muted sm:block">
-        <Kbd>{mod}</Kbd>+<Kbd>↵</Kbd> Test · <Kbd>{mod}</Kbd>+<Kbd>⇧</Kbd>+<Kbd>↵</Kbd> Run · <Kbd>Tab</Kbd> indent · <Kbd>{mod}</Kbd>+<Kbd>/</Kbd> comment ·{" "}
-        <Kbd>Esc</Kbd> then <Kbd>Tab</Kbd> leave editor · <Kbd>Alt</Kbd>+<Kbd>1</Kbd> lesson · <Kbd>Alt</Kbd>+<Kbd>2</Kbd> editor
-      </p>
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-t border-border px-3 py-1 text-[11px] text-muted">
+        <p className="hidden sm:block">
+          <Kbd>{mod}</Kbd>+<Kbd>↵</Kbd> {ready ? "Next lesson" : "Test"} · <Kbd>{mod}</Kbd>+<Kbd>⇧</Kbd>+<Kbd>↵</Kbd> Run · <Kbd>Tab</Kbd> indent · <Kbd>{mod}</Kbd>+<Kbd>/</Kbd> comment ·{" "}
+          <Kbd>Esc</Kbd> then <Kbd>Tab</Kbd> leave editor · <Kbd>Alt</Kbd>+<Kbd>1</Kbd> lesson · <Kbd>Alt</Kbd>+<Kbd>2</Kbd> editor
+        </p>
+        <div role="group" aria-label="Editor settings" className="ml-auto flex flex-wrap items-center gap-2">
+          <span className="flex items-center gap-1">
+            Text
+            <button type="button" aria-label="Smaller text" disabled={fontSize <= FONT_MIN} onClick={() => writePref(fontKey, String(fontSize - 1))} className="min-h-8 min-w-8 rounded-md border border-border text-xs hover:bg-surface-2 hover:text-text disabled:opacity-50">A−</button>
+            <span className="min-w-8 text-center tabular-nums" aria-label={`Font size ${fontSize} pixels`}>{fontSize}px</span>
+            <button type="button" aria-label="Larger text" disabled={fontSize >= FONT_MAX} onClick={() => writePref(fontKey, String(fontSize + 1))} className="min-h-8 min-w-8 rounded-md border border-border text-xs hover:bg-surface-2 hover:text-text disabled:opacity-50">A+</button>
+          </span>
+          <label className="flex items-center gap-1">
+            Tab width
+            <select value={tabWidth} onChange={(e) => writePref(tabKey, e.target.value)} className="min-h-8 rounded-md border border-field bg-bg px-1 text-text">
+              {TAB_WIDTHS.map((w) => <option key={w} value={w}>{w}</option>)}
+            </select>
+          </label>
+          {(fontSize !== FONT_DEFAULT || tabWidth !== TAB_DEFAULT) && (
+            <button type="button" onClick={() => { writePref(fontKey, null); writePref(tabKey, null); }} className="min-h-8 rounded-md px-2 hover:bg-surface-2 hover:text-text">Default view</button>
+          )}
+        </div>
+      </div>
       <div
         role="separator" aria-orientation="horizontal" aria-label="Resize the editor and the panel below it" aria-valuemin={30} aria-valuemax={75} aria-valuenow={split}
         tabIndex={0} data-dragging={dragging}
@@ -432,7 +560,7 @@ export function Workspace({
         onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDragging(true); }}
         onPointerMove={dragSplit} onPointerUp={() => setDragging(false)} onPointerCancel={() => setDragging(false)} onKeyDown={splitKeys}
       />
-      <div className="max-lg:border-t max-lg:border-border lg:flex lg:min-h-[16rem] lg:flex-1 lg:flex-col">
+      <div className="max-lg:border-t max-lg:border-border lg:flex lg:min-h-[8rem] lg:flex-1 lg:flex-col">
       <div role="tablist" aria-label="Workspace panels" className="flex border-b border-border px-2">
         {tabs.map((t) => (
           <button
@@ -451,7 +579,7 @@ export function Workspace({
               setTab(next.id);
               document.getElementById(`tab-${next.id}`)?.focus();
             }}
-            className={`-mb-px min-h-11 border-b-2 px-3 py-2 text-sm ${tab === t.id ? "border-accent text-text" : "border-transparent text-muted hover:text-text"}`}
+            className={`-mb-px min-h-11 border-b-2 px-3 py-2 text-sm${t.id === "output" ? "" : ring(t.id)} ${tab === t.id ? "border-accent text-text" : "border-transparent text-muted hover:text-text"}`}
           >
             {t.label}
           </button>
@@ -478,7 +606,7 @@ export function Workspace({
               />
             </div>
           )}
-          {result && !busy && <CopyOutput text={lastOutput} />}
+          {result && !busy && <CopyOutput key={lastOutput} text={lastOutput} meta={elapsedMs !== null ? `${result.kind === "test" ? "Tests" : "Run"} finished in ${formatSeconds(elapsedMs)}` : ""} />}
           <OutputPanel
             result={result}
             busy={busy}
@@ -555,19 +683,45 @@ export function Workspace({
       </div>
       <AchievementToasts items={toasts} onDismiss={dismissToast} />
       <div role="status" aria-live="polite" className="sr-only">{announcement}</div>
-      {celebration && <Celebration returnFocus={celebration.returnFocus} levelUp={celebration.levelUp} trackComplete={celebration.trackComplete} onClose={closeCelebration} />}
+      {celebration && <Celebration returnFocus={celebrationFocus} nextLesson={nextHref ? { href: nextHref, title: nextLabel ?? "Next lesson" } : null} levelUp={celebration.levelUp} trackComplete={celebration.trackComplete} onClose={closeCelebration} />}
     </div>
   );
 }
 
-function CopyOutput({ text }: { text: string }) {
+function CopyOutput({ text, meta }: { text: string; meta: string }) {
   const [status, setStatus] = useState("Copy output");
+  useEffect(() => {
+    if (status === "Copy output") return;
+    const t = setTimeout(() => setStatus("Copy output"), 2500);
+    return () => clearTimeout(t);
+  }, [status]);
   return (
-    <div className="mb-3 flex justify-end">
+    <div className="mb-3 flex items-center justify-between gap-3">
+      <p className="text-xs text-muted">{meta}</p>
       <button type="button" className="min-h-9 rounded-lg border border-border px-3 text-xs text-muted hover:bg-surface-2 hover:text-text" onClick={async () => {
         try { await navigator.clipboard.writeText(text); setStatus("Copied"); }
         catch { setStatus("Copy unavailable"); }
       }}><span aria-live="polite">{status}</span></button>
+    </div>
+  );
+}
+
+/** Elapsed timer while a request is in flight. The API answers once, so the phase switch is an estimate. */
+function RunProgress({ mode }: { mode: "run" | "test" }) {
+  const [ms, setMs] = useState(0);
+  useEffect(() => {
+    const start = performance.now();
+    const id = setInterval(() => setMs(performance.now() - start), 100);
+    return () => clearInterval(id);
+  }, []);
+  const phase = ms < 1500 ? "Compiling…" : mode === "test" ? "Running the tests…" : "Running…";
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-muted">
+        {phase} <span className="tabular-nums" aria-hidden="true">{(ms / 1000).toFixed(1)} s</span>
+      </p>
+      <div className="skeleton h-4 w-2/3" />
+      <div className="skeleton h-4 w-1/2" />
     </div>
   );
 }
@@ -598,13 +752,7 @@ function OutputPanel({
   variant: Variant;
 }) {
   if (busy) {
-    return (
-      <div className="space-y-2">
-        <p className="text-sm text-muted">{busy === "test" ? "Compiling and running the tests…" : "Compiling and running…"}</p>
-        <div className="skeleton h-4 w-2/3" />
-        <div className="skeleton h-4 w-1/2" />
-      </div>
-    );
+    return <RunProgress mode={busy} />;
   }
   if (cancelled) return <p className="text-sm text-muted">Cancelled.</p>;
   if (requestError) {
@@ -675,7 +823,7 @@ function OutputPanel({
             Tests: {result.results.filter((r) => r.passed).length} of {result.results.length} passing
           </h3>
           <ul className="mt-2 space-y-1.5">
-            {(failingFirst ? result.results.filter((r) => !r.passed) : result.results).map((r, i) => <TestItem key={i} r={r} />)}
+            {(failingFirst ? result.results.filter((r) => !r.passed) : result.results).map((r, i, shown) => <TestItem key={i} r={r} first={!r.passed && shown.findIndex((x) => !x.passed) === i} />)}
           </ul>
           {failingFirst && (
             <details className="mt-3">
@@ -712,9 +860,9 @@ function OutputPanel({
 }
 
 type TestRow = Extract<RunResponse, { kind: "test" }>["results"][number];
-function TestItem({ r }: { r: TestRow }) {
+function TestItem({ r, first = false }: { r: TestRow; first?: boolean }) {
   return (
-    <li className="text-sm">
+    <li id={first ? "first-failing-test" : undefined} className="scroll-mt-4 text-sm">
       <span className={r.passed ? "text-ok" : "text-err"}>
         <span aria-hidden="true">{r.passed ? "✓" : "✗"}</span>
         <span className="sr-only">{r.passed ? "Passed:" : "Failed:"}</span> {r.name}
@@ -723,6 +871,45 @@ function TestItem({ r }: { r: TestRow }) {
         <OutputDiff expected={r.expected} actual={r.actual} />
       ) : r.message && <pre className="mt-1 ml-5 overflow-auto rounded-md bg-bg p-2 font-mono text-xs whitespace-pre-wrap text-muted">{r.message}</pre>}
     </li>
+  );
+}
+
+function SavedAgo({ at, where = "" }: { at: number; where?: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const s = Math.max(0, Math.floor((now - at) / 1000));
+  const ago = s < 60 ? `${s}s ago` : `${Math.floor(s / 60)}m ago`;
+  // Only the stable part is announced; the ticking age is visual.
+  return <><span>Saved{where}</span><span aria-hidden="true"> · {ago}</span></>;
+}
+
+const TOUR = [
+  { id: "run", title: "Run", body: (mod: string) => `Compiles and runs your own main(), so you can try things out. Shortcut: ${mod}+Shift+Enter.` },
+  { id: "test", title: "Test", body: (mod: string) => `Checks your solution against the hidden tests and saves your progress when they pass. Shortcut: ${mod}+Enter.` },
+  { id: "hints", title: "Hints", body: () => "Stuck? Open the Hints tab. They appear one at a time and cost nothing." },
+  { id: "tutor", title: "AI tutor", body: () => "Ask the tutor in the AI tutor tab. It explains and nudges, but never hands over the answer." },
+];
+
+function Tour({ step, mod, onStep, onClose }: { step: number; mod: string; onStep: (n: number) => void; onClose: () => void }) {
+  const item = TOUR[step];
+  const last = step === TOUR.length - 1;
+  return (
+    <section aria-label="Quick tour" className="shrink-0 border-b border-border bg-accent-soft px-3 py-2 text-sm">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <p className="min-w-0 flex-1">
+          <span className="text-xs text-muted">Tour {step + 1} of {TOUR.length} · </span>
+          <strong>{item.title}.</strong> {item.body(mod)}
+        </p>
+        <div className="flex items-center gap-1">
+          {step > 0 && <button type="button" onClick={() => onStep(step - 1)} className="min-h-9 rounded-md border border-border px-2.5 text-xs hover:bg-surface-2">Back</button>}
+          <button type="button" onClick={() => (last ? onClose() : onStep(step + 1))} className="min-h-9 rounded-md bg-accent px-2.5 text-xs font-medium text-accent-ink hover:brightness-110">{last ? "Done" : "Next"}</button>
+          {!last && <button type="button" onClick={onClose} className="min-h-9 rounded-md px-2.5 text-xs text-muted hover:bg-surface-2 hover:text-text">Skip tour</button>}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -820,7 +1007,7 @@ function describeResult(r: RunResponse | null): string {
   return [
     r.compileOutput && `Compiler:\n${r.compileOutput}`,
     r.error && `Error: ${r.error}`,
-    r.results.map((t) => `${t.passed ? "PASS" : "FAIL"} ${t.name}${t.message ? `: ${t.message}` : ""}`).join("\n"),
+    r.results.map((t) => `${t.passed ? "PASS" : "FAIL"} ${t.name}${t.message ? `: ${t.message}` : ""}${t.expected !== undefined && t.actual !== undefined ? `\n  expected: ${t.expected}\n  actual: ${t.actual}` : ""}`).join("\n"),
     r.output && `Other output:\n${r.output}`,
   ]
     .filter(Boolean)

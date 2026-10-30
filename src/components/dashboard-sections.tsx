@@ -57,6 +57,24 @@ export function ReviewCard({ due }: { due: DueReview[] }) {
   );
 }
 
+export type ContinueTarget = { href: string; title: string; trackTitle: string; updatedAt: Date };
+
+/** The lesson you touched most recently without passing it. Hidden when it is already the headline lesson. */
+export function ContinueCard({ target }: { target: ContinueTarget }) {
+  const when = target.updatedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+  return (
+    <section aria-labelledby="continue-h" className="panel p-6">
+      <h2 id="continue-h" className="display-sm text-lg font-bold">Continue where you left off</h2>
+      <p className="mt-2 font-medium">{target.title}</p>
+      <p className="text-sm text-muted">{target.trackTitle} · last worked on {when}</p>
+      <Link href={target.href} className="mt-4 inline-flex min-h-10 items-center rounded-lg border border-line-strong px-4 text-sm font-medium hover:bg-surface-2">
+        Resume
+      </Link>
+      <p className="mt-3 text-xs text-muted">Your saved code is waiting.</p>
+    </section>
+  );
+}
+
 export function PickCard({ pick }: { pick: DailyPick }) {
   return (
     <section aria-labelledby="pick-h" className="panel p-6">
@@ -82,6 +100,11 @@ export function CodexPanel({ unlocked }: { unlocked: Map<string, Date> }) {
         <h2 id="codex-h" className="display text-[21px] font-bold">Codex <span className="text-accent">{earned.length}</span><span className="text-base font-normal text-muted"> of {ACHIEVEMENTS.length}</span></h2>
         <p className="text-sm text-muted">Recognition only. Achievements never change your XP.</p>
       </div>
+      {earned.length === 0 && (
+        <p className="mt-4 rounded-lg border border-line bg-surface-2 p-4 text-sm text-text-2">
+          Nothing earned yet, and that is fine. Pass your first lesson and the first entry lands here. Locked ones below show what to aim for.
+        </p>
+      )}
       <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {earned.map((a) => (
           <li key={a.id} className="rounded-lg border border-accent/40 bg-accent-soft p-4">

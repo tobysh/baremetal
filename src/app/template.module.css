@@ -1,0 +1,6 @@
+/* Opacity only: a transform would make this wrapper a containing block for fixed descendants mid-animation. */
+.pageIn { animation: pageIn 0.16s ease-out; }
+@keyframes pageIn { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .pageIn { animation: none; }
+}

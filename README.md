@@ -76,6 +76,7 @@ Open [http://localhost:3000](http://localhost:3000). To enable account email ver
 | `npx tsc --noEmit` | Type-check the TypeScript code |
 | `npm run verify:content` | Check lesson starters, solutions, and hidden tests |
 | `npm run check:ids` | Ensure published lesson IDs remain stable for learner progress |
+| `npm run check:curriculum` | Check draft isolation and strict published-content loading |
 | `npm run check:learning` | Check recommendations, prerequisites, cohort calculations and diagnostics |
 | `npm run test:runner` | Verify the runner socket, all languages, admission and cancellation |
 | `npm run test:regressions` | Run isolated auth, budget, API and browser checks in a temporary production build (requires MongoDB) |
@@ -88,6 +89,8 @@ The full content verifier needs the relevant compiler toolchains, Bubblewrap, an
 ## For contributors
 
 Curriculum lessons live under `content/<track>/<lesson>/`. A lesson usually includes `lesson.md`, `task.md`, `hints.md`, `starter.*`, `solution.*`, and either hidden `tests.*` or `cases.json`. Keep lesson IDs stable: they are used to store learner progress. Run `npm run verify:content -- <track>` while developing a track, then run the full verifier before opening a pull request.
+
+Unfinished courses can set `"draft": true` in `track.json`; unfinished lessons in published courses can set `draft: true` in their frontmatter. Drafts stay on disk but are excluded from the catalogue, search, exercise lookup and content execution checks. Remove the flag only after completing and verifying the content. Missing files in published content remain errors. Run `npm run check:curriculum` to check draft isolation.
 
 For code changes, run lint and type-checking as well. Please keep security exercises synthetic and keep learner code execution inside the sandbox.
 

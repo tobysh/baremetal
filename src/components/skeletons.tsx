@@ -69,3 +69,97 @@ export function DashboardSkeleton() {
     </div>
   );
 }
+
+/** Title block shared by the simple page skeletons. */
+function TitleSkeleton({ description = true }: { description?: boolean }) {
+  return (
+    <div className="space-y-3">
+      <Skeleton className="h-9 w-64 sm:h-10" />
+      {description && <Skeleton className="h-5 w-full max-w-xl" />}
+    </div>
+  );
+}
+
+export function LeaderboardSkeleton() {
+  return (
+    <Container width="narrow" className="py-10 sm:py-14">
+      <div aria-busy="true" aria-label="Loading leaderboard">
+        <TitleSkeleton />
+        <Skeleton className="mt-6 h-11 w-full rounded-lg" />
+        <div className="mt-8 space-y-px">
+          {Array.from({ length: 8 }, (_, i) => (
+            <Skeleton key={i} className="h-14 rounded-none first:rounded-t-xl last:rounded-b-xl" />
+          ))}
+        </div>
+      </div>
+    </Container>
+  );
+}
+
+export function ProfileLoadingSkeleton() {
+  return (
+    <Container width="narrow" className="py-10 sm:py-14">
+      <div aria-busy="true" aria-label="Loading profile" className="space-y-3">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-9 w-56" />
+        <Skeleton className="h-4 w-64" />
+        <Skeleton className="mt-8 h-32" />
+        <div className="grid gap-3 pt-3 sm:grid-cols-2">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-20" />
+          ))}
+        </div>
+      </div>
+    </Container>
+  );
+}
+
+export function SettingsLoadingSkeleton() {
+  return (
+    <Container width="narrow" className="py-10 sm:py-14">
+      <div aria-busy="true" aria-label="Loading settings">
+        <TitleSkeleton description={false} />
+        <div className="mt-6 flex gap-6 border-b border-border pb-3">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-5 w-20" />
+        </div>
+        <div className="mt-8 space-y-8">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-80" />
+          <Skeleton className="h-40" />
+        </div>
+      </div>
+    </Container>
+  );
+}
+
+export function ShellLoadingSkeleton() {
+  return (
+    <Container className="py-10 sm:py-12">
+      <div aria-busy="true" aria-label="Loading shell">
+        <TitleSkeleton />
+        <Skeleton className="mt-6 h-[28rem] w-full rounded-2xl" />
+      </div>
+    </Container>
+  );
+}
+
+export function LearnSkeleton() {
+  return (
+    <Container className="py-8 sm:py-12">
+      <div aria-busy="true" aria-label="Loading courses">
+        <TitleSkeleton />
+        <div className="mt-8 flex flex-wrap gap-2">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-11 w-28 rounded-lg" />
+          ))}
+        </div>
+        <div className="mt-10 grid gap-4 sm:grid-cols-2">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-48 rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    </Container>
+  );
+}

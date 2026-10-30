@@ -1,0 +1,14 @@
+{
+  "title": "Rust FFI Boundaries",
+  "summary": "Learn what crosses a C-style boundary: repr(C) layout, extern \"C\" functions, callbacks, raw pointers, owned handles, error codes and buffers.",
+  "description": "Rust talks to C through a narrow contract: fixed struct layouts, plain functions, raw pointers and integer error codes. This track teaches that contract without needing a C compiler. Both sides of every boundary are written in Rust, so you practise the rules a real binding must follow: controlling field order and padding, passing extern \"C\" functions as pointers, threading a context pointer through callbacks, moving ownership with Box::into_raw and Box::from_raw, keeping panics from crossing the line, and filling caller-supplied buffers snprintf-style. A capstone builds a small C-ABI key-value library. The runner cannot link real C code into a Rust program, so no lesson proves compatibility with a C compiler; see docs/language-interop-feasibility.md.",
+  "level": "Advanced",
+  "language": "rust",
+  "path": "rust",
+  "order": 8,
+  "prerequisite": "rust-bridge",
+  "outcomes": [
+    "Design and implement a C-style API in Rust with explicit layout, ownership and error conventions."
+  ],
+  "draft": true
+}

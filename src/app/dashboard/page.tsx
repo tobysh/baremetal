@@ -11,7 +11,7 @@ import { LANGUAGE_LABEL, type Language, type Track } from "@/lib/curriculum/type
 import { levelFor } from "@/lib/gamification";
 import type { ProgressDoc } from "@/lib/models";
 import { getProgressMap, getReviews } from "@/lib/progress";
-import { CodexPanel, CourseMap, PickCard, ReviewCard, RhythmCard, StatsPanel, type DueReview, type MonthXp } from "@/components/dashboard-sections";
+import { CodexPanel, ContinueCard, type ContinueTarget, CourseMap, PickCard, ReviewCard, RhythmCard, StatsPanel, type DueReview, type MonthXp } from "@/components/dashboard-sections";
 import { TimezoneSync } from "@/components/timezone-sync";
 import { recommendLearning } from "@/lib/learning";
 import { dailyPick } from "@/lib/daily";
@@ -78,6 +78,12 @@ async function DashboardBody() {
   const notStarted = courses.filter((course) => !course.started).sort((a, b) => ready(b) - ready(a)).slice(0, 4);
 
   const pick = dailyPick({ tracks, progress, reviews, userId: user.id, now, skipExerciseId: nextUp?.lesson.exercise.id });
+  const lastTouched = [...progress.values()]
+    .filter((p) => p.status !== "passed" && !isChallengeId(p.exerciseId) && lessonOf.has(p.exerciseId) && p.exerciseId !== nextUp?.lesson.exercise.id)
+    .sort((a, b) => +b.updatedAt - +a.updatedAt)[0];
+  const continueTarget: ContinueTarget | null = lastTouched
+    ? { href: lessonPath(lessonOf.get(lastTouched.exerciseId)!.t.slug, lessonOf.get(lastTouched.exerciseId)!.l.slug), title: lessonOf.get(lastTouched.exerciseId)!.l.title, trackTitle: lessonOf.get(lastTouched.exerciseId)!.t.title, updatedAt: lastTouched.updatedAt }
+    : null;
   const level = levelFor(user.xp);
   const xpFill = level.next === null ? 1 : user.xp / level.next;
 
@@ -139,6 +145,7 @@ async function DashboardBody() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        {continueTarget && <ContinueCard target={continueTarget} />}
         <RhythmCard rhythm={ctx.rhythm} />
         <ReviewCard due={dueReviews} />
         {pick && <PickCard pick={pick} />}

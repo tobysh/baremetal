@@ -1,0 +1,47 @@
+[
+  {
+    "name": "double and square tie on 2",
+    "stdin": "1\n2 4\n4\ndouble\nsquare\nplus_ten\nabs\n",
+    "expected": "double: consistent\nsquare: consistent\nplus_ten: refuted by #1 (in=2 expected=4 got=12)\nabs: refuted by #1 (in=2 expected=4 got=2)\nverdict: ambiguous (double, square) - more observations needed\n"
+  },
+  {
+    "name": "one more point separates them",
+    "stdin": "2\n2 4\n3 6\n3\ndouble\nsquare\nnegate\n",
+    "expected": "double: consistent\nsquare: refuted by #2 (in=3 expected=6 got=9)\nnegate: refuted by #1 (in=2 expected=4 got=-2)\nverdict: double fits all observations (not proven)\n"
+  },
+  {
+    "name": "abs versus sign",
+    "stdin": "3\n5 5\n-5 5\n0 0\n5\nabs\nsign\nnegate\nclamp_100\ndigit_sum\n",
+    "expected": "abs: consistent\nsign: refuted by #1 (in=5 expected=5 got=1)\nnegate: refuted by #1 (in=5 expected=5 got=-5)\nclamp_100: refuted by #2 (in=-5 expected=5 got=-5)\ndigit_sum: consistent\nverdict: ambiguous (abs, digit_sum) - more observations needed\n"
+  },
+  {
+    "name": "digit sum with a negative",
+    "stdin": "3\n12 3\n-345 12\n100 1\n4\ndigit_sum\nabs\nmod_7\nis_odd\n",
+    "expected": "digit_sum: consistent\nabs: refuted by #1 (in=12 expected=3 got=12)\nmod_7: refuted by #1 (in=12 expected=3 got=5)\nis_odd: refuted by #1 (in=12 expected=3 got=0)\nverdict: digit_sum fits all observations (not proven)\n"
+  },
+  {
+    "name": "nothing fits",
+    "stdin": "2\n1 1\n2 5\n3\ndouble\nsquare\nplus_ten\n",
+    "expected": "double: refuted by #1 (in=1 expected=1 got=2)\nsquare: refuted by #2 (in=2 expected=5 got=4)\nplus_ten: refuted by #1 (in=1 expected=1 got=11)\nverdict: no hypothesis fits\n"
+  },
+  {
+    "name": "unknown name",
+    "stdin": "1\n7 14\n3\ndouble\ntriple\nplus_ten\n",
+    "expected": "double: consistent\ntriple: unknown hypothesis\nplus_ten: refuted by #1 (in=7 expected=14 got=17)\nverdict: double fits all observations (not proven)\n"
+  },
+  {
+    "name": "clamp",
+    "stdin": "3\n500 100\n-500 -100\n50 50\n4\nclamp_100\nabs\nsign\nsquare\n",
+    "expected": "clamp_100: consistent\nabs: refuted by #1 (in=500 expected=100 got=500)\nsign: refuted by #1 (in=500 expected=100 got=1)\nsquare: refuted by #1 (in=500 expected=100 got=250000)\nverdict: clamp_100 fits all observations (not proven)\n"
+  },
+  {
+    "name": "parity and remainder",
+    "stdin": "4\n3 1\n4 0\n10 0\n7 1\n3\nis_odd\nmod_7\nsign\n",
+    "expected": "is_odd: consistent\nmod_7: refuted by #1 (in=3 expected=1 got=3)\nsign: refuted by #2 (in=4 expected=0 got=1)\nverdict: is_odd fits all observations (not proven)\n"
+  },
+  {
+    "name": "no observations",
+    "stdin": "0\n2\ndouble\nabs\n",
+    "expected": "double: consistent\nabs: consistent\nverdict: ambiguous (double, abs) - more observations needed\n"
+  }
+]
