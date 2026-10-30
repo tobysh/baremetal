@@ -19,6 +19,14 @@ export type BrokerLimits = {
   inputPerSec: number;
   /** Total bytes of terminal output per session. */
   maxOutputBytes: number;
+  /**
+   * Token bucket for guest output. When it runs dry the guest socket is paused (backpressure reaches the guest agent and
+   * its PTY), so a fast writer is slowed down, not killed.
+   */
+  outputBurst: number;
+  outputPerSec: number;
+  /** Output that keeps the bucket below a quarter full for this long ends the session (a sustained flood). */
+  outputFloodMs: number;
 };
 
 export const DEFAULT_LIMITS: BrokerLimits = {
@@ -30,6 +38,9 @@ export const DEFAULT_LIMITS: BrokerLimits = {
   inputBurst: 64 * 1024,
   inputPerSec: 16 * 1024,
   maxOutputBytes: 32 * 1024 * 1024,
+  outputBurst: 512 * 1024,
+  outputPerSec: 128 * 1024,
+  outputFloodMs: 60_000,
 };
 
 /** Audit records carry ids and counters only, never terminal content. */
@@ -56,6 +67,13 @@ class Bucket {
     this.tokens -= n;
     return true;
   }
+  /** Take `n` even if that goes into debt; returns how long until the bucket is back at zero. */
+  charge(n: number): number {
+    this.take(0);
+    this.tokens -= n;
+    return this.tokens < 0 ? Math.ceil((-this.tokens / this.perSec) * 1000) : 0;
+  }
+  get level() { return this.tokens; }
 }
 
 const ACCOUNT = /^[A-Za-z0-9_-]{8,128}$/;
@@ -81,6 +99,7 @@ const MESSAGES: Record<string, string> = {
   idle_timeout: "The shell closed after a period of inactivity.",
   time_limit: "The shell reached its time limit.",
   output_limit: "The shell produced too much output.",
+  output_flood: "The shell produced output too fast for too long.",
   input_rate: "Input arrived too fast and the shell was closed.",
   boot_failed: "The shell could not start.",
   protocol: "Protocol error.",
@@ -105,6 +124,12 @@ export function createBroker(options: BrokerOptions) {
     const clientParser = new FrameParser();
     const guestParser = new FrameParser();
     const input = new Bucket(limits.inputBurst, limits.inputPerSec);
+    const output = new Bucket(limits.outputBurst, limits.outputPerSec);
+    let calmAt = Date.now(); // last time the output bucket was at least a quarter full
+    // The guest is read only while neither the web side nor the output bucket asks to wait.
+    let clientFull = false;
+    let rateWait: NodeJS.Timeout | undefined;
+    const flowGuest = () => { if (guest && !ended()) { if (clientFull || rateWait) guest.pause(); else guest.resume(); } };
     let state: "waiting" | "booting" | "live" | "ended" = "waiting";
     let account: string | undefined;
     let vm: Vm | undefined;
@@ -127,7 +152,7 @@ export function createBroker(options: BrokerOptions) {
       return (ending ??= (async () => {
         const previous = state;
         state = "ended";
-        for (const t of [openTimer, idleTimer, absoluteTimer, bootTimer]) clearTimeout(t);
+        for (const t of [openTimer, idleTimer, absoluteTimer, bootTimer, rateWait]) clearTimeout(t);
         sessions.delete(session);
         if (client.writable && MESSAGES[reason]) client.write(errorFrame(reason, MESSAGES[reason]));
         client.end();
@@ -225,11 +250,20 @@ export function createBroker(options: BrokerOptions) {
         } else if (frame.type === FrameType.Data && state === "live") {
           bytesOut += frame.payload.length;
           if (bytesOut > limits.maxOutputBytes) return void end("output_limit");
-          if (!client.write(encodeFrame(FrameType.Data, frame.payload))) {
+          const waitMs = output.charge(frame.payload.length);
+          if (output.level >= limits.outputBurst / 4) calmAt = Date.now();
+          else if (Date.now() - calmAt > limits.outputFloodMs) return void end("output_flood");
+          if (!client.write(encodeFrame(FrameType.Data, frame.payload)) && !clientFull) {
             // Backpressure: stop reading the guest until the web side catches up.
-            guest!.pause();
-            client.once("drain", () => guest?.resume());
+            clientFull = true;
+            client.once("drain", () => { clientFull = false; flowGuest(); });
           }
+          if (waitMs > 0 && !rateWait) {
+            // Over the output rate: stop reading the guest until the bucket has refilled. Frames already parsed from
+            // this chunk are still delivered, so the overshoot is at most one socket read.
+            rateWait = setTimeout(() => { rateWait = undefined; flowGuest(); }, waitMs);
+          }
+          flowGuest();
         } else if (frame.type === FrameType.Exit && state === "live" && frame.payload.length === 4) {
           client.write(encodeFrame(FrameType.Exit, frame.payload));
           return void end("shell_exit");

@@ -1,0 +1,17 @@
+[Unit]
+Description=Baremetal interactive shell (launcher, broker and every microVM)
+Documentation=file:///opt/baremetal-shell/docs/shell-deployment.md
+
+[Slice]
+# Sized for SHELL_MAX_SESSIONS=16 (reference host: 16 threads, 32 GiB). Formula and how to rescale: docs/shell-deployment.md.
+#   memory : 16 x 400 MiB per-VM memory.max + 1 GiB for launcher, broker and slack  -> 7.4 GiB, rounded to 8G
+#   cpu    : 16 x 50% per-VM cpu.max                                                -> 800%
+#   tasks  : 16 x 64 per-VM pids.max + 256 for launcher and broker                  -> 1280
+# These are ceilings for the whole slice: the per-VM limits set by the jailer still apply inside it.
+MemoryMax=8G
+MemoryHigh=7G
+MemorySwapMax=0
+CPUQuota=800%
+TasksMax=1280
+IOAccounting=yes
+IOWeight=50

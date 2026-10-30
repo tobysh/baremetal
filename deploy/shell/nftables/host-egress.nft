@@ -1,0 +1,43 @@
+#!/usr/sbin/nft -f
+# Default-drop firewall for the shell host (the machine that runs Firecracker). Install as /etc/nftables.d/ or load with
+# `nft -f`. Replace every address marked TODO before use; the 192.0.2.0/24 and 198.51.100.0/24 values are documentation
+# addresses and match nothing real.
+#
+# Policy: the host initiates almost nothing. Guests have no NIC by default and lab guests live in their own namespaces
+# (lab-session.nft), so this table only has to protect the host's own interfaces.
+define ADMIN_NETS   = { 192.0.2.10/32 }          # TODO: where operators ssh from
+define DNS_SERVERS  = { 198.51.100.53 }           # TODO: the host's resolvers (or remove DNS and use static mirrors)
+define NTP_SERVERS  = { 198.51.100.123 }          # TODO: time sources (guests derive time from the host clock)
+define UPDATE_HOSTS = { 198.51.100.80 }           # TODO: package mirror / GitHub release addresses, or keep empty and
+                                                  # open this set only during an upgrade window
+
+table inet bm_host {
+  set update_hosts { type ipv4_addr; flags interval; elements = $UPDATE_HOSTS }
+
+  chain input {
+    type filter hook input priority filter; policy drop;
+    ct state invalid drop
+    ct state established,related accept
+    iifname "lo" accept
+    ip saddr $ADMIN_NETS tcp dport 22 ct state new limit rate 10/minute accept
+    icmp type { destination-unreachable, time-exceeded, echo-request } limit rate 10/second accept
+    counter log prefix "bm-host-in-drop " level info limit rate 5/minute drop
+  }
+
+  chain forward {
+    # The host is not a router. Per-session namespaces have their own tables and do not forward through the host.
+    type filter hook forward priority filter; policy drop;
+  }
+
+  chain output {
+    type filter hook output priority filter; policy drop;
+    ct state invalid drop
+    ct state established,related accept
+    oifname "lo" accept
+    ip daddr $DNS_SERVERS udp dport 53 accept
+    ip daddr $DNS_SERVERS tcp dport 53 accept
+    ip daddr $NTP_SERVERS udp dport 123 accept
+    ip daddr @update_hosts tcp dport { 80, 443 } accept
+    counter log prefix "bm-host-out-drop " level info limit rate 5/minute drop
+  }
+}

@@ -1,8 +1,9 @@
-// Interactive-shell broker: owns microVM lifetimes and relays framed terminal bytes. Design and threat model:
+// Interactive-shell broker (unprivileged): holds microVM leases from the root launcher and relays framed terminal bytes. Design and threat model:
 // docs/interactive-shell-isolation.md. Runs in its own service; it must hold no web, database or API secrets.
 import { chmod, lstat, rm } from "node:fs/promises";
 import { createBroker, type BrokerLimits } from "../src/lib/shell/broker";
-import { reapStaleVms, startJailedVm, startUnjailedVm, type Vm } from "../src/lib/shell/vm";
+import { launcherVmStarter } from "../src/lib/shell/launcher-client";
+import { startUnjailedVm, type Vm } from "../src/lib/shell/vm";
 
 const need = (name: string) => {
   const value = process.env[name];
@@ -16,22 +17,25 @@ const num = (name: string, fallback: number) => {
   if (!Number.isFinite(n) || n <= 0) throw new Error(`${name} must be a positive number`);
   return n;
 };
+const socketEnv = (name: string) => {
+  const value = need(name);
+  if (!value.startsWith("/") || Buffer.byteLength(value) > 100) throw new Error(`${name} must be an absolute path of at most 100 bytes`);
+  return value;
+};
 
-const socketPath = need("SHELL_BROKER_SOCKET");
-if (!socketPath.startsWith("/") || Buffer.byteLength(socketPath) > 100) throw new Error("SHELL_BROKER_SOCKET must be an absolute path of at most 100 bytes");
-const spec = { firecracker: need("FIRECRACKER"), kernel: need("SHELL_KERNEL"), rootfs: need("SHELL_ROOTFS") };
-const jailed = process.env.SHELL_MODE !== "unjailed";
-if (!jailed && process.env.NODE_ENV === "production") throw new Error("SHELL_MODE=unjailed is for development only and is refused in production");
+// The broker parses traffic from hostile guests, so it never runs as root. VMs come from the root launcher
+// (scripts/shell-launcher.mts) over its private socket; the broker's group can reach each VM's vsock socket.
+if (process.getuid?.() === 0) throw new Error("the shell broker must not run as root; run scripts/shell-launcher.mts as root and point SHELL_LAUNCHER_SOCKET at it");
+const socketPath = socketEnv("SHELL_BROKER_SOCKET");
+const viaLauncher = process.env.SHELL_MODE !== "unjailed";
+if (!viaLauncher && process.env.NODE_ENV === "production") throw new Error("SHELL_MODE=unjailed is for development only and is refused in production");
 
 let startVm: () => Promise<Vm>;
-if (jailed) {
-  if (process.getuid?.() !== 0) throw new Error("jailed mode needs root to start the jailer (see the design doc on privilege separation)");
-  const jailedSpec = { ...spec, jailer: need("JAILER"), chrootBase: need("SHELL_CHROOT_BASE"), uid: num("SHELL_VM_UID", 300001) };
-  const reaped = await reapStaleVms(jailedSpec.chrootBase, spec.firecracker);
-  if (reaped) console.log(JSON.stringify({ event: "reaped_stale_vms", count: reaped }));
-  startVm = () => startJailedVm(jailedSpec);
+if (viaLauncher) {
+  startVm = launcherVmStarter(socketEnv("SHELL_LAUNCHER_SOCKET"));
 } else {
   console.warn("WARNING: unjailed development mode. Guests are NOT isolated by the jailer.");
+  const spec = { firecracker: need("FIRECRACKER"), kernel: need("SHELL_KERNEL"), rootfs: need("SHELL_ROOTFS") };
   startVm = () => startUnjailedVm(spec);
 }
 
@@ -39,6 +43,9 @@ const limits: Partial<BrokerLimits> = {
   maxSessions: num("SHELL_MAX_SESSIONS", 4),
   idleMs: num("SHELL_IDLE_SECONDS", 300) * 1000,
   absoluteMs: num("SHELL_MAX_SECONDS", 1800) * 1000,
+  outputPerSec: num("SHELL_OUTPUT_PER_SEC", 128 * 1024),
+  outputBurst: num("SHELL_OUTPUT_BURST", 512 * 1024),
+  outputFloodMs: num("SHELL_OUTPUT_FLOOD_SECONDS", 60) * 1000,
 };
 const broker = createBroker({ startVm, limits });
 
@@ -50,7 +57,7 @@ if (existing) {
 }
 await new Promise<void>((resolve, reject) => broker.server.once("error", reject).listen(socketPath, resolve));
 await chmod(socketPath, 0o660); // group access for the web service only; set the group in the service unit
-console.log(JSON.stringify({ event: "listening", socketPath, mode: jailed ? "jailed" : "unjailed", limits }));
+console.log(JSON.stringify({ event: "listening", socketPath, mode: viaLauncher ? "launcher" : "unjailed", limits }));
 
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.once(signal, () => {

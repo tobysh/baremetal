@@ -1,0 +1,107 @@
+[Unit]
+Description=Baremetal shell launcher (root: starts and kills Firecracker microVMs, nothing else)
+Documentation=file:///opt/baremetal-shell/docs/shell-deployment.md
+After=local-fs.target
+# Refuse to start on a machine without KVM instead of failing on every session.
+ConditionPathExists=/dev/kvm
+ConditionPathExists=/usr/local/libexec/baremetal-shell/current/jailer
+ConditionPathExists=/usr/local/share/baremetal-shell/images/vmlinux
+ConditionPathExists=/usr/local/share/baremetal-shell/images/rootfs.ext4
+# The broker is useless without it; the launcher does not need the broker.
+Before=baremetal-shell-broker.service
+
+[Service]
+Type=simple
+# Root is required by the jailer (chroot, pivot_root, mknod, setuid, cgroups). Everything below shrinks what root can do.
+User=root
+Group=root
+Slice=baremetal-shell.slice
+WorkingDirectory=/opt/baremetal-shell
+# Node needs a JIT unless told otherwise; --jitless is what makes MemoryDenyWriteExecute=yes possible. TODO-to-confirm:
+# the final entry script and flags (scripts/shell-launcher.mts is being written), and that Firecracker boots under MDWE.
+ExecStart=/usr/bin/env node --jitless --import tsx scripts/shell-launcher.mts
+Environment=NODE_ENV=production
+Environment=PATH=/usr/local/bin:/usr/bin
+# Paths: confirmed for this deployment layout (install-host.sh creates them). The variable NAMES below are the ones
+# scripts/shell-broker.mts used before the split; TODO-to-confirm each against scripts/shell-launcher.mts.
+Environment=FIRECRACKER=/usr/local/libexec/baremetal-shell/current/firecracker
+Environment=JAILER=/usr/local/libexec/baremetal-shell/current/jailer
+Environment=SHELL_KERNEL=/usr/local/share/baremetal-shell/images/vmlinux
+Environment=SHELL_ROOTFS=/usr/local/share/baremetal-shell/images/rootfs.ext4
+Environment=SHELL_CHROOT_BASE=/var/lib/baremetal-shell/jail
+Environment=SHELL_VM_UID=300001
+# TODO-to-confirm: launcher socket path variable (this is the path the broker unit and tmpfiles.d assume).
+Environment=SHELL_LAUNCHER_SOCKET=/run/baremetal-shell/launcher.sock
+EnvironmentFile=-/etc/baremetal-shell/launcher.env
+UMask=0077
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=30
+KillMode=control-group
+# A launcher crash must not leave VMs running: the reaper runs at start, and the cgroup is killed on stop.
+SendSIGKILL=yes
+
+# --- Resources. The slice caps the total; Delegate lets the launcher create one cgroup per VM below this unit.
+# DelegateSubgroup keeps the Node process out of the unit cgroup so controllers can be enabled for the children
+# (systemd >= 254); ProtectControlGroups=private gives the unit a writable cgroup namespace rooted at its own cgroup, so the
+# jailer's default /sys/fs/cgroup/firecracker/<id> lands inside the slice (systemd >= 257). UNVERIFIED on a real host.
+Delegate=cpu memory pids io
+DelegateSubgroup=supervisor
+ProtectControlGroups=private
+MemoryAccounting=yes
+TasksAccounting=yes
+LimitNOFILE=4096
+LimitCORE=0
+LimitMEMLOCK=0
+
+# --- Filesystem. Read-only system; the only writable places are the jail base and the launcher socket directory.
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+# The jailer creates its own /dev/kvm node inside each chroot (so the base must live on a filesystem without "nodev",
+# see docs). The host's /dev/kvm is only needed in the device-cgroup allow-list below.
+PrivateDevices=yes
+DeviceAllow=/dev/kvm rwm
+ProcSubset=all
+ProtectProc=invisible
+StateDirectory=baremetal-shell baremetal-shell/jail
+StateDirectoryMode=0700
+ReadWritePaths=/run/baremetal-shell
+InaccessiblePaths=-/etc/baremetal -/var/lib/baremetal -/opt/baremetal-web -/opt/baremetal-runner -/root -/boot
+
+# --- Network: none. The launcher talks over a Unix socket and spawns VMs that have no NIC by default.
+# Lab networking needs a drop-in (deploy/shell/systemd/launcher-lab-network.conf.example).
+PrivateNetwork=yes
+RestrictAddressFamilies=AF_UNIX
+
+# --- Privileges. Capabilities below are what the jailer needs to chroot into a fresh mount namespace, create the device
+# node, chown the jail and drop to the VM uid. UNVERIFIED as a minimal set: find the first missing one with
+# `journalctl -u baremetal-shell-launcher` after a boot attempt and add only that.
+#   SYS_ADMIN  mount namespace, bind mounts, pivot_root, setns/unshare for the pid namespace
+#   SYS_CHROOT chroot
+#   SETUID/SETGID  drop to the VM uid/gid (and setgroups)
+#   MKNOD      /dev/kvm inside the chroot
+#   CHOWN FOWNER DAC_OVERRIDE  prepare and later delete trees owned by the VM uid
+#   SETPCAP    clear capabilities before exec
+CapabilityBoundingSet=CAP_SYS_ADMIN CAP_SYS_CHROOT CAP_SETUID CAP_SETGID CAP_MKNOD CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE CAP_SETPCAP
+AmbientCapabilities=
+NoNewPrivileges=yes
+RestrictNamespaces=mnt pid
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectClock=yes
+ProtectHostname=yes
+RemoveIPC=yes
+KeyringMode=private
+SystemCallArchitectures=native
+SystemCallFilter=@system-service @mount @privileged @setuid @chown @sandbox
+SystemCallFilter=~@module @reboot @swap @raw-io @obsolete @cpu-emulation @debug @clock
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

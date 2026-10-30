@@ -1,12 +1,15 @@
 // Checks for the shell broker. Benign commands only: nothing here tries to harm or escape the guest.
 //   SHELL_KERNEL=... SHELL_ROOTFS=... FIRECRACKER=... npx tsx scripts/shell/broker-checks.mts
 // Without those variables only the fake-guest checks run. Hostile-workload tests belong on a disposable VM.
-import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { mkdtemp, readdir, rm, stat } from "node:fs/promises";
 import { connect, createServer, type Server, type Socket } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { createBroker, type AuditEvent, type BrokerLimits } from "../../src/lib/shell/broker";
 import { encodeFrame, FrameParser, FrameType, resizePayload, type Frame } from "../../src/lib/shell/frames";
+import { createLauncher, type LauncherLimits } from "../../src/lib/shell/launcher";
+import { launcherVmStarter } from "../../src/lib/shell/launcher-client";
 import { startUnjailedVm, type Vm } from "../../src/lib/shell/vm";
 
 let failures = 0;
@@ -16,6 +19,7 @@ function check(name: string, ok: boolean, detail?: unknown) {
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const until = async (fn: () => boolean, ms: number) => { const end = Date.now() + ms; while (!fn() && Date.now() < end) await sleep(25); return fn(); };
+const untilAsync = async (fn: () => Promise<boolean>, ms: number) => { const end = Date.now() + ms; while (!(await fn()) && Date.now() < end) await sleep(50); return fn(); };
 
 const { SHELL_KERNEL, SHELL_ROOTFS, FIRECRACKER } = process.env;
 const real = !!(SHELL_KERNEL && SHELL_ROOTFS && FIRECRACKER);
@@ -186,6 +190,227 @@ async function fakeVm(script: (guest: Socket) => void): Promise<{ startVm: () =>
   });
 }
 
+{
+  // A guest writing ~16 MB/s against a 256 KiB/s bucket: slowed by backpressure, not killed, until the flood cutoff.
+  const g = await fakeVm((guest) => { guest.write(encodeFrame(FrameType.Ready)); const chunk = Buffer.alloc(16 * 1024, 66); const t = setInterval(() => guest.write(encodeFrame(FrameType.Data, chunk)), 1); guest.on("close", () => clearInterval(t)); });
+  const lim = { outputBurst: 64 * 1024, outputPerSec: 256 * 1024, outputFloodMs: 3000, maxOutputBytes: 1e9 };
+  await withBroker(g.startVm, lim, async (_b, mk) => {
+    const c = mk(); c.open("account-rrrrrrrr"); await until(() => c.opened, 3000);
+    const t0 = Date.now();
+    await sleep(1500);
+    const elapsed = (Date.now() - t0) / 1000;
+    const allowed = lim.outputBurst + lim.outputPerSec * elapsed + 128 * 1024; // plus one socket read of overshoot
+    check("output rate: fast guest is throttled to the bucket", c.output.length <= allowed && c.output.length > lim.outputPerSec * 0.5, { got: c.output.length, allowed });
+    check("output rate: throttling alone does not end the session", !c.closed && c.error === undefined, c.error);
+    check("output rate: sustained flood ends the session", await until(() => c.error === "output_flood", 6000), c.error);
+    const at = Date.now() - t0;
+    check("output rate: cutoff comes after the flood window, not before", at >= lim.outputFloodMs, at);
+  });
+}
+{
+  // Under the rate: 100 KiB/s against 256 KiB/s, with a short flood window, survives and loses nothing.
+  let sent = 0;
+  const g = await fakeVm((guest) => { guest.write(encodeFrame(FrameType.Ready)); const chunk = Buffer.alloc(2048, 67); const t = setInterval(() => { sent += chunk.length; guest.write(encodeFrame(FrameType.Data, chunk)); }, 20); guest.on("close", () => clearInterval(t)); });
+  await withBroker(g.startVm, { outputBurst: 64 * 1024, outputPerSec: 256 * 1024, outputFloodMs: 1000 }, async (_b, mk) => {
+    const c = mk(); c.open("account-ssssssss"); await until(() => c.opened, 3000);
+    await sleep(2500);
+    check("output rate: a guest under the rate is never cut off", !c.closed && c.error === undefined, c.error);
+    check("output rate: and all of its output arrives", await until(() => c.output.length >= sent - 4096, 1000), { got: c.output.length, sent });
+  });
+}
+{
+  // A burst within the bucket arrives at once even with a tiny sustained rate.
+  const g = await fakeVm((guest) => { guest.write(encodeFrame(FrameType.Ready)); for (let i = 0; i < 3; i++) guest.write(encodeFrame(FrameType.Data, Buffer.alloc(16 * 1024, 68))); });
+  await withBroker(g.startVm, { outputBurst: 64 * 1024, outputPerSec: 1024 }, async (_b, mk) => {
+    const c = mk(); c.open("account-tttttttt"); await until(() => c.opened, 3000);
+    check("output rate: a burst within the bucket is not delayed", await until(() => c.output.length === 48 * 1024, 300), c.output.length);
+  });
+}
+
+// ---------------------------------------------------------------- launcher (privileged half), fake VMs
+
+/** Fake VMs for the launcher: count starts and destroys, and let a check end a VM from the "guest" side. */
+function fakeLaunchVms(opts: { startMs?: number; destroyMs?: number; failStart?: boolean; failDestroy?: boolean } = {}) {
+  const log = { started: [] as number[], destroyed: 0, destroyedAt: [] as number[], exit: [] as (() => void)[] };
+  const startVm = async (slot: number): Promise<Vm> => {
+    await sleep(opts.startMs ?? 0);
+    if (opts.failStart) throw new Error("no kvm");
+    log.started.push(slot);
+    let exit!: () => void;
+    const exited = new Promise<void>((r) => (exit = r));
+    log.exit.push(exit);
+    let done: Promise<void> | undefined;
+    return { socketPath: `/run/fake/vm-${slot}.sock`, exited, destroy: () => (done ??= (async () => {
+      await sleep(opts.destroyMs ?? 0);
+      if (opts.failDestroy) throw new Error("still alive");
+      log.destroyed++; log.destroyedAt.push(Date.now()); exit();
+    })()) };
+  };
+  return { startVm, log };
+}
+
+/** A raw protocol client, for sending things the real client never would. */
+class Raw {
+  lines: string[] = [];
+  closed = false;
+  closedAt = 0;
+  readonly socket: Socket;
+  constructor(socketPath: string) {
+    this.socket = connect(socketPath);
+    let buf = "";
+    this.socket.on("data", (c) => { buf += c; let nl; while ((nl = buf.indexOf("\n")) >= 0) { this.lines.push(buf.slice(0, nl)); buf = buf.slice(nl + 1); } });
+    this.socket.on("close", () => { this.closed = true; this.closedAt = Date.now(); });
+    this.socket.on("error", () => {});
+  }
+  send(text: string) { this.socket.write(text); }
+  has(fragment: string) { return this.lines.some((l) => l.includes(fragment)); }
+}
+
+async function withLauncher<T>(startVm: (slot: number) => Promise<Vm>, limits: Partial<LauncherLimits>, fn: (l: ReturnType<typeof createLauncher>, socketPath: string) => Promise<T>) {
+  const socketPath = path.join(dir, `l-${Math.random().toString(36).slice(2)}.sock`);
+  const launcher = createLauncher({ startVm, limits, log: () => {} });
+  await new Promise<void>((r) => launcher.server.listen(socketPath, r));
+  try {
+    return await fn(launcher, socketPath);
+  } finally {
+    await launcher.shutdown();
+  }
+}
+
+{
+  const f = fakeLaunchVms({ destroyMs: 200 });
+  await withLauncher(f.startVm, {}, async (l, sock) => {
+    const a = new Raw(sock); a.send(`{"op":"create"}\n`);
+    check("launcher: create returns the VM's socket", await until(() => a.has(`"ok":true`) && a.has("/run/fake/vm-0.sock"), 2000), a.lines);
+    a.socket.destroy(); // the broker vanishes
+    check("launcher: a dropped connection destroys the VM", await until(() => f.log.destroyed === 1, 2000), f.log);
+    check("launcher: and frees its slot", await until(() => l.stats().active === 0, 2000), l.stats());
+    const b = new Raw(sock); b.send(`{"op":"create"}\n`); await until(() => b.has(`"ok":true`), 2000);
+    const asked = Date.now(); b.send(`{"op":"destroy"}\n`);
+    await until(() => b.closed, 3000);
+    check("launcher: destroy answers exited only after the VM is gone", b.has(`"event":"exited"`) && f.log.destroyedAt[1] <= b.closedAt && b.closedAt - asked >= 200, { lines: b.lines, waited: b.closedAt - asked });
+  });
+}
+{
+  const f = fakeLaunchVms();
+  await withLauncher(f.startVm, { maxVms: 2 }, async (l, sock) => {
+    const a = new Raw(sock); a.send(`{"op":"create"}\n`);
+    const b = new Raw(sock); b.send(`{"op":"create"}\n`);
+    await until(() => a.has(`"ok":true`) && b.has(`"ok":true`), 2000);
+    const c = new Raw(sock); c.send(`{"op":"create"}\n`);
+    check("launcher: refuses beyond maxVms", await until(() => c.has(`"code":"busy"`) && c.closed, 2000), c.lines);
+    check("launcher: slots are distinct", new Set(f.log.started).size === 2, f.log.started);
+    a.socket.end();
+    await until(() => l.stats().active === 1, 2000);
+    const d = new Raw(sock); d.send(`{"op":"create"}\n`);
+    check("launcher: a freed slot is reused", await until(() => d.has(`"ok":true`), 2000), d.lines);
+  });
+}
+{
+  const f = fakeLaunchVms();
+  await withLauncher(f.startVm, { requestMs: 500 }, async (l, sock) => {
+    const bad: [string, string][] = [
+      ["garbage", "nope\n"],
+      ["extra parameter", `{"op":"create","kernel":"/etc/shadow"}\n`],
+      ["unknown op", `{"op":"reap"}\n`],
+      ["destroy before create", `{"op":"destroy"}\n`],
+      ["oversize line", `${"x".repeat(300)}\n`],
+      ["no newline flood", "y".repeat(4096)],
+    ];
+    for (const [name, text] of bad) {
+      const r = new Raw(sock); r.send(text);
+      check(`launcher: bad request (${name}) is closed without a VM`, await until(() => r.closed, 2000) && !r.has(`"ok":true`), r.lines);
+    }
+    const silent = new Raw(sock);
+    check("launcher: a connection that never asks is dropped", await until(() => silent.closed, 2000));
+    const twice = new Raw(sock); twice.send(`{"op":"create"}\n`); await until(() => twice.has(`"ok":true`), 2000);
+    twice.send(`{"op":"create"}\n`);
+    check("launcher: a second create ends the lease and destroys the VM", await until(() => twice.closed && f.log.destroyed === 1, 2000), f.log);
+    check("launcher: no VM started for bad requests", f.log.started.length === 1 && l.stats().active === 0, { started: f.log.started, stats: l.stats() });
+  });
+}
+{
+  const f = fakeLaunchVms();
+  await withLauncher(f.startVm, { maxLifetimeMs: 600 }, async (l, sock) => {
+    const r = new Raw(sock); r.send(`{"op":"create"}\n`);
+    check("launcher: lifetime cap destroys a VM the broker still holds", await until(() => r.has(`"event":"exited"`) && r.closed && f.log.destroyed === 1, 3000), r.lines);
+    const s2 = new Raw(sock); s2.send(`{"op":"create"}\n`); await until(() => s2.has(`"ok":true`), 2000);
+    f.log.exit[1]();
+    check("launcher: a VM that exits on its own is reported and cleaned up", await until(() => s2.closed && s2.has(`"event":"exited"`) && l.stats().active === 0, 2000), s2.lines);
+  });
+}
+{
+  const f = fakeLaunchVms({ failStart: true });
+  await withLauncher(f.startVm, {}, async (l, sock) => {
+    const r = new Raw(sock); r.send(`{"op":"create"}\n`);
+    check("launcher: start failure is reported and frees the slot", await until(() => r.has(`"code":"start_failed"`) && r.closed && l.stats().active === 0, 2000), r.lines);
+  });
+}
+{
+  const f = fakeLaunchVms({ failDestroy: true });
+  await withLauncher(f.startVm, {}, async (l, sock) => {
+    const r = new Raw(sock); r.send(`{"op":"create"}\n`); await until(() => r.has(`"ok":true`), 2000);
+    r.socket.destroy();
+    await sleep(200);
+    check("launcher: a VM that may have survived keeps its slot (and uid) out of use", l.stats().active === 1, l.stats());
+  });
+}
+{
+  const f = fakeLaunchVms({ startMs: 400 });
+  await withLauncher(f.startVm, {}, async (l, sock) => {
+    const r = new Raw(sock); r.send(`{"op":"create"}\n`);
+    await sleep(100); r.socket.destroy(); // gone while the VM is still starting
+    check("launcher: disconnect during start still destroys the late VM", await until(() => f.log.destroyed === 1 && l.stats().active === 0, 2000), f.log);
+  });
+}
+{
+  const f = fakeLaunchVms();
+  const socketPath = path.join(dir, "l-shutdown.sock");
+  const launcher = createLauncher({ startVm: f.startVm, log: () => {} });
+  await new Promise<void>((r) => launcher.server.listen(socketPath, r));
+  const start = launcherVmStarter(socketPath);
+  const [a, b] = await Promise.all([start(), start()]);
+  check("launcher client: returns VM handles", a.socketPath !== b.socketPath, [a.socketPath, b.socketPath]);
+  await a.destroy();
+  check("launcher client: destroy resolves after the launcher destroyed the VM", f.log.destroyed === 1, f.log);
+  await launcher.shutdown();
+  check("launcher shutdown: destroys every leased VM", f.log.destroyed === 2, f.log);
+  check("launcher client: sees the VM exit when the launcher goes away", await Promise.race([b.exited.then(() => true), sleep(2000).then(() => false)]));
+  const refused = createLauncher({ startVm: f.startVm, limits: { maxVms: 1 }, log: () => {} });
+  const p2 = path.join(dir, "l-refuse.sock");
+  await new Promise<void>((r) => refused.server.listen(p2, r));
+  const held = await launcherVmStarter(p2)();
+  const err = await launcherVmStarter(p2)().then(() => "resolved", (e: Error) => e.message);
+  check("launcher client: a refusal rejects with the launcher's code", err.includes("busy"), err);
+  await held.destroy(); await refused.shutdown();
+}
+{
+  // Broker and launcher together, as deployed: the broker's VMs are launcher leases.
+  const g = await fakeVm((guest) => guest.write(encodeFrame(FrameType.Ready)));
+  await withLauncher(() => g.startVm(), {}, async (l, sock) => {
+    await withBroker(launcherVmStarter(sock), {}, async (broker, mk) => {
+      const c = mk(); c.open("account-uuuuuuuu");
+      check("broker via launcher: reaches OPENED", await until(() => c.opened, 3000), c.frames);
+      c.socket.destroy();
+      check("broker via launcher: client disconnect destroys the VM in the launcher", await until(() => g.destroyed() === 1 && l.stats().active === 0, 3000), l.stats());
+      check("broker via launcher: broker capacity released", await until(() => broker.stats().reserved === 0, 3000));
+      const d = mk(); d.open("account-vvvvvvvv"); await until(() => d.opened, 3000);
+      await l.shutdown(); // the launcher stops: the broker must notice and end the session
+      check("broker via launcher: launcher going away ends the session", await until(() => d.error === "vm_exited" || d.error === "guest_gone", 3000), d.error);
+      check("broker via launcher: and releases capacity", await until(() => broker.stats().reserved === 0, 3000), broker.stats());
+    });
+  });
+}
+{
+  // The jailed launcher refuses to start without root. (Nothing here runs as root.)
+  if (process.getuid?.() !== 0) {
+    const child = spawn(process.execPath, ["--import", "tsx", path.resolve("scripts/shell-launcher.mts")], { env: { ...process.env, SHELL_LAUNCHER_SOCKET: path.join(dir, "never.sock"), SHELL_LAUNCHER_MODE: "" }, stdio: ["ignore", "ignore", "pipe"] });
+    let errText = ""; child.stderr.on("data", (c) => (errText += c));
+    const code = await new Promise<number | null>((r) => child.on("close", r));
+    check("launcher service: jailed mode refuses to run without root", code !== 0 && errText.includes("must run as root"), { code, errText: errText.slice(0, 300) });
+  }
+}
+
 // ---------------------------------------------------------------- real microVMs
 
 if (!real) {
@@ -232,6 +457,40 @@ if (!real) {
     c.send(FrameType.Data, Buffer.from("while :; do echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; done\n"));
     check("real VM: runaway output hits the cap", await until(() => c.error === "output_limit", 20_000), c.error);
     await noLeftovers("real VM after output flood", broker);
+  });
+
+  // The launcher as its own process (unjailed driver, current user), with the broker as a lease holder.
+  const launcherSock = path.join(dir, "launcher.sock");
+  const launcherProc = spawn(process.execPath, ["--import", "tsx", path.resolve("scripts/shell-launcher.mts")], {
+    env: { ...process.env, SHELL_LAUNCHER_MODE: "unjailed", SHELL_LAUNCHER_SOCKET: launcherSock, SHELL_MAX_VMS: "2" },
+    stdio: ["ignore", "pipe", "inherit"],
+  });
+  let launcherOut = ""; launcherProc.stdout.on("data", (c) => (launcherOut += c));
+  const launcherExit = new Promise<number | null>((r) => launcherProc.on("close", r));
+  check("launcher service: listening", await until(() => launcherOut.includes(`"listening"`), 15_000), launcherOut);
+  check("launcher service: socket is private (0600) without a broker group", ((await stat(launcherSock)).mode & 0o777) === 0o600, ((await stat(launcherSock)).mode & 0o777).toString(8));
+  await withBroker(launcherVmStarter(launcherSock), { idleMs: 60_000 }, async (broker, mk) => {
+    const c = mk(); c.open("account-wwwwwwww");
+    check("real VM via launcher: shell is ready", await until(() => c.opened, 20_000), c.frames.map((f) => f.type));
+    c.send(FrameType.Data, Buffer.from("echo via$((1+1))launcher\n"));
+    check("real VM via launcher: shell works", await until(() => c.output.includes("via2launcher"), 5000), c.output.slice(-200));
+    c.socket.destroy();
+    await noLeftovers("real VM via launcher after client disconnect", broker);
+  });
+  {
+    // A broker that dies holding a lease: the launcher destroys the VM.
+    const r = new Raw(launcherSock); r.send(`{"op":"create"}\n`);
+    check("launcher service: real VM created", await until(() => r.has(`"ok":true`), 15_000), r.lines);
+    check("launcher service: its firecracker is running", (await hostFirecrackers()) === 1);
+    r.socket.destroy();
+    check("launcher service: dropped lease kills firecracker and removes its files", await untilAsync(async () => (await hostFirecrackers()) === 0 && (await vmDirs()) === 0, 5000));
+  }
+  await withBroker(launcherVmStarter(launcherSock), { idleMs: 60_000 }, async (broker, mk) => {
+    const c = mk(); c.open("account-xxxxxxxx"); await until(() => c.opened, 20_000);
+    process.kill(launcherProc.pid!, "SIGTERM"); // by PID
+    check("launcher service: SIGTERM ends live sessions", await until(() => c.error === "vm_exited" || c.error === "guest_gone", 10_000), c.error);
+    check("launcher service: exits cleanly", (await launcherExit) === 0);
+    await noLeftovers("real VM after launcher shutdown", broker);
   });
 }
 

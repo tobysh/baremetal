@@ -1,0 +1,87 @@
+[Unit]
+Description=Baremetal shell broker (unprivileged: sessions, limits, guest byte stream)
+Documentation=file:///opt/baremetal-shell/docs/shell-deployment.md
+Requires=baremetal-shell-launcher.service
+After=baremetal-shell-launcher.service
+
+[Service]
+Type=simple
+User=baremetal-shell-broker
+# Primary group is the one the web service joins (SupplementaryGroups=baremetal-shell-client in baremetal-web.service);
+# the broker socket therefore gets that group. Access to the launcher socket is a second, separate group.
+Group=baremetal-shell-client
+SupplementaryGroups=baremetal-shell-launch
+Slice=baremetal-shell.slice
+WorkingDirectory=/opt/baremetal-shell
+ExecStart=/usr/bin/env node --jitless --import tsx scripts/shell-broker.mts
+Environment=NODE_ENV=production
+Environment=PATH=/usr/local/bin:/usr/bin
+# Confirmed names (scripts/shell-broker.mts at the time of writing):
+Environment=SHELL_BROKER_SOCKET=/run/baremetal-shell-broker/broker.sock
+Environment=SHELL_MAX_SESSIONS=16
+Environment=SHELL_IDLE_SECONDS=300
+Environment=SHELL_MAX_SECONDS=1800
+# TODO-to-confirm after the privilege split lands: the launcher socket variable, and whether FIRECRACKER/SHELL_KERNEL/
+# SHELL_ROOTFS/JAILER/SHELL_CHROOT_BASE/SHELL_VM_UID/SHELL_MODE are dropped from the broker (they must be: it is
+# unprivileged and gets no kernel, rootfs or chroot path). SHELL_MODE must not be settable here at all.
+Environment=SHELL_LAUNCHER_SOCKET=/run/baremetal-shell/launcher.sock
+# Optional overrides only; never put secrets here, the broker has none.
+EnvironmentFile=-/etc/baremetal-shell/broker.env
+UMask=0007
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+KillMode=control-group
+
+MemoryAccounting=yes
+TasksAccounting=yes
+MemoryMax=512M
+MemorySwapMax=0
+TasksMax=64
+LimitNOFILE=2048
+LimitCORE=0
+
+# --- Filesystem
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProcSubset=pid
+ProtectProc=invisible
+# The two socket directories (created by tmpfiles.d): its own listening socket, and the launcher's socket to connect to.
+# TODO-to-confirm: how the broker reaches each VM's vsock socket (today it is inside the root-only jail directory).
+ReadWritePaths=/run/baremetal-shell-broker
+ReadOnlyPaths=/run/baremetal-shell
+InaccessiblePaths=-/etc/baremetal -/var/lib/baremetal -/var/lib/baremetal-shell -/opt/baremetal-web -/opt/baremetal-runner -/root -/boot -/usr/local/share/baremetal-shell -/usr/local/libexec/baremetal-shell
+NoExecPaths=/run/baremetal-shell /run/baremetal-shell-broker
+ExecPaths=/usr /opt/baremetal-shell
+
+# --- Network: Unix sockets only (path-based sockets work across network namespaces).
+PrivateNetwork=yes
+RestrictAddressFamilies=AF_UNIX
+IPAddressDeny=any
+
+# --- Privileges: none.
+CapabilityBoundingSet=
+AmbientCapabilities=
+NoNewPrivileges=yes
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=strict
+ProtectClock=yes
+ProtectHostname=yes
+RemoveIPC=yes
+KeyringMode=private
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources @mount @debug @module @reboot @swap @raw-io @obsolete @cpu-emulation @clock
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

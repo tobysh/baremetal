@@ -1,0 +1,50 @@
+#!/usr/sbin/nft -f
+# Per-session ruleset for a lab network namespace. Applied INSIDE the session's netns (never in the host's), before the
+# tap devices are handed to Firecracker. The namespace contains only: lo, the learner VM's tap and (optionally) the
+# target VM's tap. There is no uplink and no default route, so these rules are defence in depth, not the only barrier.
+#
+# Sessions without a lab target get no NIC at all and no namespace; this file is not used for them.
+# Substitute the four defines per session (the launcher writes a tiny include file); the values below are the test fixture
+# used by deploy/shell/nftables/test-lab-session.sh.
+define LEARNER_IF = "tap-l"
+define TARGET_IF = "tap-t"
+define LEARNER_IP = 10.77.0.2
+define TARGET_IP = 10.77.1.2
+define TARGET_PORTS = { 22, 80, 8080 }   # TODO-to-confirm: per-lab list comes from the lab manifest
+
+flush ruleset
+
+table inet bm_lab {
+  chain pre {
+    type filter hook prerouting priority raw; policy accept;
+    # Everything except routed IPv4 between the two taps is dropped later; these rules kill spoofing and non-IPv4 early.
+    meta nfproto ipv6 counter drop
+    iifname $LEARNER_IF ip saddr != $LEARNER_IP counter drop comment "spoofed source from learner VM"
+    iifname $TARGET_IF ip saddr != $TARGET_IP counter drop comment "spoofed source from target VM"
+    fib saddr . iif oif missing counter drop comment "reverse-path check"
+    meta pkttype { broadcast, multicast } counter drop
+  }
+
+  chain input {
+    type filter hook input priority filter; policy drop;
+    iifname "lo" accept
+    # The namespace's own addresses (the taps' host side) answer ARP in the kernel but accept nothing else: no ping, no TCP.
+    counter drop comment "guest to namespace"
+  }
+
+  chain output {
+    type filter hook output priority filter; policy drop;
+    oifname "lo" accept
+    counter drop comment "namespace originates nothing"
+  }
+
+  chain forward {
+    type filter hook forward priority filter; policy drop;
+    ct state invalid counter drop
+    # Packet-rate cap per tap, before any accept. Tune per host; sustained floods also end the session in the broker.
+    iifname { $LEARNER_IF, $TARGET_IF } limit rate over 4000/second burst 500 packets counter drop comment "pps cap"
+    ct state established,related accept
+    iifname $LEARNER_IF oifname $TARGET_IF ip saddr $LEARNER_IP ip daddr $TARGET_IP tcp dport $TARGET_PORTS ct state new limit rate 30/second burst 60 packets accept comment "learner to target service"
+    counter drop comment "everything else: other sessions, metadata 169.254.0.0/16, RFC1918, internet, DNS, UDP, ICMP"
+  }
+}

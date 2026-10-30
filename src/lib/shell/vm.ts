@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { copyFile, chown, mkdir, mkdtemp, readdir, readFile, rm, rmdir, writeFile } from "node:fs/promises";
+import { chmod, chown, copyFile, link as link_, lstat, mkdir, mkdtemp, readdir, readFile, rm, rmdir, writeFile } from "node:fs/promises";
 import { connect, type Socket } from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -68,18 +68,28 @@ export type JailedSpec = VmSpec & {
   jailer: string;
   /** Root-owned directory that holds the per-VM chroots. */
   chrootBase: string;
-  /** Unprivileged uid/gid for the VMM; a dedicated number with no account behind it. */
+  /** Unprivileged uid/gid for this VM's VMM; a dedicated number with no account behind it, never shared by two live VMs. */
   uid: number;
+  /**
+   * Group of the unprivileged broker. When set, the vsock socket is exposed as `<chrootBase>/sockets/<id>.sock`, a hard
+   * link owned by root with this group and mode 0660, so the broker can connect without traversing the chroot and the
+   * VMM uid cannot change who may connect. Without it the socket stays inside the chroot (root-only use).
+   */
+  socketGid?: number;
   cgroupRoot?: string;
   cpuMax?: string;
   memoryMax?: string;
   pidsMax?: number;
 };
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+export const socketsDir = (chrootBase: string) => path.join(chrootBase, "sockets");
+
 /**
  * Production driver: the Firecracker jailer (chroot, dedicated uid, new pid namespace, cgroup v2 limits).
- * Needs root to start. The jailer's parent exits immediately with --new-pid-ns, so the VM is tracked by its
- * cgroup (cgroup.procs) and destroyed with cgroup.kill. See docs/interactive-shell-isolation.md.
+ * Needs root to start, so only the launcher (src/lib/shell/launcher.ts) calls it. The jailer's parent exits immediately
+ * with --new-pid-ns, so the VM is tracked by its cgroup (cgroup.procs) and destroyed with cgroup.kill.
+ * See docs/interactive-shell-isolation.md.
  */
 export async function startJailedVm(spec: JailedSpec): Promise<Vm> {
   const cgroupRoot = spec.cgroupRoot ?? "/sys/fs/cgroup";
@@ -89,14 +99,19 @@ export async function startJailedVm(spec: JailedSpec): Promise<Vm> {
   const vmDir = path.join(spec.chrootBase, name, id);
   const root = path.join(vmDir, "root");
   const cgroup = path.join(cgroupRoot, name, id);
+  const link = spec.socketGid === undefined ? undefined : path.join(socketsDir(spec.chrootBase), `${id}.sock`);
   const alive = async () => (await readFile(path.join(cgroup, "cgroup.procs"), "utf8").catch(() => "")).trim().length > 0;
   let destroyed: Promise<void> | undefined;
   const destroy = () => (destroyed ??= (async () => {
     await writeFile(path.join(cgroup, "cgroup.kill"), "1").catch(() => {});
-    for (let i = 0; i < 50 && (await alive()); i++) await new Promise((r) => setTimeout(r, 100));
+    for (let i = 0; i < 50 && (await alive()); i++) await sleep(100);
+    if (link) await rm(link, { force: true });
     await rm(vmDir, { recursive: true, force: true });
     await rmdir(cgroup).catch(() => {}); // cgroup directories are removed with rmdir, not rm
+    // The caller must not reuse this VM's uid while a process may still run under it.
+    if (await alive()) throw new Error(`VM ${id} survived cgroup.kill`);
   })());
+  let socketPath = path.join(root, "v.sock");
   try {
     await mkdir(root, { recursive: true });
     await copyFile(spec.kernel, path.join(root, "vmlinux"));
@@ -111,29 +126,59 @@ export async function startJailedVm(spec: JailedSpec): Promise<Vm> {
     ], { stdio: "ignore" });
     await childExited(jailer);
     if (!(await alive())) throw new Error("jailer did not start a VM");
+    if (link) socketPath = await exposeSocket(path.join(root, "v.sock"), link, spec.uid, spec.socketGid!);
   } catch (error) {
-    await destroy();
+    await destroy().catch(() => {});
     throw error;
   }
   const exited = (async () => {
-    while (await alive()) await new Promise((r) => setTimeout(r, 200));
+    while (await alive()) await sleep(200);
   })();
-  return { socketPath: path.join(root, "v.sock"), exited, destroy };
+  return { socketPath, exited, destroy };
 }
 
-/** Remove chroots and cgroups left by a crashed broker. Run once at startup, before accepting sessions. */
+/**
+ * Give the broker's group access to a VM's vsock socket. The chroot belongs to the VMM uid, so nothing in it is trusted:
+ * the socket is hard-linked into a root-owned directory first (link(2) does not follow symlinks), and only the link,
+ * which the VMM cannot replace, is checked and re-owned. Connecting to a Unix socket needs write access to its inode,
+ * so root:<broker group> 0660 lets the broker in and keeps the VMM uid from widening it (it no longer owns the inode).
+ */
+async function exposeSocket(inChroot: string, link: string, vmUid: number, gid: number): Promise<string> {
+  // Firecracker binds the vsock socket while setting up devices, just after it starts.
+  for (let i = 0; i < 100; i++) {
+    const st = await lstat(inChroot).catch(() => null);
+    if (st) break;
+    await sleep(20);
+  }
+  await link_(inChroot, link);
+  const st = await lstat(link);
+  if (!st.isSocket() || st.uid !== vmUid || st.nlink !== 2) {
+    await rm(link, { force: true });
+    throw new Error("vsock socket is not the VMM's socket");
+  }
+  await chown(link, 0, gid);
+  await chmod(link, 0o660);
+  return link;
+}
+
+/**
+ * Remove VMs, chroots, cgroups and socket links left by a crashed launcher. Run once at startup, before accepting
+ * requests: the launcher is their only owner, so anything here is stale.
+ */
 export async function reapStaleVms(chrootBase: string, firecracker: string, cgroupRoot = "/sys/fs/cgroup"): Promise<number> {
   const name = path.basename(firecracker);
-  const ids = await readdir(path.join(chrootBase, name)).catch(() => [] as string[]);
-  let reaped = 0;
-  for (const id of ids.filter((i) => i.startsWith("bm-"))) {
-    await writeFile(path.join(cgroupRoot, name, id, "cgroup.kill"), "1").catch(() => {});
-    await new Promise((r) => setTimeout(r, 300));
+  const list = async (dir: string) => (await readdir(dir).catch(() => [] as string[])).filter((i) => /^bm-[0-9a-f]{12}$/.test(i));
+  const ids = new Set([...(await list(path.join(chrootBase, name))), ...(await list(path.join(cgroupRoot, name)))]);
+  for (const id of ids) await writeFile(path.join(cgroupRoot, name, id, "cgroup.kill"), "1").catch(() => {});
+  if (ids.size) await sleep(300);
+  for (const id of ids) {
     await rm(path.join(chrootBase, name, id), { recursive: true, force: true });
     await rmdir(path.join(cgroupRoot, name, id)).catch(() => {});
-    reaped++;
   }
-  return reaped;
+  for (const entry of await readdir(socketsDir(chrootBase)).catch(() => [] as string[])) {
+    if (/^bm-[0-9a-f]{12}\.sock$/.test(entry)) await rm(path.join(socketsDir(chrootBase), entry), { force: true });
+  }
+  return ids.size;
 }
 
 /**

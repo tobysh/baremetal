@@ -1,0 +1,13 @@
+# Optional drop-in for labs that give the guest a NIC. Install as
+#   /etc/systemd/system/baremetal-shell-launcher.service.d/lab-network.conf
+# and run `systemctl daemon-reload && systemctl restart baremetal-shell-launcher`. Do NOT install it on a host where no
+# lab needs a NIC. The launcher stays in a PRIVATE (empty) network namespace; lab namespaces are children of that one, so
+# there is still no path to the host's network. See "Lab networking" in docs/shell-deployment.md.
+[Service]
+# Tap and namespace creation over netlink, and /dev/net/tun for Firecracker's tap (the jailer mknods it in the chroot).
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+CapabilityBoundingSet=CAP_SYS_ADMIN CAP_SYS_CHROOT CAP_SETUID CAP_SETGID CAP_MKNOD CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE CAP_SETPCAP CAP_NET_ADMIN
+DeviceAllow=/dev/net/tun rwm
+RestrictNamespaces=mnt pid net
+# nft(8) and ip(8) must be runnable by the launcher; TODO-to-confirm how the launcher drives them (binaries vs netlink).
+ExecPaths=/usr/sbin /usr/bin

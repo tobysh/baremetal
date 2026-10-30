@@ -1,0 +1,5 @@
+# /dev/kvm: root only. The jailer (root) creates a private device node inside each VM's chroot and chowns it to that VM's
+# uid, so no unprivileged host account ever needs /dev/kvm. Without this rule many distributions leave it 0660 group
+# "kvm" or, on development machines, 0666. Installed as /etc/udev/rules.d/99-baremetal-kvm.rules (sorts after the
+# distribution defaults and uaccess tagging).
+SUBSYSTEM=="misc", KERNEL=="kvm", OWNER="root", GROUP="root", MODE="0600", TAG-="uaccess", OPTIONS+="static_node=kvm"
