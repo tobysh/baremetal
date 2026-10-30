@@ -51,6 +51,15 @@ jobs:
           cache: npm
       - uses: ./.github/actions/toolchains
       - run: npm ci
+      - name: Warm the Go build cache (needs bubblewrap with --tmp-overlay)
+        run: |
+          if bwrap --help 2>&1 | grep -q -- --tmp-overlay; then
+            mkdir -p "$RUNNER_TEMP/gocache"
+            echo "GO_CACHE_SEED=$RUNNER_TEMP/gocache" >> "$GITHUB_ENV"
+            GO_CACHE_SEED="$RUNNER_TEMP/gocache" npx tsx scripts/warm-go-cache.mts
+          else
+            echo "bubblewrap lacks --tmp-overlay; Go compiles run without a warm cache"
+          fi
       - run: npm run verify:content
       - run: npm run check:stdout-order
 

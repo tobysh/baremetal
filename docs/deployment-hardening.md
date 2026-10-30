@@ -35,6 +35,19 @@ Learners in a school, college or office share one public IP, so per-IP numbers a
 
 Unknown-IP traffic still gets a quarter of each IP limit. The runner service reads the two `RUNNER_INFLIGHT_*` variables; the web app sends only which kind of key each request carries (`kinds` in the runner request, optional, so web and runner must be upgraded together).
 
+## Go build cache seed
+
+Without help, every Go compile rebuilds the standard library inside the throwaway sandbox. Pre-build it once and let each compile use a private copy-on-write overlay of it:
+
+```sh
+sudo install -d -o baremetal-runner /var/cache/baremetal/gocache
+sudo -u baremetal-runner env GO_CACHE_SEED=/var/cache/baremetal/gocache GO_TOOLCHAIN_DIR=... npx tsx scripts/warm-go-cache.mts
+```
+
+Set `GO_CACHE_SEED` in the runner service environment. It needs bubblewrap >= 0.10 (`--tmp-overlay`; check `bwrap --version`) and unprivileged overlayfs in user namespaces. Without the variable, or if the directory is missing, behaviour is unchanged. Re-run the warm-up after upgrading Go. The seed is only written by the warm-up; learner jobs mount it as the read-only lower layer (checked by checksum before and after a run).
+
+Measured on a development machine (one Go lesson, Test): cold about 3.5 s, with the seed about 0.3 s (0.14 s on repeat). The cache is about 200 MB.
+
 ## Runner limits
 
 The sandbox implementation is in `src/lib/runner-engine.ts`; public web handlers

@@ -23,6 +23,10 @@ const MAX_CONCURRENT = 4;
 // CI may install Go outside /usr (for example, actions/setup-go's tool cache).
 // When set, mount that toolchain into the sandbox at /go.
 const GO_TOOLCHAIN_DIR = process.env.GO_TOOLCHAIN_DIR;
+// A pre-built Go build cache (see warmGoCache and docs/deployment-hardening.md). Each compile gets a
+// private copy-on-write overlay of it at /tmp/gocache, so the standard library is not rebuilt per run
+// and the seed itself is never written by a learner job. Without it, behaviour is unchanged.
+const GO_CACHE_SEED = process.env.GO_CACHE_SEED && existsSync(process.env.GO_CACHE_SEED) ? process.env.GO_CACHE_SEED : null;
 
 function findRustToolchain(): string | null {
   if (process.env.RUST_TOOLCHAIN_DIR) return process.env.RUST_TOOLCHAIN_DIR;
@@ -179,7 +183,7 @@ function seccompFilter(): Buffer {
 }
 const SECCOMP = seccompFilter();
 
-function sandboxArgs(work: string, extraEnv: Record<string, string> = {}, opts: { run?: boolean; tmpMb?: number; artifact?: string } = {}): string[] {
+function sandboxArgs(work: string, extraEnv: Record<string, string> = {}, opts: { run?: boolean; tmpMb?: number; artifact?: string; goCache?: "overlay" | "seed" } = {}): string[] {
   const args = [
     "--unshare-all",
     "--unshare-user",
@@ -207,18 +211,20 @@ function sandboxArgs(work: string, extraEnv: Record<string, string> = {}, opts: 
   ];
   if (RUST_TC) args.push("--ro-bind", RUST_TC, RUST_TC);
   if (GO_TOOLCHAIN_DIR) args.push("--dir", "/go", "--ro-bind", GO_TOOLCHAIN_DIR, "/go");
+  if (opts.goCache === "overlay" && GO_CACHE_SEED) args.push("--overlay-src", GO_CACHE_SEED, "--tmp-overlay", "/tmp/gocache");
+  if (opts.goCache === "seed" && GO_CACHE_SEED) args.push("--bind", GO_CACHE_SEED, "/tmp/gocache");
   for (const [k, v] of Object.entries(extraEnv)) args.push("--setenv", k, v);
   return args;
 }
 
-async function exec(work: string, cmd: string[], opts: { timeoutMs: number; stdin?: string; limits: string[]; env?: Record<string, string>; run?: boolean; tmpMb?: number; artifact?: string }): Promise<Exec> {
+async function exec(work: string, cmd: string[], opts: { timeoutMs: number; stdin?: string; limits: string[]; env?: Record<string, string>; run?: boolean; tmpMb?: number; artifact?: string; goCache?: "overlay" | "seed" }): Promise<Exec> {
   const resources = await runnerResources(!!opts.artifact);
   try {
     return await new Promise<Exec>((resolve) => {
       const signal = requestContext.getStore()?.signal;
       signal?.throwIfAborted();
       const started = Date.now();
-      const args = [...sandboxArgs(work, opts.env, { run: opts.run, tmpMb: opts.tmpMb ?? (opts.run ? 32 : undefined), artifact: opts.artifact }), "--", "/usr/bin/prlimit", ...opts.limits, "--",
+      const args = [...sandboxArgs(work, opts.env, { run: opts.run, tmpMb: opts.tmpMb ?? (opts.run ? 32 : undefined), artifact: opts.artifact, goCache: opts.goCache }), "--", "/usr/bin/prlimit", ...opts.limits, "--",
         ...(opts.artifact ? ["sh", "-c", 'cp -a /input/. /work/ && "$@" && cat "$BM_ARTIFACT" >&4', "build", ...cmd] : cmd)];
       if (opts.artifact) {
         const at = args.indexOf("--clearenv") + 1;
@@ -537,7 +543,21 @@ async function compileGo(dir: string, source: string, harness: string | null) {
     await writeFile(path.join(dir, "bm_test.go"), harness);
     cmd.push("test", "-c", "-vet=off", "-o", "prog");
   } else cmd.push("build", "-o", "prog", ".");
-  return exec(dir, cmd, { timeoutMs: GO_COMPILE_TIMEOUT_MS, limits: goCompileLimits(), env: GO_ENV, tmpMb: 1024, artifact: "prog" });
+  return exec(dir, cmd, { timeoutMs: GO_COMPILE_TIMEOUT_MS, limits: goCompileLimits(), env: GO_ENV, tmpMb: 1024, artifact: "prog", goCache: "overlay" });
+}
+
+/**
+ * Fills GO_CACHE_SEED with the compiled standard library, using the same sandbox layout, flags and
+ * GOROOT as learner compiles (cache keys depend on them). Run at deploy time by scripts/warm-go-cache.mts.
+ */
+export async function warmGoCache(): Promise<Exec> {
+  if (!GO_CACHE_SEED) throw new Error("Set GO_CACHE_SEED to an existing, writable directory first.");
+  return withWorkdir(async (dir) => {
+    await writeFile(path.join(dir, "go.mod"), "module bm\n\ngo 1.24\n");
+    await writeFile(path.join(dir, "main.go"), "package main\n\nfunc main() {}\n");
+    const cmd = [GO_TOOLCHAIN_DIR ? "/go/bin/go" : "go", "build", "std"];
+    return exec(dir, cmd, { timeoutMs: 10 * 60_000, limits: goCompileLimits(), env: GO_ENV, tmpMb: 1024, goCache: "seed" });
+  });
 }
 
 async function compile(dir: string, language: Language, source: string, opts: { test?: boolean; harness?: string } = {}) {
