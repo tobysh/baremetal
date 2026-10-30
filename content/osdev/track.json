@@ -6,5 +6,8 @@
   "language": "kernel",
   "path": "low",
   "order": 2,
-  "prerequisite": "c-systems"
+  "prerequisite": "c-systems",
+  "outcomes": [
+    "Implement kernel drivers, virtual memory, scheduling and system calls."
+  ]
 }

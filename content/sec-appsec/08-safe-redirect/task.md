@@ -1,0 +1,3 @@
+Implement `int safe_redirect(const char *target)` returning 1 if the target is acceptable and 0 otherwise. Accept only if: the pointer is non-NULL; the length is between 1 and 2048; the first character is `/`; the second character (if any) is not `/` or `\`; no byte is 0x20 or below, 0x7f or a backslash; every `%` is followed by two hex digits; no escape decodes to a byte below 0x20, 0x7f or `\`; and the escape is not `%2f` or `%2F` as the second character of the target. Everything else, including query strings and fragments, is allowed.
+
+Tests use many fixed and generated targets. Keep the supplied function names and types.

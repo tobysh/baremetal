@@ -6,5 +6,8 @@
   "language": "go",
   "path": "go",
   "order": 2,
-  "prerequisite": "go-foundations"
+  "prerequisite": "go-foundations",
+  "outcomes": [
+    "Build Go pipelines and worker pools, and process JSON and streams."
+  ]
 }

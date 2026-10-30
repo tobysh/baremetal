@@ -6,7 +6,7 @@ import { jsonError, readJson, sameOrigin } from "@/lib/http";
 import { getProgress, recordAttempt, recordReviewPass } from "@/lib/progress";
 import { evaluateAchievements, trackCompleteFor, type TrackComplete, type Unlocked } from "@/lib/rewards";
 import { clientIp, ipLimit, rateLimit } from "@/lib/rate-limit";
-import { runProgram, testExercise, RunnerBusyError, withRunnerRequest } from "@/lib/runner";
+import { executeRun, executeTest, RunnerBusyError, RunnerUnavailableError } from "@/lib/runner-client";
 
 type Body = { exerciseId?: string; code?: string; stdin?: string; mode?: "run" | "test"; review?: boolean };
 
@@ -34,9 +34,10 @@ export async function POST(req: Request) {
     if ((await getProgress(user.id, found.lesson.exercise.id))?.status !== "passed") return jsonError(403, "Pass the lesson first; its challenge unlocks afterwards.");
   }
 
+  const context = { keys: [`ip:${ip}`, ...(user ? [`user:${user.id}`] : [])], signal: req.signal };
   try {
     if (body.mode === "test") {
-      const result = await withRunnerRequest([`ip:${ip}`, ...(user ? [`user:${user.id}`] : [])], req.signal, () => testExercise(found.exercise, body.code!));
+      const result = await executeTest(found.exercise, body.code!, context);
       const isReview = !!body.review && !found.isChallenge;
       let achievements: Unlocked[] = [];
       let trackComplete: TrackComplete | null = null;
@@ -77,10 +78,11 @@ export async function POST(req: Request) {
       });
     }
     const stdin = typeof body.stdin === "string" ? body.stdin.slice(0, 16 * 1024) : "";
-    const result = await withRunnerRequest([`ip:${ip}`, ...(user ? [`user:${user.id}`] : [])], req.signal, () => runProgram(found.exercise.language, body.code!, stdin));
+    const result = await executeRun(found.exercise, body.code!, stdin, context);
     return NextResponse.json({ kind: "run", ...result });
   } catch (e) {
     if (req.signal.aborted) return new Response(null, { status: 499 });
+    if (e instanceof RunnerUnavailableError) return jsonError(503, "The code runner is temporarily unavailable. Your draft is still in the editor. Try again shortly.");
     if (e instanceof RunnerBusyError) return jsonError(503, "The code runner is busy right now. Please try again in a few seconds.");
     console.error("[run] runner failure", e);
     return jsonError(500, "The code runner hit a problem on our side. Please try again.");

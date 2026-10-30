@@ -1,0 +1,27 @@
+[
+  {
+    "name": "program 1",
+    "stdin": "f = \"SELECT * FROM t WHERE id = \" + f\n\nc = quote_shell(c)\nc = env()\n\nsink_sql(e)\nd = trim(d) + b\nc = quote_shell(c)\na = escape_sql(a)\n# comment line\ne = trim(d) + a\ne = escape_sql(a)\ne = \"constant\"\nsink_sql(c)\nsink_exec(f)\nsink_exec(\"ls\")\n",
+    "expected": "line 6: sink_sql(e) clean\nline 14: sink_sql(c) TAINTED\nline 15: sink_exec(f) clean\nline 16: sink_exec(\"ls\") clean\n"
+  },
+  {
+    "name": "program 2",
+    "stdin": "f = \"SELECT * FROM t WHERE id = \" + b\n# comment line\n\nc = \"SELECT * FROM t WHERE id = \" + b\n# comment line\nc = d\n\nb = input()\nd = trim(e) + b\nf = e\nsink_sql(b)\nsink_exec(a)\nb = \"SELECT * FROM t WHERE id = \" + e\nb = \"constant\"\nd = env()\ne = f\nsink_exec(d)\nsink_sql(b)\nsink_exec(d)\nsink_exec(\"ls\")\n",
+    "expected": "line 11: sink_sql(b) TAINTED\nline 12: sink_exec(a) clean\nline 17: sink_exec(d) TAINTED\nline 18: sink_sql(b) clean\nline 19: sink_exec(d) TAINTED\nline 20: sink_exec(\"ls\") clean\n"
+  },
+  {
+    "name": "program 3",
+    "stdin": "sink_exec(f)\nd = \"SELECT * FROM t WHERE id = \" + f\n\nsink_sql(f)\na = trim(d) + c\nb = quote_shell(b)\ne = trim(f) + d\nsink_sql(f)\nf = trim(b) + a\nsink_exec(b)\n# comment line\nd = escape_sql(a)\n\nsink_sql(c)\nsink_exec(e)\nsink_exec(\"ls\")\n",
+    "expected": "line 1: sink_exec(f) clean\nline 4: sink_sql(f) clean\nline 8: sink_sql(f) clean\nline 10: sink_exec(b) clean\nline 14: sink_sql(c) clean\nline 15: sink_exec(e) clean\nline 16: sink_exec(\"ls\") clean\n"
+  },
+  {
+    "name": "program 4",
+    "stdin": "c = d\nc = \"SELECT * FROM t WHERE id = \" + c\ne = trim(a) + a\nc = trim(c) + a\nb = quote_shell(e)\nc = quote_shell(e)\nsink_sql(f)\nb = input()\ne = a\na = input()\nsink_sql(b)\nsink_exec(d)\nsink_exec(\"ls\")\n",
+    "expected": "line 7: sink_sql(f) clean\nline 11: sink_sql(b) TAINTED\nline 12: sink_exec(d) clean\nline 13: sink_exec(\"ls\") clean\n"
+  },
+  {
+    "name": "program 5",
+    "stdin": "d = env()\ne = trim(e) + d\nf = a\nb = \"SELECT * FROM t WHERE id = \" + f\na = escape_sql(d)\ne = d\nc = trim(d) + d\na = env()\nb = trim(b) + b\n\nsink_sql(e)\ne = env()\nsink_sql(a)\nsink_exec(a)\nsink_exec(\"ls\")\n",
+    "expected": "line 11: sink_sql(e) TAINTED\nline 13: sink_sql(a) TAINTED\nline 14: sink_exec(a) TAINTED\nline 15: sink_exec(\"ls\") clean\n"
+  }
+]

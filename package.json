@@ -10,14 +10,19 @@
     "verify:content": "tsx scripts/verify-curriculum.mts",
     "db": "mongod --dbpath .data/db --bind_ip 127.0.0.1 --port 27017 --quiet",
     "make-admin": "tsx --env-file=.env.local scripts/make-admin.mts",
-    "test:e2e": "tsx --conditions=react-server --env-file=.env.local scripts/e2e-auth.mts",
+    "test:e2e": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/e2e-auth.mts",
     "flagged-accounts": "tsx --env-file=.env.local scripts/flagged-accounts.mts",
     "recompute-xp": "tsx --env-file=.env.local scripts/recompute-xp.mts",
     "backfill-achievements": "tsx --env-file=.env.local scripts/backfill-achievements.mts",
     "check:ids": "tsx scripts/check-lesson-ids.mts",
     "check:theme": "tsx scripts/check-theme.mts",
     "backup-db": "tsx --env-file=.env.local scripts/backup-db.mts",
-    "restore-db": "tsx --env-file=.env.local scripts/restore-db.mts"
+    "restore-db": "tsx --env-file=.env.local scripts/restore-db.mts",
+    "check:learning": "tsx scripts/checks/learning.mts",
+    "test:regressions": "tsx scripts/checks/regressions.mts",
+    "test:runner": "node --conditions=react-server --import tsx scripts/runner/transport-checks.mts",
+    "test:browser": "playwright test",
+    "runner": "tsx scripts/runner-service.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
@@ -45,6 +50,7 @@
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.4.3",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.2",

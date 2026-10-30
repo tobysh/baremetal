@@ -5,6 +5,9 @@
 import { getTracks } from "../src/lib/curriculum/index";
 import { testExercise } from "../src/lib/runner";
 
+import { validateLearningPaths } from "../src/lib/learning";
+
+validateLearningPaths(getTracks());
 const only = process.argv[2];
 let failed = 0;
 const ids = new Set<string>();

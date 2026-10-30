@@ -6,5 +6,8 @@
   "language": "go",
   "path": "go",
   "order": 4,
-  "prerequisite": "go-practice"
+  "prerequisite": "go-practice",
+  "outcomes": [
+    "Build and test HTTP handlers, clients and cancellation in Go."
+  ]
 }

@@ -4,7 +4,8 @@
 
 import type { Language } from "./curriculum/types";
 
-export type Explanation = { id: string; title: string; body: string };
+export type Explanation = { id: string; title: string; body: string; nextStep: string };
+type Finding = Omit<Explanation, "nextStep">;
 
 type TestCase = { name: string; passed: boolean; message?: string };
 export type FailureInput = {
@@ -17,6 +18,7 @@ export type FailureInput = {
   error: string | null;
   results: TestCase[];
   stderr?: string;
+  runtimeFailed?: boolean;
 };
 
 type Rule = { id: string; test: (text: string) => boolean; title: string; body: string };
@@ -357,8 +359,8 @@ const KERNEL_RUNTIME: Rule[] = [
 
 const match = (rules: Rule[], text: string) => rules.filter((r) => r.test(text)).map(({ id, title, body }) => ({ id, title, body }));
 
-export function explainFailure(f: FailureInput): Explanation[] {
-  const out: Explanation[] = [];
+function findings(f: FailureInput): Finding[] {
+  const out: Finding[] = [];
   const unchanged = f.code.trim() === f.starter.trim();
 
   if (f.compileFailed) {
@@ -435,7 +437,7 @@ export function explainFailure(f: FailureInput): Explanation[] {
     }
   }
 
-  if (!out.length && (failed.length || f.error))
+  if (!out.length && (failed.length || f.error || f.runtimeFailed))
     out.push({
       id: "generic",
       title: "Something doesn't match yet",
@@ -445,4 +447,16 @@ export function explainFailure(f: FailureInput): Explanation[] {
   // Warnings are only worth pointing out once there's a problem to explain.
   if (failed.length || f.error) out.push(...match(f.language === "c" ? C_WARN : [], f.compileOutput));
   return out.slice(0, 3);
+}
+
+
+export function explainFailure(f: FailureInput): Explanation[] {
+  return findings(f).map((finding) => ({ ...finding, nextStep:
+    f.compileFailed ? "Go to the first reported learner-code line, fix one error, then run Test again." :
+    finding.id === "timeout" ? "Check that each loop makes progress and that Run has the input it needs." :
+    finding.id === "unchanged" || finding.id === "placeholder" ? "Implement one function from the task, then test it before moving on." :
+    finding.id === "whitespace" || finding.id === "case" || finding.id === "short" ? "Compare the first differing line in Expected and Your output, then check the printing statement." :
+    f.runtimeFailed || /fault|abort|panic|bounds|unwrap|null|overflow/.test(finding.id) ? "Trace the smallest failing example, checking indices, pointers and values before the failing operation." :
+    "Choose one failing test and trace your variables by hand; use a task example or a small input of your own if its input is hidden."
+  }));
 }

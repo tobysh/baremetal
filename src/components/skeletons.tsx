@@ -57,3 +57,15 @@ export function TrackSkeleton() {
     </Container>
   );
 }
+
+export function DashboardSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading your dashboard" className="flex flex-col gap-6">
+      <div className="flex flex-wrap gap-6">
+        <Skeleton className="h-72 min-w-0 flex-[999_1_600px]" />
+        <Skeleton className="h-72 min-w-0 flex-[1_1_320px]" />
+      </div>
+      <Skeleton className="h-80" />
+    </div>
+  );
+}

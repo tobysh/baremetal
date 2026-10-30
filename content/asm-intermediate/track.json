@@ -6,5 +6,8 @@
   "language": "asm",
   "path": "low",
   "order": 2,
-  "prerequisite": "asm-first-steps"
+  "prerequisite": "asm-first-steps",
+  "outcomes": [
+    "Use integer instructions, callbacks and string operations in assembly."
+  ]
 }

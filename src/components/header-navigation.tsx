@@ -59,7 +59,7 @@ export function HeaderNavigation({ user }: { user: NavigationUser | null }) {
             {user && <span className="hidden max-w-28 truncate lg:block">{user.name}</span>}
             <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" className={`h-4 w-4 text-muted transition-transform ${open ? "rotate-180" : ""}`}><path d="m4 6 4 4 4-4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </button>
-          {open && <div id="header-account-panel" className="absolute right-0 top-full z-50 mt-2 max-h-[calc(100dvh-6rem)] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto panel p-2 shadow-xl shadow-black/15">
+          {open && <div id="header-account-panel" className="menu-in absolute right-0 top-full z-50 mt-2 max-h-[calc(100dvh-6rem)] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto panel p-2 shadow-xl shadow-black/15">
             <nav aria-label="Mobile navigation" className="mb-2 grid border-b border-border pb-2 lg:hidden">{links.map(({ href, label }) => navLink(href, label, true))}</nav>
             {user ? <>
               <UserCard name={user.name} xp={user.xp} />

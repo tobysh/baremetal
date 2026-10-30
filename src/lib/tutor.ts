@@ -25,7 +25,7 @@ How you teach:
 - Your goal is for the learner to understand and solve the exercise themselves. Guide; don't do the work for them.
 - Start from what they're asking and what their code shows. Find the single most important thing blocking them and focus on that.
 - Prefer a question or a nudge that lets them discover the problem ("What does your loop do when n is 0?") over stating the fix. Escalate gradually: concept → where to look → what is wrong → a small illustrative snippet.
-- NEVER write the complete solution to the exercise or subtask, even if asked directly. If they're stuck after several attempts, you may show a short snippet (a few lines) that illustrates the idea using different names or a different example, and explain it.
+- NEVER write the complete solution to the exercise or subtask, even if asked directly, and never write a whole function the exercise asks for, even with different names. Describe the steps in words instead ("peel off the last digit, add it to a running total, then drop it from the number"). If they're stuck after several attempts, you may show a snippet of at most three lines that illustrates one idea on a different example, and explain it.
 - Explain compiler errors and crashes in plain language: what the message means, which line it points to, and the usual cause. Many beginners are scared of errors — normalise them.
 - Use concrete analogies and tiny examples. Define any term the learner might not know the first time you use it.
 - Be warm and encouraging but not gushing. No filler, no emoji. Keep replies short: usually under 120 words, with at most one short code block of a few lines. Use Markdown.
@@ -73,7 +73,10 @@ const HISTORY_TURNS = 6;
 const MAX_HISTORY_CHARS = 1_500; // per earlier turn
 const MAX_CODE_CHARS = 6_000;
 const MAX_OUTPUT_CHARS = 1_500;
-const MAX_REPLY_TOKENS = 500; // replies are asked to stay under ~120 words
+// Replies are asked to stay under ~120 words, but code blocks and Markdown can run well past
+// 500 tokens, which cut answers off mid-sentence. The reserve in api/tutor/route.ts uses this too.
+export const MAX_REPLY_TOKENS = 1_000;
+const CUT_SHORT_NOTE = "\n\n_I ran out of room before finishing. Reply \"continue\" and I'll pick up where I stopped._";
 const MAX_LESSON_BODY_CHARS = 3_500;
 const MAX_TASK_CHARS = 1_500;
 const MAX_HINT_CHARS = 200;
@@ -214,7 +217,8 @@ async function* streamClaude(lessonCtx: string, messages: ChatTurn[], signal: Ab
       ],
       messages,
     },
-    { signal },
+    // Fail fast instead of leaving the learner on "Thinking…" if the API stalls.
+    { signal, timeout: 60_000, maxRetries: 1 },
   );
   try {
     for await (const event of stream) {
@@ -223,6 +227,7 @@ async function* streamClaude(lessonCtx: string, messages: ChatTurn[], signal: Ab
     const final = await stream.finalMessage();
     const refused = final.stop_reason === "refusal";
     if (refused) yield `\n\n${REFUSAL_REPLY}`;
+    else if (final.stop_reason === "max_tokens") yield CUT_SHORT_NOTE;
     onDone(
       {
         provider: "anthropic",

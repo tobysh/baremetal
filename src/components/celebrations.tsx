@@ -49,7 +49,7 @@ function Toast({ item, onDismiss }: { item: Unlocked; onDismiss: (id: string) =>
 }
 
 /** Level-up and course-complete moments. A real dialog: focus moves in, Tab stays inside, Escape closes. */
-export function Celebration({ levelUp, trackComplete, onClose }: { levelUp: Reward | null; trackComplete: TrackComplete | null; onClose: () => void }) {
+export function Celebration({ levelUp, trackComplete, onClose, returnFocus }: { levelUp: Reward | null; trackComplete: TrackComplete | null; onClose: () => void; returnFocus?: HTMLElement | null }) {
   const ref = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState<"track" | "level">(trackComplete ? "track" : "level");
   const titleId = "celebration-title";
@@ -58,11 +58,11 @@ export function Celebration({ levelUp, trackComplete, onClose }: { levelUp: Rewa
 
   // Remember the trigger once, and give focus back to it when the dialog goes away.
   useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
+    const previous = returnFocus ?? document.activeElement as HTMLElement | null;
     return () => {
       if (previous?.isConnected) previous.focus();
     };
-  }, []);
+  }, [returnFocus]);
 
   // Move focus to the primary action whenever the page changes (and on open).
   useEffect(() => {

@@ -6,5 +6,8 @@
   "language": "c",
   "path": "c",
   "order": 2,
-  "prerequisite": "c-memory"
+  "prerequisite": "c-memory",
+  "outcomes": [
+    "Build a growable array, tokenizer, stack and hash table in C."
+  ]
 }

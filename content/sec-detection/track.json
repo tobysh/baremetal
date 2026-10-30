@@ -6,5 +6,8 @@
   "language": "c",
   "path": "security",
   "order": 6,
-  "prerequisite": "sec-forensics"
+  "prerequisite": "sec-forensics",
+  "outcomes": [
+    "Turn synthetic logs and network records into tested detection rules."
+  ]
 }

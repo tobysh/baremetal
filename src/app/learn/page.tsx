@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Suspense } from "react";
+import { Suspense, cache } from "react";
 import { CourseProgress } from "@/components/course-progress";
 import { JsonLd } from "@/components/json-ld";
 import { Badge, Card, Container, Skeleton } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import { getTracks } from "@/lib/curriculum";
+import { recommendLearning } from "@/lib/learning";
 import { groupByPath } from "@/lib/curriculum/paths";
 import { getProgressMap } from "@/lib/progress";
 import { SITE, absoluteUrl } from "@/lib/site";
@@ -40,8 +41,9 @@ export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
       </Suspense>
       <h1 className="display text-3xl font-bold sm:text-4xl">Choose your next challenge.</h1>
       <p className="mt-3 max-w-2xl text-muted">
-        Pick a path. Courses are in order within each one. New to programming? Start with <Link className="text-accent underline underline-offset-2" href="/learn/first-steps">Programming from Zero</Link>, then choose a language.
+        Pick a path. Courses are in order within each one. New to programming? Start with <Link className="text-accent underline underline-offset-2" href="/learn/first-steps">Programming from Zero</Link>, then continue into C. You can choose another path at any time.
       </p>
+      <Suspense fallback={null}><RecommendedLearning /></Suspense>
       <nav aria-label="Paths" className="mt-8 flex flex-wrap gap-2 border-b border-border pb-6 text-sm">
         {groups.map((g) => (
           <a key={g.id} href={`#path-${g.id}`} className="inline-flex min-h-11 items-center rounded-lg bg-surface px-4 py-2 text-muted hover:bg-surface-2 hover:text-text">
@@ -74,9 +76,10 @@ export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
                     </Link>
                   </h3>
                   <p className="mt-2 text-muted">{t.summary}</p>
+                  <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-text-2">{t.outcomes.map((outcome) => <li key={outcome}>{outcome}</li>)}</ul>
                   {t.prerequisite && (
                     <p className="mt-3 text-sm text-muted">
-                      Before this: <Link href={`/learn/${t.prerequisite}`} className="text-accent underline underline-offset-2">{tracks.find((x) => x.slug === t.prerequisite)?.title}</Link>
+                      Recommended before this: <Link href={`/learn/${t.prerequisite}`} className="text-accent underline underline-offset-2">{tracks.find((x) => x.slug === t.prerequisite)?.title}</Link>
                     </p>
                   )}
                 </div>
@@ -108,9 +111,28 @@ async function Welcome({ searchParams }: { searchParams: PageProps<"/learn">["se
   );
 }
 
+// One progress query per render instead of one per course card.
+const progressFor = cache(async () => {
+  const user = await getCurrentUser();
+  return { user, progress: user ? await getProgressMap(user.id) : new Map<string, Awaited<ReturnType<typeof getProgressMap>> extends Map<string, infer V> ? V : never>() };
+});
+
 async function TrackProgress({ slug }: { slug: string }) {
   const track = getTracks().find((t) => t.slug === slug)!;
-  const user = await getCurrentUser();
-  const progress = user ? await getProgressMap(user.id) : new Map();
+  const { user, progress } = await progressFor();
   return <CourseProgress track={track} progress={progress} signedIn={!!user} />;
+}
+
+async function RecommendedLearning() {
+  const { progress } = await progressFor();
+  const tracks = getTracks();
+  const next = recommendLearning(tracks, progress);
+  return <section aria-label="Recommended learning" className="mt-6 panel p-5">
+    <h2 className="display-sm text-lg font-semibold">{progress.size ? "Continue learning" : "Your recommended starting point"}</h2>
+    {next ? <>
+      <p className="mt-2 text-muted">{next.track.title} · {next.lesson.title}</p>
+      <Link className="mt-3 inline-flex min-h-11 items-center rounded-lg bg-accent px-4 font-medium text-accent-ink" href={`/learn/${next.track.slug}/${next.lesson.slug}`}>{progress.size ? "Continue learning" : "Start first lesson"} →</Link>
+    </> : <p className="mt-2 text-muted">You&apos;ve finished this path. Choose another below.</p>}
+    <p className="mt-3 text-sm text-muted">Recommendations are a guide. Every course remains open to you.</p>
+  </section>;
 }

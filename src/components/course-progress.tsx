@@ -1,5 +1,6 @@
 import { Badge, ButtonLink, ProgressBar } from "@/components/ui";
 import { lessonPath } from "@/lib/curriculum";
+import { unfinishedLesson } from "@/lib/learning";
 import type { Track } from "@/lib/curriculum/types";
 import type { ProgressDoc } from "@/lib/models";
 
@@ -7,7 +8,7 @@ export function courseState(track: Track, progress: Map<string, ProgressDoc>) {
   const done = track.lessons.filter((lesson) => progress.get(lesson.exercise.id)?.status === "passed").length;
   const started = track.lessons.some((lesson) => progress.has(lesson.exercise.id));
   const complete = track.lessons.length > 0 && done === track.lessons.length;
-  const next = track.lessons.find((lesson) => progress.get(lesson.exercise.id)?.status !== "passed") ?? track.lessons[0];
+  const next = unfinishedLesson(track, progress) ?? track.lessons[0];
   return { done, started, complete, next, status: complete ? "Completed" : started ? "In progress" : "Not started", action: complete ? "Review course" : started ? "Continue course" : "Start course" };
 }
 

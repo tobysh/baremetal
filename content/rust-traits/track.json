@@ -6,5 +6,8 @@
   "language": "rust",
   "path": "rust",
   "order": 2,
-  "prerequisite": "rust-foundations"
+  "prerequisite": "rust-foundations",
+  "outcomes": [
+    "Design Rust interfaces with traits, lifetimes and smart pointers."
+  ]
 }

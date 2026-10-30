@@ -1,0 +1,32 @@
+[
+  {
+    "name": "source 1",
+    "stdin": "#include <stdio.h>\n\n  int r = my_mktemp(a) + mktemp_s(b);\n  x = cfg.mktemp(a); y = p->mktemp(b);\n  /* start of comment gets(a)\n     still a comment vsprintf(b) */ strcat(c);\n  system(buf, input);\n  /* never call sprintf(x) here */\n  vsprintf(buf, input);\n  // popen(a)\n  puts(\"system(x) is banned\");\n  x = cfg.gets(a); y = p->gets(b);\n  mktemp(buf, input);\n  // mktemp(a)\n  int r = my_vsprintf(a) + vsprintf_s(b);\n  tmpnam(buf, input);\n",
+    "expected": "6:37 strcat -> snprintf\n7:3 system -> execv\n9:3 vsprintf -> vsnprintf\n13:3 mktemp -> mkstemp\n16:3 tmpnam -> mkstemp\n5 banned calls\n"
+  },
+  {
+    "name": "source 2",
+    "stdin": "#include <stdio.h>\n\n  if (ok) popen  (path); /* tail */ gets(z);\n  strcat(buf, input);\n  int r = my_sprintf(a) + sprintf_s(b);\n  puts(\"gets(x) is banned\");\n  puts(\"tmpnam(x) is banned\");\n  x = cfg.strcat(a); y = p->strcat(b);\n  int r = my_strcpy(a) + strcpy_s(b);\n  if (ok) vsprintf  (path); /* tail */ gets(z);\n  puts(\"quote \\\" strcpy(x)\"); sprintf(w);\n  // sprintf(a)\n  popen(buf, input);\n  /* start of comment gets(a)\n     still a comment strcpy(b) */ strcat(c);\n  if (ok) vsprintf  (path); /* tail */ system(z);\n",
+    "expected": "3:11 popen -> execv\n3:37 gets -> fgets\n4:3 strcat -> snprintf\n10:11 vsprintf -> vsnprintf\n10:40 gets -> fgets\n11:31 sprintf -> snprintf\n13:3 popen -> execv\n15:35 strcat -> snprintf\n16:11 vsprintf -> vsnprintf\n16:40 system -> execv\n10 banned calls\n"
+  },
+  {
+    "name": "source 3",
+    "stdin": "#include <stdio.h>\n\n  // system(a)\n  strcpy(buf, input);\n  /* start of comment gets(a)\n     still a comment sprintf(b) */ strcat(c);\n  int r = my_sprintf(a) + sprintf_s(b);\n  /* start of comment gets(a)\n     still a comment vsprintf(b) */ strcat(c);\n  x = cfg.system(a); y = p->system(b);\n  // strcat(a)\n  int r = my_popen(a) + popen_s(b);\n  /* start of comment gets(a)\n     still a comment sprintf(b) */ strcat(c);\n  if (ok) strcpy  (path); /* tail */ tmpnam(z);\n  /* never call strcat(x) here */\n  /* start of comment gets(a)\n     still a comment gets(b) */ system(c);\n",
+    "expected": "4:3 strcpy -> snprintf\n6:36 strcat -> snprintf\n9:37 strcat -> snprintf\n14:36 strcat -> snprintf\n15:11 strcpy -> snprintf\n15:38 tmpnam -> mkstemp\n18:33 system -> execv\n7 banned calls\n"
+  },
+  {
+    "name": "source 4",
+    "stdin": "#include <stdio.h>\n\n  puts(\"quote \\\" popen(x)\"); gets(w);\n  // vsprintf(a)\n  x = cfg.mktemp(a); y = p->mktemp(b);\n  if (ok) strcat  (path); /* tail */ popen(z);\n  vsprintf(buf, input);\n  int r = my_gets(a) + gets_s(b);\n  int r = my_gets(a) + gets_s(b);\n  x = cfg.system(a); y = p->system(b);\n  if (ok) gets  (path); /* tail */ sprintf(z);\n  /* never call strcat(x) here */\n",
+    "expected": "3:30 gets -> fgets\n6:11 strcat -> snprintf\n6:38 popen -> execv\n7:3 vsprintf -> vsnprintf\n11:11 gets -> fgets\n11:36 sprintf -> snprintf\n6 banned calls\n"
+  },
+  {
+    "name": "source 5",
+    "stdin": "#include <stdio.h>\n\n  x = cfg.mktemp(a); y = p->mktemp(b);\n  // gets(a)\n  /* never call sprintf(x) here */\n  puts(\"quote \\\" popen(x)\"); popen(w);\n  if (ok) strcat  (path); /* tail */ gets(z);\n  char c = '\\''; gets(q);\n  int r = my_strcat(a) + strcat_s(b);\n  if (ok) sprintf  (path); /* tail */ tmpnam(z);\n  if (ok) strcat  (path); /* tail */ gets(z);\n  puts(\"quote \\\" sprintf(x)\"); vsprintf(w);\n  if (ok) mktemp  (path); /* tail */ gets(z);\n  if (ok) system  (path); /* tail */ system(z);\n  char c = '\\''; popen(q);\n  int r = my_vsprintf(a) + vsprintf_s(b);\n  char c = '\\''; sprintf(q);\n  puts(\"quote \\\" system(x)\"); tmpnam(w);\n",
+    "expected": "6:30 popen -> execv\n7:11 strcat -> snprintf\n7:38 gets -> fgets\n8:18 gets -> fgets\n10:11 sprintf -> snprintf\n10:39 tmpnam -> mkstemp\n11:11 strcat -> snprintf\n11:38 gets -> fgets\n12:32 vsprintf -> vsnprintf\n13:11 mktemp -> mkstemp\n13:38 gets -> fgets\n14:11 system -> execv\n14:38 system -> execv\n15:18 popen -> execv\n17:18 sprintf -> snprintf\n18:31 tmpnam -> mkstemp\n16 banned calls\n"
+  },
+  {
+    "name": "clean file",
+    "stdin": "int main(void){ return strlen(\"gets\") + snprintf(0,0,\"x\"); }\n",
+    "expected": "no banned calls\n"
+  }
+]

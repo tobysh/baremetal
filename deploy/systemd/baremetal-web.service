@@ -1,0 +1,32 @@
+[Unit]
+Description=Baremetal web application
+Wants=baremetal-runner.service
+After=network.target baremetal-runner.service
+
+[Service]
+Type=simple
+User=baremetal-web
+Group=baremetal-web
+SupplementaryGroups=baremetal-exec
+WorkingDirectory=/opt/baremetal-web
+ExecStart=/usr/bin/env node node_modules/next/dist/bin/next start -p 3000
+Environment=NODE_ENV=production
+Environment=PATH=/usr/local/bin:/usr/bin
+Environment=RUNNER_SOCKET=/run/baremetal-runner/runner.sock
+EnvironmentFile=/etc/baremetal/web.env
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=15
+KillMode=control-group
+MemoryMax=2G
+MemorySwapMax=0
+TasksMax=256
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/baremetal-web/.next/cache
+InaccessiblePaths=-/opt/baremetal-runner -/var/lib/baremetal
+
+[Install]
+WantedBy=multi-user.target

@@ -62,7 +62,7 @@ Do not paste personal information into the tutor or your code. Tutor replies can
 
 ### Running code
 
-Code you run is compiled and executed in an isolated sandbox on our server. The sandbox is deleted straight after the run. The only code we keep is the code you save as progress.
+Code you run is compiled and executed in an isolated sandbox on our server. The sandbox is deleted straight after the run. The only code we keep on the server is the code you save as progress. Your browser can also keep a recovery draft until an account save succeeds; see the [Cookie Notice](/cookies).
 
 ### Passwords and the breach check
 

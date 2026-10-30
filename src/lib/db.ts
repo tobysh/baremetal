@@ -22,6 +22,7 @@ async function ensureIndexes(db: Db) {
     db.collection("sessions").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
     db.collection("sessions").createIndex({ userId: 1 }),
     db.collection("progress").createIndex({ userId: 1, exerciseId: 1 }, { unique: true }),
+    db.collection("progress").createIndex({ exerciseId: 1, userId: 1, trackSlug: 1 }),
     db.collection("xp_events").createIndex({ userId: 1, source: 1, ref: 1 }, { unique: true }),
     db.collection("xp_events").createIndex({ at: 1, userId: 1 }),
     db.collection("achievements").createIndex({ userId: 1, id: 1 }, { unique: true }),

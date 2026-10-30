@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { DashboardSkeleton } from "@/components/skeletons";
 import { courseState } from "@/components/course-progress";
-import { ButtonLink, Container, Skeleton } from "@/components/ui";
+import { ButtonLink, Container } from "@/components/ui";
 import { UsernameNotice } from "@/components/username-notice";
 import { requireUser } from "@/lib/auth";
 import { getTracks, lessonPath } from "@/lib/curriculum";
@@ -12,6 +13,7 @@ import type { ProgressDoc } from "@/lib/models";
 import { getProgressMap, getReviews } from "@/lib/progress";
 import { CodexPanel, CourseMap, PickCard, ReviewCard, RhythmCard, StatsPanel, type DueReview, type MonthXp } from "@/components/dashboard-sections";
 import { TimezoneSync } from "@/components/timezone-sync";
+import { recommendLearning } from "@/lib/learning";
 import { dailyPick } from "@/lib/daily";
 import { getDb } from "@/lib/db";
 import { ObjectId } from "mongodb";
@@ -67,15 +69,12 @@ async function DashboardBody() {
   const bySlug = new Map(courses.map((course) => [course.track.slug, course]));
   const prerequisite = (course: CourseEntry) => (course.track.prerequisite ? bySlug.get(course.track.prerequisite) : undefined);
 
-  const recent = [...progress.values()].sort((a, b) => +b.updatedAt - +a.updatedAt)[0];
-  const recentLesson = recent && allLessons.find(({ lesson }) => lesson.exercise.id === recent.exerciseId);
-  const nextUp = recentLesson && progress.get(recentLesson.lesson.exercise.id)?.status !== "passed"
-    ? recentLesson : allLessons.find(({ lesson }) => progress.get(lesson.exercise.id)?.status !== "passed");
+  const nextUp = recommendLearning(tracks, progress);
 
   // Other courses already under way, so a second course in progress is still reachable from here.
   const alsoActive = courses.filter((course) => course.started && !course.complete && course.track.slug !== nextUp?.track.slug);
-  // Courses whose prerequisite is already under way come first (the sort is stable, so catalogue order holds otherwise).
-  const ready = (course: CourseEntry) => Number(!prerequisite(course) || prerequisite(course)!.started);
+  // Courses whose prerequisite is complete come first (the sort is stable, so catalogue order holds otherwise).
+  const ready = (course: CourseEntry) => Number(!prerequisite(course) || prerequisite(course)!.complete);
   const notStarted = courses.filter((course) => !course.started).sort((a, b) => ready(b) - ready(a)).slice(0, 4);
 
   const pick = dailyPick({ tracks, progress, reviews, userId: user.id, now, skipExerciseId: nextUp?.lesson.exercise.id });
@@ -251,17 +250,5 @@ function CourseLink({ track, href, note, recommended, action }: { track: Track; 
       <span className="flex-[0_0_40px] text-sm text-text-2">{Math.max(1, Math.round(minutes / 60))} h</span>
       <span className="inline-flex min-h-9 items-center justify-center rounded-md border border-line-strong px-4 text-sm font-medium text-text-2 group-hover:border-accent group-hover:text-accent">{action}</span>
     </Link>
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <div aria-busy="true" aria-label="Loading your dashboard" className="flex flex-col gap-6">
-      <div className="flex flex-wrap gap-6">
-        <Skeleton className="h-72 min-w-0 flex-[999_1_600px]" />
-        <Skeleton className="h-72 min-w-0 flex-[1_1_320px]" />
-      </div>
-      <Skeleton className="h-80" />
-    </div>
   );
 }

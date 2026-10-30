@@ -98,11 +98,20 @@ function loadTracks(only?: string): Track[] {
   }).sort(compareTracks);
 }
 
-const globalForContent = globalThis as unknown as { __tracks?: Track[] };
-// Reload on every call in dev so edits to content/ show up without a restart.
+const globalForContent = globalThis as unknown as { __tracks?: Track[]; __tracksAt?: number };
+const DEV_TTL_MS = 1000;
+// In dev, reload at most once a second so edits to content/ show up without a restart,
+// while a page that calls this dozens of times per render pays for one load.
 export function getTracks(only?: string): Track[] {
   if (only) return loadTracks(only);
-  if (process.env.NODE_ENV !== "production") return loadTracks();
+  if (process.env.NODE_ENV !== "production") {
+    const now = performance.now();
+    if (!globalForContent.__tracks || now - (globalForContent.__tracksAt ?? 0) > DEV_TTL_MS) {
+      globalForContent.__tracks = loadTracks();
+      globalForContent.__tracksAt = now;
+    }
+    return globalForContent.__tracks;
+  }
   return (globalForContent.__tracks ??= loadTracks());
 }
 

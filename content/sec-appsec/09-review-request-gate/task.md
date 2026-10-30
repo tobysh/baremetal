@@ -1,0 +1,4 @@
+Stdin: first line `idle absolute site`, then at most 1000 events `<time> login <sid> <token>` or `<time> post <sid> <origin> <token> <next>` in time order (fields have no spaces; `-` means absent). Print `N: <result>`:
+
+`login`: `ok` if the sid was never used before (the session stores the token, created = last = time), else `rejected-fixation`.
+`post`: `deny:no-session` (unknown or destroyed); `deny:expired-absolute` (`time - created > absolute`, destroys the session); `deny:expired-idle` (`time - last > idle`, destroys it); `deny:cross-origin` (origin is not exactly the site); `deny:bad-token` (the token differs from the one stored at login, or is `-`); otherwise `allow redirect=<next>` if `safe_redirect(next)` is 1, or `allow redirect=/` if not. Only an allowed post updates the session's last-seen time.

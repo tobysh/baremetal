@@ -1,27 +1,27 @@
 [
   {
     "name": "idle=60 abs=300",
-    "stdin": "60 300\n1020 req s4\n1140 req s4\n1210 req s4\n1245 req s4\n1250 logout s3\n1320 logout s2\n1440 login s2\n1560 login s3\n1595 req s4\n1615 logout s2\n1635 req s5\n1670 login s1\n1675 login s1\n1695 req s2\n1696 req s1\n",
-    "expected": "1: unknown\n2: unknown\n3: unknown\n4: unknown\n5: unknown\n6: unknown\n7: ok\n8: ok\n9: unknown\n10: ok\n11: unknown\n12: ok\n13: rejected-reused-id\n14: unknown\n15: ok\n"
+    "stdin": "60 300\n1020 req s4\n1140 req s4\n1210 req s4\n1245 req s4\n1250 logout s3\n1320 logout s2\n1440 login s2\n1560 login s3\n1595 req s3\n1596 logout s4\n1631 login s5\n1632 req s2\n1637 login s4\n1642 req s2\n1645 req s4\n",
+    "expected": "1: unknown\n2: unknown\n3: unknown\n4: unknown\n5: unknown\n6: unknown\n7: ok\n8: ok\n9: ok\n10: unknown\n11: ok\n12: expired-idle\n13: ok\n14: unknown\n15: ok\n"
   },
   {
     "name": "idle=30 abs=100",
-    "stdin": "30 100\n1005 req s2\n1025 req s3\n1095 req s3\n1098 login s1\n1118 login s2\n1238 logout s1\n1358 login s5\n1361 login s4\n1396 login s1\n1516 req s2\n1536 logout s4\n1539 req s5\n1609 login s5\n1729 req s3\n1732 req s3\n1737 logout s5\n1740 req s1\n",
-    "expected": "1: unknown\n2: unknown\n3: unknown\n4: ok\n5: ok\n6: ok\n7: ok\n8: ok\n9: rejected-reused-id\n10: expired-absolute\n11: ok\n12: expired-absolute\n13: rejected-reused-id\n14: unknown\n15: unknown\n16: unknown\n17: unknown\n"
+    "stdin": "30 100\n1120 req s4\n1125 req s2\n1145 login s2\n1148 req s1\n1268 login s5\n1271 login s4\n1306 login s1\n1426 req s1\n1429 req s2\n1449 logout s5\n1469 req s5\n1474 req s5\n1544 req s1\n1545 req s3\n1580 req s1\n1600 req s4\n1620 req s4\n1655 req s4\n1775 login s1\n",
+    "expected": "1: unknown\n2: unknown\n3: ok\n4: unknown\n5: ok\n6: ok\n7: ok\n8: expired-absolute\n9: expired-absolute\n10: ok\n11: unknown\n12: unknown\n13: unknown\n14: unknown\n15: unknown\n16: expired-absolute\n17: unknown\n18: unknown\n19: rejected-reused-id\n"
   },
   {
     "name": "idle=100 abs=150",
-    "stdin": "100 150\n1003 req s4\n1004 req s3\n1039 req s4\n1159 req s4\n1194 logout s2\n1199 req s3\n1200 req s5\n1320 req s4\n1390 login s5\n1510 req s1\n1515 login s1\n1516 login s3\n1586 req s3\n1621 logout s1\n1626 login s1\n1646 req s4\n1651 logout s1\n1654 req s4\n",
-    "expected": "1: unknown\n2: unknown\n3: unknown\n4: unknown\n5: unknown\n6: unknown\n7: unknown\n8: unknown\n9: ok\n10: unknown\n11: ok\n12: ok\n13: ok\n14: ok\n15: rejected-reused-id\n16: unknown\n17: unknown\n18: unknown\n"
+    "stdin": "100 150\n1001 login s3\n1071 req s3\n1106 logout s1\n1111 login s1\n1131 req s3\n1134 req s3\n1254 req s3\n1259 req s1\n1264 req s1\n1299 login s3\n1302 login s4\n1337 logout s1\n1338 req s3\n1341 req s4\n1342 req s4\n1343 logout s3\n1348 logout s4\n1353 login s1\n1354 req s1\n1374 logout s3\n",
+    "expected": "1: ok\n2: ok\n3: unknown\n4: ok\n5: ok\n6: ok\n7: expired-absolute\n8: expired-idle\n9: unknown\n10: rejected-reused-id\n11: ok\n12: unknown\n13: unknown\n14: ok\n15: ok\n16: unknown\n17: ok\n18: rejected-reused-id\n19: unknown\n20: unknown\n"
   },
   {
     "name": "idle=10 abs=1000",
-    "stdin": "10 1000\n1001 req s1\n1002 req s2\n1007 req s1\n1016 req s3\n1027 login s1\n1067 req s2\n1072 logout s2\n1073 req s5\n1113 login s1\n1115 logout s5\n1120 login s3\n1160 req s4\n1161 req s2\n1171 req s3\n1176 logout s4\n1181 login s1\n1182 req s3\n1193 req s3\n1195 login s1\n1204 login s4\n1205 logout s3\n1216 req s4\n1227 req s3\n1229 login s2\n",
-    "expected": "1: unknown\n2: unknown\n3: unknown\n4: unknown\n5: ok\n6: unknown\n7: unknown\n8: unknown\n9: rejected-reused-id\n10: unknown\n11: ok\n12: unknown\n13: unknown\n14: expired-idle\n15: unknown\n16: rejected-reused-id\n17: unknown\n18: unknown\n19: rejected-reused-id\n20: ok\n21: unknown\n22: expired-idle\n23: unknown\n24: ok\n"
+    "stdin": "10 1000\n1001 login s4\n1003 req s4\n1008 req s4\n1017 req s4\n1027 logout s3\n1036 req s4\n1047 logout s5\n1058 login s5\n1059 req s2\n1064 req s5\n1073 req s5\n1078 req s4\n1089 req s4\n1100 req s5\n1109 req s4\n1111 logout s1\n",
+    "expected": "1: ok\n2: ok\n3: ok\n4: ok\n5: unknown\n6: expired-idle\n7: unknown\n8: ok\n9: unknown\n10: ok\n11: ok\n12: unknown\n13: unknown\n14: expired-idle\n15: unknown\n16: unknown\n"
   },
   {
     "name": "idle=600 abs=600",
-    "stdin": "600 600\n1120 req s4\n1190 logout s5\n1191 req s3\n1226 req s1\n1346 req s1\n1416 login s3\n1419 req s3\n1439 req s5\n1474 login s5\n1494 logout s1\n1514 req s5\n1634 req s2\n1704 req s3\n1705 req s3\n1725 req s2\n1845 logout s1\n1848 req s3\n1868 req s3\n1869 req s1\n1889 req s5\n1924 req s2\n2044 login s1\n2164 req s3\n",
-    "expected": "1: unknown\n2: unknown\n3: unknown\n4: unknown\n5: unknown\n6: ok\n7: ok\n8: unknown\n9: ok\n10: unknown\n11: ok\n12: unknown\n13: ok\n14: ok\n15: unknown\n16: unknown\n17: ok\n18: ok\n19: unknown\n20: ok\n21: unknown\n22: ok\n23: expired-absolute\n"
+    "stdin": "600 600\n1005 logout s4\n1040 logout s3\n1041 req s1\n1061 req s5\n1096 req s2\n1216 login s1\n1336 req s1\n1341 login s3\n1411 req s3\n1416 req s1\n1417 logout s4\n1452 req s3\n1472 req s1\n1473 req s3\n1493 logout s1\n1513 logout s5\n",
+    "expected": "1: unknown\n2: unknown\n3: unknown\n4: unknown\n5: unknown\n6: ok\n7: ok\n8: ok\n9: ok\n10: ok\n11: unknown\n12: ok\n13: ok\n14: ok\n15: ok\n16: unknown\n"
   }
 ]

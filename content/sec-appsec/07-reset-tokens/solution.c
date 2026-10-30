@@ -9,8 +9,9 @@ typedef struct { char tok[40],user[40]; long t; int used; } K;
 static K k[1100]; static int nk;
 int main(void){
   long ttl; if(scanf("%ld",&ttl)!=1)return 0;
-  long t; char act[16],a[64],b[64]; int n=0;
-  while(scanf("%ld %15s %63s %63s",&t,act,a,b)==4){
+  long t; char act[16],a[64],b[64],ln[256]; int n=0; fgets(ln,sizeof ln,stdin);
+  while(fgets(ln,sizeof ln,stdin)){
+    if(sscanf(ln,"%ld %15s %63s %63s",&t,act,a,b)!=4)continue;
     n++; const char *res="invalid"; char buf[80];
     if(!strcmp(act,"issue")){
       int dup=0; for(int i=0;i<nk;i++) if(!strcmp(k[i].tok,b))dup=1;

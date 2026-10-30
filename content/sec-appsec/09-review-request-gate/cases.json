@@ -1,0 +1,27 @@
+[
+  {
+    "name": "idle=60 abs=300",
+    "stdin": "60 300 https://app.test\n1015 post sZ https://evil.test zz //evil.test\n1030 post sZ - zz /x\\y\n1031 post sZ https://app.test bad /x\\y\n1036 post sZ https://app.test zz /ok/path\n1037 post sZ https://evil.test zz -\n1062 login s4 c73\n1102 post s4 https://app.test c73 /x\\y\n1142 post sZ https://app.test bad /ok/path\n1212 login s1 c88\n1227 post s4 https://evil.test c73 /ok/path\n1297 post s4 - c73 /home\n1312 post s1 - c88 /a?b=c\n1337 login s2 c39\n1407 post s4 https://evil.test c73 /x\\y\n1408 login s3 c30\n1423 login s1 c71\n1424 post sZ https://app.test zz /ok/path\n1439 post s3 https://evil.test c30 /ok/path\n",
+    "expected": "1: deny:no-session\n2: deny:no-session\n3: deny:no-session\n4: deny:no-session\n5: deny:no-session\n6: ok\n7: allow redirect=/\n8: deny:no-session\n9: ok\n10: deny:expired-idle\n11: deny:no-session\n12: deny:expired-idle\n13: ok\n14: deny:no-session\n15: ok\n16: rejected-fixation\n17: deny:no-session\n18: deny:cross-origin\n"
+  },
+  {
+    "name": "idle=30 abs=90",
+    "stdin": "30 90 https://app.test\n1001 login s3 c78\n1071 post sZ https://app.test zz /home\n1072 post s3 - c78 /x\\y\n1112 login s4 c86\n1117 login s1 c63\n1157 post s1 - c63 /ok/path\n1172 login s4 c94\n1197 login s4 c33\n1198 post s3 https://evil.test c78 //evil.test\n1238 post s3 https://evil.test c78 //evil.test\n1239 login s1 c56\n1244 post s3 - c78 /a?b=c\n1284 post s1 https://app.test bad -\n1354 login s3 c56\n1359 post s4 https://app.test c33 //evil.test\n1429 post s4 https://evil.test c33 -\n1430 login s3 c19\n1500 post s1 - c56 /a?b=c\n",
+    "expected": "1: ok\n2: deny:no-session\n3: deny:expired-idle\n4: ok\n5: ok\n6: deny:expired-idle\n7: rejected-fixation\n8: rejected-fixation\n9: deny:no-session\n10: deny:no-session\n11: rejected-fixation\n12: deny:no-session\n13: deny:no-session\n14: rejected-fixation\n15: deny:expired-absolute\n16: deny:no-session\n17: rejected-fixation\n18: deny:no-session\n"
+  },
+  {
+    "name": "idle=100 abs=1000",
+    "stdin": "100 1000 https://app.test\n1015 post sZ https://evil.test zz /a?b=c\n1020 post sZ https://app.test zz /a?b=c\n1035 login s2 c92\n1075 post s2 https://evil.test bad -\n1076 post s2 https://app.test bad /home\n1116 post s2 - c92 /ok/path\n1121 login s4 c11\n1161 post s4 https://app.test bad -\n1176 post s4 https://app.test c11 /a?b=c\n1191 post s2 https://app.test bad /home\n1261 login s3 c83\n1266 post sZ https://app.test bad /home\n1291 post sZ - bad //evil.test\n1292 post s3 https://app.test c83 //evil.test\n",
+    "expected": "1: deny:no-session\n2: deny:no-session\n3: ok\n4: deny:cross-origin\n5: deny:bad-token\n6: deny:cross-origin\n7: ok\n8: deny:bad-token\n9: allow redirect=/a?b=c\n10: deny:expired-idle\n11: ok\n12: deny:no-session\n13: deny:no-session\n14: allow redirect=/\n"
+  },
+  {
+    "name": "idle=20 abs=400",
+    "stdin": "20 400 https://app.test\n1040 post sZ https://evil.test zz /x\\y\n1080 login s2 c98\n1105 post s2 https://evil.test c98 -\n1175 post s2 https://app.test c98 /x\\y\n1245 post s2 https://evil.test c98 -\n1315 post s2 https://app.test c98 //evil.test\n1320 post s2 https://app.test c98 /home\n1325 post s2 https://evil.test c98 //evil.test\n1326 login s3 c65\n1341 post s3 https://app.test c65 /home\n1346 post s2 - c98 -\n1371 post s2 https://evil.test c98 -\n1411 post sZ https://app.test zz /ok/path\n1426 login s2 c93\n",
+    "expected": "1: deny:no-session\n2: ok\n3: deny:expired-idle\n4: deny:no-session\n5: deny:no-session\n6: deny:no-session\n7: deny:no-session\n8: deny:no-session\n9: ok\n10: allow redirect=/home\n11: deny:no-session\n12: deny:no-session\n13: deny:no-session\n14: rejected-fixation\n"
+  },
+  {
+    "name": "idle=45 abs=60",
+    "stdin": "45 60 https://app.test\n1070 post sZ - zz /home\n1085 post sZ https://evil.test zz /x\\y\n1090 post sZ - bad /ok/path\n1105 post sZ https://evil.test zz /ok/path\n1120 post sZ https://evil.test zz -\n1190 post sZ https://evil.test zz -\n1230 post sZ https://evil.test zz /a?b=c\n1270 post sZ https://evil.test zz //evil.test\n1275 login s4 c51\n1280 post s4 https://evil.test c51 /a?b=c\n1320 post s4 https://app.test bad /x\\y\n1325 post s4 - bad -\n1340 post s4 https://app.test c51 /home\n1365 post s4 https://evil.test bad //evil.test\n1366 login s1 c79\n1371 post s4 https://app.test c51 -\n1441 post s4 - bad /a?b=c\n1481 login s2 c42\n1521 login s3 c67\n1546 post s2 https://app.test c42 /a?b=c\n1616 post s2 https://evil.test c42 -\n",
+    "expected": "1: deny:no-session\n2: deny:no-session\n3: deny:no-session\n4: deny:no-session\n5: deny:no-session\n6: deny:no-session\n7: deny:no-session\n8: deny:no-session\n9: ok\n10: deny:cross-origin\n11: deny:bad-token\n12: deny:expired-idle\n13: deny:no-session\n14: deny:no-session\n15: ok\n16: deny:no-session\n17: deny:no-session\n18: ok\n19: ok\n20: deny:expired-absolute\n21: deny:no-session\n"
+  }
+]

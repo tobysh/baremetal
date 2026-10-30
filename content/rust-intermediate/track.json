@@ -6,5 +6,8 @@
   "language": "rust",
   "path": "rust",
   "order": 7,
-  "prerequisite": "rust-traits"
+  "prerequisite": "rust-traits",
+  "outcomes": [
+    "Combine traits, lifetimes, errors and threads in Rust programs."
+  ]
 }

@@ -18,6 +18,8 @@ import { AchievementToasts, Celebration, type Reward, type TrackComplete, type U
 const NO_LINES: number[] = [];
 const CodeEditor = lazy(() => import("./code-editor"));
 const noop = () => () => {};
+// Keep per-draft writes ordered even when navigation remounts a workspace.
+const saveQueues = new Map<string, Promise<void>>();
 const useIsClient = () => useSyncExternalStore(noop, () => true, () => false);
 
 function readDraft(key: string): string | null {
@@ -69,9 +71,11 @@ export function Workspace({
   exercise,
   initialCode,
   signedIn,
+  draftOwner,
   alreadyPassed,
   tutorHistory,
   nextHref,
+  nextLabel,
   loginHref,
   variant = "lesson",
   initialHints = 0,
@@ -80,18 +84,20 @@ export function Workspace({
   exercise: PublicExercise;
   initialCode: string | null;
   signedIn: boolean;
+  draftOwner?: string;
   alreadyPassed: boolean;
   tutorHistory: ChatMessage[];
   nextHref: string | null;
+  nextLabel?: string;
   loginHref: string;
   variant?: Variant;
   /** Hints the server remembers the learner opening, so a reload does not hide them. */
   initialHints?: number;
   onPassed?: () => void;
 }) {
-  const storageKey = `bm:code:${exercise.id}`;
+  const storageKey = signedIn ? `bm:draft:${draftOwner}:${exercise.id}` : `bm:code:${exercise.id}`;
   // Signed-out visitors keep their code in this browser only.
-  const localDraft = useSyncExternalStore(noop, () => (signedIn ? null : readDraft(storageKey)), () => null);
+  const localDraft = useSyncExternalStore(noop, () => (variant === "review" ? null : readDraft(storageKey)), () => null);
   const [edited, setCode] = useState<string | null>(null);
   const code = edited ?? localDraft ?? initialCode ?? exercise.starter;
   const isClient = useIsClient();
@@ -122,7 +128,7 @@ export function Workspace({
     return () => { cancelled = true; };
   }, [fetchHints, initialHints, exercise.hintCount, variant]);
   const [toasts, setToasts] = useState<Unlocked[]>([]);
-  const [celebration, setCelebration] = useState<{ levelUp: Reward | null; trackComplete: TrackComplete | null } | null>(null);
+  const [celebration, setCelebration] = useState<{ levelUp: Reward | null; trackComplete: TrackComplete | null; returnFocus: HTMLElement | null } | null>(null);
   const dismissToast = useCallback((id: string) => setToasts((t) => t.filter((x) => x.id !== id)), []);
   const closeCelebration = useCallback(() => setCelebration(null), []);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -130,35 +136,85 @@ export function Workspace({
   const tutorRef = useRef<TutorControl>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirty = useRef(false);
+  const revision = useRef(0);
+  const alive = useRef(true);
+  const execution = useRef<AbortController | null>(null);
+  const latestDraft = useRef<string | null>(null);
 
-  const onChange = useCallback(
-    (value: string) => {
-      setCode(value);
-      dirty.current = true;
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(async () => {
-        if (!signedIn) {
-          try {
-            localStorage.setItem(storageKey, value);
-          } catch {}
-          return;
-        }
-        if (variant === "review") return; // a review starts from the starter and must not overwrite the saved solution
-        setSaveState("saving");
-        try {
+  const saveDraft = useCallback((value: string, version: number) => {
+    // Serialize writes: aborting a fetch cannot undo a write already accepted by the server.
+    const task = (saveQueues.get(storageKey) ?? Promise.resolve()).then(async () => {
+      if (version !== revision.current) return;
+      if (alive.current) setSaveState("saving");
+      try {
+        if (signedIn) {
+          const body = JSON.stringify({ exerciseId: exercise.id, code: value });
           const res = await fetch("/api/progress", {
             method: "PUT",
+            // Browser keepalive requests share a 64 KiB budget. Large drafts use
+            // a normal request and retain the recovery copy if navigation interrupts it.
+            keepalive: !alive.current && new TextEncoder().encode(body).byteLength <= 60 * 1024,
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ exerciseId: exercise.id, code: value }),
+            body,
           });
-          setSaveState(res.ok ? "saved" : "error");
-        } catch {
-          setSaveState("error");
+          if (!res.ok) throw new Error("Save failed");
+        } else {
+          localStorage.setItem(storageKey, value);
         }
-      }, 1200);
-    },
-    [exercise.id, signedIn, storageKey, variant],
-  );
+        if (version !== revision.current) return;
+        dirty.current = false;
+        if (signedIn) {
+          try { if (localStorage.getItem(storageKey) === value) localStorage.removeItem(storageKey); }
+          catch { /* A successful account save must not depend on browser storage. */ }
+        }
+        if (alive.current) setSaveState("saved");
+      } catch {
+        if (alive.current && version === revision.current) setSaveState("error");
+      }
+    });
+    saveQueues.set(storageKey, task);
+    void task.finally(() => { if (saveQueues.get(storageKey) === task) saveQueues.delete(storageKey); });
+    return task;
+  }, [exercise.id, signedIn, storageKey]);
+
+  useEffect(() => {
+    alive.current = true;
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!dirty.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    const version = revision; // This is a draft counter, intentionally read at cleanup.
+    return () => {
+      alive.current = false;
+      execution.current?.abort();
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (dirty.current && latestDraft.current !== null && variant !== "review") void saveDraft(latestDraft.current, version.current);
+      window.removeEventListener("beforeunload", warn);
+    };
+  }, [saveDraft, variant]);
+
+  const onChange = useCallback((value: string) => {
+    setCode(value);
+    if (variant === "review") return;
+    dirty.current = true;
+    latestDraft.current = value;
+    const version = ++revision.current;
+    // Keep an account-scoped recovery copy until the latest server save succeeds.
+    try { localStorage.setItem(storageKey, value); } catch { /* Report failure through the save attempt. */ }
+    setSaveState("idle");
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => void saveDraft(value, version), 1200);
+  }, [saveDraft, storageKey, variant]);
+
+  const retrySave = () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    dirty.current = true;
+    latestDraft.current = code;
+    void saveDraft(code, ++revision.current);
+  };
+  const recovered = signedIn && variant !== "review" && edited === null && localDraft !== null && saveState === "idle";
 
   // Latest values for callbacks handed to the editor's keymap.
   const codeRef = useRef(code);
@@ -170,18 +226,27 @@ export function Workspace({
 
   const execute = useCallback(
     async (mode: "run" | "test") => {
+      if (execution.current) return; // Keyboard shortcuts obey the same admission rule as buttons.
+      const returnFocus = document.activeElement as HTMLElement | null;
+      const controller = new AbortController();
+      execution.current = controller;
       setBusy(mode);
       setRequestError(null);
       setTab("output");
       track("run");
       try {
+        if (saveTimer.current) clearTimeout(saveTimer.current);
+        if (dirty.current && variant !== "review") await saveDraft(codeRef.current, revision.current);
+        controller.signal.throwIfAborted();
         const res = await fetch("/api/run", {
           method: "POST",
+          signal: controller.signal,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ exerciseId: exercise.id, code: codeRef.current, stdin: stdinRef.current, mode, review: variant === "review" }),
         });
         const body = await res.json().catch(() => { throw new Error(`The server could not run your code (HTTP ${res.status}). Please try again.`); });
-        if (!res.ok) throw new Error(body.error ?? "Something went wrong running your code.");
+        if (!res.ok) throw new Error(res.status === 503 ? "The code runner is unavailable or busy. Your draft is still here; try again shortly." : body.error ?? "Something went wrong running your code.");
+        if (!alive.current || controller.signal.aborted) return;
         setResult(body);
         if (body.kind === "test" && body.allPassed) {
           setPassed(true);
@@ -190,15 +255,16 @@ export function Workspace({
           if (variant === "lesson") onPassed?.();
           if (body.achievements?.length) setToasts((t) => [...t, ...body.achievements]);
           const levelUp = body.reward?.levelUp ? body.reward : null;
-          if (levelUp || body.trackComplete) setCelebration({ levelUp, trackComplete: body.trackComplete ?? null });
+          if (levelUp || body.trackComplete) setCelebration({ levelUp, trackComplete: body.trackComplete ?? null, returnFocus });
         }
       } catch (e) {
-        setRequestError((e as Error).message);
+        if (alive.current && !controller.signal.aborted) setRequestError((e as Error).message);
       } finally {
-        setBusy(null);
+        if (execution.current === controller) execution.current = null;
+        if (alive.current) setBusy(null);
       }
     },
-    [exercise.id, router, variant, onPassed],
+    [exercise.id, router, variant, onPassed, saveDraft],
   );
   const openHint = async () => {
     if (hintBusy || hintsShown >= exercise.hintCount) return;
@@ -249,8 +315,9 @@ export function Workspace({
       <div className="sticky top-16 z-10 flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-surface px-3 py-3 lg:static">
         <span className="font-mono text-xs text-muted">{LANGUAGE_FILE[exercise.language]}</span>
         <span className="text-xs text-muted" aria-live="polite">
-          {signedIn ? { idle: "", saving: "Saving…", saved: "Saved", error: "Couldn't save" }[saveState] : "Saved in this browser only"}
+          {variant === "review" ? "Review draft: saved solution unchanged" : recovered ? "Recovered browser draft. Save it to your account." : saveState === "error" ? "Couldn't save. Your draft is still in the editor." : signedIn ? { idle: "", saving: "Saving…", saved: "Saved" }[saveState] : "Saved in this browser only"}
         </span>
+        {(saveState === "error" || recovered) && <button type="button" onClick={retrySave} className="min-h-11 rounded-md px-2 text-xs text-accent underline underline-offset-2">{recovered ? "Save recovered draft" : "Retry save"}</button>}
         <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           {confirmReset ? (
             <>
@@ -370,7 +437,7 @@ export function Workspace({
             busy={busy}
             requestError={requestError}
             passed={passed}
-            nextHref={nextHref}
+            nextHref={nextHref} nextLabel={nextLabel}
             signedIn={signedIn}
             onAsk={askTutor}
             variant={variant}
@@ -385,6 +452,7 @@ export function Workspace({
                 error: r.error,
                 results: r.kind === "test" ? r.results : [],
                 stderr: r.kind === "run" ? r.stderr : r.output,
+                runtimeFailed: r.kind === "run" && !r.ok && r.phase === "run",
               })
             }
           />
@@ -437,7 +505,7 @@ export function Workspace({
         </div>
       </div>
       <AchievementToasts items={toasts} onDismiss={dismissToast} />
-      {celebration && <Celebration levelUp={celebration.levelUp} trackComplete={celebration.trackComplete} onClose={closeCelebration} />}
+      {celebration && <Celebration returnFocus={celebration.returnFocus} levelUp={celebration.levelUp} trackComplete={celebration.trackComplete} onClose={closeCelebration} />}
     </div>
   );
 }
@@ -460,6 +528,7 @@ function OutputPanel({
   requestError,
   passed,
   nextHref,
+  nextLabel,
   signedIn,
   onAsk,
   explain,
@@ -470,6 +539,7 @@ function OutputPanel({
   requestError: string | null;
   passed: boolean;
   nextHref: string | null;
+  nextLabel?: string;
   signedIn: boolean;
   onAsk: (text: string) => void;
   explain: (r: RunResponse) => Explanation[];
@@ -497,17 +567,17 @@ function OutputPanel({
         <p>
           Press <strong className="text-text">Test</strong> to check your solution, or <strong className="text-text">Run</strong> to run your own <code className="font-mono">main</code>.
         </p>
-        {passed && <SuccessBanner nextHref={nextHref} signedIn={signedIn} again variant={variant} />}
+        {passed && <SuccessBanner nextHref={nextHref} nextLabel={nextLabel} signedIn={signedIn} again variant={variant} />}
       </div>
     );
   }
 
   const compileFailed = result.kind === "run" ? result.phase === "compile" && !result.ok : !result.compiled;
-  const failed = compileFailed || !!result.error || (result.kind === "test" && !result.allPassed);
+  const failed = compileFailed || !!result.error || (result.kind === "run" ? !result.ok : !result.allPassed);
   const explanations = failed ? explain(result) : [];
   return (
     <div className="space-y-4" aria-live="polite">
-      {result.kind === "test" && result.allPassed && <SuccessBanner nextHref={nextHref} signedIn={signedIn} reward={result.reward} paced={result.paced} unaided={result.unaided} reviewed={result.reviewed} variant={variant} />}
+      {result.kind === "test" && result.allPassed && <SuccessBanner nextHref={nextHref} nextLabel={nextLabel} signedIn={signedIn} reward={result.reward} paced={result.paced} unaided={result.unaided} reviewed={result.reviewed} variant={variant} />}
 
       {explanations.length > 0 && (
         <section aria-labelledby="what-went-wrong" className="space-y-2">
@@ -518,6 +588,7 @@ function OutputPanel({
             <div key={x.id} className="rounded-lg border border-border bg-bg p-3">
               <p className="text-sm font-medium">{x.title}</p>
               <MiniMarkdown text={x.body} />
+              <p className="mt-2 text-sm text-text-2"><strong>Try next:</strong> {x.nextStep}</p>
               <button
                 type="button"
                 onClick={() => onAsk(`The checker said: "${x.title}". Can you look at my code and explain what I did wrong here, without giving me the full answer?`)}
@@ -589,6 +660,7 @@ function OutputPanel({
 
 function SuccessBanner({
   nextHref,
+  nextLabel,
   signedIn,
   again = false,
   reward = null,
@@ -598,6 +670,7 @@ function SuccessBanner({
   variant,
 }: {
   nextHref: string | null;
+  nextLabel?: string;
   signedIn: boolean;
   again?: boolean;
   reward?: Reward | null;
@@ -631,7 +704,7 @@ function SuccessBanner({
       )}
       {nextHref && variant === "lesson" && (
         <Link href={nextHref} className="mt-3 inline-flex h-9 items-center rounded-lg bg-accent px-3 font-medium text-accent-ink">
-          Next lesson →
+          {nextLabel ?? "Next lesson →"}
         </Link>
       )}
     </div>

@@ -6,5 +6,8 @@
   "language": "c",
   "path": "security",
   "order": 8,
-  "prerequisite": "sec-crypto"
+  "prerequisite": "sec-crypto",
+  "outcomes": [
+    "Validate tokens, sessions and requests, review code for bug classes and reason about threats with structured checks."
+  ]
 }

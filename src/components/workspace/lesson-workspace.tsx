@@ -22,8 +22,10 @@ export function LessonWorkspace(props: {
   review: ReviewInfo | null;
   startInReview: boolean;
   signedIn: boolean;
+  draftOwner?: string;
   tutorHistory: ChatMessage[];
   nextHref: string | null;
+  nextLabel?: string;
   loginHref: string;
 }) {
   const { lesson, challenge, review, signedIn } = props;
@@ -86,13 +88,15 @@ export function LessonWorkspace(props: {
         </section>
       )}
       <Workspace
-        key={variant}
+        key={`${lesson.id}:${variant}`}
         exercise={variant === "challenge" && challenge ? challenge.exercise : lesson}
         initialCode={variant === "challenge" ? (challenge?.code ?? null) : variant === "review" ? null : props.lessonCode}
         signedIn={signedIn}
+        draftOwner={props.draftOwner}
         alreadyPassed={variant === "challenge" ? !!challenge?.passed : variant === "review" ? false : passed}
         tutorHistory={variant === "challenge" ? [] : props.tutorHistory}
         nextHref={props.nextHref}
+        nextLabel={props.nextLabel}
         loginHref={props.loginHref}
         variant={variant}
         initialHints={props.initialHints}

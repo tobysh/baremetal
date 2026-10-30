@@ -1,0 +1,43 @@
+[Unit]
+Description=Baremetal isolated code runner
+After=local-fs.target
+
+[Service]
+Type=simple
+User=baremetal-runner
+Group=baremetal-exec
+WorkingDirectory=/opt/baremetal-runner
+ExecStart=/usr/bin/env node --import tsx scripts/runner-host.mts
+Environment=NODE_ENV=production
+Environment=PATH=/usr/local/bin:/usr/bin
+Environment=RUNNER_SOCKET=/run/baremetal-runner/runner.sock
+Environment=RUST_TOOLCHAIN_DIR=/usr
+RuntimeDirectory=baremetal-runner
+RuntimeDirectoryMode=0750
+UMask=0007
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=15
+KillMode=control-group
+Delegate=memory pids cpu io
+MemoryMax=6G
+MemorySwapMax=0
+TasksMax=1024
+CPUQuota=400%
+PrivateTmp=yes
+TemporaryFileSystem=/tmp:size=2G
+PrivateDevices=yes
+PrivateNetwork=yes
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+NoNewPrivileges=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=no
+ReadWritePaths=/run/baremetal-runner /sys/fs/cgroup/system.slice/baremetal-runner.service
+InaccessiblePaths=-/etc/baremetal -/var/lib/baremetal -/opt/baremetal-web
+
+[Install]
+WantedBy=multi-user.target

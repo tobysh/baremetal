@@ -29,11 +29,14 @@ jobs:
         run: npm run check:ids
       - name: Theme guard (no hex colours, no left accent stripes)
         run: npm run check:theme
+      - run: npm run check:learning
       - run: npm run build
         env:
           # The build must not need a live database; adjust if prerendering requires one.
           MONGODB_URI: mongodb://127.0.0.1:27017
           MONGODB_DB: baremetal
+          TRUSTED_PROXY_HOPS: 1
+          RUNNER_SOCKET: /tmp/bm-build.sock
 
   verify-content:
     name: Verify lesson content (compilers, bubblewrap, qemu)
@@ -45,18 +48,46 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-go@v5
-        with:
-          go-version: stable
-      - name: Install C compiler
-        run: sudo apt-get update && sudo apt-get install -y gcc   
-      - name: Expose Go toolchain to Bubblewrap
-        run: echo "GO_TOOLCHAIN_DIR=$(go env GOROOT)" >> "$GITHUB_ENV"
-      - name: Install toolchains
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y make bubblewrap qemu-system-x86 rustc
-      - name: Allow unprivileged user namespaces
-        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - uses: ./.github/actions/toolchains
       - run: npm ci
       - run: npm run verify:content
+
+      - name: Reject forged verdicts and harness disclosure
+        run: node --import tsx scripts/security/integrity/fixtures-forgery.mts
+      - name: Reference-cache cancellation
+        run: node --import tsx scripts/security/runner-cancellation.mts
+      - name: Runner socket integration (all languages)
+        run: npm run test:runner
+
+  regressions:
+    name: Auth, budgets, API and browser regressions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      mongodb:
+        image: mongo:8.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: ./.github/actions/toolchains
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:regressions
+        env:
+          MONGODB_URI: mongodb://127.0.0.1:27017
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failure-traces
+          path: test-results/
+          retention-days: 7

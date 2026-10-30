@@ -219,19 +219,45 @@ input:hover:not(:disabled), textarea:hover:not(:disabled), select:hover:not(:dis
   letter-spacing: -0.015em;
 }
 
-/* Skeleton shimmer, respecting reduced motion. */
+/* Skeleton: a soft highlight sweeps across a flat block. Only transform animates, so it stays
+   off the main thread. Reduced motion keeps the flat block. */
 .skeleton {
-  background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 37%, var(--surface-2) 63%);
-  background-size: 400% 100%;
-  animation: shimmer 1.4s ease infinite;
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
   border-radius: 6px;
 }
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text) 9%, transparent), transparent);
+  animation: shimmer 1.6s ease-in-out infinite;
+}
 @keyframes shimmer {
-  0% { background-position: 100% 50%; }
-  100% { background-position: 0 50%; }
+  to { transform: translateX(100%); }
+}
+
+/* Dropdowns and disclosures: a quick fade and a few pixels of travel from the trigger. */
+.menu-in { transform-origin: top right; animation: menu-in 0.14s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes menu-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+/* Native <details> (FAQ): ease the content open where the browser can animate to auto height. */
+@supports (interpolate-size: allow-keywords) {
+  details { interpolate-size: allow-keywords; }
+  details::details-content {
+    block-size: 0;
+    overflow: clip;
+    opacity: 0;
+    transition: block-size 0.2s ease, opacity 0.2s ease, content-visibility 0.2s allow-discrete;
+  }
+  details[open]::details-content { block-size: auto; opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .skeleton { animation: none; }
+  .skeleton::after, .menu-in { animation: none; }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
 
@@ -344,3 +370,24 @@ input:hover:not(:disabled), textarea:hover:not(:disabled), select:hover:not(:dis
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes celebrate-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
 @keyframes confetti-fall { to { transform: translateY(26rem) rotate(300deg); opacity: 0; } }
+
+/* Navigation feedback: a bar that starts on click and a quick fade as the new page lands. */
+.nav-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 60;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  opacity: 0;
+  pointer-events: none;
+}
+.nav-progress[data-phase="loading"] { opacity: 1; transform: scaleX(0.85); transition: transform 8s cubic-bezier(0.1, 0.6, 0.2, 1); }
+.nav-progress[data-phase="done"] { opacity: 0; transform: scaleX(1); transition: transform 0.15s ease-out, opacity 0.25s ease 0.1s; }
+.page-in { animation: page-in 0.18s ease-out; }
+@keyframes page-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .page-in { animation: none; }
+  .nav-progress { display: none; }
+}

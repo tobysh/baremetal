@@ -6,5 +6,8 @@
   "language": "c",
   "path": "security",
   "order": 2,
-  "prerequisite": "c-systems"
+  "prerequisite": "c-systems",
+  "outcomes": [
+    "Analyse toy ciphers, hashes and random generators in an offline lab."
+  ]
 }

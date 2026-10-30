@@ -15,6 +15,7 @@ import { getLesson, getTracks, lessonPath } from "@/lib/curriculum";
 import { toPublicExercise } from "@/lib/curriculum/types";
 import { challengeIdOf, challengeXpFor } from "@/lib/gamification";
 import { sealsFor } from "@/lib/rewards-context";
+import { recommendLearning } from "@/lib/learning";
 import { getProgress, getProgressMap, getReviewFor, getTutorThread } from "@/lib/progress";
 import { SITE, absoluteUrl } from "@/lib/site";
 import { LANGUAGE_LABEL } from "@/lib/curriculum/types";
@@ -54,7 +55,6 @@ async function Lesson({ params, searchParams }: { params: PageProps<"/learn/[tra
   if (!found) notFound();
   const { track, lesson, index, prev, next } = found;
   const path = lessonPath(track.slug, lesson.slug);
-  const nextHref = next ? lessonPath(track.slug, next.slug) : null;
   const exercise = toPublicExercise(lesson.exercise);
 
   return (
@@ -150,7 +150,7 @@ async function Lesson({ params, searchParams }: { params: PageProps<"/learn/[tra
       } workspace={
         <div className="min-w-0">
           <Suspense fallback={<WorkspaceSkeleton starter={exercise.starter} />}>
-            <WorkspaceLoader exerciseId={exercise.id} path={path} nextHref={nextHref} trackSlug={track.slug} lessonSlug={lesson.slug} searchParams={searchParams} />
+            <WorkspaceLoader exerciseId={exercise.id} path={path} trackSlug={track.slug} lessonSlug={lesson.slug} searchParams={searchParams} />
           </Suspense>
         </div>
       } />
@@ -165,7 +165,7 @@ async function LessonSeals({ exerciseId, hasChallenge }: { exerciseId: string; h
   return <SealRow seals={sealsFor(progress, exerciseId)} hasChallenge={hasChallenge} size={22} />;
 }
 
-async function WorkspaceLoader({ exerciseId, path, nextHref, trackSlug, lessonSlug, searchParams }: { exerciseId: string; path: string; nextHref: string | null; trackSlug: string; lessonSlug: string; searchParams: PageProps<"/learn/[track]/[lesson]">["searchParams"] }) {
+async function WorkspaceLoader({ exerciseId, path, trackSlug, lessonSlug, searchParams }: { exerciseId: string; path: string; trackSlug: string; lessonSlug: string; searchParams: PageProps<"/learn/[track]/[lesson]">["searchParams"] }) {
   const { lesson } = getLesson(trackSlug, lessonSlug)!;
   const user = await getCurrentUser();
   const wantReview = (await searchParams).review === "1";
@@ -177,18 +177,28 @@ async function WorkspaceLoader({ exerciseId, path, nextHref, trackSlug, lessonSl
         getReviewFor(user.id, exerciseId),
       ])
     : [null, null, null, null];
+  const tracks = getTracks();
+  const track = tracks.find((t) => t.slug === trackSlug)!;
+  // Anonymous continuation follows the authored sequence, without claiming saved progress.
+  const continuationProgress = user ? await getProgressMap(user.id) : new Map(track.lessons.slice(0, track.lessons.indexOf(lesson)).map((l) => [l.exercise.id, { exerciseId: l.exercise.id, status: "passed", updatedAt: new Date(0) }]));
+  const continuation = recommendLearning(tracks, continuationProgress, { track, afterPass: exerciseId });
+  const continuationHref = continuation ? lessonPath(continuation.track.slug, continuation.lesson.slug) : "/learn";
+  const continuationLabel = continuation ? continuation.track.slug === trackSlug ? "Next lesson →" : `Next course: ${continuation.track.title} →` : "Choose another path →";
   return (
     <LessonWorkspace
+      key={exerciseId}
       lesson={toPublicExercise(lesson.exercise)}
-      lessonCode={progress?.code || null}
+      lessonCode={progress?.code ?? null}
       lessonPassed={progress?.status === "passed"}
       initialHints={progress?.hintsUsed ?? 0}
-      challenge={lesson.challenge ? { exercise: toPublicExercise(lesson.challenge.exercise), code: challengeProgress?.code || null, passed: challengeProgress?.status === "passed", xp: challengeXpFor(lesson.difficulty) } : null}
+      challenge={lesson.challenge ? { exercise: toPublicExercise(lesson.challenge.exercise), code: challengeProgress?.code ?? null, passed: challengeProgress?.status === "passed", xp: challengeXpFor(lesson.difficulty) } : null}
       review={review ? { due: review.dueAt <= new Date(), dueOn: review.dueAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) } : null}
       startInReview={wantReview}
       signedIn={!!user}
+      draftOwner={user?.id}
       tutorHistory={(thread?.messages ?? []).map((m) => ({ role: m.role, content: m.content }))}
-      nextHref={nextHref}
+      nextHref={continuationHref}
+      nextLabel={continuationLabel}
       loginHref={`/login?next=${encodeURIComponent(path)}`}
     />
   );

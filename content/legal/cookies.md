@@ -26,6 +26,8 @@ The sign-in cookie, bm_session, is set in a way that keeps it safer:
 
 When you're not signed in, the code you write in a lesson is saved in your browser's local storage so you don't lose it if you reload the page. This is not a cookie, it is never sent to us automatically, and it stays in your browser on that device. You can remove it by clearing your browser's site data.
 
+When you are signed in, we keep a browser recovery copy of an edited lesson draft until the latest account save succeeds. Recovery copies are separated by account and exercise and can be removed by clearing this site’s browser storage. Review drafts do not overwrite your saved solution.
+
 We also save your light or dark theme choice in your browser's local storage, under the name bm:theme. It stores only "light" or "dark". It is a functional preference that the site needs to show the look you picked, so we do not ask for consent. It is never sent to our servers and stays in your browser on that device. You can remove it by clearing your browser's site data, and the site will go back to your device's light or dark setting.
 
 The workspace remembers the reading pane width you choose under bm:workspace:reading-width. This stores only a width percentage between 32 and 60. If you dismiss the dashboard's username reminder, bm:username-notice: followed by your account ID stores "dismissed", so that reminder stays hidden for your account in that browser. These functional preferences are not sent to our servers and remain on that device until you clear the site's browser storage. Clearing them restores the default workspace width and allows the reminder to appear again.

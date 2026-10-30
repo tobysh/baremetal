@@ -6,5 +6,8 @@
   "language": "go",
   "path": "go",
   "order": 3,
-  "prerequisite": "go-practice"
+  "prerequisite": "go-practice",
+  "outcomes": [
+    "Build a storage engine with crash recovery, indexes and transactions."
+  ]
 }

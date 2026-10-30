@@ -1,0 +1,3 @@
+Implement `int bind_query(const char *tmpl, const char *const *args, int nargs, char *out, size_t cap)`. Copy `tmpl` to `out`, replacing each `?` that is outside a single-quoted literal with `'` + the next argument with every `'` doubled + `'`. A `'` in the template toggles the inside-literal state. Return the length of the result (excluding the NUL) on success. Return -1 (and set `out[0] = 0` when `cap > 0`) if: the number of placeholders differs from `nargs`, the template ends inside a literal, an argument contains a byte below 0x20, or the result plus its NUL does not fit in `cap` (`cap == 0` or `out == NULL` also fail). Never write beyond `cap` bytes.
+
+Tests use guard bytes around the output buffer. Keep the supplied function names and types.

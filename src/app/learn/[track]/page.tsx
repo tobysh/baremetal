@@ -90,13 +90,14 @@ async function TrackContent({ params }: { params: PageProps<"/learn/[track]">["p
           </div>
           <h1 className="display mt-4 text-3xl font-bold sm:text-4xl">{track.title}</h1>
           <p className="mt-4 max-w-2xl text-lg text-muted">{track.description}</p>
+          <section className="mt-6" aria-label="What you will learn"><h2 className="display-sm text-lg font-semibold">What you will be able to do</h2><ul className="mt-2 list-disc space-y-2 pl-5 text-text-2">{track.outcomes.map((outcome) => <li key={outcome}>{outcome}</li>)}</ul></section>
           {prereq && (
             <p className="mt-4 text-sm text-muted">
-              Builds on{" "}
+              Recommended preparation:{" "}
               <Link className="text-accent underline underline-offset-2" href={`/learn/${prereq.slug}`}>
                 {prereq.title}
               </Link>
-              .
+              . You can start here if you already know those ideas.
             </p>
           )}
           <div className="mt-6 panel p-5 lg:hidden">

@@ -1,14 +1,14 @@
 # Security model
 
-Current state as of 29 October 2026. Baremetal runs untrusted code from anonymous visitors on the web server's host, so the sandbox outweighs everything else. The original audit plan and fix plan are in `docs/archive/` (`security-audit-plan.md`, `security-remediation-plan.md`); the IDs below (L1, R1 ...) match them. Host-level setup is in `docs/deployment-hardening.md`.
+Current state as of 30 October 2026. Baremetal runs untrusted code from anonymous visitors, so runner isolation and the sandbox outweigh everything else. Production now requires a separate runner socket service; systemd host verification is still pending. The original audit plan and fix plan are in `docs/archive/` (`security-audit-plan.md`, `security-remediation-plan.md`); the IDs below (L1, R1 ...) match them. Host-level setup is in `docs/deployment-hardening.md`.
 
 ## Assets and attackers
 
-Assets: the web server host (the sandbox shares its uid), MongoDB, accounts (scrypt hash, TOTP secret, sessions), learner data, XP/leaderboard integrity, hidden tests and reference solutions, the `ANTHROPIC_API_KEY` budget, `AUTH_SECRET`. Attackers: anonymous visitor, signed-in learner, a learner with a stolen password, a cross-site page, a hostile network position between proxy and app. Out of scope: host OS hardening beyond the app, third-party services, legal review.
+Assets: the web server host (shared kernel with the separately configured runner service), MongoDB, accounts (scrypt hash, TOTP secret, sessions), learner data, XP/leaderboard integrity, hidden tests and reference solutions, the `ANTHROPIC_API_KEY` budget, `AUTH_SECRET`. Attackers: anonymous visitor, signed-in learner, a learner with a stolen password, a cross-site page, a hostile network position between proxy and app. Out of scope: host OS hardening beyond the app, third-party services, legal review.
 
 ## What is in place
 
-**Sandbox (`src/lib/runner.ts`).** bubblewrap with no network, `--disable-userns`, an x86-64 seccomp denylist (ptrace, bpf, io_uring, userfaultfd, perf_event_open, mount family, kexec, module loading, namespace calls, `fsopen`/`fsmount`/`move_mount` and similar), rlimits, 5 s timeout, output caps. Compilation runs on size-capped private tmpfs with read-only sources; only the executable is returned, over a pipe capped at 64 MiB. Run directories are read-only; `/tmp` and `/dev/shm` are capped. Queue admission is capped per user and per IP, slots are handed directly to waiters, jobs cancel on request abort, and at most 24 may wait (503 beyond). Boot cleans only old workdirs. Optional per-job cgroup v2 limits via `RUNNER_CGROUP_ROOT` (untested on a real host, see deployment doc).
+**Sandbox (`src/lib/runner-engine.ts`).** bubblewrap with no network, `--disable-userns`, an x86-64 seccomp denylist (ptrace, bpf, io_uring, userfaultfd, perf_event_open, mount family, kexec, module loading, namespace calls, `fsopen`/`fsmount`/`move_mount` and similar), rlimits, 5 s timeout, output caps. Compilation runs on size-capped private tmpfs with read-only sources; only the executable is returned, over a pipe capped at 64 MiB. Run directories are read-only; `/tmp` and `/dev/shm` are capped. Queue admission is capped per user and per IP, slots are handed directly to waiters, jobs cancel on request abort, and at most 24 may wait (503 beyond). Runner boot cleans only old workdirs. Production web handlers call a versioned Unix-socket service with bounded requests/responses; the service resolves its own exercise definitions and owns admission and cancellation. The socket accepts only the web execution group; its logs exclude source and identities. Optional per-job cgroup v2 limits via `RUNNER_CGROUP_ROOT` (untested on a real host, see deployment doc).
 
 **Result integrity (L1, L2; R1-R4).** Tests run in the learner's process, so the verdict is not an out-of-process one.
 - R1: `testExercise` requires the exact ordered test names the reference solution produces (`expectedTestNames`), fails closed if the reference is unavailable, and requires matched C/kernel RUN/result events and a zero normal exit.
@@ -27,7 +27,7 @@ Assets: the web server host (the sandbox shares its uid), MongoDB, accounts (scr
 | Item | State |
 |---|---|
 | L1 same-process forgery | Medium, accepted. A determined C/asm learner can read the nonce and test names from live memory and print a full valid transcript; Go and Rust have no nonce (only exact names); the kernel guest runs in ring 0 and can write the debug console. R1 forces a complete transcript and R4 bounds XP. Real fix: an out-of-process verdict (driver prints raw values, server diffs against a reference transcript), which means rewriting the lesson tests. Revisit if the leaderboard gains prizes. |
-| Sandbox uid | The sandbox runs as the web server's uid; an escape reaches `.env.local` and Mongo. QEMU device emulation is extra surface. Fix is a separate runner service/uid (deployment doc). |
+| Runner service deployment | Separate service/client, dedicated systemd users, private network, restricted filesystem and cgroup setup are implemented. Install and verify the units on the real host before public launch. A sandbox escape still reaches the runner uid and the shared kernel; service separation is not a VM boundary. |
 | Per-job cgroups | Implemented, but never exercised: the dev workspace exposes cgroups read-only. Needs a memory-bomb check on the real host. |
 | CSP | `script-src 'unsafe-inline'` remains. Nonce CSP is incompatible with partial prerendering (Next.js guide); needs a rendering migration. The one inline script is the static theme bootstrap. |
 | Email delivery | At-least-once; duplicates possible after a crash. Needs SMTP and the worker scheduled. |
@@ -40,6 +40,7 @@ Assets: the web server host (the sandbox shares its uid), MongoDB, accounts (scr
 - `npm run test:e2e -- http://localhost:3100` (auth, 2FA, lockout, CAPTCHA, reset, authorization, redirects) against `npx next start -p 3100`.
 - `scripts/security/`: `integrity/fixtures-forgery.mts` (forged and partial transcripts, harness leaks, all languages), `xp-atomic.mts`, `api-hardening.mts` (flood, quota, hint, deletion), `runner-cancellation.mts`, `markdown.mts` (renderer fixtures; run without the `react-server` condition), `quick-fixes.mts` (run with Node's `react-server` condition), plus hostile C probes and `sandbox.sh`. `scripts/auth-crypto-regression.mts` covers crypto.
 - `npm run verify:content`, `npx tsc --noEmit`, `npm run lint`, `npm run build`.
+- Runner transport checks: `npm run test:runner`; isolated auth, budget, API and browser suites: `npm run test:regressions` (builds an isolated production snapshot). Host verification: `scripts/runner/host-checks.mts --disposable` on a disposable deployment copy as root.
 - Sandbox hostile-program tests belong on a disposable VM or cgroup, never a shared host.
 
 ## If re-auditing

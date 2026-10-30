@@ -6,5 +6,8 @@
   "language": "c",
   "path": "c",
   "order": 3,
-  "prerequisite": "c-systems"
+  "prerequisite": "c-systems",
+  "outcomes": [
+    "Solve C problems using recursion, tagged values and search trees."
+  ]
 }

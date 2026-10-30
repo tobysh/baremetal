@@ -8,52 +8,22 @@ This is the single place for everything that must happen before Baremetal is exp
 2. **HTTPS**, and `NEXT_PUBLIC_SITE_URL` set to the real origin (canonical URLs, sitemap, og:image).
 3. **Secrets:** fresh `AUTH_SECRET` (`openssl rand -base64 48`), `ANTHROPIC_API_KEY`, `SMTP_URL` and `EMAIL_FROM`; schedule the email worker ("Account email delivery"). Keep them in a root-owned environment file.
 4. **MongoDB** with authentication, bound to loopback, backed up.
-5. **Runner isolation:** systemd cgroup limits, a delegated `RUNNER_CGROUP_ROOT` subtree tested with a memory bomb on the real host, ideally a separate runner uid or service. For a public site consider disposable hosts or VMs (Firecracker, gVisor) so a kernel exploit cannot reach the web server.
+5. **Runner isolation:** required separate runner service/uid, systemd cgroup limits and a delegated `RUNNER_CGROUP_ROOT` subtree tested with a memory bomb on a disposable deployment host. For a public site consider disposable hosts or VMs (Firecracker, gVisor) so a kernel exploit cannot reach the web server.
 6. **Legal:** set `LEGAL_ENTITY_NAME`, `LEGAL_ADDRESS`, `LEGAL_CONTACT_EMAIL`, `LEGAL_JURISDICTION` (the footer shows "operator name to be confirmed" until then). The Terms, Privacy Notice and Cookie Policy are drafts written from what the code does; have a lawyer review them.
 7. Use `npm ci` so the lockfile controls versions; re-run `npm audit --omit=dev`.
 8. On an existing database after upgrading: `npm run recompute-xp` (site stopped), then `npm run backfill-achievements`.
 
 ## Runner limits
 
-The app-level sandbox limits (bubblewrap, seccomp, rlimits, size-capped tmpfs) are in `src/lib/runner.ts`. These need the host or service manager. Do them before exposing the runner to the public.
+The sandbox implementation is in `src/lib/runner-engine.ts`; public web handlers
+use `runner-client.ts`. Production requires a separate runner service. Use the
+systemd templates and installation procedure below rather than spawning compiler
+children under the web service. The runner keeps four active jobs and up to 24
+waiting jobs, with two in-flight requests per account and IP key.
 
-## Run the web server under systemd with cgroup limits
-
-The code runner starts compilers and learner programs as children of the web server, so a cgroup on the service bounds all of them together.
-
-```ini
-[Service]
-User=baremetal
-Group=baremetal
-ExecStart=/usr/bin/npx next start -p 3000
-Environment=RUST_TOOLCHAIN_DIR=/usr
-MemoryMax=4G
-MemorySwapMax=0
-TasksMax=512
-CPUQuota=400%
-# A private /tmp that is size-limited, so work dirs can't fill the real disk or RAM.
-PrivateTmp=yes
-TemporaryFileSystem=/tmp:size=1G
-NoNewPrivileges=yes
-ProtectHome=yes
-ProtectSystem=strict
-ReadWritePaths=/var/lib/baremetal
-```
-
-Size the limits to the machine: four concurrent runs (`MAX_CONCURRENT`) each use up to 256 MB of address space for run phases and about 2 GB for compiles.
-
-## Keep secrets and the database away from the runner's uid
-
-Learner code runs as the web server's uid (inside a user namespace with no network). If an attacker ever escapes the sandbox, they get that uid. So:
-
-- Put `.env.local` or the production environment in a root-owned file read by systemd (`EnvironmentFile=`), not in the app's working tree.
-- Turn on MongoDB authentication and bind it to localhost or a Unix socket; give the app a user restricted to the `baremetal` database.
-- Better: run the runner as a separate service (own uid, no secrets, no database access) that the web app calls over a local socket.
-
-## Also
-
-- A reverse proxy must overwrite `X-Forwarded-For` (`TRUSTED_PROXY_HOPS`), otherwise IP rate limits can be bypassed. See "Proxy contract" below.
-- Check the runner after a kernel or bubblewrap upgrade: `npm run verify:content`.
+Compiler and execution cgroups have separate limits. The service-wide ceiling
+bounds their combined memory and processes. Verify both the per-job limits and
+normal compiler performance on the intended machine before exposing the runner.
 
 ## Proxy contract
 
@@ -161,3 +131,79 @@ tar -C "$BACKUP_DIR" -cf - "$(basename "$latest")" | age -r "$AGE_PUBLIC_KEY" > 
 ```
 
 Keep the private key off the web host (the host only needs the public key). Pruning on the host removes old plain directories; remove old `.tar.age` files on the same schedule. Note `AUTH_SECRET` is not in the database: back it up separately, since encrypted columns and the email queue need it to be read after a restore.
+
+## Separate runner service (required by the production app)
+
+The web app now requires `RUNNER_SOCKET` in production and returns 503 when the
+runner is unavailable. It never falls back to execution under the web user.
+Development without that setting and curriculum verification scripts can still
+use the direct engine. Deploy web and runner from the same commit so both resolve
+the same stable exercise IDs and authored tests.
+
+Templates are in `deploy/systemd/`. The assumed layout is:
+
+- `/opt/baremetal-web`: web release, readable by `baremetal-web`.
+- `/opt/baremetal-runner`: separate read-only runner release, readable by
+  `baremetal-runner`; no `.env*`, database files, backups or application secrets.
+- `/etc/baremetal/web.env`: root-owned mode 0600; read by systemd for the web unit
+  only. It contains `TRUSTED_PROXY_HOPS=1` and the real application/database/email
+  settings. Do not override `RUNNER_SOCKET` there.
+- `/run/baremetal-runner/runner.sock`: mode 0660 inside a mode-0750 directory,
+  owned by `baremetal-runner:baremetal-exec`. Add only the web user to the shared
+  execution group. The web user can connect but cannot replace the socket.
+
+Create separate system users `baremetal-web` and `baremetal-runner` and the
+`baremetal-exec` group. Install Node 22+, compiler toolchains under `/usr`,
+Bubblewrap and QEMU. Install the web release with `npm ci` and build it; create
+its `.next/cache` directory writable by the web user. For the runner release,
+copy only `package.json`, `package-lock.json`, `tsconfig.json`, `content/`,
+`scripts/runner-service.mts`, `scripts/runner-host.mts`, and these library files:
+`runner-engine.ts`, `runner-types.ts`, `runner-protocol.ts`, `runner-resources.ts`,
+`gamification.ts`, `learning.ts`, plus the `curriculum/` directory. Run `npm ci`
+there as the release installer, not the service user. The runner uses the `tsx`
+runtime, so retain development dependencies. Keep both releases root-owned and
+unwritable by service users. Do not copy the web working directory wholesale.
+
+Install the two unit files and run `systemctl daemon-reload`, then start the
+runner followed by the web unit. The runner host entrypoint moves its supervisor
+into a child cgroup and enables the delegated `memory`, `pids`, `cpu` and `io`
+controllers in the empty jobs subtree. Every execution joins its own job cgroup
+before Bubblewrap starts. Production runner startup requires this configuration.
+The template uses the system service path
+`/sys/fs/cgroup/system.slice/baremetal-runner.service`; update its
+`ReadWritePaths` if the unit is placed in another slice.
+
+The runner has a private network, Unix/netlink-only socket creation, no web environment,
+and inaccessible web release, secrets and database directories. Netlink sockets remain available for Bubblewrap to initialise isolated loopback interfaces. Its service
+resource ceiling bounds all children together; job cgroups bound each compile or
+run. This reduces exposure but does not turn a shared-kernel host into a VM.
+
+### Deployment verification and recovery
+
+These checks need a disposable copy of the real deployment host and are **not
+verified by the development workspace**:
+
+1. Confirm both units use different numeric users and that the web environment
+   is absent from the runner's process environment.
+2. Run `sudo node --import tsx scripts/runner/host-checks.mts --disposable` from a
+   checkout containing the validation script. It verifies secret/database
+   isolation in the runner's mount/network namespaces, deliberately exercises
+   cgroup memory pressure, checks the process limit, and verifies cleanup and a
+   subsequent healthy run. Never run pressure probes on a shared production host.
+3. Run `npm run test:runner` on a disposable verification host for all five
+   languages, admission limits and disconnect cleanup. This suite launches its
+   own test-mode runner; step 2 validates the actual systemd runner.
+4. Stop the runner: reading lessons and saved progress must still work, and Run
+   must report temporary unavailability. Restart it and verify Run/Test recover.
+5. Configure SMTP and schedule the email worker, then verify signup and password
+   recovery using a real mailbox. Verify backup restore to a separate database.
+
+The daemon refuses to overwrite an existing socket. A clean stop removes it;
+`RuntimeDirectory` is removed by systemd after a crash/restart. For manual runs,
+remove a stale socket only after confirming its owner has stopped.
+
+Roll out the runner before switching web traffic. If isolation fails, keep
+execution unavailable while repairing or rolling back both releases together;
+do not restore in-process production execution. Monitor structured runner logs
+for `runner_busy`/`runner_failure`, request duration, active/queued jobs and
+cancellations. Logs intentionally omit code, secrets and admission identities.

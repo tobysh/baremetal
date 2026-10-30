@@ -53,6 +53,8 @@ export type Track = {
   level: "Beginner" | "Intermediate" | "Advanced";
   language: Language;
   prerequisite?: string;
+  /** Concrete capabilities gained by completing this course. */
+  outcomes: string[];
   /** Learning path this course belongs to (see paths.ts) and its position within it. */
   path: string;
   order: number;

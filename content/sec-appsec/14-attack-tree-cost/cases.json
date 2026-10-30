@@ -1,0 +1,32 @@
+[
+  {
+    "name": "tree 1",
+    "stdin": "and n2 n3 n6\nleaf n12 90\nleaf n5 89\nleaf n4 15\nor n1 n2 n7 n8\nleaf n11 60\nleaf n7 34 mitigated\nor n3 n4 n5\nleaf n6 76\nleaf n13 9 mitigated\nand n9 n10 n11 n12\nleaf n10 49\nand n8 n9 n13\nroot n1\n",
+    "expected": "unmitigated cost: 34\nmitigated cost: 91\ncheapest path: n4 n6\n"
+  },
+  {
+    "name": "tree 2",
+    "stdin": "leaf n1 39\nroot n1\n",
+    "expected": "unmitigated cost: 39\nmitigated cost: 39\ncheapest path: n1\n"
+  },
+  {
+    "name": "tree 3",
+    "stdin": "leaf n12 63\nleaf n5 82\nleaf n15 89\nleaf n4 59\nor n1 n2 n11\nleaf n7 47\nleaf n9 69\nor n2 n3 n7 n8\nleaf n14 26\nor n8 n9 n10\nor n11 n12 n13\nand n13 n14 n15\nleaf n6 45\nor n3 n4 n5 n6\nleaf n10 43\nroot n1\n",
+    "expected": "unmitigated cost: 43\nmitigated cost: 43\ncheapest path: n10\n"
+  },
+  {
+    "name": "tree 4",
+    "stdin": "or n6 n7 n8 n9\nleaf n8 87\nleaf n4 83 mitigated\nleaf n13 45\nleaf n7 87 mitigated\nleaf n9 27\nleaf n5 33 mitigated\nand n3 n4 n5\nand n2 n3 n6\nleaf n11 35\nor n1 n2 n10\nor n10 n11 n12 n13\nleaf n12 31\nroot n1\n",
+    "expected": "unmitigated cost: 31\nmitigated cost: 31\ncheapest path: n12\n"
+  },
+  {
+    "name": "tree 5",
+    "stdin": "leaf n6 46\nor n10 n11 n12\nleaf n33 21\nleaf n30 77\nleaf n12 12 mitigated\nleaf n16 33 mitigated\nor n19 n20 n21\nleaf n17 15\nleaf n25 72\nleaf n9 74\nor n26 n27 n33 n34\nand n7 n8 n13 n14\nleaf n5 61\nor n22 n23 n24 n25\nleaf n13 18\nleaf n18 56 mitigated\nand n3 n4 n5\nor n8 n9 n10\nor n14 n15 n19 n22\nand n1 n2 n7 n26\nleaf n21 23 mitigated\nand n28 n29 n30 n31\nand n27 n28 n32\nleaf n23 21\nleaf n32 20\nleaf n34 38\nleaf n31 13\nleaf n20 41 mitigated\nleaf n11 24\nand n15 n16 n17 n18\nleaf n24 16\nleaf n4 78 mitigated\nor n2 n3 n6\nleaf n29 18\nroot n1\n",
+    "expected": "unmitigated cost: 113\nmitigated cost: 125\ncheapest path: n6 n11 n13 n24 n33\n"
+  },
+  {
+    "name": "single mitigated leaf",
+    "stdin": "leaf a 5 mitigated\nroot a\n",
+    "expected": "unmitigated cost: 5\nmitigated cost: infeasible\ncheapest path: none\n"
+  }
+]

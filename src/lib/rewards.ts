@@ -4,6 +4,7 @@ import { ACHIEVEMENTS, achievementById, type CodexContext } from "./achievements
 import { getTracks } from "./curriculum";
 import { getDb } from "./db";
 import type { AchievementDoc, ProgressDoc, ReviewDoc, UserDoc } from "./models";
+import { nextCourse } from "./learning";
 import { buildContext } from "./rewards-context";
 
 export async function loadContext(userId: string): Promise<CodexContext> {
@@ -53,7 +54,7 @@ export function trackCompleteFor(trackSlug: string, ctx: CodexContext): TrackCom
   const tracks = getTracks();
   const track = tracks.find((t) => t.slug === trackSlug);
   if (!track || !track.lessons.every((l) => ctx.passed.has(l.exercise.id))) return null;
-  const next = tracks.find((t) => t.prerequisite === track.slug && !t.lessons.every((l) => ctx.passed.has(l.exercise.id)));
+  const next = nextCourse(tracks, track, new Map([...ctx.passed.keys()].map((exerciseId) => [exerciseId, { exerciseId, status: "passed", updatedAt: new Date(0) }])));
   return {
     slug: track.slug,
     title: track.title,

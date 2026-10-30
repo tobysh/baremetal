@@ -6,5 +6,8 @@
   "language": "rust",
   "path": "rust",
   "order": 3,
-  "prerequisite": "rust-traits"
+  "prerequisite": "rust-traits",
+  "outcomes": [
+    "Build Rust iterators, collections, a tokenizer and a cache."
+  ]
 }

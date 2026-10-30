@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { Card, Container, Skeleton } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
+import { getLearningReport } from "@/lib/learning-report";
 import { getStuckReport, top, type StuckRow } from "@/lib/stuck";
 
 export const metadata: Metadata = {
@@ -36,7 +37,7 @@ const fixed = (n: number) => n.toFixed(1);
 async function StuckBody() {
   await connection();
   await requireAdmin();
-  const r = await getStuckReport();
+  const [r, cohorts] = await Promise.all([getStuckReport(), getLearningReport()]);
   const withPasses = r.rows;
   const sections: { title: string; note: string; rows: StuckRow[]; cols: [string, (x: StuckRow) => string][] }[] = [
     {
@@ -69,6 +70,20 @@ async function StuckBody() {
       <p className="text-sm text-muted">
         Lessons with fewer than {r.minLearners} learners are left out ({r.hidden} hidden), so no row describes one person. {r.rows.length} of {r.totalLessons} lessons are ranked.
       </p>
+      <section aria-labelledby="learning-cohorts" className="panel min-w-0 p-5">
+        <h2 id="learning-cohorts" className="display-sm text-xl font-semibold">Learning cohorts</h2>
+        <p className="mt-2 text-sm text-muted">Signed-in learners grouped by the UTC week they first started each course. Completion is cumulative; later learning activity means another recorded start or first pass 7–13 days after starting this course. It is a lower bound on activity, not login retention. No new tracking is collected.</p>
+        <p className="mt-2 text-sm text-muted">{cohorts.hidden} cohorts below {cohorts.minLearners} learners hidden. {cohorts.excluded} learner/course records excluded because start dates are incomplete or invalid. Time to first pass covers learners with a valid recorded pass date.</p>
+        {cohorts.rows.length === 0 ? <p className="mt-4 text-muted">Not enough data yet.</p> : <div className="mt-4 overflow-x-auto"><table className="w-full text-sm">
+          <caption className="sr-only">Course completion by start week</caption>
+          <thead><tr className="text-left text-muted">{["Course / week", "Learners", "First lesson passed", "Course complete", "Median hours to first pass", "Later learning activity"].map((label) => <th key={label} scope="col" className="p-2 font-medium">{label}</th>)}</tr></thead>
+          <tbody>{cohorts.rows.map((row) => <tr key={`${row.trackSlug}:${row.week}`} className="border-t border-border">
+            <th scope="row" className="p-2 text-left font-medium">{row.title}<span className="block text-xs text-muted">{row.week} UTC</span></th>
+            <td className="p-2">{row.learners}</td><td className="p-2">{pct(row.firstLessonPassed / row.learners)}</td><td className="p-2">{pct(row.completed / row.learners)}</td>
+            <td className="p-2">{row.medianFirstPassHours === null ? "—" : fixed(row.medianFirstPassHours)}</td><td className="p-2">{row.mature ? pct(row.laterActivity / row.learners) : "Observation window open"}</td>
+          </tr>)}</tbody>
+        </table></div>}
+      </section>
       <div className="grid gap-6 lg:grid-cols-2">
         {sections.map((s) => (
           <Card key={s.title} as="section" className="p-6">

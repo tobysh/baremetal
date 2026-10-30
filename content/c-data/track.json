@@ -6,5 +6,8 @@
   "language": "c",
   "path": "c",
   "order": 0,
-  "prerequisite": "first-steps"
+  "prerequisite": "first-steps",
+  "outcomes": [
+    "Store and process values in arrays, strings and structs."
+  ]
 }

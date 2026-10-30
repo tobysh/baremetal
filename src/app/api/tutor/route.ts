@@ -9,7 +9,7 @@ import type { TutorThreadDoc } from "@/lib/models";
 import { getTutorThread } from "@/lib/progress";
 import { clientIp, ipLimit, rateLimit, rateLimitHit } from "@/lib/rate-limit";
 import { checkBudget, estimateCostMicro, reserveBudget } from "@/lib/tutor-budget";
-import { TUTOR_PROVIDER, TUTOR_SYSTEM, TutorUnavailableError, exposesSolution, buildMessages, lessonContext, planCache, streamTutor, type TutorUsage } from "@/lib/tutor";
+import { MAX_REPLY_TOKENS, TUTOR_PROVIDER, TUTOR_SYSTEM, TutorUnavailableError, exposesSolution, buildMessages, lessonContext, planCache, streamTutor, type TutorUsage } from "@/lib/tutor";
 import { POPULAR_HITS, expiryFor, replyLeaks, type CacheKind } from "@/lib/tutor-cache";
 
 type CacheDoc = { key: string; kind?: CacheKind; reply: string; hits?: number };
@@ -145,7 +145,7 @@ export async function POST(req: Request) {
   const messages = buildMessages(thread?.messages ?? [], message, code, lastOutput, plan?.omitContext ?? false);
   // UTF-8 bytes conservatively bound input tokens, including cache-write pricing.
   const inputBound = Buffer.byteLength(TUTOR_SYSTEM + lessonCtx + JSON.stringify(messages), "utf8") + 1024;
-  const settleBudget = await reserveBudget(db, user.id, Math.max(...[false, true].map((cached) => estimateCostMicro({ provider: TUTOR_PROVIDER, inputTokens: cached ? 0 : inputBound, cacheReadTokens: 0, cacheWriteTokens: cached ? inputBound : 0, outputTokens: 500 }))));
+  const settleBudget = await reserveBudget(db, user.id, Math.max(...[false, true].map((cached) => estimateCostMicro({ provider: TUTOR_PROVIDER, inputTokens: cached ? 0 : inputBound, cacheReadTokens: 0, cacheWriteTokens: cached ? inputBound : 0, outputTokens: MAX_REPLY_TOKENS }))));
   if (!settleBudget) return jsonError(429, "There is not enough tutor allowance left for another reply today. It resets at midnight UTC; the hints and What probably went wrong notes are still available.");
 
   const abort = new AbortController();

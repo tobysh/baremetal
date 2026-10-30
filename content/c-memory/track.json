@@ -6,5 +6,8 @@
   "language": "c",
   "path": "c",
   "order": 1,
-  "prerequisite": "c-data"
+  "prerequisite": "c-data",
+  "outcomes": [
+    "Use pointers and heap allocation to build and traverse linked data."
+  ]
 }

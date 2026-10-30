@@ -73,6 +73,9 @@ Open [http://localhost:3000](http://localhost:3000). To enable account email ver
 | `npx tsc --noEmit` | Type-check the TypeScript code |
 | `npm run verify:content` | Check lesson starters, solutions, and hidden tests |
 | `npm run check:ids` | Ensure published lesson IDs remain stable for learner progress |
+| `npm run check:learning` | Check recommendations, prerequisites, cohort calculations and diagnostics |
+| `npm run test:runner` | Verify the runner socket, all languages, admission and cancellation |
+| `npm run test:regressions` | Run isolated auth, budget, API and browser checks in a temporary production build (requires MongoDB) |
 | `npm run check:theme` | Check the design-token rules |
 | `npm run test:e2e -- http://localhost:3100` | Run the auth and security checks against a running server |
 
@@ -87,7 +90,7 @@ For code changes, run lint and type-checking as well. Please keep security exerc
 ## How it works
 
 - **Curriculum:** Markdown and code files define lessons, tasks, hints, starters, solutions, and tests.
-- **Runner:** GCC, Rust, and Go toolchains run inside Bubblewrap. Kernel exercises boot in QEMU with no disk or network.
+- **Runner:** Production execution uses a separate Unix-socket service; GCC, Rust, and Go toolchains run inside Bubblewrap. Kernel exercises boot in QEMU with no disk or network.
 - **Tutor:** Anthropic or Ollama provides guided help. Authored hints and common-error explanations remain available without a tutor call.
 - **Accounts:** password hashing, secure sessions, optional two-factor authentication, progress export, and account deletion.
 - **Privacy:** analytics are consent-based. See the [Privacy Notice](content/legal/privacy.md) and [Cookie Notice](content/legal/cookies.md).
@@ -96,10 +99,11 @@ For code changes, run lint and type-checking as well. Please keep security exerc
 
 - [Security model and known limitations](docs/security.md)
 - [Deployment hardening checklist](docs/deployment-hardening.md)
+- [Learning validation and cohort definitions](docs/learning-validation.md)
 - [Gamification and review system](docs/gamification.md)
 - [Legal notices](content/legal/)
 
-Production deployment needs additional setup for a trusted reverse proxy, HTTPS, MongoDB authentication, email delivery, runner isolation, and resource limits. Follow the [deployment checklist](docs/deployment-hardening.md) before exposing an instance publicly.
+Production startup requires `RUNNER_SOCKET`; use the systemd templates in `deploy/systemd/` and the deployment checklist to install the separate runner service. Production deployment needs additional setup for a trusted reverse proxy, HTTPS, MongoDB authentication, email delivery, runner isolation, and resource limits. Follow the [deployment checklist](docs/deployment-hardening.md) before exposing an instance publicly.
 
 ## License
 

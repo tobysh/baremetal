@@ -1,3 +1,4 @@
+import { NavProgress } from "@/components/nav-progress";
 import type { Metadata, Viewport } from "next";
 import { Archivo, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { Analytics } from "@/components/analytics";
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <CookieBanner />
         {/* usePathname() needs a boundary on routes whose URL isn't known at build time (e.g. /u/[username]). */}
         <Suspense fallback={null}>
+          <NavProgress />
           <Analytics />
         </Suspense>
       </body>

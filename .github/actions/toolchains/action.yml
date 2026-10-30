@@ -1,0 +1,16 @@
+name: Runner toolchains
+description: Install compilers and enable Bubblewrap on disposable Ubuntu workers
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v5
+      with:
+        go-version: stable
+    - name: Install compilers and sandbox tools
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc make bubblewrap qemu-system-x86 rustc
+        echo "GO_TOOLCHAIN_DIR=$(go env GOROOT)" >> "$GITHUB_ENV"
+        echo "RUST_TOOLCHAIN_DIR=/usr" >> "$GITHUB_ENV"
+        sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0

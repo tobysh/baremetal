@@ -1,0 +1,27 @@
+[
+  {
+    "name": "model 1",
+    "stdin": "NODE vault admin\nNODE browser internet\nNODE jump admin\nNODE web dmz\nNODE proxy dmz\nNODE db internal\nNODE api internal\nNODE cdn internet\nFLOW f1 browser cdn enc=yes auth=no data=secret\nFLOW f2 jump cdn enc=yes auth=yes data=public\nFLOW f3 browser proxy enc=no auth=yes data=secret\nFLOW f4 vault cdn enc=yes auth=yes data=internal\nFLOW f5 proxy web enc=yes auth=yes data=public\nFLOW f6 browser jump enc=yes auth=yes data=secret\n",
+    "expected": "f1: secret-exposed\nf3: no-encryption,secret-exposed\nf6: skips-dmz\nfindings=4 flows=6\n"
+  },
+  {
+    "name": "model 2",
+    "stdin": "NODE vault admin\nNODE jump admin\nNODE proxy dmz\nNODE api internal\nNODE browser internet\nNODE web dmz\nNODE db internal\nFLOW f1 vault jump enc=no auth=no data=public\nFLOW f2 web api enc=yes auth=yes data=internal\nFLOW f3 proxy web enc=yes auth=yes data=public\nFLOW f4 browser vault enc=yes auth=yes data=secret\nFLOW f5 db browser enc=yes auth=no data=internal\n",
+    "expected": "f4: skips-dmz\nfindings=1 flows=5\n"
+  },
+  {
+    "name": "model 3",
+    "stdin": "NODE db internal\nNODE web dmz\nNODE api internal\nNODE cdn internet\nNODE jump admin\nNODE vault admin\nNODE browser internet\nNODE proxy dmz\nFLOW f1 api web enc=no auth=no data=secret\nFLOW f2 db vault enc=yes auth=yes data=secret\nFLOW f3 db browser enc=no auth=yes data=internal\nFLOW f4 proxy browser enc=yes auth=no data=internal\nFLOW f5 browser web enc=no auth=no data=secret\nFLOW fx ghost web enc=yes auth=yes data=public\n",
+    "expected": "f1: no-encryption,secret-exposed\nf3: no-encryption\nf5: no-encryption,no-authentication,secret-exposed\nfx: error unknown node ghost\nfindings=6 flows=6\n"
+  },
+  {
+    "name": "model 4",
+    "stdin": "NODE proxy dmz\nNODE cdn internet\nNODE browser internet\nNODE api internal\nNODE web dmz\nNODE db internal\nNODE jump admin\nNODE vault admin\nFLOW f1 jump browser enc=yes auth=yes data=secret\nFLOW f2 cdn browser enc=yes auth=yes data=internal\nFLOW f3 vault browser enc=yes auth=yes data=internal\nFLOW f4 vault web enc=yes auth=yes data=public\nFLOW f5 api browser enc=no auth=no data=internal\nFLOW f6 db browser enc=yes auth=yes data=public\n",
+    "expected": "f1: secret-exposed\nf5: no-encryption\nfindings=2 flows=6\n"
+  },
+  {
+    "name": "model 5",
+    "stdin": "NODE jump admin\nNODE cdn internet\nNODE vault admin\nNODE proxy dmz\nNODE db internal\nNODE api internal\nNODE web dmz\nNODE browser internet\nFLOW f1 browser proxy enc=yes auth=no data=public\nFLOW f2 browser jump enc=yes auth=no data=internal\nFLOW f3 jump vault enc=yes auth=yes data=public\nFLOW f4 vault cdn enc=yes auth=no data=public\nFLOW f5 proxy jump enc=yes auth=yes data=public\nFLOW f6 web jump enc=no auth=yes data=public\nFLOW f7 web api enc=yes auth=yes data=public\nFLOW f8 web db enc=yes auth=no data=public\nFLOW f9 api browser enc=no auth=yes data=secret\n",
+    "expected": "f1: no-authentication\nf2: no-authentication,skips-dmz\nf6: no-encryption\nf8: no-authentication\nf9: no-encryption,secret-exposed\nfindings=7 flows=9\n"
+  }
+]
