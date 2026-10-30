@@ -1,0 +1,3 @@
+Implement `DiscoverStore(lab Lab, ports []int) (Finding, bool)`.
+
+Try ports in input order. `GET /banner` must return 200 and exactly `labkv/1.0` before further requests to that port. Then `GET /keys` returns a 200 reply with Items holding opaque keys. For each key in order, `GET /value/<key>` may return 200 with a Body beginning `LAB-PROOF:`. Return the first such body as Finding.Evidence with the port and true. Ignore failures, irrelevant bodies and decoys; return the zero Finding and false when no proof is obtained. Requests use no token or body. Only these operations and the supplied ports are in scope. A banner alone never proves unauthorized access.

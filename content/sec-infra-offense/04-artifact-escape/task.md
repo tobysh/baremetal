@@ -1,0 +1,3 @@
+Implement `EscapeArtifact(lab Lab, port int, root, protected string) (Finding, bool)`. root and protected are clean absolute POSIX paths. root is a non-root directory with no trailing slash; protected is a file outside root. They contain no `.` or `..` components.
+
+GET `/artifact` with Body equal to an absolute requested path. The vulnerable model accepts a raw prefix `root+"/"`, then resolves `..` and looks up the normalized path. The patched model checks the normalized boundary instead. You may use `..` repeatedly to climb from root to `/`, then append protected. Confirm only a 200 Body beginning `LAB-PROOF:`; return zero Finding,false otherwise. Only this one request is allowed on the supplied port. No local filesystem access or URL encoding is involved.

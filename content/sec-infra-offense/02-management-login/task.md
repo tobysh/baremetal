@@ -1,0 +1,3 @@
+Implement `GuessManagement(lab Lab, port int, user string, passwords []string) (Finding, bool)`.
+
+For each supplied password in order, POST `/login` with a JSON object containing lowercase fields `user` and `password`. A 200 reply with a nonempty Token is only a candidate session. Immediately GET `/admin/proof` with that token; confirm only a 200 Body starting `LAB-PROOF:`. Return that Finding and true, otherwise continue. No other passwords, ports or operations are allowed; each listed candidate is tried at most once. Return zero Finding,false if none works. The list has at most 16 entries. Do not report password values as evidence.

@@ -1,0 +1,5 @@
+Implement `ExerciseService(lab Lab, port int, adminToken, name, marker string) (Finding, bool)`. name is a fresh lab unit name containing letters/digits/hyphens; marker starts `LAB-PROOF:` and contains no whitespace.
+
+Use adminToken for every request. PUT `/units/<name>` with JSON Unit{Name:name, RunAs:"root", Command:"emit "+marker, Enabled:true}. Continue only on 201. POST `/reboot`, then GET `/units/<name>` (200 JSON Unit with Running true, Enabled true, RunAs root, matching Name and Command), and GET `/service-proof` (200 Body exactly marker).
+
+After an accepted create, always attempt cleanup: POST `/units/<name>/stop`, DELETE `/units/<name>`, then GET `/units/<name>` requiring 404. POST `/reboot` again and GET `/service-proof` requiring 200 empty Body. This model permits no concurrent units, so the post-cleanup proof should be empty. Return Finding,true only for confirmed reboot persistence and verified cleanup; otherwise zero Finding,false. Running is false when initially creating the unit. A cleanup response code alone is insufficient evidence.

@@ -1,0 +1,3 @@
+Implement `ExploitAgent(lab Lab, port int, marker string) (Finding, bool)`. marker contains only ASCII letters, digits, colon and hyphen and begins `LAB-PROOF:`.
+
+GET `/version`: proceed only on 200 `labagent/0.9`. POST `/job` with JSON `{"label":"<your payload>"}`. The vulnerable target interprets `backup ` plus that label with this grammar: semicolon-separated commands; `backup <anything>` has no effect, and `emit <marker>` sets the last emitted marker. Then GET `/last-proof` and return success only for a 200 Body exactly equal to marker. The job status alone is not evidence, and even an old banner may come from a patched target. Use only these operations on port. Return zero Finding,false on failure.

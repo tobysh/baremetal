@@ -26,3 +26,12 @@ Lesson assets are checked in beside each lesson. The renderer does not currently
 ## Validation
 
 Run `npm run verify:content -- sec-synthetic-labs` and `npm run verify:content -- sec-c-bugs`, then `npm run check:ids`. The content verifier checks solutions pass and starters compile but fail. Hidden Go tests use fixed seeds and stable names so the runner can compare its expected test transcript. Tests run through the existing sandbox and retain its documented same-process verdict limitations.
+
+## End-of-track challenges
+
+Both tracks now finish with an optional challenge attached to the final lesson, using the existing post-pass challenge unlock and `#challenge` progress ID. Existing lesson IDs and their base exercises are unchanged.
+
+- **Security Investigation Labs — cut every route to Domain Admin:** find a minimum set of removable ACL/session/administration relationships that disconnects all privilege paths. Fixed membership edges, cycles, duplicates and lexical tie breaking make this harder than finding one shortest path. Inputs have at most 16 distinct removable relationships, so bounded subset search is practical. The full explanation and contract are in `content/sec-synthetic-labs/09-directory-graph/challenge.md`.
+- **Breaking and Fixing C — canary-aware payload and transactional record parser:** preserve a known modeled canary while overwriting the saved target, then parse a two-byte binary length prefix without allowing any write on rejection. Tests combine byte order, logical buffer capacity, truncated/trailing records, guard bytes and arithmetic limits. The full explanation and contract are in `content/sec-c-bugs/13-stack-control/challenge.md`.
+
+For active probes and stateful infrastructure exploitation, continue to [Offensive Infrastructure Lab](offensive-infrastructure-lab.md). Its own final challenge extends a chained compromise into verified credential rotation and leak removal.

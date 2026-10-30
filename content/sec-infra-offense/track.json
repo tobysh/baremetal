@@ -1,0 +1,17 @@
+{
+  "title": "Offensive Infrastructure Lab",
+  "summary": "Prove exploits against toy infrastructure: exposed stores, weak logins, old agents, Linux privilege paths and persistence.",
+  "description": "Practice offensive testing only against stateful, fictional in-process infrastructure. Enumerate scoped services, exploit misconfiguration and a deliberately outdated toy agent, read synthetic artifacts, escalate a Linux-like identity, establish test account and service persistence, and verify cleanup. Finish by chaining leaked evidence into an admin operation, then harden the probe against misleading responses. No live servers, real hosts, network access, real accounts or real services are used.",
+  "level": "Advanced",
+  "language": "go",
+  "path": "security",
+  "order": 10,
+  "prerequisite": "sec-synthetic-labs",
+  "outcomes": [
+    "Discover and demonstrate unauthorized reads and management access against scoped toy targets.",
+    "Craft payloads for fictional outdated software and verify observable impact instead of trusting banners.",
+    "Escalate privilege through writable root-job configuration in synthetic Linux state.",
+    "Establish and remove modeled account and service persistence, verifying full audit views and reboot behavior.",
+    "Chain findings into a controlled compromise and distinguish vulnerable behavior from hardened controls."
+  ]
+}
