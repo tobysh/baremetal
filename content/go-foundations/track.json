@@ -1,7 +1,7 @@
 {
   "title": "Go Foundations",
   "summary": "Learn Go from the ground up: types, slices and maps, structs and interfaces, errors, pointers, goroutines, channels and the sync package.",
-  "description": "Go is a small, fast, compiled language built for servers and tools, with concurrency in the language itself. You will learn its types and functions with multiple return values, slices and maps, structs with methods, interfaces, errors as ordinary values, pointers, and then what makes Go famous: goroutines, channels, WaitGroups and mutexes. Your code is compiled and checked by hidden go test suites in a sandbox, and the course ends with a small practical program.",
+  "description": "Go is a small, fast, compiled language built for servers and tools, with concurrency in the language itself. You will learn its control flow, types and functions with multiple return values, strings and runes, slices and maps (and how slices really work), defer, panic and recover, structs with methods, interfaces, errors as ordinary values, pointers, and then what makes Go famous: goroutines, channels, WaitGroups and mutexes. Your code is compiled and checked by hidden go test suites in a sandbox, and the course ends with a small practical program.",
   "level": "Intermediate",
   "language": "go",
   "path": "go",

@@ -1,0 +1,42 @@
+[
+  {
+    "name": "day 1",
+    "stdin": "1\n",
+    "expected": "Monday\nweekday\n"
+  },
+  {
+    "name": "day 3",
+    "stdin": "3\n",
+    "expected": "Wednesday\nweekday\n"
+  },
+  {
+    "name": "day 5",
+    "stdin": "5\n",
+    "expected": "Friday\nweekday\n"
+  },
+  {
+    "name": "day 6",
+    "stdin": "6\n",
+    "expected": "Saturday\nweekend\n"
+  },
+  {
+    "name": "day 7",
+    "stdin": "7\n",
+    "expected": "Sunday\nweekend\n"
+  },
+  {
+    "name": "day 0 is invalid",
+    "stdin": "0\n",
+    "expected": "invalid day\n"
+  },
+  {
+    "name": "day 8 is invalid",
+    "stdin": "8\n",
+    "expected": "invalid day\n"
+  },
+  {
+    "name": "day -2 is invalid",
+    "stdin": "-2\n",
+    "expected": "invalid day\n"
+  }
+]

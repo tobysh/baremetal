@@ -1,7 +1,7 @@
 {
   "title": "Cryptography by Hand",
   "summary": "Break and build toy ciphers, hashes and random number generators in C, cryptopals style, to see exactly why real systems do what they do.",
-  "description": "Encode bytes, experiment with repeating XOR and Caesar ciphers, predict a toy LCG, identify repeated blocks, explore a tiny hash collision and combine byte comparison with hex decoding. These deliberately weak constructions explain failure modes; they are not cryptographic tools. Use vetted cryptographic libraries and operating-system randomness in real applications.",
+  "description": "Encode bytes, experiment with repeating XOR and Caesar ciphers, predict a toy LCG, identify repeated blocks, explore a tiny hash collision and combine byte comparison with hex decoding, then build HMAC from a hash and learn the rules for using authenticated encryption safely. These deliberately weak constructions explain failure modes; they are not cryptographic tools. Use vetted cryptographic libraries and operating-system randomness in real applications.",
   "level": "Intermediate",
   "language": "c",
   "path": "security",

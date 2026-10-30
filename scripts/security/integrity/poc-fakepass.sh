@@ -27,7 +27,7 @@ rust)
   BW $w rustc --edition 2021 -C opt-level=0 main.rs -o prog --test -A dead_code 2>&1 | head
   BW $w ./prog --test-threads=1 --color never; echo "exit=$?" ;;
 go)
-  d=$C/go-foundations/02-functions
+  d=$C/go-foundations/03-functions
   printf 'module bm\n\ngo 1.24\n' > $w/go.mod
   { cat $d/starter.go; printf '\nfunc init() { os.Stdout.WriteString("--- PASS: Fake (0.00s)\\n"); os.Exit(0) }\n'; } | sed '0,/^package main/s//package main\nimport "os"/' > $w/main.go
   cp $d/tests.go $w/bm_test.go

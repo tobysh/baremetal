@@ -1,7 +1,7 @@
 {
   "title": "Go in Practice",
   "summary": "Everyday Go: generics, wrapped errors, sorting and closures, worker pools and pipelines, readers, and JSON.",
-  "description": "You know the language; now write the kind of Go that ships. You'll write generic helpers and containers, wrap and inspect errors the way the standard library does, sort with closures, fan work out to a pool of goroutines without losing the order of the results, chain stages into a pipeline, parse text from any io.Reader, and encode and decode JSON with struct tags.",
+  "description": "You know the language; now write the kind of Go that ships. You'll write generic helpers and containers, wrap and inspect errors the way the standard library does, sort with closures, choose value or pointer receivers, compose types with embedding, fan work out to a pool of goroutines without losing the order of the results, chain stages into a pipeline, parse text from any io.Reader, and encode and decode JSON with struct tags.",
   "level": "Intermediate",
   "language": "go",
   "path": "go",

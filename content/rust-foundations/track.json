@@ -1,7 +1,7 @@
 {
   "title": "Rust Foundations",
   "summary": "Learn Rust after C: ownership, borrowing, structs, enums, error handling and collections, with memory safety checked by the compiler.",
-  "description": "You know what a pointer is and how easily C lets you misuse one. Rust keeps the same low-level control but has the compiler prove your memory use is safe. You'll learn ownership and borrowing, strings, vectors and iterators, structs, enums and match, Result-based error handling and HashMaps.",
+  "description": "You know what a pointer is and how easily C lets you misuse one. Rust keeps the same low-level control but has the compiler prove your memory use is safe. You'll learn ownership, references and borrowing, move versus copy and Drop, strings and slices, vectors and iterators, structs, enums and match, Result-based error handling and HashMaps.",
   "level": "Intermediate",
   "language": "rust",
   "path": "rust",

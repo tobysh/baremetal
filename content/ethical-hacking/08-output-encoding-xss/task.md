@@ -1,0 +1,8 @@
+Write four functions. The three that write output work like `snprintf`: write at most `cap` bytes including the terminating zero (nothing at all if `cap` is 0) and **return the length the full result would have**, so the caller can detect truncation. Bytes of 0x80 and above (UTF-8) pass through unchanged everywhere.
+
+1. **`size_t encode_html(const char *in, char *out, size_t cap)`**: body context. `&` becomes `&amp;`, `<` becomes `&lt;`, `>` becomes `&gt;`, `"` becomes `&quot;` and `'` becomes `&#39;`. Everything else is copied.
+2. **`size_t encode_attr(const char *in, char *out, size_t cap)`**: quoted attribute context. Keep ASCII letters and digits and the four characters `.`, `,`, `-`, `_`. Write every other ASCII byte (spaces and control characters included) as `&#x` plus two **uppercase** hex digits plus `;`, e.g. `"` is `&#x22;` and newline is `&#x0A;`.
+3. **`int safe_url(const char *u)`** returns 1 if `u` may go into an `href`: not NULL or empty; no byte `<= 0x20`, no byte `0x7f` and no backslash anywhere; does not start with `//`; and either it is a relative reference or its scheme is `http`, `https` or `mailto` (case-insensitive). The scheme is the text before the first `:`, but only if that `:` comes before any `/`, `?` or `#`; otherwise the string is relative.
+4. **`size_t render_link(const char *text, const char *url, char *out, size_t cap)`** produces `<a href="URL">TEXT</a>`: the URL goes through `encode_attr` rules if `safe_url` allows it, otherwise the href is `#`. The text goes through `encode_html` rules. Same truncation and return value as above.
+
+Many different strings are tried, including every capacity from 0 up.

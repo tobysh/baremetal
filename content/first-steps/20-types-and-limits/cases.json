@@ -1,0 +1,8 @@
+[
+  { "name": "small numbers", "stdin": "100 200\n", "expected": "int: 4 bytes\nlong long: 8 bytes\nsum: 300\nfits in int: yes\n" },
+  { "name": "overflowing sum", "stdin": "2000000000 2000000000\n", "expected": "int: 4 bytes\nlong long: 8 bytes\nsum: 4000000000\nfits in int: no\n" },
+  { "name": "just above INT_MAX", "stdin": "2147483647 1\n", "expected": "int: 4 bytes\nlong long: 8 bytes\nsum: 2147483648\nfits in int: no\n" },
+  { "name": "exactly INT_MAX", "stdin": "2147483646 1\n", "expected": "int: 4 bytes\nlong long: 8 bytes\nsum: 2147483647\nfits in int: yes\n" },
+  { "name": "just below INT_MIN", "stdin": "-2147483648 -1\n", "expected": "int: 4 bytes\nlong long: 8 bytes\nsum: -2147483649\nfits in int: no\n" },
+  { "name": "cancelling", "stdin": "-5 5\n", "expected": "int: 4 bytes\nlong long: 8 bytes\nsum: 0\nfits in int: yes\n" }
+]
