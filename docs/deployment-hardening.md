@@ -13,6 +13,12 @@ This is the single place for everything that must happen before Baremetal is exp
 7. Use `npm ci` so the lockfile controls versions; re-run `npm audit --omit=dev`.
 8. On an existing database after upgrading: `npm run recompute-xp` (site stopped), then `npm run backfill-achievements`.
 
+## Required production environment
+
+In production (`NODE_ENV=production`) `src/instrumentation.ts` refuses to boot, and lists every problem at once, unless all of these are set: `NEXT_PUBLIC_SITE_URL` (must be `https://`; it is inlined at build time, so set it for `npm run build` too), `LEGAL_ENTITY_NAME`, `LEGAL_ADDRESS`, `LEGAL_CONTACT_EMAIL`, `SMTP_URL`, `EMAIL_FROM`, and an `AUTH_SECRET` of at least 32 characters. `TRUSTED_PROXY_HOPS` and `RUNNER_SOCKET` are enforced the same way. The hook does not run during `next build`, so CI builds need no placeholders.
+
+The same-origin check on API routes compares `Origin` only against the host of `NEXT_PUBLIC_SITE_URL` in production and never reads `X-Forwarded-Host`. Development keeps the `Host` comparison so phone and LAN testing works.
+
 ## Runner limits
 
 The sandbox implementation is in `src/lib/runner-engine.ts`; public web handlers

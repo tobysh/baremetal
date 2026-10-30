@@ -15,6 +15,8 @@ import { hashBackupCode, legacyBackupCodeHash, newBackupCodes } from "../src/lib
 import { clearLoginFailures, finishLoginFailure, refundLoginAttempt, reserveLoginAttempt } from "../src/lib/security";
 
 const BASE = (process.argv[2] ?? "http://localhost:3100").replace(/\/$/, "");
+// Production servers accept only the configured site origin; set E2E_ORIGIN to it when testing a production build.
+const ORIGIN = process.env.E2E_ORIGIN ?? BASE;
 const mongo = await new MongoClient(process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27017").connect();
 const db = mongo.db(process.env.MONGODB_DB ?? "baremetal");
 const users = db.collection<{ _id: ObjectId; email: string; role?: string; twoFactor?: unknown; passwordHash: string; emailVerified?: boolean }>("users");
@@ -61,7 +63,7 @@ class Browser {
     return { status: res.status, location: res.headers.get("location"), html: await res.text() };
   }
   async fetch(path: string, init: { method?: string; body?: string; headers?: Record<string, string> } = {}) {
-    const res = await fetch(BASE + path, { ...init, headers: this.headers({ Origin: BASE, ...init.headers }), redirect: "manual" });
+    const res = await fetch(BASE + path, { ...init, headers: this.headers({ Origin: ORIGIN, ...init.headers }), redirect: "manual" });
     this.store(res);
     return res;
   }
@@ -75,7 +77,7 @@ class Browser {
     const data = new FormData();
     for (const m of form.matchAll(/<input type="hidden" name="([^"]+)"(?: value="([^"]*)")?/g)) data.append(decode(m[1]), decode(m[2] ?? ""));
     for (const [k, v] of Object.entries(fields)) data.set(k, v);
-    const res = await fetch(BASE + path, { method: "POST", body: data, headers: this.headers({ Origin: BASE }), redirect: "manual" });
+    const res = await fetch(BASE + path, { method: "POST", body: data, headers: this.headers({ Origin: ORIGIN }), redirect: "manual" });
     this.store(res);
     return { status: res.status, location: res.headers.get("location"), html: await res.text() };
   }
@@ -196,6 +198,30 @@ try {
     // CSRF
     const res2 = await u.fetch("/api/run", { method: "POST", headers: { Origin: "https://evil.example", "Content-Type": "application/json" }, body: "{}" });
     check("cross-site POST to an API route is blocked (403)", res2.status === 403);
+    // A forwarded host must not make a foreign origin look same-site (S3).
+    const res3 = await u.fetch("/api/run", { method: "POST", headers: { Origin: "https://evil.example", "X-Forwarded-Host": "evil.example", "Content-Type": "application/json" }, body: "{}" });
+    check("a spoofed X-Forwarded-Host doesn't pass the origin check in production", process.env.NODE_ENV !== "production" || res3.status === 403, String(res3.status));
+    // Chunked bodies with no Content-Length are capped as they stream (S1).
+    const chunked = (bytes: number) => {
+      let sent = 0;
+      return new ReadableStream<Uint8Array>({
+        pull(c) {
+          if (sent >= bytes) return c.close();
+          c.enqueue(new Uint8Array(Math.min(65536, bytes - sent)).fill(0x61));
+          sent += 65536;
+        },
+      });
+    };
+    for (const [path, ok] of [["/api/hint", 400], ["/api/analytics", 204]] as const) {
+      const t0 = Date.now();
+      const big = await fetch(BASE + path, { method: "POST", headers: { Origin: ORIGIN, "Content-Type": "application/json", "X-Forwarded-For": u.ip, Cookie: "bm_consent=" + encodeURIComponent(JSON.stringify({ v: 1, analytics: true, at: new Date().toISOString() })) }, body: chunked(5 * 1024 * 1024), duplex: "half" } as RequestInit).catch(() => null);
+      check(`5 MB chunked body to ${path} is refused promptly`, !big || big.status === ok, `${big?.status} in ${Date.now() - t0} ms`);
+    }
+    // 4097 bytes of multi-byte characters is under 4096 UTF-16 units but over 4096 bytes.
+    const multi = JSON.stringify({ type: "pageview", path: "é".repeat(2049) });
+    const rawBefore = await db.collection("events").countDocuments();
+    await fetch(BASE + "/api/analytics", { method: "POST", headers: { Origin: ORIGIN, "Content-Type": "application/json", "X-Forwarded-For": u.ip, Cookie: "bm_consent=" + encodeURIComponent(JSON.stringify({ v: 1, analytics: true, at: new Date().toISOString() })) }, body: multi });
+    check("analytics body is capped in bytes, not characters", (await db.collection("events").countDocuments()) === rawBefore && Buffer.byteLength(multi) > 4096);
   }
 
   // ---------- Two-factor authentication ----------

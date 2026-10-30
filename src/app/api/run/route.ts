@@ -14,12 +14,6 @@ const MAX_CODE = 64 * 1024;
 
 export async function POST(req: Request) {
   if (!sameOrigin(req)) return jsonError(403, "Cross-site request blocked.");
-  const body = await readJson<Body>(req);
-  if (!body || typeof body.code !== "string" || typeof body.exerciseId !== "string") return jsonError(400, "Invalid request.");
-  if (body.code.length > MAX_CODE) return jsonError(413, "Your code is over 64 KB — that's much more than any exercise needs.");
-  const found = findExercise(body.exerciseId);
-  if (!found) return jsonError(404, "Unknown exercise.");
-
   const user = await getCurrentUser();
   // Signed-in learners get a higher limit; anyone can try the editor.
   const ip = clientIp(req.headers);
@@ -27,6 +21,12 @@ export async function POST(req: Request) {
   if (!(await rateLimit(key, user ? 120 : ipLimit(ip, 30), 10 * 60))) {
     return jsonError(429, user ? "You're running code very fast — take a breath and try again in a few minutes." : "Run limit reached. Create a free account for more runs.");
   }
+
+  const body = await readJson<Body>(req);
+  if (!body || typeof body.code !== "string" || typeof body.exerciseId !== "string") return jsonError(400, "Invalid request.");
+  if (body.code.length > MAX_CODE) return jsonError(413, "Your code is over 64 KB — that's much more than any exercise needs.");
+  const found = findExercise(body.exerciseId);
+  if (!found) return jsonError(404, "Unknown exercise.");
 
   // A challenge opens once its lesson is passed.
   if (found.isChallenge && body.mode === "test") {

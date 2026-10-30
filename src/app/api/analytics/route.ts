@@ -20,10 +20,11 @@ export async function POST(req: Request) {
   const consent = parseConsent((await cookies()).get(CONSENT_COOKIE)?.value);
   if (!consent?.analytics) return empty;
 
-  const body = await readJson<Body>(req, 4096);
-  if (!body?.type || !ALLOWED_EVENTS.has(body.type)) return empty;
   const ip = clientIp(req.headers);
   if (!(await rateLimit(`analytics:${hmac("rate-ip", ip)}`, ipLimit(ip, 120), 60))) return empty;
+
+  const body = await readJson<Body>(req, 4096);
+  if (!body?.type || !ALLOWED_EVENTS.has(body.type)) return empty;
 
   const ua = req.headers.get("user-agent") ?? "";
   if (/bot|crawler|spider|headless|preview/i.test(ua)) return empty;
