@@ -481,14 +481,29 @@ __attribute__((constructor)) static void __bm_init(void) { setvbuf(stdout, NULL,
 // --noexecstack silences the missing .note.GNU-stack linker warning. In test mode
 // the hidden C harness (tests.c, with the CHECK prelude) supplies main().
 async function compileAsm(dir: string, source: string, harness: string | null) {
-  await writeFile(path.join(dir, "starter.s"), source);
+  const asmFlags = ["-std=c17", "-Wall", "-Wextra", "-g", "-O0", "-Wa,--noexecstack"];
   await writeFile(path.join(dir, "bm_init.c"), C_STDIO_INIT);
-  const files = ["starter.s", "bm_init.c"];
-  if (harness !== null) {
-    await writeFile(path.join(dir, "tests.c"), `${cTestPrelude()}\n#line 1 "tests.c"\n${harness}\n`);
-    files.push("tests.c");
+  if (harness === null) {
+    await writeFile(path.join(dir, "starter.s"), source);
+    return exec(dir, ["gcc", ...asmFlags, "-no-pie", "starter.s", "bm_init.c", "-o", "prog"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "prog" });
   }
-  return exec(dir, ["gcc", "-std=c17", "-Wall", "-Wextra", "-g", "-O0", "-no-pie", "-Wa,--noexecstack", ...files, "-o", "prog"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "prog" });
+  // Test mode builds in three steps so the learner's assembly is only ever read by `as` in a
+  // directory that holds nothing but starter.s: the hidden harness is compiled first, to a single
+  // relocatable object, and is not on disk when .incbin/.include (in any spelling) could reach it.
+  await writeFile(path.join(dir, "tests.c"), `${cTestPrelude()}\n#line 1 "tests.c"\n${harness}\n`);
+  const flags = asmFlags.join(" ");
+  const built = await exec(dir, ["sh", "-c", `gcc ${flags} -c bm_init.c -o bm_init.o && gcc ${flags} -c tests.c -o tests.o && ld -r bm_init.o tests.o -o harness.o`], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "harness.o" });
+  if (built.code !== 0) return built;
+  const assembled = await withWorkdir(async (asmDir) => {
+    await writeFile(path.join(asmDir, "starter.s"), source);
+    const r = await exec(asmDir, ["gcc", "-Wa,--noexecstack", "-c", "starter.s", "-o", "starter.o"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "starter.o" });
+    return { r, object: r.code === 0 ? await readFile(path.join(asmDir, "starter.o")) : null };
+  });
+  if (!assembled.object) return assembled.r;
+  await writeFile(path.join(dir, "starter.o"), assembled.object);
+  for (const f of ["tests.c", "bm_init.c", "bm_init.o", "tests.o"]) await rm(path.join(dir, f), { force: true });
+  const linked = await exec(dir, ["gcc", "-no-pie", "starter.o", "harness.o", "-o", "prog"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "prog" });
+  return { ...linked, stderr: built.stderr + assembled.r.stderr + linked.stderr, stdout: built.stdout + assembled.r.stdout + linked.stdout };
 }
 
 // Go: the learner's file is main.go (package main) in a throwaway module. Tests are a hidden
@@ -612,8 +627,20 @@ const TAMPER_PATTERNS: RegExp[] = [
   /\/\/go:embed|\binclude_(?:str|bytes)!|\binclude!\s*[(\[{]|^\s*\.(?:include|incbin)\b|#\s*include\s*"|#\s*include_next\b/m,
 ];
 
-function harnessTampering(code: string): string | null {
-  if (!TAMPER_PATTERNS.some((re) => re.test(code))) return null;
+// Per-language additions. Spelling variants matter: `include_str !(...)`, macros that forward the
+// macro name, GNU as directives in any case, and C23 `#embed` all reach a file the compiler can read.
+const TAMPER_PATTERNS_BY_LANGUAGE: Partial<Record<Language, RegExp[]>> = {
+  // Any use of the include family, and #[path] module attributes, which can name main.rs.
+  rust: [/\binclude(?:_str|_bytes)?\b/, /#\s*!?\s*\[\s*path\b/],
+  // GNU as directives are case-insensitive; macros can assemble a directive name from parameters.
+  asm: [/\.(?:incbin|include|init_array|preinit_array|fini_array)\b/i, /\.(?:alt)?macro\b/i, /\.irpc?\b/i],
+  c: [/#\s*embed\b|__has_embed/],
+  kernel: [/#\s*embed\b|__has_embed/],
+};
+
+function harnessTampering(code: string, language: Language): string | null {
+  const patterns = [...TAMPER_PATTERNS, ...(TAMPER_PATTERNS_BY_LANGUAGE[language] ?? [])];
+  if (!patterns.some((re) => re.test(code))) return null;
   return "Your code contains text that belongs to the test harness (its result lines, internal names, load-time hooks or a read of /proc). Tests can't be checked while it's there. Remove it and run the tests again.";
 }
 
@@ -638,7 +665,7 @@ export function testExercise(exercise: Exercise, code: string): Promise<TestResu
   return withSlot(() =>
     withWorkdir(async (dir) => {
       if (exercise.mode === "stdout") return testStdout(dir, exercise, code);
-      const tampering = harnessTampering(code);
+      const tampering = harnessTampering(code, exercise.language);
       if (tampering) return { compiled: true, compileOutput: "", results: [], allPassed: false, output: "", error: tampering };
       const result = await runHarness(dir, exercise, code);
       if (!result.allPassed) return result;

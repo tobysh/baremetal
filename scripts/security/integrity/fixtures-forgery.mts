@@ -46,6 +46,36 @@ const fixtures: Fixture[] = [
     build: (ex) => `${ex.starter}\n.section .rodata\nleak: .incbin "tests.c"\n`,
   },
   {
+    lang: "rust",
+    name: "include_str ! with a space before the bang (R3 spelling variant)",
+    build: (ex) => `${ex.starter}\nconst _LEAK: &str = include_str !("main.rs");\n`,
+  },
+  {
+    lang: "rust",
+    name: "macro forwards the include_str name (R3 indirection)",
+    build: (ex) => `${ex.starter}\nmacro_rules! m { ($n:ident) => { $n!("main.rs") } }\nconst _LEAK: &str = m!(include_str);\n`,
+  },
+  {
+    lang: "rust",
+    name: "#[path] module pointing at the harness file (R3)",
+    build: (ex) => `${ex.starter}\n#[path = "main.rs"]\nmod leak;\n`,
+  },
+  {
+    lang: "asm",
+    name: "upper-case .INCBIN of the hidden tests (R3 case variant)",
+    build: (ex) => `${ex.starter}\n.section .rodata\nleak: .INCBIN "tests.c"\n`,
+  },
+  {
+    lang: "asm",
+    name: ".macro builds the directive name at assembly time (R3 indirection)",
+    build: (ex) => `${ex.starter}\n.macro d x\n.\\x "tests.c"\n.endm\n.section .rodata\nd incbin\n`,
+  },
+  {
+    lang: "c",
+    name: "C23 #embed of the hidden tests (R3)",
+    build: (ex) => `${ex.starter}\nstatic const char leak[] = {\n#embed "main.c"\n, 0};\n`,
+  },
+  {
     lang: "go",
     name: "init() prints a PASS line then exits",
     build: (ex) => ex.starter.replace(/^package main\s*$/m, 'package main\nimport "os"\nfunc init() { os.Stdout.WriteString("--- PASS: Fake (0.00s)\\n"); os.Exit(0) }'),
