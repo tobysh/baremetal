@@ -25,7 +25,8 @@ const port = process.env.REGRESSION_PORT ?? await new Promise<string>((resolve, 
 const base = `http://127.0.0.1:${port}`;
 const env = { ...process.env, NODE_ENV: "production" as const, AUTH_SECRET: randomBytes(48).toString("hex"), TRUSTED_PROXY_HOPS: "1", RUNNER_SOCKET: socket,
   MONGODB_URI: process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27017", MONGODB_DB: dbName,
-  ANTHROPIC_API_KEY: "", SMTP_URL: "", EMAIL_FROM: "", TUTOR_PROVIDER: "ollama", OLLAMA_HOST: "http://127.0.0.1:9", NEXT_PUBLIC_SITE_URL: base, TEST_BASE_URL: base };
+  ANTHROPIC_API_KEY: "", SMTP_URL: "smtp://127.0.0.1:9", EMAIL_FROM: "no-reply@regression.test", LEGAL_ENTITY_NAME: "Regression Ltd", LEGAL_ADDRESS: "1 Test Street", LEGAL_CONTACT_EMAIL: "legal@regression.test",
+  TUTOR_PROVIDER: "ollama", OLLAMA_HOST: "http://127.0.0.1:9", NEXT_PUBLIC_SITE_URL: base.replace("http:", "https:"), TEST_BASE_URL: base };
 const mongo = new MongoClient(env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
 const children = new Set<ChildProcess>();
 let interrupted = false;

@@ -42,9 +42,9 @@ One section on purpose: see `docs/deployment-hardening.md` (proxy and `TRUSTED_P
 
 ## Interrupted-work recovery
 
-The curriculum has 35 tracks, 423 lessons (38 reviews), and 4,970 base lesson XP, before challenges. Completed the missing ethical-hacking capstone harness; its absence caused curriculum loading to throw for every exercise, breaking Run and autosave. The 20 ethical-hacking lessons verify, including 148 capstone assertions. Existing lesson ids were retained.
+The curriculum has 35 tracks, 457 lessons (41 reviews), and 4,970 base lesson XP, before challenges. Completed the missing ethical-hacking capstone harness; its absence caused curriculum loading to throw for every exercise, breaking Run and autosave. The 20 ethical-hacking lessons verify, including 148 capstone assertions. Existing lesson ids were retained.
 
-CI, id/theme guards and backup/restore files were recovered from Claude's completed local branches into the working tree. The id snapshot now contains all 423 lessons. Tutor budgets were reconciled into the existing `tutor_spend` implementation rather than adding the branch's competing spend collection. Nested Claude worktrees are excluded from project lint/typecheck. The build can be verified with webpack when Turbopack worker port binding is restricted.
+CI, id/theme guards and backup/restore files were recovered from Claude's completed local branches into the working tree. The id snapshot now contains all 457 lessons (updated 30 October 2026; the earlier snapshot predated 34 added lessons). Tutor budgets were reconciled into the existing `tutor_spend` implementation rather than adding the branch's competing spend collection. Nested Claude worktrees are excluded from project lint/typecheck. The build can be verified with webpack when Turbopack worker port binding is restricted.
 
 No existing difficulty changed during this recovery, so no XP recomputation was required. No production database recomputation, deployment or push was performed. Host-dependent runner isolation, cgroups, SMTP delivery and off-host backup remain deployment tasks. Anonymous hints cannot prove a learner never received help; the Unaided seal still relies partly on honesty.
 

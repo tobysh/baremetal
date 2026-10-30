@@ -30,6 +30,7 @@ jobs:
       - name: Theme guard (no hex colours, no left accent stripes)
         run: npm run check:theme
       - run: npm run check:learning
+      - run: npm run check:set-values
       - run: npm run build
         env:
           # The build must not need a live database; adjust if prerendering requires one.
@@ -51,6 +52,7 @@ jobs:
       - uses: ./.github/actions/toolchains
       - run: npm ci
       - run: npm run verify:content
+      - run: npm run check:stdout-order
 
       - name: Reject forged verdicts and harness disclosure
         run: node --import tsx scripts/security/integrity/fixtures-forgery.mts

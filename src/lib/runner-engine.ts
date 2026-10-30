@@ -645,15 +645,57 @@ function harnessTampering(code: string, language: Language): string | null {
 }
 
 /**
- * Replace the value in the first declaration of each variable (`int a = 7, b = 8;`, `let n: i32 = 3;`,
- * `x := 3`). Null if a variable can't be found.
+ * Marks every character that sits inside a comment or a string/char literal (C, Rust and Go
+ * share `//`, `/* *\/`, `"..."`, `'x'` and Go's raw backtick strings). Lifetimes such as `'a`
+ * are not char literals, so a quote only opens one when a closing quote follows promptly.
  */
-function setInitialValues(code: string, set: Record<string, string>): string | null {
+export function literalMask(code: string): boolean[] {
+  const mask = new Array<boolean>(code.length).fill(false);
+  const fill = (from: number, to: number) => { for (let k = from; k < Math.min(to, code.length); k++) mask[k] = true; };
+  let i = 0;
+  while (i < code.length) {
+    const c = code[i], n = code[i + 1];
+    if (c === "/" && n === "/") {
+      const end = code.indexOf("\n", i);
+      const to = end < 0 ? code.length : end;
+      fill(i, to); i = to;
+    } else if (c === "/" && n === "*") {
+      const end = code.indexOf("*/", i + 2);
+      const to = end < 0 ? code.length : end + 2;
+      fill(i, to); i = to;
+    } else if (c === "`") {
+      const end = code.indexOf("`", i + 1);
+      const to = end < 0 ? code.length : end + 1;
+      fill(i, to); i = to;
+    } else if (c === '"') {
+      let j = i + 1;
+      while (j < code.length && code[j] !== '"' && code[j] !== "\n") j += code[j] === "\\" ? 2 : 1;
+      const to = Math.min(j + 1, code.length);
+      fill(i, to); i = to;
+    } else if (c === "'") {
+      const m = /^'(?:\\(?:x[0-9a-fA-F]{2}|u\{[0-9a-fA-F]+\}|.)|[^'\\\n])'/.exec(code.slice(i, i + 12));
+      if (m) { fill(i, i + m[0].length); i += m[0].length; } else i++;
+    } else i++;
+  }
+  return mask;
+}
+
+/**
+ * Replace the value in the first declaration of each variable (`int a = 7, b = 8;`, `let n: i32 = 3;`,
+ * `x := 3`) that isn't inside a comment or a literal. Null if a variable can't be found.
+ */
+export function setInitialValues(code: string, set: Record<string, string>): string | null {
   let out = code;
   for (const [name, value] of Object.entries(set)) {
-    const re = new RegExp(`(\\b${name}\\b[^=;\\n]*?:?=\\s*)("[^"\\n]*"|'[^'\\n]*'|[^;\\n,]+)`);
-    if (!re.test(out)) return null;
-    out = out.replace(re, (_, head) => `${head}${value}`);
+    const re = new RegExp(`(\\b${name}\\b[^=;\\n]*?:?=\\s*)("[^"\\n]*"|'[^'\\n]*'|[^;\\n,]+)`, "g");
+    const mask = literalMask(out);
+    let hit: RegExpExecArray | null = null;
+    for (let m = re.exec(out); m; m = re.exec(out)) {
+      if (!mask[m.index]) { hit = m; break; }
+      re.lastIndex = m.index + 1;
+    }
+    if (!hit) return null;
+    out = out.slice(0, hit.index) + hit[1] + value + out.slice(hit.index + hit[0].length);
   }
   return out;
 }
@@ -738,13 +780,24 @@ async function testStdout(dir: string, ex: Exercise, code: string): Promise<Test
   const results: TestCaseResult[] = [];
   let output = "";
   let error: string | null = null;
+  // `prog` is rebuilt in place for each `set` case; a plain case that follows must run the learner's own code again.
+  let variantBuilt = false;
   for (const tc of ex.cases ?? []) {
+    if (!tc.set && variantBuilt) {
+      const again = await compile(dir, ex.language, code);
+      variantBuilt = false;
+      if (again.code !== 0) {
+        results.push({ name: tc.name, passed: false, message: "Your code could not be rebuilt for this check." });
+        continue;
+      }
+    }
     if (tc.set) {
       const changed = setInitialValues(code, tc.set);
       if (changed === null) {
         results.push({ name: tc.name, passed: false, message: `Keep the starter's variables (${Object.keys(tc.set).join(", ")}) and calculate from them, so the program works for other numbers too.` });
         continue;
       }
+      variantBuilt = true;
       const cc = await compile(dir, ex.language, changed);
       if (cc.code !== 0) {
         results.push({ name: tc.name, passed: false, message: "The program stopped compiling once the starting numbers changed." });

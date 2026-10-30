@@ -19,6 +19,8 @@
     "check:theme": "tsx scripts/check-theme.mts",
     "backup-db": "tsx --env-file=.env.local scripts/backup-db.mts",
     "restore-db": "tsx --env-file=.env.local scripts/restore-db.mts",
+    "check:set-values": "tsx scripts/checks/set-values.mts",
+    "check:stdout-order": "tsx scripts/checks/stdout-order.mts",
     "check:learning": "tsx scripts/checks/learning.mts",
     "test:regressions": "tsx scripts/checks/regressions.mts",
     "test:runner": "node --conditions=react-server --import tsx scripts/runner/transport-checks.mts",
