@@ -13,6 +13,7 @@ The goal is to help you understand what your code is doing. The tutor offers exp
 - **Understand the machine:** write x86-64 assembly and build parts of an operating system that runs in an emulated computer.
 - **Work through phased security labs:** parse JSON captures, calculate IPv4 subnets and routes, audit tar permissions, craft toy web payloads, correlate scan logs and search directory graphs in [Security Investigation Labs](content/sec-synthetic-labs/track.json). See the [lesson guide](docs/security-labs.md) for scope and execution details.
 - **Practice offensive infrastructure testing:** probe fictional exposed stores, weak management logins and an outdated toy agent; model Linux privilege escalation, account persistence and service persistence with verified cleanup. See the [offensive lab guide](docs/offensive-infrastructure-lab.md).
+- **Build inert payloads:** construct toy bytecode, packages and validated loaders, then trace behavior under explicit data permissions and resource budgets. See the [toy malware-development guide](docs/toy-maldev.md).
 - **Practice security with synthetic targets:** investigate C bugs, toy cryptography, packet captures, digital forensics, detection rules, inert sample formats, and fictional application-security scenarios.
 
 Security exercises use made-up data and simulated systems. They do not connect to real targets. See the [acceptable use and privacy information](content/legal/).

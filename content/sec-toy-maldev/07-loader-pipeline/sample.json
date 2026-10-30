@@ -1,0 +1,19 @@
+{
+  "format": "BX01 containing BML1 bytecode",
+  "bundle_hex": "4258303119001370b30930515e5f2213131e13d203e50011177d7c67761217777c7d7613",
+  "caps": {
+    "note": "public lab data"
+  },
+  "max_ops": 3,
+  "max_ticks": 0,
+  "expected": {
+    "Outputs": [
+      "public lab data",
+      "done"
+    ],
+    "Reads": [
+      "note"
+    ],
+    "Ticks": 0
+  }
+}

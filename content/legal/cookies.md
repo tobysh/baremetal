@@ -30,7 +30,7 @@ When you are signed in, we keep a browser recovery copy of an edited lesson draf
 
 We also save your light or dark theme choice in your browser's local storage, under the name bm:theme. It stores only "light" or "dark". It is a functional preference that the site needs to show the look you picked, so we do not ask for consent. It is never sent to our servers and stays in your browser on that device. You can remove it by clearing your browser's site data, and the site will go back to your device's light or dark setting.
 
-The workspace remembers the reading pane width you choose under bm:workspace:reading-width. This stores only a width percentage between 32 and 60. If you dismiss the dashboard's username reminder, bm:username-notice: followed by your account ID stores "dismissed", so that reminder stays hidden for your account in that browser. These functional preferences are not sent to our servers and remain on that device until you clear the site's browser storage. Clearing them restores the default workspace width and allows the reminder to appear again.
+The workspace remembers the reading pane width you choose under bm:workspace:reading-width. This stores only a width percentage between 32 and 60. In the same way, bm:workspace:editor-split stores the editor height you choose as a percentage between 30 and 75. If you dismiss the dashboard's username reminder, bm:username-notice: followed by your account ID stores "dismissed", so that reminder stays hidden for your account in that browser. These functional preferences are not sent to our servers and remain on that device until you clear the site's browser storage. Clearing them restores the default workspace width and editor height and allows the reminder to appear again.
 
 ## Analytics
 

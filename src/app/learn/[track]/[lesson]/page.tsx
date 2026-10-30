@@ -9,6 +9,8 @@ import { DifficultyBadge } from "@/components/gamification";
 import { Badge, Skeleton } from "@/components/ui";
 import { LessonWorkspace } from "@/components/workspace/lesson-workspace";
 import { SealRow } from "@/components/seals";
+import { CookieSettingsButton } from "@/components/consent";
+import { LessonJump } from "@/components/workspace/lesson-jump";
 import { LessonLayout } from "@/components/workspace/lesson-layout";
 import { getCurrentUser } from "@/lib/auth";
 import { getLesson, getTracks, lessonPath } from "@/lib/curriculum";
@@ -58,7 +60,7 @@ async function Lesson({ params, searchParams }: { params: PageProps<"/learn/[tra
   const exercise = toPublicExercise(lesson.exercise);
 
   return (
-    <div className="mx-auto w-full max-w-[96rem] px-4 py-6 sm:px-6">
+    <div className="mx-auto w-full max-w-[120rem] px-4 py-6 sm:px-6 lg:flex lg:h-[calc(100dvh-4rem-1px)] lg:flex-col lg:px-8 lg:py-3">
       <JsonLd
         data={[
           {
@@ -89,7 +91,7 @@ async function Lesson({ params, searchParams }: { params: PageProps<"/learn/[tra
         ]}
       />
       <LessonLayout reading={
-        <article className="min-w-0 lg:max-h-[calc(100dvh-6.5rem)] lg:overflow-y-auto lg:pr-4">
+        <article className="min-w-0">
           <nav aria-label="Breadcrumb" className="text-sm text-muted">
             <Link href="/learn" className="hover:text-text">
               Courses
@@ -127,8 +129,11 @@ async function Lesson({ params, searchParams }: { params: PageProps<"/learn/[tra
               Your task
             </h2>
             <Markdown className="mt-3">{exercise.task}</Markdown>
+            <LessonJump target="code" className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-accent px-4 text-sm font-semibold text-accent-ink hover:brightness-110">
+              Start coding →
+            </LessonJump>
           </section>
-          <nav aria-label="Lesson navigation" className="mt-8 flex justify-between gap-4 text-sm">
+          <nav aria-label="Lesson navigation" className="mt-10 flex justify-between gap-4 text-sm">
             {prev ? (
               <Link href={lessonPath(track.slug, prev.slug)} className="text-muted hover:text-text">
                 ← {prev.title}
@@ -148,12 +153,21 @@ async function Lesson({ params, searchParams }: { params: PageProps<"/learn/[tra
           </nav>
         </article>
       } workspace={
-        <div className="min-w-0">
+        <div className="min-w-0 lg:h-full">
           <Suspense fallback={<WorkspaceSkeleton starter={exercise.starter} />}>
             <WorkspaceLoader exerciseId={exercise.id} path={path} trackSlug={track.slug} lessonSlug={lesson.slug} searchParams={searchParams} />
           </Suspense>
         </div>
       } />
+      <p className="mt-3 flex shrink-0 flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-border pt-2 text-xs text-muted lg:mt-2">
+        <span>© 2026 {SITE.legal.entity}</span>
+        <span aria-hidden="true">-</span>
+        <Link href="/terms" className="hover:text-text">Terms and conditions</Link>
+        <span aria-hidden="true">-</span>
+        <Link href="/privacy" className="hover:text-text">Privacy policy</Link>
+        <span aria-hidden="true">-</span>
+        <CookieSettingsButton />
+      </p>
     </div>
   );
 }
@@ -206,7 +220,7 @@ async function WorkspaceLoader({ exerciseId, path, trackSlug, lessonSlug, search
 
 function WorkspaceSkeleton({ starter }: { starter: string }) {
   return (
-    <div className="flex flex-col overflow-hidden panel lg:h-[calc(100dvh-6.5rem)]" aria-busy="true" aria-label="Loading the code editor">
+    <div className="flex flex-col overflow-hidden panel lg:h-full" aria-busy="true" aria-label="Loading the code editor">
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <Skeleton className="h-4 w-16" />
         <div className="ml-auto flex gap-2">

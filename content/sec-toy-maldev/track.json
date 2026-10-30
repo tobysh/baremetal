@@ -1,0 +1,17 @@
+{
+  "title": "Toy Malware Development",
+  "summary": "Build inert bytecode payloads, packages, validated loaders and task protocols, then trace their behavior in a simulated host.",
+  "description": "Move from analyzing synthetic samples to constructing them. Build an invented bytecode format and container, add reversible packaging, implement a validating loader and a capability-limited interpreter, and process finite in-memory task messages with replay protection. Combine these pieces in a tested loader pipeline and an artifact-admission challenge. All payloads are data interpreted by a toy machine; no native code, process injection, shell execution, real persistence, live command channel or network access is involved. Go Practice is assumed; Malware Analysis for Defenders provides useful background.",
+  "level": "Advanced",
+  "language": "go",
+  "path": "security",
+  "order": 11,
+  "prerequisite": "sec-infra-offense",
+  "outcomes": [
+    "Construct and validate binary payloads in an invented instruction and container format.",
+    "Distinguish reversible encoding and integrity checks from cryptographic secrecy or authenticity.",
+    "Load and interpret bytecode under explicit data capabilities, operation limits and virtual-time budgets.",
+    "Validate finite task messages and reject replay, wrong-session and malformed input.",
+    "Combine packaging, loading and execution, then enforce artifact identity and whole-image policy checks."
+  ]
+}

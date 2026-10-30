@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type KeyboardEvent, Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { type CSSProperties, type KeyboardEvent, type PointerEvent, Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { LANGUAGE_FILE, LANGUAGE_LABEL, type PublicExercise } from "@/lib/curriculum/types";
 import { track } from "../analytics";
 import { MiniMarkdown } from "./mini-markdown";
@@ -20,6 +20,18 @@ const CodeEditor = lazy(() => import("./code-editor"));
 const noop = () => () => {};
 // Keep per-draft writes ordered even when navigation remounts a workspace.
 const saveQueues = new Map<string, Promise<void>>();
+const splitKey = "bm:workspace:editor-split";
+const clampSplit = (value: number) => Math.max(30, Math.min(75, Math.round(value)));
+const subscribeStorage = (listener: () => void) => {
+  window.addEventListener("storage", listener);
+  return () => window.removeEventListener("storage", listener);
+};
+function readSplit() {
+  try {
+    const value = Number(localStorage.getItem(splitKey) ?? 55);
+    return Number.isFinite(value) ? clampSplit(value) : 55;
+  } catch { return 55; }
+}
 const useIsClient = () => useSyncExternalStore(noop, () => true, () => false);
 
 function readDraft(key: string): string | null {
@@ -102,6 +114,30 @@ export function Workspace({
   const code = edited ?? localDraft ?? initialCode ?? exercise.starter;
   const isClient = useIsClient();
   const mod = useModKey();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const savedSplit = useSyncExternalStore(subscribeStorage, readSplit, () => 55);
+  const [dragged, setSplit] = useState<number | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const split = expanded ? 30 : (dragged ?? savedSplit);
+  const [dragging, setDragging] = useState(false);
+  function resizeSplit(value: number) {
+    setExpanded(false);
+    const next = clampSplit(value);
+    setSplit(next);
+    try { localStorage.setItem(splitKey, String(next)); } catch { /* ignore */ }
+  }
+  function dragSplit(event: PointerEvent<HTMLDivElement>) {
+    const rect = rootRef.current?.getBoundingClientRect();
+    if (!dragging || !rect?.height) return;
+    resizeSplit(((event.clientY - rect.top) / rect.height) * 100);
+  }
+  function splitKeys(event: KeyboardEvent<HTMLDivElement>) {
+    const step = event.shiftKey ? 10 : 3;
+    const next = event.key === "ArrowUp" ? split - step : event.key === "ArrowDown" ? split + step : event.key === "Home" ? 30 : event.key === "End" ? 75 : null;
+    if (next === null) return;
+    event.preventDefault();
+    resizeSplit(next);
+  }
   const [stdin, setStdin] = useState("");
   const [busy, setBusy] = useState<null | "run" | "test">(null);
   const router = useRouter();
@@ -325,7 +361,7 @@ export function Workspace({
   };
 
   return (
-    <div onKeyDown={onKeyDown} className="flex flex-col overflow-clip panel lg:h-[calc(100dvh-10rem)] lg:min-h-[32rem]">
+    <div ref={rootRef} onKeyDown={onKeyDown} className="flex flex-col overflow-clip panel lg:min-h-0 lg:flex-1">
       <div className="sticky top-16 z-10 flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-surface px-3 py-3 lg:static">
         <span className="font-mono text-xs text-muted">{LANGUAGE_FILE[exercise.language]}</span>
         <span className="text-xs text-muted" aria-live="polite">
@@ -375,7 +411,7 @@ export function Workspace({
         </div>
       </div>
 
-      <div className="h-[22rem] min-h-0 border-b border-border lg:h-auto lg:flex-[1.3]">
+      <div className="h-[22rem] min-h-0 lg:h-auto lg:min-h-[8rem] lg:shrink-0 lg:grow-0 lg:basis-(--split)" style={{ "--split": `${split}%` } as CSSProperties}>
         {isClient ? (
           <Suspense fallback={<CodeFallback code={code} />}>
             <CodeEditor value={code} onChange={onChange} language={exercise.language} onRun={run} onTest={test} label={`${LANGUAGE_LABEL[exercise.language]} code editor`} errorLines={errorLinesOf} />
@@ -385,27 +421,18 @@ export function Workspace({
         )}
       </div>
 
-      <p className="hidden border-b border-border px-3 py-1.5 text-[11px] text-muted sm:block">
+      <p className="hidden shrink-0 border-t border-border px-3 py-1 text-[11px] text-muted sm:block">
         <Kbd>{mod}</Kbd>+<Kbd>↵</Kbd> Test · <Kbd>{mod}</Kbd>+<Kbd>⇧</Kbd>+<Kbd>↵</Kbd> Run · <Kbd>Tab</Kbd> indent · <Kbd>{mod}</Kbd>+<Kbd>/</Kbd> comment ·{" "}
-        <Kbd>Esc</Kbd> then <Kbd>Tab</Kbd> leave editor
+        <Kbd>Esc</Kbd> then <Kbd>Tab</Kbd> leave editor · <Kbd>Alt</Kbd>+<Kbd>1</Kbd> lesson · <Kbd>Alt</Kbd>+<Kbd>2</Kbd> editor
       </p>
-
-      {exercise.mode === "stdout" && (
-        <div className="border-b border-border px-3 py-2">
-          <label htmlFor="stdin" className="text-xs text-muted">
-            Program input (stdin), used by Run
-          </label>
-          <textarea
-            id="stdin"
-            rows={1}
-            value={stdin}
-            onChange={(e) => setStdin(e.target.value)}
-            className="mt-1 block w-full resize-y rounded-md border border-field bg-bg px-2 py-1 font-mono text-sm"
-            placeholder="e.g. 8 3"
-          />
-        </div>
-      )}
-
+      <div
+        role="separator" aria-orientation="horizontal" aria-label="Resize the editor and the panel below it" aria-valuemin={30} aria-valuemax={75} aria-valuenow={split}
+        tabIndex={0} data-dragging={dragging}
+        className="hidden h-2 shrink-0 cursor-row-resize touch-none border-y border-border bg-surface-2 hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-accent data-[dragging=true]:bg-accent-soft lg:block"
+        onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDragging(true); }}
+        onPointerMove={dragSplit} onPointerUp={() => setDragging(false)} onPointerCancel={() => setDragging(false)} onKeyDown={splitKeys}
+      />
+      <div className="max-lg:border-t max-lg:border-border lg:flex lg:min-h-[16rem] lg:flex-1 lg:flex-col">
       <div role="tablist" aria-label="Workspace panels" className="flex border-b border-border px-2">
         {tabs.map((t) => (
           <button
@@ -429,10 +456,28 @@ export function Workspace({
             {t.label}
           </button>
         ))}
+        <button type="button" aria-pressed={expanded} onClick={() => setExpanded(!expanded)} className="my-auto ml-auto hidden min-h-9 rounded-md px-3 text-xs text-muted hover:bg-surface-2 hover:text-text lg:block">
+          {expanded ? "Restore editor" : "Expand panel"}
+        </button>
       </div>
 
       <div className="h-[20rem] min-h-0 lg:h-auto lg:flex-1">
         <div role="tabpanel" id="panel-output" aria-labelledby="tab-output" tabIndex={0} hidden={tab !== "output"} className="h-full overflow-y-auto p-4">
+          {exercise.mode === "stdout" && (
+            <div className="mb-4">
+              <label htmlFor="stdin" className="text-xs text-muted">
+                Program input (stdin), used by Run
+              </label>
+              <textarea
+                id="stdin"
+                rows={1}
+                value={stdin}
+                onChange={(e) => setStdin(e.target.value)}
+                className="mt-1 block w-full resize-y rounded-md border border-field bg-bg px-2 py-1 font-mono text-sm"
+                placeholder="e.g. 8 3"
+              />
+            </div>
+          )}
           {result && !busy && <CopyOutput text={lastOutput} />}
           <OutputPanel
             result={result}
@@ -506,6 +551,7 @@ export function Workspace({
             }
           />
         </div>
+      </div>
       </div>
       <AchievementToasts items={toasts} onDismiss={dismissToast} />
       <div role="status" aria-live="polite" className="sr-only">{announcement}</div>

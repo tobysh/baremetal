@@ -74,3 +74,41 @@ On a disposable host, with a hostile test image:
 - Hosting: bare metal or KVM-capable provider?
 - Do any labs need two machines, or is a loopback target enough?
 - Persist learner files between sessions? (Default no.)
+
+## Prototype findings (30 October 2026)
+
+`scripts/shell/` (`build-rootfs.sh`, `launch.sh`, `launch-jailed.sh`) boots one throwaway VM on the serial console. Verified on a development machine, benign commands only: Firecracker 1.17.0, guest kernel 6.1.141 (Firecracker CI build, no modules, vsock and ext4 built in), jailer with cgroup v2.
+
+Verified:
+- Guest shell runs as uid 1000, no groups, no capabilities, `no_new_privs`; root filesystem read-only; `mount` refused; no NIC.
+- Unjailed and jailed boots reach a shell in about a second; a hung guest is killed at the wall-clock cap; nothing is left behind (processes, chroot, cgroup) after a normal exit or a cap kill.
+
+Not verified: hostile workloads (fork/memory bombs, escape attempts), the jailer's seccomp and uid isolation under attack, any network setup, vsock. These need a disposable machine.
+
+Lessons that shape the broker:
+1. **Use the official static release binaries** (checksum-verified). The distro build is dynamically linked and cannot exec in the empty jailer chroot ("No such file or directory").
+2. **The jailer names its chroot and cgroup after the exec file's name** (`<base>/<exec-file-name>/<id>/root`), not always `firecracker`. Derive paths from it.
+3. **`--new-pid-ns` makes the jailer's parent exit immediately.** Its exit is not the end of the VM. Track the VM by its cgroup (`cgroup.procs`), and end it with `cgroup.kill`. cgroup files report size 0, so test contents, not `-s`.
+4. **The guest cannot end the VM.** Sysrq poweroff/reboot do not stop Firecracker; only init exiting (kernel panic with `panic=1`, `reboot=k`) does. The broker must own VM lifetime and kill on session end, timeout or disconnect.
+5. **Serial input sent before the shell is ready is dropped.** The broker should forward input only after the guest agent signals ready.
+6. **The jailer leaves the chroot and cgroup behind.** The broker needs cleanup on exit and a reaper at startup.
+7. **The CI kernel is a binary fetched over HTTP.** Build and pin your own kernel with a verified hash for production.
+8. `/dev/kvm` should be limited to the jailer's uid in production (0666 on the dev machine).
+
+## Broker (implemented, development-tested)
+
+Code: `src/lib/shell/` (`frames.ts` codec, `vm.ts` VM drivers, `broker.ts` sessions), `scripts/shell-broker.mts` (service entry), `scripts/shell/agent.c` (guest agent, built statically into the rootfs by `build-rootfs.sh`), `scripts/shell/broker-checks.mts`.
+
+How it works: the web side connects to the broker's Unix socket (mode 0660; set the group in the unit), sends an `OPEN` frame `{account, cols, rows}` (account is an opaque keyed hash chosen by the web app; the broker never sees identities) and waits for `OPENED`. The broker starts a VM, connects to the guest agent through Firecracker's vsock proxy, and waits for the agent's `READY` before forwarding input. Frames are `[type u8][len u32][payload ≤ 16 KiB]` on both hops, and each parser enforces the bound itself because the guest is hostile.
+
+Enforced by the broker, never by the guest: one shell per account (checked before the global cap so the message is specific), a global session cap (booting sessions count), boot timeout, idle timeout (keystrokes and resizes only), absolute cap from admission, a token bucket on input, a total output cap, backpressure in both directions, and strict frame validation (any unexpected frame type ends the session). Every session ends through one path: the VM is destroyed first, and capacity and the account lock are released only afterwards. A client that leaves while the VM is still starting does not leak it. Audit lines carry ids, counters and the end reason, never terminal content.
+
+Run the checks: `SHELL_KERNEL=... SHELL_ROOTFS=... FIRECRACKER=/usr/bin/firecracker npx tsx scripts/shell/broker-checks.mts` (fake-guest checks run without the variables; the real-VM checks boot about ten microVMs, benign commands only). Last run: all pass, shell ready in about 0.6 s.
+
+Not done, in priority order:
+1. **Jailed driver is untested.** `startJailedVm` mirrors the verified `launch-jailed.sh` but has not run. It needs a run as root on a disposable machine (`SHELL_MODE=jailed`, static release binaries).
+2. **Privilege separation.** Starting the jailer needs root, so today the broker would run as root. Split a tiny root launcher (create/kill VM by id over a private socket, no network, no learner data) from the unprivileged broker that parses guest traffic. Until then, do not run the broker as root on a host that holds anything else.
+3. **Web endpoint and terminal UI** (WebSocket to the broker, account hashing, verified-account gate, daily quotas, `content/legal/` update and `SITE.legal.lastUpdated` if anything is stored).
+4. **systemd units**, kernel pinned and built by you, lab images and per-session flags, networking for labs.
+5. **Hostile-workload tests** on a disposable machine (fork/memory bombs, disk fill, network egress, escape attempts against the jailer).
+6. Output rate limiting beyond the total cap (a guest can currently send up to the cap as fast as the web side reads it).

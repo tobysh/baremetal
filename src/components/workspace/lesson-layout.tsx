@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
+import { jumpEvent, jumpTo, type LessonTarget } from "./lesson-jump";
 import styles from "./lesson-layout.module.css";
 
 const preferenceKey = "bm:workspace:reading-width";
@@ -25,6 +26,30 @@ export function LessonLayout({ reading, workspace }: { reading: ReactNode; works
   const panes = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
   const clamp = (value: number) => Math.max(32, Math.min(60, Math.round(value)));
+
+  useEffect(() => {
+    function show(target: LessonTarget) {
+      setView(target);
+      setFocused((current) => (target === "lesson" ? false : current));
+      requestAnimationFrame(() => {
+        if (target === "code") document.querySelector<HTMLElement>("#view-panel-code .cm-content")?.focus();
+        else {
+          const reading = document.getElementById("view-panel-lesson");
+          reading?.focus({ preventScroll: true });
+          document.getElementById("task")?.scrollIntoView({ block: "start", behavior: "smooth" });
+        }
+      });
+    }
+    const onJump = (event: Event) => show((event as CustomEvent<LessonTarget>).detail);
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (event.code === "Digit1") { event.preventDefault(); show("lesson"); }
+      else if (event.code === "Digit2") { event.preventDefault(); show("code"); }
+    };
+    window.addEventListener(jumpEvent, onJump);
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener(jumpEvent, onJump); window.removeEventListener("keydown", onKey); };
+  }, []);
 
   function resize(value: number) {
     setWidth(value);
@@ -62,10 +87,9 @@ export function LessonLayout({ reading, workspace }: { reading: ReactNode; works
           ))}
         </div>
         <div className={styles.desktopControls}>
-          <label className="flex items-center gap-3 text-xs text-muted">
-            Reading width
-            <input aria-label="Reading pane width" aria-valuetext={`${readingWidth} percent`} type="range" min={32} max={60} value={readingWidth} onChange={(event) => resize(Number(event.target.value))} disabled={focused} className="w-24 accent-accent" />
-          </label>
+          <button type="button" onClick={() => jumpTo("lesson")} title="Alt+1" className="rounded-lg border border-border px-3 py-2 text-xs font-medium hover:bg-surface-2">
+            Back to task
+          </button>
           <button type="button" aria-pressed={focused} onClick={() => setFocused(!focused)} className="rounded-lg border border-border px-3 py-2 text-xs font-medium hover:bg-surface-2">
             {focused ? "Show lesson" : "Focus on code"}
           </button>

@@ -476,5 +476,12 @@
   "sec-synthetic-labs/query-payload",
   "sec-synthetic-labs/scan-correlation",
   "sec-synthetic-labs/subnets-and-routes",
-  "sec-synthetic-labs/weak-cookie"
+  "sec-synthetic-labs/weak-cookie",
+  "sec-toy-maldev/capability-interpreter",
+  "sec-toy-maldev/loader-pipeline",
+  "sec-toy-maldev/payload-bytecode",
+  "sec-toy-maldev/payload-capsule",
+  "sec-toy-maldev/reversible-packaging",
+  "sec-toy-maldev/task-protocol",
+  "sec-toy-maldev/validated-loader"
 ]

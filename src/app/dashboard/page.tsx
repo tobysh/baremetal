@@ -94,7 +94,7 @@ async function DashboardBody() {
               <h1 className="display mt-3.5 text-3xl font-bold leading-[1.1] sm:text-[34px]">{nextUp.lesson.title}</h1>
               <p className="mt-3 max-w-[560px] text-base leading-relaxed text-text-2">{nextUp.lesson.summary}</p>
             </div>
-            <div className="flex flex-wrap items-center gap-x-8 gap-y-6">
+            <div className="flex flex-wrap items-center gap-x-10 gap-y-6">
               <LessonPath track={nextUp.track} progress={progress} currentSlug={nextUp.lesson.slug} />
               <Link
                 href={lessonPath(nextUp.track.slug, nextUp.lesson.slug)}
@@ -195,8 +195,12 @@ function LessonPath({ track, progress, currentSlug }: { track: Track; progress: 
   const current = track.lessons.findIndex((lesson) => lesson.slug === currentSlug);
   // Long courses get small unnumbered dots so the path still fits beside the button.
   const dense = track.lessons.length > 8;
+  // From sm up the path never shrinks below its dots plus the shortest connectors, so a long
+  // course wraps the button onto its own row instead of running into it.
+  const n = track.lessons.length;
+  const minWidth = dense ? n * 18 + (n - 1) * 10 : n * 32 + (n - 1) * 20;
   return (
-    <ol aria-label={`Lessons in this course, ${passed.filter(Boolean).length} of ${track.lessons.length} complete`} className="m-0 flex min-w-0 flex-[1_1_280px] list-none items-center p-0">
+    <ol aria-label={`Lessons in this course, ${passed.filter(Boolean).length} of ${track.lessons.length} complete`} style={{ "--path-min": `${minWidth}px` } as React.CSSProperties} className="m-0 flex min-w-0 flex-[1_1_280px] list-none items-center p-0 sm:min-w-[min(100%,var(--path-min))]">
       {track.lessons.map((lesson, i) => {
         const done = passed[i];
         const isCurrent = i === current;

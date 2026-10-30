@@ -52,7 +52,7 @@ export function LessonWorkspace(props: {
   );
 
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 lg:flex lg:h-full lg:flex-col">
       {(showChallenge || showReview) && (
         <div role="group" aria-label="What to work on" className="mb-2 flex flex-wrap items-center gap-1">
           {tab("lesson", "Lesson", true)}

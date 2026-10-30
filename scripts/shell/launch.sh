@@ -8,7 +8,7 @@ dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT
 cat > "$dir/vm.json" <<J
 {
-  "boot-source": { "kernel_image_path": "$kernel", "boot_args": "console=ttyS0 quiet loglevel=0 reboot=k panic=1 pci=off ro init=/init random.trust_cpu=on" },
+  "boot-source": { "kernel_image_path": "$kernel", "boot_args": "console=ttyS0 quiet loglevel=0 reboot=k panic=1 pci=off ro init=/init bm.serial=1 random.trust_cpu=on" },
   "drives": [ { "drive_id": "rootfs", "path_on_host": "$rootfs", "is_root_device": true, "is_read_only": true } ],
   "machine-config": { "vcpu_count": 1, "mem_size_mib": 256, "smt": false },
   "network-interfaces": []
