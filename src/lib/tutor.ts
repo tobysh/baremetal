@@ -106,6 +106,73 @@ export function exposesSolution(reply: string, solution: string, starter: string
   return [...windows(reply)].some((w) => answer.has(w) && !given.has(w));
 }
 
+/**
+ * The incremental form of exposesSolution, so a reply can stream. A token can only be shown once
+ * every 24-token window that contains it has been checked, so the last 24 tokens (and any partial
+ * trailing token) are held back until more text arrives. On a match nothing further is released;
+ * the caller appends its fallback sentence instead. Over a whole reply it flags exactly the
+ * windows exposesSolution flags.
+ */
+export class SolutionGuard {
+  static readonly WIDTH = 24;
+  private readonly answer: Set<string>;
+  private readonly given: Set<string>;
+  private reply = "";
+  private shown = 0;
+  private checked = 0;
+  leaked = false;
+  constructor(solution: string, starter: string) {
+    this.answer = SolutionGuard.windowSet(solution);
+    this.given = SolutionGuard.windowSet(starter);
+  }
+  private static tokens(s: string): { text: string; start: number }[] {
+    return [...s.matchAll(/[A-Za-z_][A-Za-z_0-9]*|[0-9]+|[^\s\w]/g)].map((m) => ({ text: m[0], start: m.index ?? 0 }));
+  }
+  private static windowSet(s: string) {
+    const t = SolutionGuard.tokens(s).map((x) => x.text);
+    return new Set(Array.from({ length: Math.max(0, t.length - SolutionGuard.WIDTH + 1) }, (_, i) => t.slice(i, i + SolutionGuard.WIDTH).join(" ")));
+  }
+  /** Adds streamed text; returns the part that is now safe to show. */
+  push(text: string): string {
+    if (this.leaked) return "";
+    this.reply += text;
+    const tokens = SolutionGuard.tokens(this.reply);
+    // The final token may still be growing (an identifier cut mid-chunk), so only count it once more text follows.
+    const complete = this.reply.length > (tokens.at(-1)?.start ?? 0) + (tokens.at(-1)?.text.length ?? 0) ? tokens.length : tokens.length - 1;
+    for (; this.checked + SolutionGuard.WIDTH <= complete; this.checked++) {
+      const window = tokens.slice(this.checked, this.checked + SolutionGuard.WIDTH).map((x) => x.text).join(" ");
+      if (this.answer.has(window) && !this.given.has(window)) {
+        this.leaked = true;
+        return "";
+      }
+    }
+    // Everything before the last WIDTH complete tokens has had all its windows checked.
+    const holdFrom = complete > SolutionGuard.WIDTH ? tokens[complete - SolutionGuard.WIDTH].start : 0;
+    const out = this.reply.slice(this.shown, holdFrom);
+    this.shown = Math.max(this.shown, holdFrom);
+    return out;
+  }
+  /** Ends the stream: checks any last windows and returns the held-back remainder (empty if leaked). */
+  finish(): string {
+    if (this.leaked) return "";
+    const tokens = SolutionGuard.tokens(this.reply);
+    for (; this.checked + SolutionGuard.WIDTH <= tokens.length; this.checked++) {
+      const window = tokens.slice(this.checked, this.checked + SolutionGuard.WIDTH).map((x) => x.text).join(" ");
+      if (this.answer.has(window) && !this.given.has(window)) {
+        this.leaked = true;
+        return "";
+      }
+    }
+    const rest = this.reply.slice(this.shown);
+    this.shown = this.reply.length;
+    return rest;
+  }
+  /** What the learner has been shown so far. */
+  get released() {
+    return this.reply.slice(0, this.shown);
+  }
+}
+
 export function buildMessages(history: TutorMessage[], message: string, code: string, lastOutput: string, omitContext = false): ChatTurn[] {
   const recent = history.slice(-HISTORY_TURNS).map((m) => ({ role: m.role, content: clip(m.content, MAX_HISTORY_CHARS) }));
   // A history must start with a user turn.

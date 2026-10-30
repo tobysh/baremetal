@@ -33,12 +33,34 @@ export function TutorChat({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quota, setQuota] = useState<{ remaining: number; limit: number } | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+  const [elapsed, setElapsed] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
   }, [messages]);
+
+  // Show the allowance before the first question (answers served from the cache cost nothing and don't count).
+  useEffect(() => {
+    if (!signedIn) return;
+    let cancelled = false;
+    fetch("/api/tutor/quota", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => { if (!cancelled && body && typeof body.remaining === "number") setQuota((q) => q ?? body); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [signedIn]);
+
+  // "Thinking… 6s" while waiting for the first words.
+  useEffect(() => {
+    if (!busy) return;
+    const started = Date.now();
+    const t = setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => clearInterval(t);
+  }, [busy]);
 
   useImperativeHandle(controlRef, () => ({ send: (text: string) => void send(text) }));
 
@@ -47,6 +69,8 @@ export function TutorChat({
     if (!message || busy) return;
     setBusy(true);
     setError(null);
+    setElapsed(0);
+    setAnnouncement("");
     setInput("");
     setMessages((m) => [...m, { role: "user", content: message }, { role: "assistant", content: "" }]);
     track("tutor_open");
@@ -74,6 +98,7 @@ export function TutorChat({
         setMessages((m) => [...m.slice(0, -1), { role: "assistant", content: visible }]);
       }
       if (reply.includes(ERROR_MARKER)) throw new Error(reply.split(ERROR_MARKER)[1]);
+      setAnnouncement("Tutor replied");
     } catch (e) {
       setError((e as Error).message);
       setMessages((m) => (m.at(-1)?.role === "assistant" && !m.at(-1)?.content ? m.slice(0, -2) : m));
@@ -84,8 +109,16 @@ export function TutorChat({
   }
 
   async function clear() {
-    await fetch(`/api/tutor?exerciseId=${encodeURIComponent(exerciseId)}`, { method: "DELETE" });
-    setMessages([]);
+    setConfirmClear(false);
+    try {
+      const res = await fetch(`/api/tutor?exerciseId=${encodeURIComponent(exerciseId)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Couldn't delete the conversation.");
+      setMessages([]);
+      setError(null);
+    } catch (e) {
+      // Keep the messages: nothing was deleted.
+      setError(`${(e as Error).message} Your conversation is still here; try again.`);
+    }
   }
 
   if (!signedIn) {
@@ -109,7 +142,7 @@ export function TutorChat({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div ref={listRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4" aria-live="polite" aria-busy={busy}>
+      <div ref={listRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4" aria-busy={busy}>
         {messages.length === 0 && (
           <div className="text-sm text-muted">
             <p>Ask anything about this lesson — what an error means, why your code behaves the way it does, or what to try next.</p>
@@ -134,7 +167,7 @@ export function TutorChat({
             </div>
           ) : (
             <div key={i} className="mr-4">
-              {m.content ? <MiniMarkdown text={m.content} /> : <span className="text-sm text-muted">Thinking…</span>}
+              {m.content ? <MiniMarkdown text={m.content} /> : <span className="text-sm text-muted">Thinking…{elapsed >= 3 ? ` ${elapsed}s` : ""}</span>}
             </div>
           ),
         )}
@@ -162,6 +195,8 @@ export function TutorChat({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
+            // Enter confirms an IME candidate; it must not send the message.
+            if (e.nativeEvent.isComposing || e.keyCode === 229) return;
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               send(input);
@@ -171,21 +206,27 @@ export function TutorChat({
           className="min-h-[2.5rem] flex-1 resize-none rounded-lg border border-field bg-bg px-3 py-2 text-sm placeholder:text-muted"
         />
         <div className="flex flex-col gap-1">
-          <button type="submit" disabled={busy || !input.trim()} className="h-9 rounded-lg bg-accent px-3 text-sm font-medium text-accent-ink disabled:opacity-50">
+          <button type="submit" disabled={busy || !input.trim()} className="min-h-11 rounded-lg bg-accent px-3 text-sm font-medium text-accent-ink disabled:opacity-50 sm:h-9 sm:min-h-0">
             {busy ? "…" : "Send"}
           </button>
-          {messages.length > 0 && (
-            <button type="button" onClick={clear} disabled={busy} className="text-xs text-muted hover:text-text">
+          {messages.length > 0 && (confirmClear ? (
+            <div className="flex items-center gap-1 text-xs">
+              <button type="button" onClick={clear} className="min-h-11 rounded-md px-2 text-err hover:bg-err-soft sm:min-h-8">Delete</button>
+              <button type="button" onClick={() => setConfirmClear(false)} className="min-h-11 rounded-md px-2 text-muted hover:bg-surface-2 sm:min-h-8">Keep</button>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setConfirmClear(true)} disabled={busy} className="min-h-11 rounded-md px-2 text-xs text-muted hover:text-text sm:min-h-8">
               Clear
             </button>
-          )}
+          ))}
         </div>
       </form>
+      <div role="status" aria-live="polite" className="sr-only">{announcement}</div>
       <p className="px-3 pb-2 text-[11px] text-muted">
         The tutor is an AI and can make mistakes. Check its answers against the lesson and your own tests.
       </p>
       {quota && (
-        <p className="px-3 pb-2 text-[11px] text-muted" aria-live="polite">
+        <p className="px-3 pb-2 text-[11px] text-muted">
           {quota.remaining} of {quota.limit} tutor questions left this hour. Repeated common questions and hints don&apos;t count.
         </p>
       )}

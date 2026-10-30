@@ -9,26 +9,13 @@ import type { TutorThreadDoc } from "@/lib/models";
 import { getTutorThread } from "@/lib/progress";
 import { clientIp, ipLimit, rateLimit, rateLimitHit } from "@/lib/rate-limit";
 import { checkBudget, estimateCostMicro, reserveBudget } from "@/lib/tutor-budget";
-import { MAX_REPLY_TOKENS, TUTOR_PROVIDER, TUTOR_SYSTEM, TutorUnavailableError, exposesSolution, buildMessages, lessonContext, planCache, streamTutor, type TutorUsage } from "@/lib/tutor";
+import { HOUR, LIMITS } from "@/lib/tutor-limits";
+import { MAX_REPLY_TOKENS, TUTOR_PROVIDER, TUTOR_SYSTEM, TutorUnavailableError, exposesSolution, SolutionGuard, buildMessages, lessonContext, planCache, streamTutor, type TutorUsage } from "@/lib/tutor";
 import { POPULAR_HITS, expiryFor, replyLeaks, type CacheKind } from "@/lib/tutor-cache";
 
 type CacheDoc = { key: string; kind?: CacheKind; reply: string; hits?: number };
 
 type Body = { exerciseId?: string; message?: string; code?: string; lastOutput?: string };
-
-// Layered limits on model calls, so one account, one machine, or everyone
-// together can't run up an unbounded bill. Answers served from the response
-// cache cost nothing and don't count. All configurable in .env.local.
-const env = (name: string, fallback: number) => Math.max(0, Number(process.env[name]) || fallback);
-const LIMITS = {
-  userPerHour: env("TUTOR_LIMIT_USER_HOUR", 20),
-  userPerDay: env("TUTOR_LIMIT_USER_DAY", 100),
-  ipPerHour: env("TUTOR_LIMIT_IP_HOUR", 120), // accounts under 24 h old only: established accounts are bounded by the per-user limits and the dollar budget
-  globalPerHour: env("TUTOR_LIMIT_GLOBAL_HOUR", 2000),
-  requestsPerHour: 120, // all requests, including cache hits
-  cacheHitsIpPerHour: env("TUTOR_LIMIT_CACHE_HIT_IP_HOUR", 300), // cache hits cost no dollars but can still be scraped
-};
-const HOUR = 3600;
 
 function minutesUntil(d: Date) {
   return Math.max(1, Math.ceil((d.getTime() - Date.now()) / 60_000));
@@ -164,20 +151,30 @@ export async function POST(req: Request) {
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {
       let reply = "";
+      // Text streams out as soon as it is certain no 24-token solution excerpt is forming (SolutionGuard).
+      const guard = new SolutionGuard(found.exercise.solution, found.exercise.starter);
+      const send = (text: string) => { if (text && !abort.signal.aborted) controller.enqueue(encoder.encode(text)); };
+      const FALLBACK = "Let's work through the idea one step at a time. Which part of the task is unclear?";
       try {
         for await (const text of chunks) {
           reply += text;
           if (reply.length > 32 * 1024) throw new TutorUnavailableError("The tutor response was too long. Try a more specific question.");
+          send(guard.push(text));
         }
         // Spend is recorded as soon as the API reports usage, even if the client left.
         await settleBudget(usage).catch((e) => console.error("[tutor] spend", e));
         if (abort.signal.aborted) return;
-        if (exposesSolution(reply, found.exercise.solution, found.exercise.starter)) {
-          reply = "Let's work through the idea one step at a time. Which part of the task is unclear?";
+        const rest = guard.finish();
+        let finalReply = reply;
+        if (guard.leaked) {
+          // Keep what was already shown, replace the rest.
+          const shown = guard.released;
+          finalReply = shown ? `${shown.trimEnd()}\n\n${FALLBACK}` : FALLBACK;
+          send(shown ? `\n\n${FALLBACK}` : FALLBACK);
           cacheable = false;
-        }
+        } else send(rest);
+        reply = finalReply;
         await saveTurn(reply);
-        if (!abort.signal.aborted) controller.enqueue(encoder.encode(reply));
         if (usage) await recordUsage({ ...(usage as TutorUsage), costMicroUsd: estimateCostMicro(usage as TutorUsage), responseCacheHit: false, cacheKind: plan?.omitContext ? "concept-miss" : "none" });
         if (plan && cacheable && reply.trim()) {
           const now = new Date();

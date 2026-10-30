@@ -132,7 +132,9 @@ export function Workspace({
   const dismissToast = useCallback((id: string) => setToasts((t) => t.filter((x) => x.id !== id)), []);
   const closeCelebration = useCallback(() => setCelebration(null), []);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [confirmReset, setConfirmReset] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
+  // Reset keeps the previous code for a few seconds instead of asking first (the editor's own undo history can't restore it).
+  const [undoReset, setUndoReset] = useState<string | null>(null);
   const tutorRef = useRef<TutorControl>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirty = useRef(false);
@@ -232,6 +234,7 @@ export function Workspace({
       execution.current = controller;
       setBusy(mode);
       setRequestError(null);
+      setCancelled(false);
       setTab("output");
       track("run");
       try {
@@ -266,6 +269,15 @@ export function Workspace({
     },
     [exercise.id, router, variant, onPassed, saveDraft],
   );
+  const cancelRun = useCallback(() => {
+    if (!execution.current) return;
+    execution.current.abort(); // the server cancels the job when the request is aborted
+    setCancelled(true);
+  }, []);
+  const resetCode = () => {
+    setUndoReset(codeRef.current);
+    onChange(exercise.starter);
+  };
   const openHint = async () => {
     if (hintBusy || hintsShown >= exercise.hintCount) return;
     setHintBusy(true);
@@ -289,6 +301,8 @@ export function Workspace({
     return errorLines(exercise.language, result.compileOutput, result.kind === "run" ? result.stderr : result.output, compileFailed);
   }, [result, busy, exercise.language]);
   const lastOutput = describeResult(result);
+  // One small live region announces the outcome; the big output panel and tutor list are not live themselves.
+  const announcement = cancelled ? "Cancelled." : requestError ? requestError : busy ? "" : summarize(result);
   const getContext = useCallback(() => ({ code: codeRef.current, lastOutput }), [lastOutput]);
 
   const askTutor = (text: string) => {
@@ -319,26 +333,14 @@ export function Workspace({
         </span>
         {(saveState === "error" || recovered) && <button type="button" onClick={retrySave} className="min-h-11 rounded-md px-2 text-xs text-accent underline underline-offset-2">{recovered ? "Save recovered draft" : "Retry save"}</button>}
         <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-          {confirmReset ? (
-            <>
-              <span className="text-xs text-muted">Discard your code?</span>
-              <button
-                type="button"
-                className="min-h-11 rounded-md px-2 text-xs text-err hover:bg-err-soft sm:min-h-9"
-                onClick={() => {
-                  onChange(exercise.starter);
-                  setConfirmReset(false);
-                }}
-              >
-                Reset
-              </button>
-              <button type="button" className="min-h-11 rounded-md px-2 text-xs text-muted hover:bg-surface-2 sm:min-h-9" onClick={() => setConfirmReset(false)}>
-                Cancel
-              </button>
-            </>
-          ) : (
-            <button type="button" className="min-h-11 rounded-md px-2 text-xs text-muted hover:bg-surface-2 hover:text-text sm:min-h-9" onClick={() => setConfirmReset(true)}>
-              Reset
+          <button type="button" className="min-h-11 rounded-md px-2 text-xs text-muted hover:bg-surface-2 hover:text-text sm:min-h-9" onClick={resetCode}>
+            Reset
+          </button>
+          {/* Rendered right after Reset so the next Tab reaches Undo, though it is positioned over the page. */}
+          {undoReset !== null && <UndoToast onUndo={() => { onChange(undoReset); setUndoReset(null); }} onDismiss={() => setUndoReset(null)} />}
+          {busy && (
+            <button type="button" onClick={cancelRun} className="inline-flex h-11 items-center rounded-lg border border-border px-3 text-sm font-medium hover:bg-surface-2 sm:h-9">
+              Cancel
             </button>
           )}
           <button
@@ -436,6 +438,7 @@ export function Workspace({
             result={result}
             busy={busy}
             requestError={requestError}
+            cancelled={cancelled}
             passed={passed}
             nextHref={nextHref} nextLabel={nextLabel}
             signedIn={signedIn}
@@ -471,7 +474,7 @@ export function Workspace({
             <button
               type="button"
               disabled={hintBusy}
-              className="mt-3 h-9 rounded-lg border border-border px-3 text-sm hover:bg-surface-2 disabled:opacity-50"
+              className="mt-3 min-h-11 rounded-lg border border-border px-3 text-sm hover:bg-surface-2 disabled:opacity-50 sm:min-h-9"
               onClick={() => {
                 openHint();
               }}
@@ -505,6 +508,7 @@ export function Workspace({
         </div>
       </div>
       <AchievementToasts items={toasts} onDismiss={dismissToast} />
+      <div role="status" aria-live="polite" className="sr-only">{announcement}</div>
       {celebration && <Celebration returnFocus={celebration.returnFocus} levelUp={celebration.levelUp} trackComplete={celebration.trackComplete} onClose={closeCelebration} />}
     </div>
   );
@@ -526,6 +530,7 @@ function OutputPanel({
   result,
   busy,
   requestError,
+  cancelled,
   passed,
   nextHref,
   nextLabel,
@@ -537,6 +542,7 @@ function OutputPanel({
   result: RunResponse | null;
   busy: null | "run" | "test";
   requestError: string | null;
+  cancelled: boolean;
   passed: boolean;
   nextHref: string | null;
   nextLabel?: string;
@@ -547,13 +553,14 @@ function OutputPanel({
 }) {
   if (busy) {
     return (
-      <div className="space-y-2" aria-live="polite">
+      <div className="space-y-2">
         <p className="text-sm text-muted">{busy === "test" ? "Compiling and running the tests…" : "Compiling and running…"}</p>
         <div className="skeleton h-4 w-2/3" />
         <div className="skeleton h-4 w-1/2" />
       </div>
     );
   }
+  if (cancelled) return <p className="text-sm text-muted">Cancelled.</p>;
   if (requestError) {
     return (
       <p role="alert" className="rounded-lg bg-err-soft p-3 text-sm text-err">
@@ -575,8 +582,10 @@ function OutputPanel({
   const compileFailed = result.kind === "run" ? result.phase === "compile" && !result.ok : !result.compiled;
   const failed = compileFailed || !!result.error || (result.kind === "run" ? !result.ok : !result.allPassed);
   const explanations = failed ? explain(result) : [];
+  // With failures, show those first and fold the passing tests away.
+  const failingFirst = result.kind === "test" && result.results.some((r) => !r.passed) && result.results.some((r) => r.passed);
   return (
-    <div className="space-y-4" aria-live="polite">
+    <div className="space-y-4">
       {result.kind === "test" && result.allPassed && <SuccessBanner nextHref={nextHref} nextLabel={nextLabel} signedIn={signedIn} reward={result.reward} paced={result.paced} unaided={result.unaided} reviewed={result.reviewed} variant={variant} />}
 
       {explanations.length > 0 && (
@@ -592,7 +601,7 @@ function OutputPanel({
               <button
                 type="button"
                 onClick={() => onAsk(`The checker said: "${x.title}". Can you look at my code and explain what I did wrong here, without giving me the full answer?`)}
-                className="mt-2 inline-flex h-8 items-center rounded-md border border-border px-2.5 text-xs font-medium hover:bg-surface-2"
+                className="mt-2 inline-flex min-h-11 items-center rounded-md border border-border px-2.5 text-xs font-medium hover:bg-surface-2 sm:min-h-8"
               >
                 {signedIn ? "Elaborate with the AI tutor" : "Elaborate with the AI tutor (free account)"}
               </button>
@@ -620,18 +629,16 @@ function OutputPanel({
             Tests: {result.results.filter((r) => r.passed).length} of {result.results.length} passing
           </h3>
           <ul className="mt-2 space-y-1.5">
-            {result.results.map((r, i) => (
-              <li key={i} className="text-sm">
-                <span className={r.passed ? "text-ok" : "text-err"}>
-                  <span aria-hidden="true">{r.passed ? "✓" : "✗"}</span>
-                  <span className="sr-only">{r.passed ? "Passed:" : "Failed:"}</span> {r.name}
-                </span>
-                {r.expected !== undefined && r.actual !== undefined ? (
-                  <OutputDiff expected={r.expected} actual={r.actual} />
-                ) : r.message && <pre className="mt-1 ml-5 overflow-auto rounded-md bg-bg p-2 font-mono text-xs whitespace-pre-wrap text-muted">{r.message}</pre>}
-              </li>
-            ))}
+            {(failingFirst ? result.results.filter((r) => !r.passed) : result.results).map((r, i) => <TestItem key={i} r={r} />)}
           </ul>
+          {failingFirst && (
+            <details className="mt-3">
+              <summary className="cursor-pointer text-sm text-ok">{result.results.filter((r) => r.passed).length} passed ✓</summary>
+              <ul className="mt-2 space-y-1.5">
+                {result.results.filter((r) => r.passed).map((r, i) => <TestItem key={i} r={r} />)}
+              </ul>
+            </details>
+          )}
         </section>
       )}
 
@@ -656,6 +663,52 @@ function OutputPanel({
 
     </div>
   );
+}
+
+type TestRow = Extract<RunResponse, { kind: "test" }>["results"][number];
+function TestItem({ r }: { r: TestRow }) {
+  return (
+    <li className="text-sm">
+      <span className={r.passed ? "text-ok" : "text-err"}>
+        <span aria-hidden="true">{r.passed ? "✓" : "✗"}</span>
+        <span className="sr-only">{r.passed ? "Passed:" : "Failed:"}</span> {r.name}
+      </span>
+      {r.expected !== undefined && r.actual !== undefined ? (
+        <OutputDiff expected={r.expected} actual={r.actual} />
+      ) : r.message && <pre className="mt-1 ml-5 overflow-auto rounded-md bg-bg p-2 font-mono text-xs whitespace-pre-wrap text-muted">{r.message}</pre>}
+    </li>
+  );
+}
+
+function UndoToast({ onUndo, onDismiss }: { onUndo: () => void; onDismiss: () => void }) {
+  // Like the achievement toasts, the timer pauses while the pointer or keyboard focus is on it.
+  const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (paused) return;
+    const t = setTimeout(onDismiss, 8000);
+    return () => clearTimeout(t);
+  }, [paused, onDismiss]);
+  return (
+    <div role="status" className="pointer-events-none fixed inset-x-4 bottom-4 z-40 flex justify-center sm:left-4 sm:right-auto sm:justify-start">
+      <div
+        onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}
+        className="toast-in panel pointer-events-auto flex w-full max-w-sm items-center gap-3 p-3 shadow-lg"
+      >
+        <p className="min-w-0 flex-1 text-sm">Code reset to the starter.</p>
+        <button type="button" onClick={onUndo} className="min-h-11 rounded-md px-3 text-sm font-medium text-accent underline underline-offset-2 hover:bg-surface-2 sm:min-h-9">Undo</button>
+        <button type="button" onClick={onDismiss} aria-label="Dismiss" className="min-h-11 rounded-md px-2 text-sm text-muted hover:bg-surface-2 sm:min-h-9">✕</button>
+      </div>
+    </div>
+  );
+}
+
+function summarize(r: RunResponse | null): string {
+  if (!r) return "";
+  const compileFailed = r.kind === "run" ? r.phase === "compile" && !r.ok : !r.compiled;
+  if (compileFailed) return "Compile error";
+  if (r.kind === "run") return r.ok ? "Program finished" : "Program failed";
+  const passing = r.results.filter((t) => t.passed).length;
+  return `${passing} of ${r.results.length} tests passing`;
 }
 
 function SuccessBanner({

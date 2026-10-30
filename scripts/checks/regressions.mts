@@ -57,7 +57,7 @@ try {
   console.log("Building an isolated production snapshot...");
   await run(["node_modules/next/dist/bin/next", "build", "--webpack"]);
   // Tests requiring no web server still use the same isolated database.
-  for (const script of ["scripts/auth-crypto-regression.mts", "scripts/tutor/cost-checks.mts", "scripts/tutor/reservation-checks.mts", "scripts/security/quick-fixes.mts", "scripts/security/xp-atomic.mts"]) {
+  for (const script of ["scripts/auth-crypto-regression.mts", "scripts/tutor/cost-checks.mts", "scripts/tutor/reservation-checks.mts", "scripts/tutor/stream-guard-checks.mts", "scripts/security/quick-fixes.mts", "scripts/security/xp-atomic.mts"]) {
     await run(["--conditions=react-server", "--import", "tsx", script]);
   }
   await run(["--import", "tsx", "scripts/security/markdown.mts"]);
