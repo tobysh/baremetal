@@ -98,6 +98,12 @@ export async function clearLoginFailures(email: string, ip: string, userId?: str
   ]);
 }
 
+/** A per-IP limit that can be tuned in the environment (classrooms and offices share one address). */
+export function envLimit(name: string, fallback: number): number {
+  const n = Number(process.env[name]);
+  return Number.isInteger(n) && n >= 1 ? n : fallback;
+}
+
 /** IP-based limit for auth endpoints: `limit` requests per 15 minutes. */
 export async function authRateLimit(endpoint: string, limit: number): Promise<boolean> {
   const { ip } = await requestContext();

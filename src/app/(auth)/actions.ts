@@ -22,7 +22,7 @@ import { fieldErrors, formValues, type FormState } from "@/lib/forms";
 import { usernameProblem } from "@/lib/gamification";
 import { EXPERIENCE_LEVELS, TERMS_VERSION, type UserDoc } from "@/lib/models";
 import { checkPassword } from "@/lib/password";
-import { authRateLimit, clearLoginFailures, finishLoginFailure, finishOtpFailure, formatWait, logAuthEvent, loginGuard, otpGuard, refundLoginAttempt, refundOtpAttempt, reserveLoginAttempt, reserveOtpAttempt, requestContext } from "@/lib/security";
+import { authRateLimit, envLimit, clearLoginFailures, finishLoginFailure, finishOtpFailure, formatWait, logAuthEvent, loginGuard, otpGuard, refundLoginAttempt, refundOtpAttempt, reserveLoginAttempt, reserveOtpAttempt, requestContext } from "@/lib/security";
 import { hashBackupCode, legacyBackupCodeHash, verifyTotp } from "@/lib/totp";
 import { absoluteUrl } from "@/lib/site";
 
@@ -58,7 +58,7 @@ const signupSchema = z
 
 export async function signup(_prev: FormState, formData: FormData): Promise<FormState> {
   const values = formValues(formData, ["name", "username", "email", "experience"]);
-  if (!(await authRateLimit("signup", 5))) return { message: TOO_MANY, values };
+  if (!(await authRateLimit("signup", envLimit("AUTH_LIMIT_SIGNUP_IP", 30)))) return { message: TOO_MANY, values };
   if (!(await verifyCaptcha(formData.get("captcha") as string | null))) {
     await logAuthEvent("captcha_failed", { reason: "signup" });
     return { message: "Please complete the security check.", values, captchaRequired: true };
@@ -112,7 +112,7 @@ const loginSchema = z.object({ email, password: z.string().min(1, "Enter your pa
 export async function login(_prev: FormState, formData: FormData): Promise<FormState> {
   const values = formValues(formData, ["email"]);
   const next = safeNext(formData.get("next"));
-  if (!(await authRateLimit("login", 20))) return { message: TOO_MANY, values, captchaRequired: true };
+  if (!(await authRateLimit("login", envLimit("AUTH_LIMIT_LOGIN_IP", 60)))) return { message: TOO_MANY, values, captchaRequired: true };
 
   const parsed = loginSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values };

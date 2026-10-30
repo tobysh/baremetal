@@ -28,6 +28,8 @@ Assets: the web server host (shared kernel with the separately configured runner
 
 **API and tutor.** Type and size checks come before quota. The tutor never sees the reference solution, learner text is tag-escaped, replies are buffered for an excerpt check, newcomers (unverified or very new) draw from a pool that reserves capacity for established users, DELETE is rate limited. Hints are served only by `/api/hint`, which records use; public exercises carry `hintCount` only. Tutor and analytics IP keys and console identities use keyed hashes. Both Markdown renderers pass executable-markup fixtures. Production dependency audit: zero advisories (29 Oct 2026).
 
+**Shared addresses (trade-off).** Runner admission, the tutor IP quota and the auth limits no longer treat one IP as one person. Signed-in runs are admitted per account only, the tutor's per-IP quota applies only to accounts under 24 h old, and sign-up/sign-in per-IP limits are 30 and 60 per 15 min. Abuse from one address is therefore bounded by per-account limits, the dollar budget, the per-email limits and the CAPTCHA rather than by a tight per-IP cap. Anonymous traffic keeps its per-IP limits. Values: `docs/deployment-hardening.md`.
+
 **Proxy.** Production refuses to boot without a valid `TRUSTED_PROXY_HOPS`; short `X-Forwarded-For` chains land in a strict per-process "unknown" bucket (L3). `sameOrigin` trusts `X-Forwarded-Host` only if the proxy strips client copies (L4).
 
 ## Open limitations (accepted or deployment-bound)

@@ -54,6 +54,29 @@ try {
   assert(results.some((r) => r.status === 503), "the burst must encounter per-account admission limits");
   assert(results.every((r) => r.status === 200 || r.status === 503));
   console.log("30-request flood constrained to two runs; another account remains available.");
+  // A classroom shares one address: signed-in learners are admitted per account, anonymous traffic per IP.
+  const classIp = `203.0.113.${1 + Math.floor(Math.random() * 250)}`;
+  const crowd = Array.from({ length: 10 }, () => ({ id: new ObjectId(), token: randomBytes(32).toString("hex") }));
+  try {
+    for (const [i, u] of crowd.entries()) {
+      await db.collection("users").insertOne({ _id: u.id, email: `security-regression-${suffix}-class${i}@example.test`, name: "Security regression", passwordHash: "unused", emailVerified: true, experience: "some", role: "user", sessionVersion: 0, createdAt: new Date(Date.now() - 2 * 86400_000) });
+      await db.collection("sessions").insertOne({ userId: u.id, tokenHash: createHash("sha256").update(u.token).digest("hex"), sessionVersion: 0, createdAt: new Date(), expiresAt: new Date(Date.now() + 3600_000) });
+    }
+    const quick = { exerciseId: ex.id, mode: "run", code: "#include <unistd.h>\nint main(void) { sleep(1); return 0; }" };
+    const post = (cookie?: string) => fetch(base + "/api/run", { method: "POST", headers: { Origin: base, "Content-Type": "application/json", "X-Forwarded-For": classIp, ...(cookie ? { Cookie: `bm_session=${cookie}` } : {}) }, body: JSON.stringify(quick) });
+    const signedIn = await Promise.all(crowd.map((u) => post(u.token)));
+    assert(signedIn.every((r) => r.status === 200), `ten signed-in learners behind one IP should all be admitted, got ${signedIn.map((r) => r.status)}`);
+    const anonymous = await Promise.all(Array.from({ length: 10 }, () => post()));
+    assert(anonymous.some((r) => r.status === 503), "anonymous clients behind one IP stay limited");
+    assert(anonymous.some((r) => r.status === 200));
+    console.log("Ten signed-in learners behind one IP all ran; the anonymous burst from that IP was limited.");
+  } finally {
+    for (const u of crowd) {
+      await db.collection("users").deleteOne({ _id: u.id });
+      await db.collection("sessions").deleteMany({ userId: u.id });
+      await db.collection("rate_limits").deleteMany({ key: { $regex: u.id.toHexString() } });
+    }
+  }
   for (let i = 0; i < 30; i++) assert.equal((await request(`/api/tutor?exerciseId=${encodeURIComponent(ex.id)}`, null, 0, "DELETE")).status, 200);
   assert.equal((await request(`/api/tutor?exerciseId=${encodeURIComponent(ex.id)}`, null, 0, "DELETE")).status, 429);
   console.log("Tutor conversation deletion rate limit passed.");

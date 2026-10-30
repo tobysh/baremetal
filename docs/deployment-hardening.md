@@ -19,6 +19,22 @@ In production (`NODE_ENV=production`) `src/instrumentation.ts` refuses to boot, 
 
 The same-origin check on API routes compares `Origin` only against the host of `NEXT_PUBLIC_SITE_URL` in production and never reads `X-Forwarded-Host`. Development keeps the `Host` comparison so phone and LAN testing works.
 
+## Per-IP limits (shared addresses)
+
+Learners in a school, college or office share one public IP, so per-IP numbers are deliberately generous and tunable. Signed-in traffic is admitted and limited per account; IP limits mostly constrain anonymous and brand-new traffic.
+
+| Variable | Default | Applies to |
+|---|---|---|
+| `AUTH_LIMIT_SIGNUP_IP` | 30 / 15 min | sign-up attempts per IP (the CAPTCHA and per-email limits still apply) |
+| `AUTH_LIMIT_LOGIN_IP` | 60 / 15 min | sign-in attempts per IP (per email+IP lockouts still apply) |
+| `CAPTCHA_LIMIT_IP_MINUTE` | 120 / min | CAPTCHA challenges per IP |
+| `RUN_LIMIT_ANON_IP` | 30 / 10 min | runs by signed-out visitors per IP |
+| `TUTOR_LIMIT_IP_HOUR` | 120 / hour | tutor questions per IP, **accounts under 24 h old only** |
+| `RUNNER_INFLIGHT_USER` | 2 | queued+running runner requests per signed-in account |
+| `RUNNER_INFLIGHT_IP` | 6 | queued+running runner requests per IP, anonymous visitors only |
+
+Unknown-IP traffic still gets a quarter of each IP limit. The runner service reads the two `RUNNER_INFLIGHT_*` variables; the web app sends only which kind of key each request carries (`kinds` in the runner request, optional, so web and runner must be upgraded together).
+
 ## Runner limits
 
 The sandbox implementation is in `src/lib/runner-engine.ts`; public web handlers

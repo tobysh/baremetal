@@ -5,6 +5,7 @@ import { levelFor, titleBlurb } from "@/lib/gamification";
 import { jsonError, readJson, sameOrigin } from "@/lib/http";
 import { getProgress, recordAttempt, recordReviewPass } from "@/lib/progress";
 import { evaluateAchievements, trackCompleteFor, type TrackComplete, type Unlocked } from "@/lib/rewards";
+import { envLimit } from "@/lib/security";
 import { hmac } from "@/lib/crypto";
 import { clientIp, ipLimit, rateLimit } from "@/lib/rate-limit";
 import { executeRun, executeTest, RunnerBusyError, RunnerUnavailableError } from "@/lib/runner-client";
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
   // Signed-in learners get a higher limit; anyone can try the editor.
   const ip = clientIp(req.headers);
   const key = user ? `run:user:${user.id}` : `run:ip:${hmac("rate-ip", ip)}`;
-  if (!(await rateLimit(key, user ? 120 : ipLimit(ip, 30), 10 * 60))) {
+  if (!(await rateLimit(key, user ? 120 : ipLimit(ip, envLimit("RUN_LIMIT_ANON_IP", 30)), 10 * 60))) {
     return jsonError(429, user ? "You're running code very fast — take a breath and try again in a few minutes." : "Run limit reached. Create a free account for more runs.");
   }
 
@@ -35,7 +36,8 @@ export async function POST(req: Request) {
     if ((await getProgress(user.id, found.lesson.exercise.id))?.status !== "passed") return jsonError(403, "Pass the lesson first; its challenge unlocks afterwards.");
   }
 
-  const context = { keys: [`ip:${ip}`, ...(user ? [`user:${user.id}`] : [])], signal: req.signal };
+  // Signed-in learners are admitted per account only; many of them can share one school or office address.
+  const context = { keys: [user ? `user:${user.id}` : `ip:${ip}`], signal: req.signal };
   try {
     if (body.mode === "test") {
       const result = await executeTest(found.exercise, body.code!, context);

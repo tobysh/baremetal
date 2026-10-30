@@ -7,6 +7,8 @@ import { RunnerBusyError, RunnerUnavailableError, RUNNER_REQUEST_BYTES, RUNNER_R
 
 export { RunnerBusyError, RunnerUnavailableError } from "./runner-protocol";
 type Context = { keys: string[]; signal: AbortSignal };
+const hashedKeys = (context: Context) => context.keys.map((key) => Buffer.from(hmac("runner-admission", key), "base64url").toString("hex"));
+const keyKinds = (context: Context) => context.keys.map((key) => (key.startsWith("ip:") ? "ip" : "user") as "user" | "ip");
 
 export function assertRunnerConfiguration() {
   const socket = process.env.RUNNER_SOCKET;
@@ -50,16 +52,16 @@ export async function executeRun(exercise: Exercise, code: string, stdin: string
   assertRunnerConfiguration();
   if (!process.env.RUNNER_SOCKET) {
     const engine = await import("./runner-engine");
-    return engine.withRunnerRequest(context.keys, context.signal, () => engine.runProgram(exercise.language, code, stdin));
+    return engine.withRunnerRequest(context.keys, context.signal, () => engine.runProgram(exercise.language, code, stdin), keyKinds(context));
   }
-  return await callRunner({ version: 1, operation: "run", exerciseId: exercise.id, code, stdin, keys: context.keys.map((key) => Buffer.from(hmac("runner-admission", key), "base64url").toString("hex")) }, context.signal) as RunResult;
+  return await callRunner({ version: 1, operation: "run", exerciseId: exercise.id, code, stdin, keys: hashedKeys(context), kinds: keyKinds(context) }, context.signal) as RunResult;
 }
 
 export async function executeTest(exercise: Exercise, code: string, context: Context): Promise<TestResult> {
   assertRunnerConfiguration();
   if (!process.env.RUNNER_SOCKET) {
     const engine = await import("./runner-engine");
-    return engine.withRunnerRequest(context.keys, context.signal, () => engine.testExercise(exercise, code));
+    return engine.withRunnerRequest(context.keys, context.signal, () => engine.testExercise(exercise, code), keyKinds(context));
   }
-  return await callRunner({ version: 1, operation: "test", exerciseId: exercise.id, code, stdin: "", keys: context.keys.map((key) => Buffer.from(hmac("runner-admission", key), "base64url").toString("hex")) }, context.signal) as TestResult;
+  return await callRunner({ version: 1, operation: "test", exerciseId: exercise.id, code, stdin: "", keys: hashedKeys(context), kinds: keyKinds(context) }, context.signal) as TestResult;
 }

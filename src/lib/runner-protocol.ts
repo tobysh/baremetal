@@ -13,6 +13,8 @@ export const runnerRequestSchema = z.object({
   code: z.string().max(64 * 1024),
   stdin: z.string().max(16 * 1024).default(""),
   keys: z.array(z.string().regex(/^[a-f0-9]{64}$/)).min(1).max(2),
+  /** Which admission limit applies to each key (same order). Absent means the per-account limit. */
+  kinds: z.array(z.enum(["user", "ip"])).max(2).optional(),
 }).strict();
 export type RunnerRequest = z.infer<typeof runnerRequestSchema>;
 const text = z.string().max(RUNNER_RESPONSE_BYTES);

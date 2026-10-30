@@ -63,9 +63,17 @@ const requestContext = new AsyncLocalStorage<{ signal: AbortSignal }>();
 const inFlight = new Map<string, number>();
 
 /** Count queued and running requests per account and network, independently. */
-export async function withRunnerRequest<T>(keys: string[], signal: AbortSignal, fn: () => Promise<T>): Promise<T> {
+const envCount = (name: string, fallback: number) => {
+  const n = Number(process.env[name]);
+  return Number.isInteger(n) && n >= 1 && n <= 64 ? n : fallback;
+};
+/** In-flight requests allowed per key. Signed-in learners are counted per account; an IP key is only used for anonymous traffic, so a classroom behind one address needs more headroom. */
+const INFLIGHT_LIMIT = { user: envCount("RUNNER_INFLIGHT_USER", 2), ip: envCount("RUNNER_INFLIGHT_IP", 6) };
+
+export async function withRunnerRequest<T>(keys: string[], signal: AbortSignal, fn: () => Promise<T>, kinds: ("user" | "ip")[] = []): Promise<T> {
+  const limitFor = new Map(keys.map((key, i) => [key, INFLIGHT_LIMIT[kinds[i] ?? "user"]]));
   const unique = [...new Set(keys)];
-  if (unique.some((key) => (inFlight.get(key) ?? 0) >= 2)) throw new RunnerBusyError("You already have two runs in progress.");
+  if (unique.some((key) => (inFlight.get(key) ?? 0) >= (limitFor.get(key) ?? INFLIGHT_LIMIT.user))) throw new RunnerBusyError("You already have runs in progress. Wait for one to finish.");
   signal.throwIfAborted();
   for (const key of unique) inFlight.set(key, (inFlight.get(key) ?? 0) + 1);
   try {

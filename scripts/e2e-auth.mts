@@ -131,8 +131,16 @@ try {
     check("sign-up requires the CAPTCHA", /security check/i.test(text(r.html)));
     r = await b.submit("/signup", { ...base, terms: "", password: PASSWORD, confirm: PASSWORD, captcha: await solveCaptcha(b) });
     check("sign-up requires accepting the Terms", /accept the Terms/.test(text(r.html)));
-    r = await b.submit("/signup", { ...base, password: PASSWORD, confirm: PASSWORD, captcha: await solveCaptcha(b) });
-    check("sign-up is limited to 5 attempts per 15 min per IP", /Too many attempts/.test(text(r.html)));
+    // A class signing up together shares one address: many sign-ups pass, but the per-IP cap still exists.
+    const signupLimit = Number(process.env.AUTH_LIMIT_SIGNUP_IP ?? 30);
+    const crowd = new Browser(ip(40));
+    let blockedAt = 0;
+    for (let i = 1; i <= signupLimit + 2 && !blockedAt; i++) {
+      const attempt = await crowd.submit("/signup", { ...base, email: `e2e-${run}-crowd${i}@example.test`, username: `c${run}${i}`.slice(0, 20), password: "password123", confirm: "password123", captcha: await solveCaptcha(crowd) });
+      if (/Too many attempts/.test(text(attempt.html))) blockedAt = i;
+    }
+    check(`sign-up is limited to ${signupLimit} attempts per 15 min per IP`, blockedAt === signupLimit + 1, `blocked at attempt ${blockedAt}`);
+    check("at least 10 sign-ups from one IP are not throttled", blockedAt === 0 || blockedAt > 10, `blocked at attempt ${blockedAt}`);
     b.ip = ip(13); // a different network
     r = await b.submit("/signup", { ...base, password: PASSWORD, confirm: PASSWORD, captcha: await solveCaptcha(b) });
     check("valid sign-up gives generic confirmation without a session", r.status === 200 && /check your email/i.test(text(r.html)) && !b.cookies.has("bm_session"));

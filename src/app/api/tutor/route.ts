@@ -23,7 +23,7 @@ const env = (name: string, fallback: number) => Math.max(0, Number(process.env[n
 const LIMITS = {
   userPerHour: env("TUTOR_LIMIT_USER_HOUR", 20),
   userPerDay: env("TUTOR_LIMIT_USER_DAY", 100),
-  ipPerHour: env("TUTOR_LIMIT_IP_HOUR", 60),
+  ipPerHour: env("TUTOR_LIMIT_IP_HOUR", 120), // accounts under 24 h old only: established accounts are bounded by the per-user limits and the dollar budget
   globalPerHour: env("TUTOR_LIMIT_GLOBAL_HOUR", 2000),
   requestsPerHour: 120, // all requests, including cache hits
   cacheHitsIpPerHour: env("TUTOR_LIMIT_CACHE_HIT_IP_HOUR", 300), // cache hits cost no dollars but can still be scraped
@@ -130,8 +130,9 @@ export async function POST(req: Request) {
     return jsonError(429, `You've used all ${LIMITS.userPerHour} tutor questions for this hour. They refill in about ${minutesUntil(userHour.resetAt)} minutes — meanwhile, the hints and "What probably went wrong" notes are free.`);
   const userDay = await rateLimitHit(`tutor:user:d:${user.id}`, LIMITS.userPerDay, 24 * HOUR);
   if (!userDay.ok) return jsonError(429, `You've reached today's limit of ${LIMITS.userPerDay} tutor questions. It resets in about ${Math.ceil(minutesUntil(userDay.resetAt) / 60)} hours.`);
-  if (!(await rateLimit(`tutor:ip:${hmac("rate-ip", ip)}`, ipLimit(ip, LIMITS.ipPerHour), HOUR))) return jsonError(429, "Too many tutor questions from your network this hour. Please try again later.");
   const newcomer = age < 24 * 3_600_000;
+  // Many learners can share one address (a class, an office), so the per-IP quota only constrains brand-new accounts.
+  if (newcomer && !(await rateLimit(`tutor:ip:${hmac("rate-ip", ip)}`, ipLimit(ip, LIMITS.ipPerHour), HOUR))) return jsonError(429, "Too many tutor questions from your network this hour. Please try again later.");
   const newcomerKey = windowKey("tutor:new-accounts", HOUR);
   if (newcomer && !(await rateLimit("tutor:new-accounts", Math.max(1, Math.floor(LIMITS.globalPerHour / 4)), HOUR))) return jsonError(503, "The tutor is at capacity for new accounts. Please try again later.");
   if (!(await rateLimit("tutor:global", LIMITS.globalPerHour, HOUR))) {
