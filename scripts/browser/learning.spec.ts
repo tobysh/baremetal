@@ -36,7 +36,8 @@ test("anonymous recommendations and small-screen catalogue", async ({ page }) =>
   await page.goto("/learn");
   await expect(page.getByRole("heading", { name: "Your recommended starting point" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Start first lesson" })).toHaveAttribute("href", "/learn/first-steps/hello-world");
-  await expect(page.getByText(zero.outcomes[0])).toBeVisible();
+  await page.getByText("What you'll learn").first().click();
+  await expect(page.getByText(zero.outcomes[0]).first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: "test-results/catalogue-375.png", fullPage: true });
 });

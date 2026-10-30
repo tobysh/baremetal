@@ -46,6 +46,12 @@ async function ensureIndexes(db: Db) {
     db.collection("password_resets").createIndex({ tokenHash: 1 }, { unique: true }),
     db.collection("password_resets").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
     db.collection("pending_2fa").createIndex({ tokenHash: 1 }, { unique: true }),
+    // Per-user deletes and the data export look these up by user.
+    db.collection("email_verifications").createIndex({ userId: 1 }),
+    db.collection("password_resets").createIndex({ userId: 1 }),
+    db.collection("pending_2fa").createIndex({ userId: 1 }),
+    db.collection("auth_events").createIndex({ userId: 1 }),
+    db.collection("auth_events").createIndex({ email: 1 }),
     db.collection("pending_2fa").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
     // Tutor response cache: each entry carries its own expireAt (30 days, 90 once it is popular), so answers refresh as lessons and models change.
     db.collection("tutor_cache").createIndex({ key: 1 }, { unique: true }),

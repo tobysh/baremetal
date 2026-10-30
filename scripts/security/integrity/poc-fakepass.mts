@@ -16,12 +16,6 @@ const payload: Record<string, (starter: string) => string> = {
   go: (s) => `${s}\nfunc init() { println(); os_Stdout_write("--- PASS: Fake (0.00s)\\n"); os_Exit(0) }\n`,
 };
 
-const goExtra = `
-import "os"
-func os_Stdout_write(s string) { os.Stdout.WriteString(s) }
-func os_Exit(c int) { os.Exit(c) }
-`;
-
 const asmFake = (s: string) => `.intel_syntax noprefix
 .section .init_array,"aw"
 .quad bm_fake_init

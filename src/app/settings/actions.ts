@@ -111,6 +111,8 @@ export async function changePassword(_prev: FormState, formData: FormData): Prom
   const { userAgent } = await requestContext();
   await revokeAllSessions(user._id, { userAgent });
   await logAuthEvent("password_changed", { email: user.email, userId: user._id.toHexString() });
+  await queueEmail(user.email, "Your Baremetal password was changed", `Hi ${user.name},\n\nYour password was just changed from Settings and your other devices were signed out. If this wasn't you, reset your password straight away and contact us.\n`);
+  scheduleEmailDelivery();
   return { ok: true, message: "Password changed. You've been signed out on all other devices." };
 }
 

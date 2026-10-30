@@ -1,0 +1,16 @@
+{
+  "title": "Security Investigation Labs",
+  "summary": "Analyze synthetic captures, permissions, toy web targets, scan logs and directory graphs with Go.",
+  "description": "Three phases: networking and Linux evidence; in-process web application attacks and browser-policy quizzes; infrastructure reconnaissance, privilege escalation and directory graph analysis. All inputs are fictional. Data is passed to Go functions by hidden tests; no live server or network is needed. A companion C stack-frame lab lives in Breaking and Fixing C.",
+  "level": "Intermediate",
+  "language": "go",
+  "path": "security",
+  "order": 9,
+  "prerequisite": "go-practice",
+  "outcomes": [
+    "Extract evidence from varied packet captures and compute IPv4 networks and routes.",
+    "Audit archived Linux permissions and correlate root execution with writable paths.",
+    "Demonstrate injection and weak-secret forgery against toy application functions.",
+    "Correlate scan evidence and find directed privilege paths in a fictional directory graph."
+  ]
+}

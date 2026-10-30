@@ -5,6 +5,7 @@
 // Env (all optional; a ceiling of 0 disables that check):
 //   TUTOR_BUDGET_USER_DAY_USD    per-user daily ceiling   (default 0.25)
 //   TUTOR_BUDGET_GLOBAL_DAY_USD  site-wide daily ceiling  (default 20)
+//   TUTOR_MODEL (src/lib/tutor.ts) selects the Claude model; the prices below are for the default, claude-haiku-5-5, so update them with it.
 //   TUTOR_PRICE_IN_PER_MTOK / TUTOR_PRICE_OUT_PER_MTOK   USD per million tokens (default 1 / 5)
 //   TUTOR_PRICE_CACHE_READ_MULT / TUTOR_PRICE_CACHE_WRITE_MULT  multiples of the input price (default 0.1 / 1.25)
 

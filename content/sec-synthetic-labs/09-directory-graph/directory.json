@@ -1,0 +1,51 @@
+{
+  "Nodes": [
+    {
+      "ID": "guest",
+      "Type": "User",
+      "Label": "Guest"
+    },
+    {
+      "ID": "helpdesk",
+      "Type": "Group",
+      "Label": "Helpdesk"
+    },
+    {
+      "ID": "workstation",
+      "Type": "Computer",
+      "Label": "WS-01"
+    },
+    {
+      "ID": "admin",
+      "Type": "User",
+      "Label": "Admin"
+    },
+    {
+      "ID": "da",
+      "Type": "Group",
+      "Label": "Domain Admins"
+    }
+  ],
+  "Edges": [
+    {
+      "From": "guest",
+      "To": "helpdesk",
+      "Kind": "MemberOf"
+    },
+    {
+      "From": "helpdesk",
+      "To": "workstation",
+      "Kind": "AdminTo"
+    },
+    {
+      "From": "workstation",
+      "To": "admin",
+      "Kind": "HasSession"
+    },
+    {
+      "From": "admin",
+      "To": "da",
+      "Kind": "MemberOf"
+    }
+  ]
+}

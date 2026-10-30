@@ -390,6 +390,7 @@
   "sec-c-bugs/review-safe-buffers",
   "sec-c-bugs/signed-unsigned",
   "sec-c-bugs/size-overflow",
+  "sec-c-bugs/stack-control",
   "sec-c-bugs/tlv-parser",
   "sec-c-bugs/truncated-output",
   "sec-c-bugs/unbounded-copy",
@@ -458,5 +459,14 @@
   "sec-packets/review-layered-analysis",
   "sec-packets/scan-detection",
   "sec-packets/tcp",
-  "sec-packets/udp"
+  "sec-packets/udp",
+  "sec-synthetic-labs/browser-policy-quiz",
+  "sec-synthetic-labs/capture-evidence",
+  "sec-synthetic-labs/directory-graph",
+  "sec-synthetic-labs/linux-permissions",
+  "sec-synthetic-labs/privilege-paths",
+  "sec-synthetic-labs/query-payload",
+  "sec-synthetic-labs/scan-correlation",
+  "sec-synthetic-labs/subnets-and-routes",
+  "sec-synthetic-labs/weak-cookie"
 ]

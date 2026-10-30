@@ -22,7 +22,7 @@ import { fieldErrors, formValues, type FormState } from "@/lib/forms";
 import { usernameProblem } from "@/lib/gamification";
 import { EXPERIENCE_LEVELS, TERMS_VERSION, type UserDoc } from "@/lib/models";
 import { checkPassword } from "@/lib/password";
-import { authRateLimit, envLimit, clearLoginFailures, finishLoginFailure, finishOtpFailure, formatWait, logAuthEvent, loginGuard, otpGuard, refundLoginAttempt, refundOtpAttempt, reserveLoginAttempt, reserveOtpAttempt, requestContext } from "@/lib/security";
+import { accountCaptchaRequired, authRateLimit, envLimit, recordAccountFailure, clearLoginFailures, finishLoginFailure, finishOtpFailure, formatWait, logAuthEvent, loginGuard, otpGuard, refundLoginAttempt, refundOtpAttempt, reserveLoginAttempt, reserveOtpAttempt, requestContext } from "@/lib/security";
 import { hashBackupCode, legacyBackupCodeHash, verifyTotp } from "@/lib/totp";
 import { absoluteUrl } from "@/lib/site";
 
@@ -128,7 +128,8 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
       captchaRequired: true,
     };
   }
-  if (guard.captchaRequired && !(await verifyCaptcha(formData.get("captcha") as string | null))) {
+  const accountCaptcha = await accountCaptchaRequired(addr);
+  if ((guard.captchaRequired || accountCaptcha) && !(await verifyCaptcha(formData.get("captcha") as string | null))) {
     await logAuthEvent("captcha_failed", { email: addr, reason: "login" });
     return { message: "Please complete the security check, then sign in again.", values, captchaRequired: true };
   }
@@ -140,9 +141,10 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   const valid = await verifyPassword(password, user?.passwordHash ?? (await getDummyHash()));
   if (!user || !valid) {
     await finishLoginFailure(addr, ip);
+    await recordAccountFailure(addr);
     await logAuthEvent("login_failed", { email: addr, reason: user ? "bad_password" : "unknown_email" });
     const after = await loginGuard(addr, ip);
-    return { message: "Incorrect email or password.", values, captchaRequired: after.captchaRequired };
+    return { message: "Incorrect email or password.", values, captchaRequired: after.captchaRequired || (await accountCaptchaRequired(addr)) };
   }
 
   await refundLoginAttempt(addr, ip);

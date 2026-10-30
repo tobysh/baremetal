@@ -33,7 +33,7 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   poweredByHeader: false,
   // Dev only: lets a phone on the LAN load /_next/* dev resources (HMR); otherwise the page never hydrates.
-  allowedDevOrigins: ["192.168.5.150"],
+  allowedDevOrigins: (process.env.DEV_ORIGINS ?? "192.168.5.150").split(",").map((o) => o.trim()).filter(Boolean),
   // Don't publish source maps for browser bundles in production.
   productionBrowserSourceMaps: false,
   // Lesson content, legal text and the password list are read from disk at runtime.

@@ -1,0 +1,21 @@
+{
+  "User": "guest",
+  "Groups": [
+    "ops"
+  ],
+  "Files": [
+    {
+      "Path": "/opt/backup.sh",
+      "Mode": 504,
+      "Owner": "root",
+      "Group": "ops"
+    }
+  ],
+  "Cron": [
+    {
+      "RunAs": "root",
+      "Path": "/opt/backup.sh"
+    }
+  ],
+  "Sudo": []
+}

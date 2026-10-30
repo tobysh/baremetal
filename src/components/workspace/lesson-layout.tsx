@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import styles from "./lesson-layout.module.css";
 
 const preferenceKey = "bm:workspace:reading-width";
@@ -22,10 +22,26 @@ export function LessonLayout({ reading, workspace }: { reading: ReactNode; works
   const [view, setView] = useState<"lesson" | "code">("lesson");
   const [focused, setFocused] = useState(false);
   const readingWidth = width ?? savedWidth;
+  const panes = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const clamp = (value: number) => Math.max(32, Math.min(60, Math.round(value)));
 
   function resize(value: number) {
     setWidth(value);
     try { localStorage.setItem(preferenceKey, String(value)); } catch { /* Layout still works without storage. */ }
+  }
+
+  function drag(event: PointerEvent<HTMLDivElement>) {
+    const rect = panes.current?.getBoundingClientRect();
+    if (!dragging || !rect?.width) return;
+    resize(clamp(((event.clientX - rect.left) / rect.width) * 100));
+  }
+  function keys(event: KeyboardEvent<HTMLDivElement>) {
+    const step = event.shiftKey ? 5 : 2;
+    const next = event.key === "ArrowLeft" ? readingWidth - step : event.key === "ArrowRight" ? readingWidth + step : event.key === "Home" ? 32 : event.key === "End" ? 60 : null;
+    if (next === null) return;
+    event.preventDefault();
+    resize(clamp(next));
   }
 
   return (
@@ -55,8 +71,14 @@ export function LessonLayout({ reading, workspace }: { reading: ReactNode; works
           </button>
         </div>
       </div>
-      <div className={styles.panes}>
+      <div className={styles.panes} ref={panes}>
         <div id="view-panel-lesson" role="tabpanel" tabIndex={0} aria-labelledby="view-lesson" className={styles.reading}>{reading}</div>
+        <div
+          role="separator" aria-orientation="vertical" aria-label="Resize the reading pane" aria-valuemin={32} aria-valuemax={60} aria-valuenow={readingWidth} aria-valuetext={`${readingWidth} percent`}
+          tabIndex={0} className={styles.divider} data-dragging={dragging}
+          onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDragging(true); }}
+          onPointerMove={drag} onPointerUp={() => setDragging(false)} onPointerCancel={() => setDragging(false)} onKeyDown={keys}
+        />
         <div id="view-panel-code" role="tabpanel" tabIndex={0} aria-labelledby="view-code" className={styles.workspace}>{workspace}</div>
       </div>
     </div>

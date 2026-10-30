@@ -2,7 +2,7 @@ import "server-only";
 import { headers } from "next/headers";
 import { getDb } from "./db";
 import { hmac } from "./crypto";
-import { clientIp, ipLimit, rateLimit } from "./rate-limit";
+import { clientIp, ipLimit, rateLimit, rateLimitHit } from "./rate-limit";
 
 export type AuthEventType =
   | "login_failed"
@@ -49,6 +49,18 @@ async function guardKey(key: string): Promise<LoginGuard> {
   const doc = await (await getDb()).collection<FailureDoc>("login_failures").findOne({ key });
   const until = doc?.lockedUntil?.getTime() ?? 0;
   return { locked: until > Date.now(), retryAfterSeconds: Math.max(0, Math.ceil((until - Date.now()) / 1000)), captchaRequired: (doc?.count ?? 0) >= CAPTCHA_AFTER };
+}
+// Guesses spread over many addresses never trip a pair bucket, so each account also counts its failures
+// from any IP per hour. This only ever asks for the CAPTCHA; it never locks, so it can't be used to lock the owner out.
+const ACCOUNT_CAPTCHA_AFTER = 10;
+const accountFailureKey = (email: string) => `acct-fail:${hmac("login-acct", email.toLowerCase())}`;
+export const accountFailureDocKey = (email: string, at = Date.now()) => `${accountFailureKey(email)}:${Math.floor(at / 3_600_000)}`;
+export async function recordAccountFailure(email: string) {
+  await rateLimitHit(accountFailureKey(email), ACCOUNT_CAPTCHA_AFTER, 3600);
+}
+export async function accountCaptchaRequired(email: string): Promise<boolean> {
+  const doc = await (await getDb()).collection<{ key: string; count: number }>("rate_limits").findOne({ key: accountFailureDocKey(email) });
+  return (doc?.count ?? 0) >= ACCOUNT_CAPTCHA_AFTER;
 }
 export const loginGuard = (email: string, ip: string) => guardKey(pairKey(email, ip));
 export const otpGuard = (userId: string) => guardKey(otpKey(userId));

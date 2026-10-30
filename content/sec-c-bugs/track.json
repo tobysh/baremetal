@@ -1,13 +1,14 @@
 {
   "title": "Breaking and Fixing C",
   "summary": "Repair defensive C code: bounds checks, allocation overflow, signed lengths, format strings and ownership mistakes.",
-  "description": "Most serious security holes in C programs come from a handful of memory mistakes. In this course every lesson shows a short, deliberately broken function, explains what goes wrong in memory and how an attacker would take advantage of it in concept, and asks you to repair it. Hidden tests call your fix with hostile inputs and watch guard bytes around the buffers, so an overflow is caught even though nothing crashes. All code is toy code written to teach defence.",
+  "description": "Most serious security holes in C programs come from a handful of memory mistakes. In this course every lesson shows a short, deliberately broken function, explains what goes wrong in memory and how an attacker would take advantage of it in concept, and asks you to repair it. Hidden tests call your fix with hostile inputs and watch guard bytes around the buffers, so an overflow is caught even though nothing crashes. All code is toy code written to teach defence. Finish with a deterministic stack-frame overwrite lab: craft a binary payload that changes a modeled return target, then repair its copy boundary.",
   "level": "Intermediate",
   "language": "c",
   "path": "security",
   "order": 1,
   "prerequisite": "c-memory",
   "outcomes": [
-    "Find and repair bounds, allocation and ownership bugs in synthetic C examples."
+    "Find and repair bounds, allocation and ownership bugs in synthetic C examples.",
+    "Construct a layout-aware payload in a deterministic stack model and repair the vulnerable copy."
   ]
 }

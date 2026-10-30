@@ -10,7 +10,7 @@ import { recommendLearning } from "@/lib/learning";
 import { groupByPath } from "@/lib/curriculum/paths";
 import { getProgressMap } from "@/lib/progress";
 import { SITE, absoluteUrl } from "@/lib/site";
-import { LANGUAGE_LABEL } from "@/lib/curriculum/types";
+import { LANGUAGE_LABEL, type Track } from "@/lib/curriculum/types";
 
 export const metadata: Metadata = {
   title: "Courses: C, Rust, Go and assembly from beginner to kernel",
@@ -18,6 +18,14 @@ export const metadata: Metadata = {
     "Hands-on courses in C, Rust, Go and x86-64 assembly, from your first program to pointers, Rust ownership, an HTTP server and a kernel. Every lesson has an exercise.",
   alternates: { canonical: "/learn" },
 };
+
+const LANG_FILTERS = [
+  { id: "c", label: "C" }, { id: "rust", label: "Rust" }, { id: "go", label: "Go" },
+  { id: "asm", label: "Assembly" }, { id: "kernel", label: "Kernel" }, { id: "security", label: "Security" },
+] as const;
+const LEVEL_FILTERS = ["Beginner", "Intermediate", "Advanced"] as const;
+
+const matchesLang = (t: Track, lang: string) => (lang === "security" ? t.path === "security" : t.path !== "security" && t.language === lang);
 
 export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
   const tracks = getTracks();
@@ -44,6 +52,7 @@ export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
         Pick a path. Courses are in order within each one. New to programming? Start with <Link className="text-accent underline underline-offset-2" href="/learn/first-steps">Programming from Zero</Link>, then continue into C. You can choose another path at any time.
       </p>
       <Suspense fallback={null}><RecommendedLearning /></Suspense>
+      <Suspense fallback={<CourseFilterBar lang={null} level={null} />}><CourseFilters searchParams={searchParams} tracks={tracks} /></Suspense>
       <nav aria-label="Paths" className="mt-8 flex flex-wrap gap-2 border-b border-border pb-6 text-sm">
         {groups.map((g) => (
           <a key={g.id} href={`#path-${g.id}`} className="inline-flex min-h-11 items-center rounded-lg bg-surface px-4 py-2 text-muted hover:bg-surface-2 hover:text-text">
@@ -59,7 +68,7 @@ export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
           <p className="mt-1 text-muted">{g.blurb}</p>
           <ol className="mt-5 grid gap-5">
             {g.tracks.map((t, i) => (
-              <Card as="li" key={t.slug} className="grid gap-6 p-5 sm:p-6 md:grid-cols-[minmax(0,1fr)_17rem] md:gap-10">
+              <Card as="li" key={t.slug} data-track={t.slug} className="grid gap-6 p-5 sm:p-6 md:grid-cols-[minmax(0,1fr)_17rem] md:gap-10">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     {g.tracks.length > 1 && (
@@ -76,7 +85,12 @@ export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
                     </Link>
                   </h3>
                   <p className="mt-2 text-muted">{t.summary}</p>
-                  <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-text-2">{t.outcomes.map((outcome) => <li key={outcome}>{outcome}</li>)}</ul>
+                  {/* On phones the outcome list is folded away so the catalogue stays short. */}
+                  <details className="mt-3 md:hidden">
+                    <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-accent">What you&apos;ll learn</summary>
+                    <ul className="list-disc space-y-1 pl-5 text-sm text-text-2">{t.outcomes.map((outcome) => <li key={outcome}>{outcome}</li>)}</ul>
+                  </details>
+                  <ul className="mt-3 hidden list-disc space-y-1 pl-5 text-sm text-text-2 md:block">{t.outcomes.map((outcome) => <li key={outcome}>{outcome}</li>)}</ul>
                   {t.prerequisite && (
                     <p className="mt-3 text-sm text-muted">
                       Recommended before this: <Link href={`/learn/${t.prerequisite}`} className="text-accent underline underline-offset-2">{tracks.find((x) => x.slug === t.prerequisite)?.title}</Link>
@@ -97,6 +111,54 @@ export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
         </section>
       ))}
     </Container>
+  );
+}
+
+/**
+ * Plain-link filters (`?lang=rust&level=Beginner`). The catalogue itself is always rendered in full so the page stays
+ * cacheable and indexable; this small request-time part only emits CSS that hides what doesn't match, which works
+ * without JavaScript.
+ */
+async function CourseFilters({ searchParams, tracks }: { searchParams: PageProps<"/learn">["searchParams"]; tracks: Track[] }) {
+  const params = await searchParams;
+  const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? null;
+  const lang = LANG_FILTERS.find((l) => l.id === one(params.lang))?.id ?? null;
+  const level = LEVEL_FILTERS.find((l) => l === one(params.level)) ?? null;
+  const shown = tracks.filter((t) => (!lang || matchesLang(t, lang)) && (!level || t.level === level));
+  const css = !lang && !level ? "" : [
+    ...tracks.filter((t) => !shown.includes(t)).map((t) => `[data-track="${t.slug}"]{display:none}`),
+    ...groupByPath(tracks).filter((g) => !g.tracks.some((t) => shown.includes(t))).map((g) => `#path-${g.id}{display:none}`),
+  ].join("");
+  return (
+    <>
+      {css && <style>{css}</style>}
+      <CourseFilterBar lang={lang} level={level} empty={shown.length === 0} />
+    </>
+  );
+}
+
+function CourseFilterBar({ lang, level, empty = false }: { lang: string | null; level: string | null; empty?: boolean }) {
+  const href = (nextLang: string | null, nextLevel: string | null) => {
+    const q = new URLSearchParams();
+    if (nextLang) q.set("lang", nextLang);
+    if (nextLevel) q.set("level", nextLevel);
+    return q.size ? `/learn?${q}` : "/learn";
+  };
+  const chip = (active: boolean) => `inline-flex min-h-11 items-center rounded-lg border px-3 py-2 text-sm ${active ? "border-accent bg-accent-soft text-text" : "border-border text-muted hover:bg-surface-2 hover:text-text"}`;
+  return (
+    <section aria-label="Filter courses" className="mt-8 space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-muted">Language</span>
+        <Link href={href(null, level)} aria-current={!lang ? "true" : undefined} className={chip(!lang)} scroll={false}>All</Link>
+        {LANG_FILTERS.map((l) => <Link key={l.id} href={href(l.id, level)} aria-current={lang === l.id ? "true" : undefined} className={chip(lang === l.id)} scroll={false}>{l.label}</Link>)}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-muted">Level</span>
+        <Link href={href(lang, null)} aria-current={!level ? "true" : undefined} className={chip(!level)} scroll={false}>All</Link>
+        {LEVEL_FILTERS.map((l) => <Link key={l} href={href(lang, l)} aria-current={level === l ? "true" : undefined} className={chip(level === l)} scroll={false}>{l}</Link>)}
+      </div>
+      {empty && <p role="status" className="text-sm text-muted">No courses match both filters. <Link href="/learn" className="text-accent underline underline-offset-2">Clear them</Link>.</p>}
+    </section>
   );
 }
 

@@ -28,6 +28,7 @@ export async function queueEmail(to: string, subject: string, text: string) {
 export function scheduleEmailDelivery() {
   after(async () => { await drainEmailQueue().catch((e) => console.error("[email] queue worker failed", e)); });
 }
+const MAX_EMAIL_ATTEMPTS = 10;
 export async function drainEmailQueue() {
   const col = (await getDb()).collection("email_queue");
   for (let i = 0; i < 25; i++) {
@@ -42,6 +43,17 @@ export async function drainEmailQueue() {
       const data = JSON.parse(decrypt(job.payload)) as { to: string; subject: string; text: string };
       await sendEmail(data.to, data.subject, data.text);
       await col.deleteOne({ _id: job._id });
-    } catch (e) { console.error("[email] queued delivery failed", e); }
+    } catch (e) {
+      // Exponential backoff (1, 2, 4 ... up to 60 min), then give up so a dead address or provider can't be retried for days.
+      const attempts = job.attempts ?? 1;
+      if (attempts >= MAX_EMAIL_ATTEMPTS) {
+        await col.deleteOne({ _id: job._id });
+        console.error(`[email] dropped queued email ${job._id} after ${attempts} failed attempts`, e);
+      } else {
+        const minutes = Math.min(60, 2 ** (attempts - 1));
+        await col.updateOne({ _id: job._id }, { $set: { nextAttempt: new Date(Date.now() + minutes * 60_000) } });
+        console.error(`[email] queued delivery failed (attempt ${attempts}), retrying in ${minutes} min`, e);
+      }
+    }
   }
 }

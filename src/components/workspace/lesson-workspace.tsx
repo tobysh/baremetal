@@ -60,6 +60,13 @@ export function LessonWorkspace(props: {
           {showReview && tab("review", "Review", true, review.due ? "due" : undefined)}
         </div>
       )}
+      {variant !== "challenge" && (
+        // The task lives in the other view on small screens; keep it one tap away while coding.
+        <details className="mb-2 panel text-sm lg:hidden">
+          <summary className="min-h-11 cursor-pointer px-4 py-3 font-medium">Task</summary>
+          <div className="px-4 pb-4"><MiniMarkdown text={lesson.task} /></div>
+        </details>
+      )}
       {variant === "challenge" && challenge && (
         <section aria-label="Challenge" className="mb-2 panel p-4 text-sm">
           <p className="text-xs font-semibold text-accent">Challenge · optional · {challenge.passed ? "passed" : `worth ${challenge.xp} XP`}</p>

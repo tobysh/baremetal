@@ -12,7 +12,7 @@ import { createHash, createHmac, randomBytes } from "node:crypto";
 import { MongoClient, type ObjectId } from "mongodb";
 import { encrypt, hmac, randomToken, sha256 } from "../src/lib/crypto";
 import { hashBackupCode, legacyBackupCodeHash, newBackupCodes } from "../src/lib/totp";
-import { clearLoginFailures, finishLoginFailure, refundLoginAttempt, reserveLoginAttempt } from "../src/lib/security";
+import { accountFailureDocKey, clearLoginFailures, finishLoginFailure, refundLoginAttempt, reserveLoginAttempt } from "../src/lib/security";
 
 const BASE = (process.argv[2] ?? "http://localhost:3100").replace(/\/$/, "");
 // Production servers accept only the configured site origin; set E2E_ORIGIN to it when testing a production build.
@@ -345,6 +345,21 @@ try {
     };
     const [known, unknown] = [await timing(email), await timing(`nobody-${run}@example.test`)];
     check("similar response time for known and unknown emails", Math.abs(known - unknown) < 250, `${known.toFixed(0)}ms vs ${unknown.toFixed(0)}ms`);
+  }
+
+  // ---------- Distributed guessing against one account ----------
+  console.log("\nDistributed guessing");
+  {
+    const target = `e2e-${run}-distributed@example.test`;
+    let last;
+    for (let i = 1; i <= 10; i++) last = await new Browser(ip(50 + i)).submit("/login", { email: target, password: `guess-${i}` });
+    check("failures from ten different addresses are plain failures", /Incorrect email or password/.test(text(last!.html)));
+    const fresh = new Browser(ip(70));
+    const r = await fresh.submit("/login", { email: target, password: "guess-11" });
+    check("…then a fresh address must pass the CAPTCHA for that account", /complete the security check/i.test(text(r.html)));
+    const withCaptcha = await fresh.submit("/login", { email: target, password: "guess-12", captcha: await solveCaptcha(fresh) });
+    check("…and with the CAPTCHA it is a normal failure, never a lockout", /Incorrect email or password/.test(text(withCaptcha.html)));
+    await db.collection("rate_limits").deleteMany({ key: { $regex: `^${accountFailureDocKey(target).split(":").slice(0, 2).join(":")}` } });
   }
 
   // ---------- IP rate limiting ----------

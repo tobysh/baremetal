@@ -451,7 +451,7 @@ function kernelTestSource(student: string, harness: string, nonce: string) {
 }
 
 async function compileKernel(dir: string, source: string, test: boolean) {
-  for (const f of ["boot.S", "runtime.c", "link.ld"]) await writeFile(path.join(dir, f), await readFile(path.join(KERNEL_SUPPORT, f)));
+  for (const f of ["boot.S", "runtime.c", "link.ld"]) await writeFile(path.join(/*turbopackIgnore: true*/ dir, f), await readFile(path.join(/*turbopackIgnore: true*/ KERNEL_SUPPORT, f)));
   await writeFile(path.join(dir, "kernel.c"), source);
   const rename = test ? "-Dkmain=__bm_student_kmain " : "";
   const script = [
@@ -537,7 +537,7 @@ async function compileAsm(dir: string, source: string, harness: string | null) {
   });
   if (!assembled.object) return assembled.r;
   await writeFile(path.join(dir, "starter.o"), assembled.object);
-  for (const f of ["tests.c", "bm_init.c", "bm_init.o", "tests.o"]) await rm(path.join(dir, f), { force: true });
+  for (const f of ["tests.c", "bm_init.c", "bm_init.o", "tests.o"]) await rm(path.join(/*turbopackIgnore: true*/ dir, f), { force: true });
   const linked = await exec(dir, ["gcc", "-no-pie", "starter.o", "harness.o", "-o", "prog"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "prog" });
   return { ...linked, stderr: built.stderr + assembled.r.stderr + linked.stderr, stdout: built.stdout + assembled.r.stdout + linked.stdout };
 }

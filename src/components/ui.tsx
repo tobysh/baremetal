@@ -30,8 +30,8 @@ export function Skeleton({ className = "" }: { className?: string }) {
   return <div aria-hidden="true" className={`skeleton ${className}`} />;
 }
 
-export function Card({ children, className = "", as: Tag = "div" }: { children: ReactNode; className?: string; as?: "div" | "section" | "article" | "li" }) {
-  return <Tag className={`panel ${className}`}>{children}</Tag>;
+export function Card({ children, className = "", as: Tag = "div", ...data }: { children: ReactNode; className?: string; as?: "div" | "section" | "article" | "li"; [key: `data-${string}`]: string | undefined }) {
+  return <Tag className={`panel ${className}`} {...data}>{children}</Tag>;
 }
 
 export function Badge({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "ok" | "accent" }) {
