@@ -80,6 +80,7 @@ Open [http://localhost:3000](http://localhost:3000). To enable account email ver
 | `npm run test:e2e -- http://localhost:3100` | Run the auth and security checks against a running server |
 
 The full content verifier needs the relevant compiler toolchains, Bubblewrap, and QEMU. See [CI](.github/workflows/ci.yml) for the automated checks and toolchain setup.
+- `npm run load:run-mix -- --users 5 --seconds 60` load-tests `/api/run` (Test mode, reference solutions, weighted language mix, optional `--shared-ip` to simulate a classroom). It refuses non-localhost URLs unless you pass `--i-own-this-host`. The target needs a runner service and, for anonymous traffic, a raised `RUN_LIMIT_ANON_IP`; results are in `docs/capacity.md`.
 
 ## For contributors
 

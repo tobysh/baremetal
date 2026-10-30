@@ -15,6 +15,8 @@ Your fictional lab has an ordinary control file and a harmless marker outside it
 
 First fetch the normal control and require its exact expected body. Then try approved candidates in order. A candidate confirms traversal only when it returns status 200 and the **entire** marker. A generic error mentioning the marker, or a page with the same length, is insufficient. Stop at the first proof. This keeps evidence minimal and makes the finding reproducible.
 
+Suppose the control `readme.txt` returns `lab ready` and the external marker is `LAB-MARKER-42`. A response `error: LAB-MARKER-42` does not prove access. A response body exactly `LAB-MARKER-42` with status 200 does. Store the candidate index so the original spelling, such as `%2e%2e/lab-marker`, can appear in your evidence.
+
 A negative result covers only this candidate list. It does not establish that every encoding, separator, operating system or symlink is safe. The exercise deliberately models strings rather than a complete filesystem.
 
 For remediation, prefer mapping opaque download IDs to approved files. Where paths are necessary, enforce containment during file resolution and account for symlinks and races; a string prefix check or a blacklist of `../` is insufficient. Retest the normal download and the successful marker probe after the fix.

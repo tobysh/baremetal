@@ -255,3 +255,13 @@ execution unavailable while repairing or rolling back both releases together;
 do not restore in-process production execution. Monitor structured runner logs
 for `runner_busy`/`runner_failure`, request duration, active/queued jobs and
 cancellations. Logs intentionally omit code, secrets and admission identities.
+
+
+## Scaling beyond one runner host (design note, not implemented)
+
+The runner is one process on one host. Its admission counts (`inFlight` per account/IP) and its queues are in-memory and local to that process, so two runner processes would each enforce their own limits and queue. Options when one host is not enough:
+
+1. **Several runner sockets or hosts with client-side selection.** The web app picks a runner per request (round-robin or least-loaded using the `/health` pool counts) and skips unhealthy ones. Simple and stateless, but admission becomes per-runner: a user could hold their per-account limit on each runner, so either hash the user key to a fixed runner (sticky) or accept the multiple. Needs a TCP/TLS or mTLS transport instead of the Unix socket, with the same request validation.
+2. **A shared job queue in MongoDB that runners pull from.** The web app inserts a job (with the hashed admission keys), runners claim jobs atomically (`findOneAndUpdate`) while they have free slots, and the web app waits for the result (change stream or polling). Admission counts and queue limits then live in one place, and runners can be added or drained freely. Costs: more latency per run, job and result documents containing learner code (retention and privacy-notice updates), and cancellation has to be a flag the runner polls.
+
+Either option keeps the per-job sandbox and per-job cgroup as they are; only admission and routing change.

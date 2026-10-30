@@ -15,6 +15,8 @@ In this lab you assess an in-memory account service through update and read call
 
 Check a permitted `display_name` update first. Then submit each candidate and compare protected fields against the known baseline. A 403 response can still hide a bug if the service mutates state before rejecting the request. Conversely, a 200 response that ignores an unknown field is not proof of mass assignment. Inspect state after every update regardless of its response code.
 
+For example, the fixture begins with role 1 and credit 50. Updating `role` to `admin` returns 403, but the fresh read reports role 2. That is a confirmed protected-state change despite the error response. If an update returns 200 while role and credit remain at their baseline, it supplies no such evidence. This simplified model compares integer state; it does not assume that the submitted text is the stored representation.
+
 Return evidence for the first protected-state change and stop. Report which field caused the change, the baseline, and the observed value; use synthetic data in the report. In a real application, the proof should use a disposable account and avoid granting lasting privileges or affecting other users.
 
 The fix is an explicit server-side allowlist of editable fields plus authorization for privileged transitions. Retest that display-name edits work while protected fields remain unchanged. These probes test the supplied fields only; they are not a complete review of nested objects or every update endpoint.

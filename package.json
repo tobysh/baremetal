@@ -22,6 +22,7 @@
     "check:set-values": "tsx scripts/checks/set-values.mts",
     "check:stdout-order": "tsx scripts/checks/stdout-order.mts",
     "test:concurrent-go": "tsx scripts/runner/concurrent-go.mts",
+    "load:run-mix": "tsx scripts/load/run-mix.mts",
     "check:learning": "tsx scripts/checks/learning.mts",
     "test:regressions": "tsx scripts/checks/regressions.mts",
     "test:runner": "node --conditions=react-server --import tsx scripts/runner/transport-checks.mts",

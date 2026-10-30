@@ -15,6 +15,8 @@ In this lab you receive a list of approved probes. Each has an owner identity, a
 
 Run a positive control as the owner first. If it fails, record an inconclusive result and do not run the second request. Otherwise replay as the other identity. Confirm a bypass only when the replay returns a 2xx status **and** the protected effect. A denial is a pass for this check, not evidence that every route is secure.
 
+For example, an owner receives `{200, 1}` when reading fictional object 47. A second account receives `{200, 0}`: no bypass is confirmed, because no protected data was returned. If that account receives `{200, 1}`, record a bypass. If the owner receives `{404, 0}`, the control is inconclusive; do not interpret the second account's access.
+
 Keep the probes in their supplied order. The harness resets each simulated request so a write cannot contaminate the next control. Real assessments need equivalent disposable fixtures and explicit permission for state-changing tests.
 
 After a fix, replay the same pair: the owner should still succeed and the other account should be denied. The remediation is server-side authorization on every operation using the authenticated identity, including alternate write routes.
