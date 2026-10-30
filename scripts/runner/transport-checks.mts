@@ -86,11 +86,15 @@ try {
   let saturated = false;
   for (let i = 0; i < 100; i++) {
     const health = await raw(undefined, undefined, "/health");
-    saturated = health.body.active === 4 && health.body.queued === 24;
+    // A pool is saturated when it runs all of its slots and holds a full queue (compile slots by default).
+    type PoolStatus = { active: number; queued: number; slots: number };
+    const status = health.body as unknown as { compile: PoolStatus; run: PoolStatus };
+    const pool = status.compile.queued >= status.run.queued ? status.compile : status.run;
+    saturated = pool.active === pool.slots && pool.queued === 24;
     if (saturated) break;
     await delay(10);
   }
-  assert(saturated, "service must keep exactly four active jobs and at most 24 waiting");
+  assert(saturated, "service must keep exactly its slot count of active jobs per pool and at most 24 waiting");
   // Give admission rejections time to reach their clients before cancelling the accepted work.
   await delay(50);
   for (const controller of controllers) controller.abort();

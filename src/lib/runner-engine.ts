@@ -19,7 +19,17 @@ const COMPILE_TIMEOUT_MS = 20_000;
 // sandbox compiles what it imports (about 3 s wall, 25 s CPU across cores). Give it its own budget.
 const GO_COMPILE_TIMEOUT_MS = 60_000;
 const RUN_TIMEOUT_MS = 5_000;
-const MAX_CONCURRENT = 4;
+// Compiling is the memory-heavy step (about 2 GB of address space per job, more for Go), running is
+// light. Two pools, so a job holds a compile slot only while compiling. Defaults fit MemoryMax=6G:
+// 2 x 2 GB + 3 x 512 MB = 5.5 GB. See docs/deployment-hardening.md.
+const slotCount = (name: string, fallback: number) => {
+  const n = Number(process.env[name]);
+  return Number.isInteger(n) && n >= 1 && n <= 64 ? n : fallback;
+};
+const POOLS = {
+  compile: { active: 0, max: slotCount("RUNNER_COMPILE_SLOTS", 2), queue: [] as Waiter[] },
+  run: { active: 0, max: slotCount("RUNNER_RUN_SLOTS", 3), queue: [] as Waiter[] },
+};
 // CI may install Go outside /usr (for example, actions/setup-go's tool cache).
 // When set, mount that toolchain into the sandbox at /go.
 const GO_TOOLCHAIN_DIR = process.env.GO_TOOLCHAIN_DIR;
@@ -52,11 +62,12 @@ function nprocLimit(): number {
       } catch {}
     }
   } catch {}
-  cachedNproc = { at: Date.now(), limit: count + 48 };
+  // With per-job cgroups, pids.max is the real fork limit, so the shared rlimit only needs to be a loose backstop;
+  // otherwise concurrent compiles (rustc and go start many threads) would draw on one small budget.
+  cachedNproc = { at: Date.now(), limit: count + (process.env.RUNNER_CGROUP_ROOT ? 4096 : 48) };
   return cachedNproc.limit;
 }
 
-let active = 0;
 export { RunnerBusyError } from "./runner-protocol";
 import { RunnerBusyError } from "./runner-protocol";
 import type { RunResult, TestResult, TestCaseResult } from "./runner-types";
@@ -92,12 +103,18 @@ export async function withRunnerRequest<T>(keys: string[], signal: AbortSignal, 
 }
 
 type Waiter = { grant: () => void };
-const queue: Waiter[] = [];
-export const runnerStatus = () => ({ active, queued: queue.length });
-async function withSlot<T>(fn: () => Promise<T>): Promise<T> {
+type Pool = (typeof POOLS)[keyof typeof POOLS];
+export const runnerStatus = () => ({
+  active: POOLS.compile.active + POOLS.run.active,
+  queued: POOLS.compile.queue.length + POOLS.run.queue.length,
+  compile: { active: POOLS.compile.active, queued: POOLS.compile.queue.length, slots: POOLS.compile.max },
+  run: { active: POOLS.run.active, queued: POOLS.run.queue.length, slots: POOLS.run.max },
+});
+async function withSlot<T>(pool: Pool, fn: () => Promise<T>): Promise<T> {
+  const { queue } = pool;
   const signal = requestContext.getStore()?.signal;
   signal?.throwIfAborted();
-  if (active < MAX_CONCURRENT) active++;
+  if (pool.active < pool.max) pool.active++;
   else {
     if (queue.length >= MAX_QUEUED) throw new RunnerBusyError("The code runner is busy.");
     await new Promise<void>((resolve, reject) => {
@@ -123,7 +140,7 @@ async function withSlot<T>(fn: () => Promise<T>): Promise<T> {
   } finally {
     const next = queue.shift();
     if (next) next.grant(); // Transfer the occupied slot directly; new arrivals cannot steal it.
-    else active--;
+    else pool.active--;
   }
 }
 
@@ -218,6 +235,11 @@ function sandboxArgs(work: string, extraEnv: Record<string, string> = {}, opts: 
 }
 
 async function exec(work: string, cmd: string[], opts: { timeoutMs: number; stdin?: string; limits: string[]; env?: Record<string, string>; run?: boolean; tmpMb?: number; artifact?: string; goCache?: "overlay" | "seed" }): Promise<Exec> {
+  // Builds (artifact jobs) take a compile slot, program runs a run slot, each only while the child lives.
+  return withSlot(opts.artifact ? POOLS.compile : POOLS.run, () => execUnslotted(work, cmd, opts));
+}
+
+async function execUnslotted(work: string, cmd: string[], opts: { timeoutMs: number; stdin?: string; limits: string[]; env?: Record<string, string>; run?: boolean; tmpMb?: number; artifact?: string; goCache?: "overlay" | "seed" }): Promise<Exec> {
   const resources = await runnerResources(!!opts.artifact);
   try {
     return await new Promise<Exec>((resolve) => {
@@ -592,7 +614,7 @@ function undefinedBehaviour(stderr: string): string | null {
 
 /** Compile and run the learner's own program (their main). */
 export function runProgram(language: Language, code: string, stdin = ""): Promise<RunResult> {
-  return withSlot(() =>
+  return (
     withWorkdir(async (dir) => {
       const c = await compile(dir, language, code);
       const compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
@@ -632,7 +654,7 @@ export function runProgram(language: Language, code: string, stdin = ""): Promis
           ? "Output was cut off at 64 KB — your program printed a lot (maybe an infinite loop?)."
           : (signalMessage(r.signal, r.code) ?? undefinedBehaviour(r.stderr));
       return { ok: !error && r.code === 0, phase: "run", compileOutput, stdout: r.stdout, stderr: r.stderr, exitCode: r.code, error, durationMs: c.ms + r.ms };
-    }),
+    })
   );
 }
 
@@ -732,7 +754,7 @@ const normalizeOut = (s: string) => s.replace(/\r\n/g, "\n").replace(/[ \t]+$/gm
 
 /** Run an exercise's tests against learner code. */
 export function testExercise(exercise: Exercise, code: string): Promise<TestResult> {
-  return withSlot(() =>
+  return (
     withWorkdir(async (dir) => {
       if (exercise.mode === "stdout") return testStdout(dir, exercise, code);
       const tampering = harnessTampering(code, exercise.language);
@@ -746,7 +768,7 @@ export function testExercise(exercise: Exercise, code: string): Promise<TestResu
         return { ...result, allPassed: false, error: TESTS_INCOMPLETE };
       }
       return result;
-    }),
+    })
   );
 }
 

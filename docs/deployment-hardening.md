@@ -48,13 +48,26 @@ Set `GO_CACHE_SEED` in the runner service environment. It needs bubblewrap >= 0.
 
 Measured on a development machine (one Go lesson, Test): cold about 3.5 s, with the seed about 0.3 s (0.14 s on repeat). The cache is about 200 MB.
 
+## Runner slots and memory
+
+Builds and program runs use separate slot pools, and a job holds a compile slot only while its compiler runs: `RUNNER_COMPILE_SLOTS` (default 2) and `RUNNER_RUN_SLOTS` (default 3), each with its own queue of up to 24. Size them against the service's `MemoryMax`:
+
+    compile slots x 2 GB (address-space limit; tmpfs pages count against the job's cgroup)
+  + run slots x 512 MB
+  + headroom for the runner process itself
+  <= MemoryMax
+
+With the defaults, 2 x 2 + 3 x 0.5 = 5.5 GB under `MemoryMax=6G`. Raise compile slots only together with `MemoryMax`. `/health` reports both pools.
+
+`RLIMIT_NPROC` counts every process of the runner uid, so concurrent jobs share it. When `RUNNER_CGROUP_ROOT` is set, per-job `pids.max` is the real limit and the rlimit headroom is raised to 4096 as a backstop; without it the headroom stays at 48. `npm run test:concurrent-go` fires eight Go tests at once and fails on any resource error (busy is fine).
+
 ## Runner limits
 
 The sandbox implementation is in `src/lib/runner-engine.ts`; public web handlers
 use `runner-client.ts`. Production requires a separate runner service. Use the
 systemd templates and installation procedure below rather than spawning compiler
-children under the web service. The runner keeps four active jobs and up to 24
-waiting jobs, with two in-flight requests per account and IP key.
+children under the web service. The runner keeps two compile and three run slots with up to 24
+waiting jobs per pool (see "Runner slots and memory"), and limits in-flight requests per account and per IP.
 
 Compiler and execution cgroups have separate limits. The service-wide ceiling
 bounds their combined memory and processes. Verify both the per-job limits and
