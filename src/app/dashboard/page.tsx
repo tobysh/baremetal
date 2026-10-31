@@ -91,8 +91,9 @@ async function DashboardBody() {
     <div className="flex flex-col gap-6">
       {!user.timezone && <TimezoneSync />}
       <div className="flex flex-wrap items-stretch gap-6">
+        <div className="flex min-w-0 flex-[999_1_600px] flex-col gap-6">
         {nextUp ? (
-          <section aria-label="Resume course" className="panel flex min-w-0 flex-[999_1_600px] flex-col justify-between gap-10 p-6 sm:p-8">
+          <section aria-label="Resume course" className="panel flex min-w-0 flex-col justify-between gap-8 p-6 sm:p-8">
             <div className="flex flex-col">
               <p className="text-sm text-muted">
                 {nextUp.track.title} <span className="text-line-strong">/</span> Lesson {nextUp.track.lessons.indexOf(nextUp.lesson) + 1} of {nextUp.track.lessons.length} <span className="text-line-strong">/</span> {LANGUAGE_LABEL[nextUp.track.language]}, {nextUp.track.level}
@@ -111,7 +112,7 @@ async function DashboardBody() {
             </div>
           </section>
         ) : (
-          <section aria-label="All lessons passed" className="panel flex min-w-0 flex-[999_1_600px] flex-col justify-between gap-10 p-6 sm:p-8">
+          <section aria-label="All lessons passed" className="panel flex min-w-0 flex-col justify-between gap-8 p-6 sm:p-8">
             <div>
               <h1 className="display text-3xl font-bold leading-[1.1] sm:text-[34px]">Every lesson passed.</h1>
               <p className="mt-3 max-w-[560px] text-base leading-relaxed text-text-2">Revisit a course, try a different solution, or build something of your own.</p>
@@ -119,8 +120,18 @@ async function DashboardBody() {
             <div><ButtonLink href="/learn" size="lg">Review courses</ButtonLink></div>
           </section>
         )}
+      {(continueTarget || dueReviews.length > 0 || pick) && (
+        <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))]">
+          {continueTarget && <ContinueCard target={continueTarget} />}
+          <ReviewCard due={dueReviews} />
+          {pick && !(pick.kind === "review" && dueReviews.length > 0) && <PickCard pick={pick} />}
+        </div>
+      )}
 
-        <aside aria-label="Your progress" className="panel flex min-w-0 flex-[1_1_320px] flex-col p-6 sm:p-8">
+        </div>
+
+        <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-6">
+        <aside aria-label="Your progress" className="panel flex min-w-0 flex-1 flex-col gap-0 p-6 sm:p-8">
           <span className="text-sm font-semibold text-accent">Level {level.level}</span>
           <span className="display mt-1.5 text-[38px] font-bold leading-[1.05]">{level.title}</span>
           <span className="mt-2 text-sm text-muted">{titleBlurb(level.level)}</span>
@@ -142,16 +153,11 @@ async function DashboardBody() {
             </div>
           </dl>
         </aside>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {continueTarget && <ContinueCard target={continueTarget} />}
         <RhythmCard rhythm={ctx.rhythm} />
-        <ReviewCard due={dueReviews} />
-        {pick && <PickCard pick={pick} />}
+        </div>
       </div>
 
-      <CourseMap tracks={tracks} progress={progress} />
+      <CourseMap tracks={tracks} progress={progress} recommendedSlug={nextUp?.track.slug} />
 
       {alsoActive.length > 0 && (
         <CoursePanel id="also-active" title="In progress" count={alsoActive.length}>
@@ -181,15 +187,18 @@ async function DashboardBody() {
         </CoursePanel>
       )}
 
-      <CodexPanel unlocked={unlocked} />
+      <div className={passedCount === 0 ? "grid items-start gap-4 md:grid-cols-2" : "flex flex-col gap-6"}>
+      <CodexPanel unlocked={unlocked} collapsed={passedCount === 0} />
 
       <StatsPanel
+        collapsed={passedCount === 0}
         months={months}
         seals={{ passed: ctx.passed.size, unaided: [...ctx.passed.values()].filter((p) => p.unaided).length, challenge: ctx.challenges.size }}
         firstTry={[...ctx.passed.values()].filter((p) => p.attemptsAtPass === 1).length}
         hints={{ recent: avgHints(recentDocs), earlier: earlierDocs.length ? avgHints(earlierDocs) : null }}
         tracks={tracks.map((t) => ({ title: t.title, done: t.lessons.filter((l) => ctx.passed.has(l.exercise.id)).length, total: t.lessons.length }))}
       />
+      </div>
 
       {!user.username && <UsernameNotice userId={user.id} />}
     </div>

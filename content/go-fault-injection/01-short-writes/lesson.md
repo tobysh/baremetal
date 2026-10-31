@@ -1,6 +1,6 @@
 ---
 title: Short and Truncated Writes
-summary: A Write may accept fewer bytes than you offered and still report no error. Loop until everything is out, stop on real errors, and read back truncated data correctly.
+summary: A Write may accept fewer bytes than offered without an error. Loop until all are out, stop on real errors, and read truncated frames correctly.
 minutes: 30
 difficulty: medium
 tags: io, short-write, fault-injection

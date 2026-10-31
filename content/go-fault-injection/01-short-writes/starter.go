@@ -26,7 +26,7 @@ func WriteFrame(w io.Writer, payload []byte) error {
 // ReadFrame reads one frame written by WriteFrame.
 func ReadFrame(r io.Reader) ([]byte, error) {
 	buf := make([]byte, 65537)
-	n, err := r.Read(buf)
+	_, err := r.Read(buf)
 	if err != nil {
 		return nil, err
 	}

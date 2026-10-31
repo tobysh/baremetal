@@ -13,6 +13,5 @@
     "Replace per-object allocation with an arena and account for system allocations.",
     "Pick an algorithm by input shape and prove the gain with operation counters.",
     "Build two designs with equal results and defend a tradeoff with measured costs, stating what the model leaves out."
-  ],
-  "draft": true
+  ]
 }

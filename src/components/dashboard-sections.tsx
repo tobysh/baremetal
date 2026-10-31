@@ -7,6 +7,7 @@ import type { ProgressDoc } from "@/lib/models";
 import type { Rhythm } from "@/lib/rhythm";
 import { sealsFor } from "@/lib/rewards-context";
 import { Seal, SealLegend } from "./seals";
+import { MapControls } from "./map-controls";
 
 /** "2 of 3 this week" as a small ring plus the rhythm count. The rest-week detail lives in a tooltip only. */
 export function RhythmCard({ rhythm }: { rhythm: Rhythm }) {
@@ -30,11 +31,11 @@ export function RhythmCard({ rhythm }: { rhythm: Rhythm }) {
             <circle cx="38" cy="38" r={R} fill="none" stroke="var(--line)" strokeWidth="7" />
             <circle cx="38" cy="38" r={R} fill="none" stroke="var(--accent)" strokeWidth="7" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - frac)} />
           </svg>
-          <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold tabular-nums">{rhythm.thisWeek}/{rhythm.goal}</span>
+          <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold tabular-nums">{Math.min(rhythm.thisWeek, rhythm.goal)}/{rhythm.goal}</span>
         </div>
         <div className="min-w-0 text-sm">
           <p><span className="display text-2xl font-bold text-accent">{rhythm.current}</span> <span className="text-muted" title={rhythm.rest > 0 ? `${rhythm.rest} rest week${rhythm.rest === 1 ? "" : "s"} banked: one covers a missed week automatically.` : "A rest week is banked for every four weeks you meet your goal."}>{rhythm.current === 1 ? "week" : "weeks"} in a row</span></p>
-          <p className="mt-1 text-muted">{rhythm.thisWeek >= rhythm.goal ? "Goal met this week." : `${rhythm.goal - rhythm.thisWeek} more ${rhythm.goal - rhythm.thisWeek === 1 ? "lesson" : "lessons"} this week.`}</p>
+          <p className="mt-1 text-muted">{rhythm.thisWeek >= rhythm.goal ? `Goal met this week${rhythm.thisWeek > rhythm.goal ? ` (${rhythm.thisWeek} lessons)` : ""}.` : `${rhythm.goal - rhythm.thisWeek} more ${rhythm.goal - rhythm.thisWeek === 1 ? "lesson" : "lessons"} this week.`}</p>
           {rhythm.best > rhythm.current && <p className="text-xs text-muted">Best: {rhythm.best} weeks</p>}
         </div>
       </div>
@@ -91,11 +92,11 @@ export function PickCard({ pick }: { pick: DailyPick }) {
 }
 
 /** The Codex: every achievement, earned ones first. Locked ones show their condition so they can be aimed at. */
-export function CodexPanel({ unlocked }: { unlocked: Map<string, Date> }) {
+export function CodexPanel({ unlocked, collapsed = false }: { unlocked: Map<string, Date>; collapsed?: boolean }) {
   const earned = ACHIEVEMENTS.filter((a) => unlocked.has(a.id)).sort((a, b) => +unlocked.get(b.id)! - +unlocked.get(a.id)!);
   const locked = ACHIEVEMENTS.filter((a) => !unlocked.has(a.id));
-  return (
-    <section id="codex" aria-labelledby="codex-h" className="panel scroll-mt-24 p-6 sm:p-8">
+  const body = (
+    <>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="codex-h" className="display text-[21px] font-bold">Codex <span className="text-accent">{earned.length}</span><span className="text-base font-normal text-muted"> of {ACHIEVEMENTS.length}</span></h2>
         <p className="text-sm text-muted">Recognition only. Achievements never change your XP.</p>
@@ -120,20 +121,32 @@ export function CodexPanel({ unlocked }: { unlocked: Map<string, Date> }) {
           </li>
         ))}
       </ul>
-    </section>
+    </>
   );
+  if (collapsed) {
+    return (
+      <details id="codex" className="panel group scroll-mt-24 p-5 open:p-6 open:sm:p-8 md:open:col-span-2">
+        <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <span className="display text-[19px] font-bold">Codex <span className="text-base font-normal text-muted">0 of {ACHIEVEMENTS.length} earned</span></span>
+          <span className="text-sm text-muted">Pass a lesson to unlock the first entry. <span className="text-accent group-open:hidden">Show all</span></span>
+        </summary>
+        <div className="mt-5">{body}</div>
+      </details>
+    );
+  }
+  return <section id="codex" aria-labelledby="codex-h" className="panel scroll-mt-24 p-6 sm:p-8">{body}</section>;
 }
 
 export type MonthXp = { label: string; xp: number };
 
 /** Private, comparison-free numbers: where the XP came from, how often hints were needed, and the seals earned. */
-export function StatsPanel({ months, seals, firstTry, hints, tracks }: { months: MonthXp[]; seals: { passed: number; unaided: number; challenge: number }; firstTry: number; hints: { recent: number; earlier: number | null }; tracks: { title: string; done: number; total: number }[] }) {
+export function StatsPanel({ months, seals, firstTry, hints, tracks, collapsed = false }: { collapsed?: boolean; months: MonthXp[]; seals: { passed: number; unaided: number; challenge: number }; firstTry: number; hints: { recent: number; earlier: number | null }; tracks: { title: string; done: number; total: number }[] }) {
   const max = Math.max(1, ...months.map((m) => m.xp));
   const W = 300;
   const H = 110;
   const bw = W / months.length;
-  return (
-    <section aria-labelledby="stats-h" className="panel p-6 sm:p-8">
+  const body = (
+    <>
       <h2 id="stats-h" className="display text-[21px] font-bold">Your numbers</h2>
       <p className="mt-1 text-sm text-muted">Only you can see these.</p>
       <div className="mt-6 grid gap-8 lg:grid-cols-2">
@@ -181,83 +194,117 @@ export function StatsPanel({ months, seals, firstTry, hints, tracks }: { months:
           </div>
         </div>
       </div>
-    </section>
+    </>
+  );
+  if (collapsed) {
+    return (
+      <details className="panel group p-5 open:p-6 open:sm:p-8 md:open:col-span-2">
+        <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <span className="display text-[19px] font-bold">Your numbers</span>
+          <span className="text-sm text-muted">Nothing to chart yet. <span className="text-accent group-open:hidden">Show</span></span>
+        </summary>
+        <div className="mt-5">{body}</div>
+      </details>
+    );
+  }
+  return <section aria-labelledby="stats-h" className="panel p-6 sm:p-8">{body}</section>;
+}
+
+/** Lesson nodes for one course. Each circle has a 36px hit area even though it draws at 28px. */
+function LessonDots({ t, progress }: { t: Track; progress: Map<string, ProgressDoc> }) {
+  return (
+    <ol className="flex min-w-0 flex-wrap items-center gap-1.5" aria-label={`${t.title} lessons`}>
+      {t.lessons.map((l, i) => {
+        const s = sealsFor(progress, l.exercise.id);
+        const state = s.passed ? "passed" : "not passed";
+        return (
+          <li key={l.slug}>
+            <Link
+              href={`/learn/${t.slug}/${l.slug}`}
+              aria-label={`Lesson ${i + 1}: ${l.title}, ${state}${s.unaided ? ", unaided" : ""}${s.challenge ? ", challenge passed" : ""}`}
+              title={l.title}
+              className={`relative flex size-7 items-center justify-center rounded-full border-2 text-[11px] font-semibold before:absolute before:-inset-1 before:content-[''] hover:border-accent ${s.passed ? "border-accent bg-accent text-accent-ink" : "border-line-strong text-muted"}`}
+            >
+              {s.passed ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="4 12.5 9.5 18 20 6.5" /></svg> : i + 1}
+              {(s.unaided || s.challenge) && (
+                <span aria-hidden="true" className="absolute -right-1 -top-1 flex gap-px rounded-full bg-surface">
+                  {s.unaided && <Seal kind="unaided" earned size={11} />}
+                  {s.challenge && <Seal kind="challenge" earned size={11} />}
+                </span>
+              )}
+            </Link>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
-/** Each course as a path of lesson nodes; courses that build on another are joined to it. Phones get a plain list. */
-export function CourseMap({ tracks, progress }: { tracks: Track[]; progress: Map<string, ProgressDoc> }) {
+/**
+ * Courses grouped by path. Groups and courses are native disclosures: courses under way and the recommended
+ * one start open, everything else is a single line. Phones get a plain list per group.
+ */
+export function CourseMap({ tracks, progress, recommendedSlug }: { tracks: Track[]; progress: Map<string, ProgressDoc>; recommendedSlug?: string }) {
   const groups = groupByPath(tracks);
   const done = (t: Track) => t.lessons.filter((l) => progress.get(l.exercise.id)?.status === "passed").length;
+  const started = (t: Track) => t.lessons.some((l) => progress.has(l.exercise.id));
   const complete = (t: Track) => t.lessons.length > 0 && done(t) === t.lessons.length;
+  const isOpen = (t: Track) => t.slug === recommendedSlug || (started(t) && !complete(t));
   const bySlug = new Map(tracks.map((t) => [t.slug, t]));
   return (
     <section aria-labelledby="map-h" className="panel p-6 sm:p-8">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h2 id="map-h" className="display text-[21px] font-bold">Course map</h2>
-        <SealLegend />
+        <div className="flex flex-wrap items-center gap-x-4">
+          <SealLegend />
+          <MapControls targetId="map-body" />
+        </div>
       </div>
-      {/* Phones: one line per course. */}
-      <ul className="mt-5 space-y-3 sm:hidden">
-        {tracks.map((t) => (
-          <li key={t.slug}>
-            <Link href={`/learn/${t.slug}`} className="flex items-baseline justify-between gap-3 rounded-lg border border-line px-4 py-3 hover:bg-surface-2">
-              <span className="min-w-0 font-medium">{t.title}</span>
-              <span className="shrink-0 text-sm text-muted tabular-nums">{done(t)}/{t.lessons.length}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-6 hidden space-y-8 sm:block">
-        {groups.map((g) => (
-          <div key={g.id}>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">{g.title}</h3>
-            <ol className="mt-3 space-y-4">
-              {g.tracks.map((t) => {
-                const pre = t.prerequisite ? bySlug.get(t.prerequisite) : undefined;
-                return (
+      <div id="map-body" className="mt-4 divide-y divide-line">
+        {groups.map((g) => {
+          const groupDone = g.tracks.reduce((n, t) => n + done(t), 0);
+          const groupTotal = g.tracks.reduce((n, t) => n + t.lessons.length, 0);
+          return (
+            <details key={g.id} open={g.tracks.some(isOpen)} className="group/g py-3">
+              <summary className="flex min-h-9 cursor-pointer flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
+                <span className="text-sm font-semibold">{g.title} <span className="font-normal text-muted">{g.tracks.length} {g.tracks.length === 1 ? "course" : "courses"}</span></span>
+                <span className="text-sm text-muted tabular-nums">{groupDone}/{groupTotal} lessons</span>
+              </summary>
+              {/* Phones: one line per course. */}
+              <ul className="mt-3 space-y-2 sm:hidden">
+                {g.tracks.map((t) => (
                   <li key={t.slug}>
-                    {pre && (
-                      <p className="mb-1 flex items-center gap-2 text-xs text-muted">
-                        <span aria-hidden="true" className="h-4 w-px bg-line-strong" />
-                        {complete(pre) ? "Builds on" : "Best after"} {pre.title}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                      <Link href={`/learn/${t.slug}`} className="w-56 shrink-0 text-sm font-medium hover:text-accent">
-                        {t.title} <span className="font-normal text-muted">{done(t)}/{t.lessons.length}</span>
-                      </Link>
-                      <ol className="flex min-w-0 flex-wrap items-center gap-1.5" aria-label={`${t.title} lessons`}>
-                        {t.lessons.map((l, i) => {
-                          const s = sealsFor(progress, l.exercise.id);
-                          const state = s.passed ? "passed" : "not passed";
-                          return (
-                            <li key={l.slug}>
-                              <Link
-                                href={`/learn/${t.slug}/${l.slug}`}
-                                aria-label={`Lesson ${i + 1}: ${l.title}, ${state}${s.unaided ? ", unaided" : ""}${s.challenge ? ", challenge passed" : ""}`}
-                                title={l.title}
-                                className={`relative flex size-7 items-center justify-center rounded-full border-2 text-[11px] font-semibold hover:border-accent ${s.passed ? "border-accent bg-accent text-accent-ink" : "border-line-strong text-muted"}`}
-                              >
-                                {s.passed ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="4 12.5 9.5 18 20 6.5" /></svg> : i + 1}
-                                {(s.unaided || s.challenge) && (
-                                  <span aria-hidden="true" className="absolute -right-1 -top-1 flex gap-px rounded-full bg-surface">
-                                    {s.unaided && <Seal kind="unaided" earned size={11} />}
-                                    {s.challenge && <Seal kind="challenge" earned size={11} />}
-                                  </span>
-                                )}
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </ol>
-                    </div>
+                    <Link href={`/learn/${t.slug}`} className="flex items-baseline justify-between gap-3 rounded-lg border border-line px-4 py-3 hover:bg-surface-2">
+                      <span className="min-w-0 font-medium">{t.title}</span>
+                      <span className="shrink-0 text-sm text-muted tabular-nums">{done(t)}/{t.lessons.length}</span>
+                    </Link>
                   </li>
-                );
-              })}
-            </ol>
-          </div>
-        ))}
+                ))}
+              </ul>
+              <ol className="mt-3 hidden space-y-1 sm:block">
+                {g.tracks.map((t) => {
+                  const pre = t.prerequisite ? bySlug.get(t.prerequisite) : undefined;
+                  const hint = pre ? `${complete(pre) ? "Builds on" : "Best after"} ${pre.title}` : undefined;
+                  return (
+                    <li key={t.slug}>
+                      <details open={isOpen(t)} className="rounded-lg px-2 py-1 open:bg-surface-2/40">
+                        <summary title={hint} className="flex min-h-9 cursor-pointer flex-wrap items-baseline gap-x-3 text-sm font-medium">
+                          <span>{t.title}</span>
+                          <span className="font-normal text-muted tabular-nums">{done(t)}/{t.lessons.length}</span>
+                          {t.slug === recommendedSlug && hint && <span className="text-xs font-normal text-accent">{hint}</span>}
+                        </summary>
+                        <div className="pb-2 pt-1">
+                          <LessonDots t={t} progress={progress} />
+                          <Link href={`/learn/${t.slug}`} className="mt-2 inline-block text-xs text-muted hover:text-accent">Course page</Link>
+                        </div>
+                      </details>
+                    </li>
+                  );
+                })}
+              </ol>
+            </details>
+          );
+        })}
       </div>
     </section>
   );

@@ -14,6 +14,5 @@
     "Find persistence and privilege changes by diffing snapshots, allowing for expected changes and timestamp tampering.",
     "Scope how far a stolen credential spread, and verify that remediation actually closed each finding.",
     "Produce an evidence package whose findings, citations and timeline hold up against decoys."
-  ],
-  "draft": true
+  ]
 }

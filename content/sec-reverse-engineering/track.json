@@ -13,6 +13,5 @@
     "Work out an undocumented binary record format from sample dumps and write a strict parser.",
     "Reconstruct equivalent C from an assembly listing.",
     "Label findings as confirmed, supported, assumed or refuted, and re-implement a toy protocol from captures."
-  ],
-  "draft": true
+  ]
 }

@@ -1,5 +1,4 @@
 ---
-draft: true
 title: Schedule work on a virtual clock
 summary: Model delays, retries and cancellation with a fake clock and a deterministic event order, with no timers and no background work.
 minutes: 40

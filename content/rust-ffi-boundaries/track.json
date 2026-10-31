@@ -9,6 +9,5 @@
   "prerequisite": "rust-bridge",
   "outcomes": [
     "Design and implement a C-style API in Rust with explicit layout, ownership and error conventions."
-  ],
-  "draft": true
+  ]
 }

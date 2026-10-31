@@ -69,35 +69,30 @@ export function CookieBanner() {
     <section
       role="region"
       aria-label="Cookie preferences"
-      className="fixed inset-x-0 bottom-0 z-50 p-3 sm:bottom-4 sm:left-4 sm:right-auto sm:max-w-md sm:p-0"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface text-text"
     >
-      <div className="panel p-5 shadow-2xl shadow-black/30">
-        <h2 className="text-base font-semibold">Cookies and analytics</h2>
-        <p className="mt-2 text-sm text-muted">
-          We use essential cookies to keep you signed in and remember this choice. With your permission we also count page visits with our own
-          privacy-friendly analytics — no ads, no third parties, no tracking across days.{" "}
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:gap-4 sm:px-6 lg:px-8">
+        <div className="min-w-0 flex-1 text-xs leading-snug text-muted sm:text-sm">
+          <h2 className="inline font-semibold text-text">Cookies and analytics.</h2>{" "}
+          Essential cookies keep you signed in. With your permission we also count page visits, privately and without ads.{" "}
           <Link href="/cookies" className="text-accent underline underline-offset-2">
             Cookie Policy
           </Link>
-        </p>
-        {forcedOpen && (
-          <div className="mt-4 space-y-3 rounded-lg border border-border p-3 text-sm">
-            <label className="flex items-start gap-3">
-              <input type="checkbox" checked disabled className="mt-1 h-4 w-4 accent-[var(--accent)]" />
-              <span>
-                <span className="font-medium">Essential</span> <span className="text-muted">— sign-in and security. Always on.</span>
-              </span>
-            </label>
-            <label className="flex items-start gap-3">
-              <input type="checkbox" checked={analytics} onChange={(e) => setAnalytics(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--accent)]" />
-              <span>
-                <span className="font-medium">Analytics</span> <span className="text-muted">— anonymous page counts to improve lessons.</span>
-              </span>
-            </label>
-          </div>
-        )}
+          {forcedOpen && (
+            <span className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-text">
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked disabled className="h-4 w-4 accent-[var(--accent)]" />
+                <span>Essential <span className="text-muted">(always on)</span></span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={analytics} onChange={(e) => setAnalytics(e.target.checked)} className="h-4 w-4 accent-[var(--accent)]" />
+                <span>Analytics</span>
+              </label>
+            </span>
+          )}
+        </div>
         {/* Accept and reject are equally prominent, as GDPR guidance requires. */}
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 sm:shrink-0">
           {forcedOpen ? (
             <Button size="sm" variant="secondary" onClick={() => choose(analytics)}>
               Save choices

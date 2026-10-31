@@ -11,6 +11,5 @@
     "Explain and implement the iterator (pull) model of query execution.",
     "Apply SQL three-valued logic correctly in filters, joins and aggregates.",
     "Choose between scan, index, nested-loop, hash and merge strategies using a stated cost model and verify the choice with work counters."
-  ],
-  "draft": true
+  ]
 }

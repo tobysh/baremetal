@@ -64,8 +64,11 @@ func Decode(b []byte) (Config, error) {
 			}
 			c.Interval = binary.LittleEndian.Uint16(v)
 		case 3:
-			m := binary.LittleEndian.Uint16(append(v, 0, 0)[:2])
-			if l != 2 || m < 1 || m > 4096 {
+			if l != 2 {
+				return fail("maxops")
+			}
+			m := binary.LittleEndian.Uint16(v)
+			if m < 1 || m > 4096 {
 				return fail("maxops")
 			}
 			c.MaxOps = m

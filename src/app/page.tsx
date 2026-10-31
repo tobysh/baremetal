@@ -55,6 +55,7 @@ async function HomeContent() {
 
   const tracks = getTracks();
   const featuredTracks = PATHS.flatMap((path) => tracks.filter((track) => track.path === path.id).slice(0, 1));
+  const courseCount = tracks.length;
   const lessonCount = tracks.reduce((n, t) => n + t.lessons.length, 0);
 
   return (
@@ -111,6 +112,7 @@ async function HomeContent() {
                 <span className="font-mono text-sm text-accent">0{i + 1}</span>
                 <h3 className="mt-2 font-semibold">{title}</h3>
                 <p className="mt-2 leading-relaxed text-muted">{body}</p>
+                {i === 1 && <TestOutputSample />}
               </li>
             ))}
           </ol>
@@ -124,9 +126,21 @@ async function HomeContent() {
               Find your starting point
             </h2>
             <Link href="/learn" className="text-sm text-accent underline underline-offset-4">
-              See all courses
+              See all {courseCount} courses
             </Link>
           </div>
+          <p className="mt-2 text-muted">
+            {courseCount} courses across {PATHS.length} learning paths, {lessonCount} lessons in all. A few places to begin:
+          </p>
+          <ul className="mt-4 flex flex-wrap gap-2" aria-label="Learning paths">
+            {PATHS.map((p) => (
+              <li key={p.id}>
+                <Link href="/learn" className="inline-block rounded-md border border-border px-2.5 py-1 text-sm text-muted hover:border-accent hover:text-text">
+                  {p.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
           <ol className="mt-8 grid gap-4 sm:grid-cols-2">
             {featuredTracks.map((t) => (
               <Card as="li" key={t.slug} className="flex flex-col p-6 transition-colors hover:border-accent/40">
@@ -270,11 +284,11 @@ function RunDemo() {
           </span>
         </div>
         <div className="demo-reset" style={{ animationName: "demo-reset" }}>
-          <pre className="overflow-hidden px-4 py-4 font-mono text-[13px] leading-6">
+          <pre className="overflow-x-auto px-4 py-4 font-mono text-[13px] leading-6" style={{ background: "var(--code-bg)", color: "var(--code-text)" }}>
             <code>
               {DEMO_CODE.map((line, i) => (
                 <span key={i} className="demo-a block whitespace-pre" style={{ animationName: `demo-c${i}` }}>
-                  {line.map((part, k) => (typeof part === "string" ? part : <span key={k} className={i === 0 ? "text-muted" : "text-accent"}>{part[0]}</span>))}
+                  {line.map((part, k) => (typeof part === "string" ? part : <span key={k} style={{ color: i === 0 ? "var(--code-comment)" : part[0] === "void" || part[0] === "char" || part[0] === "size_t" ? "var(--code-type)" : "var(--code-keyword)" }}>{part[0]}</span>))}
                   {"\u200b"}
                 </span>
               ))}
@@ -291,5 +305,20 @@ function RunDemo() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Static, obviously illustrative sample of the test output a learner sees. */
+function TestOutputSample() {
+  return (
+    <figure className="mt-4" aria-label="Example test output (illustrative)">
+      <pre className="overflow-x-auto rounded-lg border border-border px-3 py-3 font-mono text-xs leading-6" style={{ background: "var(--code-bg)", color: "var(--code-text)" }}>
+        <span style={{ color: "var(--code-comment)" }}>{"$ Test  (example)\n"}</span>
+        <span className="text-ok">PASS</span>{" empty input\n"}
+        <span className="text-ok">PASS</span>{" single word\n"}
+        <span className="text-err">FAIL</span>{" two words: expected 5, got 4\n"}
+      </pre>
+      <figcaption className="mt-1 text-xs text-muted">Illustrative output</figcaption>
+    </figure>
   );
 }

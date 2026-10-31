@@ -1,5 +1,4 @@
 ---
-draft: true
 title: Recover from crashes and tear down cleanly
 summary: Journal every simulated state change before making it, so any interruption can be recovered and the host audited back to its baseline.
 minutes: 45

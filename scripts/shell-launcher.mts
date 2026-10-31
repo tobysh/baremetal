@@ -12,6 +12,7 @@
 import { chmod, chown, lstat, mkdir, realpath, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { createLauncher } from "../src/lib/shell/launcher";
+import { untrustedComponent } from "../src/lib/shell/trusted-path";
 import { reapStaleVms, socketsDir, startJailedVm, startUnjailedVm, type Vm } from "../src/lib/shell/vm";
 
 const need = (name: string) => {
@@ -32,7 +33,11 @@ async function trusted(name: string, kind: "file" | "dir", requireRoot: boolean)
   const resolved = await realpath(value);
   const st = await stat(resolved);
   if (kind === "file" ? !st.isFile() : !st.isDirectory()) throw new Error(`${name} must be a ${kind}`);
-  if (requireRoot && (st.uid !== 0 || st.mode & 0o022)) throw new Error(`${name} must be owned by root and not writable by group or others`);
+  if (requireRoot) {
+    // The file and every directory above it: otherwise whoever can write a parent could swap the file for one run as root.
+    const problem = await untrustedComponent(resolved);
+    if (problem) throw new Error(`${name} is not a trusted root-only path: ${problem}`);
+  }
   return resolved;
 }
 

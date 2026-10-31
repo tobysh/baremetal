@@ -9,7 +9,7 @@ import { FooterFrame } from "./footer-frame";
 export function SiteFooter() {
   return (
     <Suspense fallback={null}>
-    <FooterFrame legal={<Container className="py-5 text-xs text-muted">© 2026 {SITE.legal.entity}</Container>}>
+    <FooterFrame legal={<Container className="py-5 text-xs text-muted">© 2026 {SITE.legal.copyrightHolder}</Container>}>
       <Container className="grid gap-8 border-b border-border py-10 text-sm sm:grid-cols-[1.5fr_1fr_1fr]">
         <div>
           <div className="flex items-center gap-2 font-semibold">

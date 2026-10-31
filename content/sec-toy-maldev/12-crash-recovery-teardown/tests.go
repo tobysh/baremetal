@@ -73,7 +73,7 @@ func TestJournalIsWrittenBeforeTheChange(t *testing.T) {
 		}
 		applied := 0
 		for _, s := range steps {
-			if v, ok := table(h, s.Kind)[s.Name]; ok && v == s.Value {
+			if v, ok := testTable(h, s.Kind)[s.Name]; ok && v == s.Value {
 				applied++
 			}
 		}
@@ -90,7 +90,7 @@ func TestJournalIsWrittenBeforeTheChange(t *testing.T) {
 	}
 }
 
-func table(h *Host, kind string) map[string]string {
+func testTable(h *Host, kind string) map[string]string {
 	switch kind {
 	case "file":
 		return h.Files

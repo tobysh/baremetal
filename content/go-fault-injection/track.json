@@ -14,6 +14,5 @@
     "Design time-dependent code that tolerates clocks moving backwards or jumping forwards.",
     "Retry safely with idempotency keys and bounded attempts.",
     "Write a deterministic failure-schedule checker that exposes broken storage engines."
-  ],
-  "draft": true
+  ]
 }

@@ -14,6 +14,5 @@
     "Drive a device state machine through unlock, command, completion and error-retry sequences.",
     "Write an interrupt dispatcher and handlers that acknowledge before they run and stay short.",
     "Build a buffered UART driver with ring buffers, error counters and failure handling."
-  ],
-  "draft": true
+  ]
 }

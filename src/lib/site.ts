@@ -1,3 +1,8 @@
+// The operator is only shown once LEGAL_ENTITY_NAME holds a real value. The
+// placeholder used during development is ignored so the footer falls back to the brand.
+const configuredOperator = process.env.LEGAL_ENTITY_NAME?.trim() ?? "";
+const operator = configuredOperator && !/to be confirmed/i.test(configuredOperator) ? configuredOperator : null;
+
 export const SITE = {
   name: "Baremetal",
   tagline: "Learn low-level programming from zero, with an AI tutor that never just hands you the answer.",
@@ -8,10 +13,14 @@ export const SITE = {
   // Replace these before going live.
   legal: {
     entity: process.env.LEGAL_ENTITY_NAME ?? "Baremetal (operator name to be confirmed)",
+    /** The configured operator, or null while the name is unset or still a placeholder. */
+    operator,
+    /** Name shown after the copyright sign in the footers. */
+    copyrightHolder: operator ?? "Baremetal",
     address: process.env.LEGAL_ADDRESS ?? "Registered address to be confirmed",
     contactEmail: process.env.LEGAL_CONTACT_EMAIL ?? "privacy@example.com",
     jurisdiction: process.env.LEGAL_JURISDICTION ?? "England and Wales",
-    lastUpdated: "30 October 2026",
+    lastUpdated: "31 October 2026",
   },
 } as const;
 

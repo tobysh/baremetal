@@ -12,6 +12,5 @@
     "Write a bump arena, a fixed-size pool and a splitting, coalescing free-list heap.",
     "Compare allocation policies with deterministic counters and read a fragmentation map.",
     "Test an allocator against a reference model with seeded random operation sequences."
-  ],
-  "draft": true
+  ]
 }

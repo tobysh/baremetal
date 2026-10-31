@@ -8,7 +8,7 @@ func TestTitle_apostrophes_fixed(t *testing.T) {
 		{"rock'n'roll", "Rock'n'roll"},
 		{"it’s ALIVE", "It’s ALIVE"},
 		{"the cat's pyjamas", "The Cat's Pyjamas"},
-		{"'tis the season", "'tis the Season"},
+		{"'tis the season", "'Tis the Season"},
 		{"y'all and we'd", "Y'all and We'd"},
 	}
 	for _, c := range cases {
@@ -25,14 +25,14 @@ func TestTitle_existing_behaviour_is_pinned(t *testing.T) {
 		{"the tale of two cities", "The Tale of Two Cities"},
 		{"  lots   of   space ", "Lots of Space"},
 		{"a NASA story", "A NASA Story"},
-		{"OF mice AND men", "OF Mice and Men"},
+		{"OF mice AND men", "OF Mice AND Men"},
 		{"I", "I"},
-		{"well-known and/or lesser-known", "Well-Known and/Or Lesser-Known"},
+		{"well-known and/or lesser-known", "Well-Known And/Or Lesser-Known"},
 		{"(draft) notes.v2", "(Draft) Notes.V2"},
 		{"3rd place", "3Rd Place"},
 		{"b2b sales", "B2B Sales"},
 		{"the", "The"},
-		{"to be or not to be", "To Be or Not to Be"},
+		{"to be or not to be", "To Be Or Not to Be"},
 		{"ÉCOLE de paris", "ÉCOLE De Paris"},
 		{"naïve café", "Naïve Café"},
 	}

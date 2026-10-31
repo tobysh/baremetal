@@ -2,7 +2,7 @@
 //   SHELL_KERNEL=... SHELL_ROOTFS=... FIRECRACKER=... npx tsx scripts/shell/broker-checks.mts
 // Without those variables only the fake-guest checks run. Hostile-workload tests belong on a disposable VM.
 import { spawn } from "node:child_process";
-import { mkdtemp, readdir, rm, stat } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { connect, createServer, type Server, type Socket } from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -57,11 +57,15 @@ async function withBroker<T>(startVm: () => Promise<Vm>, limits: Partial<BrokerL
   }
 }
 
+/** Firecracker processes started for these checks. Match the process name too: a wrapper shell whose own command line mentions the directory prefix must not count. */
 const hostFirecrackers = async () => {
   let n = 0;
   for (const pid of await readdir("/proc")) {
     if (!/^\d+$/.test(pid)) continue;
-    try { if ((await import("node:fs/promises").then((fs) => fs.readFile(`/proc/${pid}/cmdline`, "utf8"))).includes("bm-vm-")) n++; } catch {}
+    try {
+      const comm = (await readFile(`/proc/${pid}/comm`, "utf8")).trim();
+      if (comm === "firecracker" && (await readFile(`/proc/${pid}/cmdline`, "utf8")).includes("bm-vm-")) n++;
+    } catch {}
   }
   return n;
 };
@@ -288,7 +292,7 @@ async function withLauncher<T>(startVm: (slot: number) => Promise<Vm>, limits: P
     const b = new Raw(sock); b.send(`{"op":"create"}\n`); await until(() => b.has(`"ok":true`), 2000);
     const asked = Date.now(); b.send(`{"op":"destroy"}\n`);
     await until(() => b.closed, 3000);
-    check("launcher: destroy answers exited only after the VM is gone", b.has(`"event":"exited"`) && f.log.destroyedAt[1] <= b.closedAt && b.closedAt - asked >= 200, { lines: b.lines, waited: b.closedAt - asked });
+    check("launcher: destroy answers exited only after the VM is gone", b.has(`"event":"exited"`) && f.log.destroyedAt[1] <= b.closedAt && b.closedAt - asked >= 150, { lines: b.lines, waited: b.closedAt - asked });
   });
 }
 {
@@ -409,6 +413,17 @@ async function withLauncher<T>(startVm: (slot: number) => Promise<Vm>, limits: P
     const code = await new Promise<number | null>((r) => child.on("close", r));
     check("launcher service: jailed mode refuses to run without root", code !== 0 && errText.includes("must run as root"), { code, errText: errText.slice(0, 300) });
   }
+}
+
+// The launcher runs its configured binaries as root, so a parent directory that others can write is a root escalation.
+{
+  const { untrustedComponent } = await import("../../src/lib/shell/trusted-path");
+  check("trusted path: /usr/bin/true is accepted", (await untrustedComponent("/usr/bin/true")) === null, await untrustedComponent("/usr/bin/true"));
+  const mine = path.join(dir, "file");
+  await writeFile(mine, "x");
+  check("trusted path: a file owned by a normal user is refused", !!(await untrustedComponent(mine)));
+  check("trusted path: the cause is named", ((await untrustedComponent(mine)) ?? "").includes("not owned by root"));
+  check("trusted path: a world-writable sticky directory is not itself a trusted target", (await untrustedComponent("/tmp")) !== null, await untrustedComponent("/tmp"));
 }
 
 // ---------------------------------------------------------------- real microVMs

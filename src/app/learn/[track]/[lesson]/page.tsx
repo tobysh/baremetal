@@ -160,7 +160,7 @@ async function Lesson({ params, searchParams }: { params: PageProps<"/learn/[tra
         </div>
       } />
       <p className="mt-3 flex shrink-0 flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-border pt-2 text-xs text-muted lg:mt-2">
-        <span>© 2026 {SITE.legal.entity}</span>
+        <span>© 2026 {SITE.legal.copyrightHolder}</span>
         <span aria-hidden="true">-</span>
         <Link href="/terms" className="hover:text-text">Terms and conditions</Link>
         <span aria-hidden="true">-</span>

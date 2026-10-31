@@ -91,7 +91,7 @@ func TestMajorityDownStillWorks(t *testing.T) {
 		t.Fatalf("Write with 3 of 5 replicas up failed: %v", err)
 	}
 	sps[0].mode, sps[3].mode = reliable, reliable
-	sps[1].mode, sps[2].mode = down, down // the two that never saw "x" form the only... plus one that did
+	sps[1].mode, sps[2].mode = down, down // a different majority must still include a replica that holds x
 	if v, err := reg.Read(); err != nil || v != "x" {
 		t.Fatalf("Read via a different majority = %q, %v; want x", v, err)
 	}
@@ -120,10 +120,6 @@ func TestFailedWriteDoesNotReuseVersion(t *testing.T) {
 	// "two" reaches only replica 0, and is reported as failed.
 	failPut := &putScript{inner: sps[0], applyAndFail: true}
 	deadPut1, deadPut2 := &putScript{inner: sps[1], blockPut: true}, &putScript{inner: sps[2], blockPut: true}
-	reg2 := &Register{peers: []Peer{failPut, deadPut1, deadPut2}}
-	reg2.last = reg.last
-	_ = reg2
-	// Drive the real register through the same situation.
 	reg.peers = []Peer{failPut, deadPut1, deadPut2}
 	if err := reg.Write("two"); err == nil {
 		t.Fatalf("Write reported success though 2 of 3 Puts failed")
@@ -174,13 +170,13 @@ func TestReadRepairsSoLaterReadsDoNotGoBack(t *testing.T) {
 	if err := reg.Write("old"); err != nil {
 		t.Fatal(err)
 	}
-	reps[0].Put(Versioned{reg.last + 1, "new"}) // a failed write left this on replica 0 only
+	reps[0].Put(Versioned{reps[0].cur.Ver + 1, "new"}) // a failed write left this on replica 0 only
 	v, err := reg.Read()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if v != "new" {
-		t.Skipf("first read returned %q", v)
+		t.Fatalf("first read returned %q; want the newest stored version, new", v)
 	}
 	sps[0].mode = down // the only replica that held "new" is gone
 	for i := 0; i < 3; i++ {

@@ -13,6 +13,5 @@
     "Review lockfile changes for downgrades, hash swaps, off-policy sources and look-alike names.",
     "Detect leaked synthetic secrets without re-leaking them, and rotate secrets with grace periods and revocation.",
     "Reject replayed, stale and downgraded updates, and install with a commit point so any failure leaves a bootable system."
-  ],
-  "draft": true
+  ]
 }
