@@ -1,0 +1,15 @@
+{
+  "title": "Compression and Encoding in Go",
+  "summary": "Bit-level I/O, run-length encoding, varints, canonical Huffman codes, a streaming decoder, hostile-input handling, decompression-bomb limits and a versioned container format.",
+  "description": "Every file format and network protocol is an encoding, and every decoder faces bytes written by someone else. You'll write a bit reader and writer, a run-length coder, varints with strict validation, Huffman coding with deterministic tie-breaking and canonical codes, and a streaming decoder that works however its input is split. Then you'll make decoders robust: reject malformed headers, truncation and trailing data, cap output before allocating it, and bound expansion. The capstone is a chunked, checksummed container format and a challenge that evolves it to version 2 without breaking old files. Tests use fixed byte vectors produced by an independent implementation, independent reference decoders and damaged inputs, never timing.",
+  "level": "Advanced",
+  "language": "go",
+  "path": "go",
+  "order": 5,
+  "prerequisite": "go-practice",
+  "outcomes": [
+    "Write encoders and decoders that survive truncated, damaged and hostile input.",
+    "Bound decoder memory with limits checked before allocation.",
+    "Evolve a binary format while keeping old files readable and failing safely on new ones."
+  ]
+}

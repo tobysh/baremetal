@@ -1,0 +1,51 @@
+
+type hashJoin struct {
+	left, right Iterator
+	lc, rc      int
+	built       bool
+	table       map[Value][]Row
+	cur         Row
+	matches     []Row
+	pos         int
+}
+
+func NewHashJoin(left, right Iterator, lcol, rcol int) Iterator {
+	return &hashJoin{left: left, right: right, lc: lcol, rc: rcol}
+}
+
+func (j *hashJoin) Open() {
+	j.left.Open()
+	j.right.Open()
+	j.built, j.table, j.cur, j.matches, j.pos = false, nil, nil, nil, 0
+}
+func (j *hashJoin) Close() { j.left.Close(); j.right.Close() }
+func (j *hashJoin) Next() (Row, bool) {
+	if !j.built {
+		j.built = true
+		j.table = map[Value][]Row{}
+		for {
+			r, ok := j.right.Next()
+			if !ok {
+				break
+			}
+			if k := r[j.rc]; k != nil {
+				j.table[k] = append(j.table[k], r)
+			}
+		}
+	}
+	for {
+		if j.pos < len(j.matches) {
+			r := j.matches[j.pos]
+			j.pos++
+			return concatRows(j.cur, r), true
+		}
+		l, ok := j.left.Next()
+		if !ok {
+			return nil, false
+		}
+		j.cur, j.pos, j.matches = l, 0, nil
+		if k := l[j.lc]; k != nil {
+			j.matches = j.table[k]
+		}
+	}
+}

@@ -1,0 +1,8 @@
+
+func main() {
+	users := &Table{Name: "users", Cols: []string{"id", "name"}, Rows: []Row{{int64(1), "ada"}, {int64(2), "bo"}, {int64(3), "cy"}}}
+	orders := &Table{Name: "orders", Cols: []string{"uid", "item"}, Rows: []Row{{int64(2), "pen"}, {int64(1), "ink"}, {int64(2), "pad"}, {nil, "ghost"}}}
+	var su, so Stats
+	j := NewHashJoin(NewScan(users, &su), NewScan(orders, &so), 0, 0)
+	fmt.Println(Collect(j), "opens:", su.Opens+so.Opens, "rows read:", su.RowsRead+so.RowsRead)
+}

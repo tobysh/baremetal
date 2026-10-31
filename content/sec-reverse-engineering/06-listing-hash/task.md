@@ -1,0 +1,1 @@
+Implement `uint32_t mix(const unsigned char *p, size_t n)` so that it returns the same value as the listing for every buffer, including the empty one and bytes of 128 and above. The tests compare against an independent implementation over many buffers.

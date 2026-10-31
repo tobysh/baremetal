@@ -1,0 +1,1 @@
+Implement `int scan(const int *a, int n)` so that it behaves exactly like the listing for every array, including `n` of zero or less (the listing returns -1 without reading memory). Work from the listing; there is no other description. Pay attention to which comparison is strict and which is not, because ties are tested.

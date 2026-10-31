@@ -1,0 +1,16 @@
+{
+  "title": "Linux Internals",
+  "summary": "Build miniature in-memory models of file descriptors, permission checks, signals and process trees, then combine them in a kernel-state checker.",
+  "description": "Everything here is a small deterministic model in ordinary C: no real privileged system calls are made. You model descriptor tables with dup and close, the mode-bit permission rules including sticky and setuid, signal masks and delivery, and process trees with zombies and reparenting. The capstone combines them in a checker that validates a simulated kernel state. Each model shows only the rules it states; real Linux has many more details, and every lesson says which ones are left out.",
+  "level": "Advanced",
+  "language": "c",
+  "path": "c",
+  "order": 6,
+  "prerequisite": "c-shell",
+  "outcomes": [
+    "Explain and implement descriptor sharing through dup, dup2 and close.",
+    "Apply Unix permission rules including sticky directories and setuid execution.",
+    "Model signal masks and delivery, and process exit, zombies and reparenting.",
+    "Check a combined simulated kernel state against its invariants."
+  ]
+}

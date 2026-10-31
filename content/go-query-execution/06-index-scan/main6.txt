@@ -1,0 +1,10 @@
+
+func main() {
+	t := &Table{Name: "t", Cols: []string{"k", "v"}, Rows: []Row{
+		{int64(30), "c"}, {int64(10), "a"}, {nil, "n"}, {int64(20), "b"}, {int64(20), "b2"}, {int64(40), "d"},
+	}}
+	idx := BuildIndex(t, 0)
+	var st Stats
+	lo, hi := &Bound{int64(20), true}, &Bound{int64(40), false}
+	fmt.Println(Collect(NewIndexScan(t, idx, lo, hi, &st)), "rows read:", st.RowsRead)
+}

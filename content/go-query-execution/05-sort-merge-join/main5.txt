@@ -1,0 +1,9 @@
+
+func main() {
+	a := &Table{Name: "a", Cols: []string{"k", "v"}, Rows: []Row{{int64(3), "c"}, {nil, "n"}, {int64(1), "a"}, {int64(3), "d"}}}
+	b := &Table{Name: "b", Cols: []string{"k", "w"}, Rows: []Row{{int64(3), "x"}, {int64(1), "y"}, {int64(3), "z"}, {nil, "m"}}}
+	var sa, sb Stats
+	keys := []SortKey{{Col: 0}}
+	j := NewMergeJoin(NewSort(NewScan(a, &sa), keys), NewSort(NewScan(b, &sb), keys), 0, 0)
+	fmt.Println(Collect(j), "rows read:", sa.RowsRead+sb.RowsRead)
+}

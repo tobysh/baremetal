@@ -1,0 +1,7 @@
+
+// SortKey orders by one column. NULL is smaller than every value, so it comes
+// first ascending and last descending.
+type SortKey struct {
+	Col  int
+	Desc bool
+}

@@ -1,0 +1,15 @@
+{
+  "title": "Compilers and Executable Formats",
+  "summary": "Write a toy linker for an invented object format: parse files defensively, resolve symbols, lay out sections, apply relocations, and run the result on a tiny VM.",
+  "description": "Linkers and loaders turn separately compiled pieces into one program. You'll learn to read binary formats safely first, with bounds checks and rejection of malformed input, then build a linker for an invented format: sections, symbols, relocations, layout, an executable with permissioned segments, a link map and a description report. The capstone links two objects and runs them on a small provided virtual machine. The formats and machine are teaching models, not ELF or a real CPU. The Rust interpreter and assembly tracks cover bytecode VMs, so this course only provides the machine and concentrates on the linking.",
+  "level": "Advanced",
+  "language": "go",
+  "path": "go",
+  "order": 5,
+  "prerequisite": "go-practice",
+  "outcomes": [
+    "Parse binary formats from untrusted bytes with explicit bounds checks and typed errors.",
+    "Resolve symbols, assign addresses and apply absolute and PC-relative relocations.",
+    "Emit and inspect an executable image, and run a linked program on a small VM."
+  ]
+}

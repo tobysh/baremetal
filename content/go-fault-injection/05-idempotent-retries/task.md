@@ -1,0 +1,4 @@
+Implement `Ledger.Debit` and `Pay` in the starter.
+
+- `Debit(id string, amount int) error`: `amount <= 0` returns `ErrInvalid`. If `id` was already applied with the same amount, return `nil` and change nothing. If it was applied with a different amount, return `ErrConflict`. If `amount` exceeds the balance, return `ErrInsufficient` and do **not** remember the id. Otherwise subtract the amount, remember the id and return `nil`.
+- `Pay(call func(id string, amount int) error, id string, amount, maxAttempts int) error` calls `call` with the same `id` each time. It returns `nil` on the first success. On `ErrTimeout` (tested with `errors.Is`) it tries again. Any other error is returned immediately without a retry. After `maxAttempts` timeouts it returns an error wrapping `ErrGaveUp`. If `maxAttempts < 1` it makes no call and returns an error wrapping `ErrGaveUp`.

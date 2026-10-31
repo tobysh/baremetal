@@ -1,0 +1,17 @@
+{
+  "title": "Filesystems in Go",
+  "summary": "Build a tiny filesystem on an in-memory block device: superblock, block bitmap, inodes, directories, an fsck, and a journal that survives a crash at every write.",
+  "description": "A filesystem is a data structure that has to stay consistent while the power can fail between any two writes. You build one called BMFS on a simulated block device, one layer per lesson: a superblock, a bitmap that hands out blocks, inodes that own them, directories that name them, and an fsck that finds orphan and duplicate blocks. Then you add a fault-injecting disk that loses every write after a chosen point, see what naive code leaves behind, fix it by ordering writes, and finish with a small write-ahead journal for metadata that is tested at every possible crash position. Everything is deterministic and in memory. The crash model is stated plainly in the lessons: a power cut keeps a prefix of the writes, in order, and every block write is atomic. Real disks are worse, and the lessons say where.",
+  "level": "Advanced",
+  "language": "go",
+  "path": "go",
+  "order": 5,
+  "prerequisite": "go-database",
+  "draft": true,
+  "outcomes": [
+    "Lay out and decode an on-disk format: superblock, bitmap, inode table and directory entries.",
+    "Write an fsck that classifies orphan, duplicate and dangling references without panicking on garbage.",
+    "Enumerate every crash point of an operation and show which ones leave damage.",
+    "Order writes so a crash only leaks space, then add a write-ahead journal that makes metadata updates all-or-nothing."
+  ]
+}

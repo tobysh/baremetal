@@ -1,0 +1,15 @@
+{
+  "title": "Concurrency Model Checking",
+  "summary": "Find concurrency bugs by exhaustively enumerating thread interleavings in a small deterministic model: lost updates, deadlocks, broken invariants and minimal counterexamples.",
+  "description": "Testing with real threads finds a race only when the scheduler happens to cooperate. Here nothing runs on real threads. Threads are small step machines inside a scheduler you control, so every interleaving can be enumerated. You build the machine and the schedule runner, count interleavings, then write a depth-first checker that finds a lost update, a deadlock and a broken invariant. You make it return the minimal counterexample (shortest, then lexicographically first, so the answer is deterministic), prune repeated states so retry loops terminate, and finish by checking a lock-based structure and a flawed lock-free one. A model shows only what it models: it has no memory reordering, no preemption inside an instruction and a fixed small state limit. A visual stepper for replaying schedules is future work; for now counterexamples are printed as thread-id lists.",
+  "level": "Advanced",
+  "language": "c",
+  "path": "c",
+  "order": 6,
+  "prerequisite": "c-concurrency",
+  "outcomes": [
+    "Model threads as step machines and enumerate every interleaving with a depth-first search.",
+    "Detect a lost update, a deadlock and an invariant violation, and return the shortest, lexicographically first counterexample schedule.",
+    "Explain what a model check proves (all schedules of this model) and what it does not (real hardware, larger sizes)."
+  ]
+}
