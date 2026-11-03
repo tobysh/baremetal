@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Baremetal Dashboard</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0c0d0f}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+a:focus-visible,button:focus-visible{outline:2px solid #ecebe8;outline-offset:3px}
+.nav a:hover{background:#17181c;color:#ecebe8}
+.btn:hover{filter:brightness(1.1)}
+.btn:active{transform:translateY(1px)}
+.acct:hover{background:#17181c !important}
+.row:hover{background:#181a1e}
+.row:hover .v{color:#f5a524 !important;border-color:#f5a524 !important}
+.row:hover .tag{border-color:#f5a524 !important}
+.lnk:hover{color:#f5a524 !important}
+</style>
+</helmet>
+<div style="min-height: 980px; background: #0c0d0f; color: #ecebe8; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.5; font-variant-numeric: tabular-nums">
+
+<header style="border-bottom: 1px solid #1c1e22">
+<div style="max-width: 1200px; margin: 0 auto; box-sizing: border-box; padding: 0 32px; min-height: 64px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+<div style="display: flex; align-items: center; gap: 28px; flex-wrap: wrap">
+<div style="display: flex; align-items: center; gap: 10px">
+<div style="width: 28px; height: 28px; border-radius: 6px; background: {{accent}}; display: flex; align-items: center; justify-content: center">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0c0d0f" stroke-width="3" stroke-linecap="square" aria-hidden="true"><polyline points="5 8 11 12 5 16"></polyline><line x1="13" y1="17" x2="19" y2="17"></line></svg>
+</div>
+<span style="font-family: 'Archivo', sans-serif; font-stretch: 118%; font-weight: 700; font-size: 17px; letter-spacing: -0.01em">Baremetal</span>
+</div>
+<nav class="nav" aria-label="Main" style="display: flex; gap: 2px; color: #9a9ca3; font-weight: 500">
+<a href="#" aria-current="page" style="display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: 6px; background: #17181c; color: #ecebe8; box-shadow: inset 0 -2px 0 {{accent}}">Dashboard</a>
+<a href="#" style="display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: 6px">Courses</a>
+<a href="#" style="display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: 6px">Leaderboard</a>
+</nav>
+</div>
+<button class="acct" type="button" aria-label="Account menu for Toby" style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px 0 8px; border-radius: 8px; background: transparent; border: 1px solid #23252a; color: #ecebe8; font-size: 15px; font-weight: 500">
+<span style="width: 28px; height: 28px; border-radius: 50%; background: {{accent}}; color: #0c0d0f; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600">T</span>
+Toby
+</button>
+</div>
+</header>
+
+<main style="max-width: 1200px; margin: 0 auto; box-sizing: border-box; padding: 40px 32px 72px; display: flex; flex-direction: column; gap: 24px">
+
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: stretch">
+
+<section aria-label="Resume course" style="flex: 999 1 600px; min-width: 0; box-sizing: border-box; background: #131417; border: 1px solid #23252a; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.04); padding: 32px; display: flex; flex-direction: column; justify-content: space-between; gap: 40px">
+<div style="display: flex; flex-direction: column">
+<span style="font-size: 14px; color: #9a9ca3">Programming from Zero <span style="color: #5f6168">/</span> Lesson 6 of 8 <span style="color: #5f6168">/</span> C, Beginner</span>
+<h1 style="margin: 14px 0 0; font-family: 'Archivo', sans-serif; font-stretch: 118%; font-size: 34px; line-height: 1.1; letter-spacing: -0.025em; font-weight: 750">Review: Number Toolkit</h1>
+<p style="margin: 12px 0 0; max-width: 560px; color: #b3b4ba; font-size: 16px; line-height: 1.55">A relaxed consolidation exercise. Combine functions, if statements and loops in three small number helpers. No new ideas, just practice.</p>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 24px 32px">
+<ol aria-label="Lessons in this course, 5 of 8 complete" style="flex: 1 1 280px; list-style: none; margin: 0; padding: 0; display: flex; align-items: center">
+<sc-for list="{{lessons}}" as="l" hint-placeholder-count="8">
+<li aria-label="{{l.label}}" style="display: flex; align-items: center; flex: {{l.grow}}">
+<div style="flex: none; width: 32px; height: 32px; box-sizing: border-box; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; background: {{l.bg}}; color: {{l.fg}}; border: 2px solid {{l.border}}">
+<sc-if value="{{l.isDone}}" hint-placeholder-val="{{ false }}">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0c0d0f" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 12.5 9.5 18 20 6.5"></polyline></svg>
+</sc-if>
+<sc-if value="{{l.showNum}}" hint-placeholder-val="{{ true }}">{{l.n}}</sc-if>
+</div>
+<sc-if value="{{l.hasNext}}" hint-placeholder-val="{{ true }}">
+<div style="flex: 1; height: 2px; margin: 0 6px; border-radius: 1px; background: {{l.line}}"></div>
+</sc-if>
+</li>
+</sc-for>
+</ol>
+<a class="btn" href="#" style="flex: none; display: inline-flex; align-items: center; gap: 12px; min-height: 48px; box-sizing: border-box; padding: 0 20px; border-radius: 8px; background: {{accent}}; color: #0c0d0f; font-weight: 600; font-size: 15px">Open lesson <span style="font-weight: 500; opacity: 0.7">15 min</span></a>
+</div>
+</section>
+
+<aside aria-label="Your progress" style="flex: 1 1 320px; min-width: 0; box-sizing: border-box; background: #131417; border: 1px solid #23252a; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.04); padding: 32px; display: flex; flex-direction: column">
+<span style="font-size: 14px; color: {{accent}}; font-weight: 600">Level 3</span>
+<span style="margin-top: 6px; font-family: 'Archivo', sans-serif; font-stretch: 118%; font-size: 38px; line-height: 1.05; letter-spacing: -0.03em; font-weight: 750">Squire</span>
+<div role="img" aria-label="30 of 48 XP" style="margin-top: 28px; height: 10px; border-radius: 2px; background: #23252a; overflow: hidden">
+<div style="width: 62.5%; height: 100%; background: {{accent}}"></div>
+</div>
+<div style="margin-top: 12px; display: flex; justify-content: space-between; gap: 8px; font-size: 14px">
+<span style="font-weight: 500">30 / 48 XP</span>
+<span style="color: #9a9ca3">18 XP to level 4</span>
+</div>
+
+<dl style="margin: auto 0 0; padding-top: 40px; display: flex; flex-direction: column; font-size: 15px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; padding: 16px 0; border-top: 1px solid #23252a">
+<dt style="color: #9a9ca3">Lessons passed</dt>
+<dd style="margin: 0"><span style="font-family: 'Archivo', sans-serif; font-stretch: 118%; font-weight: 700; font-size: 24px; letter-spacing: -0.02em; color: {{accent}}">5</span> <span style="color: #9a9ca3">of 97</span></dd>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: baseline; padding: 16px 0 0; border-top: 1px solid #23252a">
+<dt style="color: #9a9ca3">Courses completed</dt>
+<dd style="margin: 0"><span style="font-family: 'Archivo', sans-serif; font-stretch: 118%; font-weight: 700; font-size: 24px; letter-spacing: -0.02em; color: #ecebe8">0</span> <span style="color: #9a9ca3">of 11</span></dd>
+</div>
+</dl>
+</aside>
+</div>
+
+<section aria-labelledby="courses-h" style="background: #131417; border: 1px solid #23252a; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.04); padding: 12px; display: flex; flex-direction: column">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 20px 20px 16px">
+<h2 id="courses-h" style="margin: 0; font-family: 'Archivo', sans-serif; font-stretch: 118%; font-size: 21px; font-weight: 700; letter-spacing: -0.02em">Not started <span style="color: {{accent}}">4</span></h2>
+<a class="lnk" href="#" style="font-size: 14px; font-weight: 500; color: #9a9ca3">All courses</a>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{courses}}" as="c" hint-placeholder-count="4">
+<a class="row" href="#" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 16px 20px; border-radius: 10px">
+<span class="tag" style="flex: none; width: 48px; height: 44px; box-sizing: border-box; border-radius: 6px; border: 1px solid {{c.tagBorder}}; background: {{c.tagBg}}; color: {{c.tagFg}}; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 500">{{c.lang}}</span>
+<div style="flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: 'Archivo', sans-serif; font-stretch: 112%; font-size: 17px; font-weight: 650; letter-spacing: -0.015em">{{c.title}}</span>
+<span style="font-size: 14px; color: {{c.noteColor}}">{{c.note}}</span>
+</div>
+<span style="flex: 0 0 104px; font-size: 14px; color: #b3b4ba">{{c.level}}</span>
+<span style="flex: 0 0 88px; font-size: 14px; color: #b3b4ba">{{c.lessons}}</span>
+<span style="flex: 0 0 40px; font-size: 14px; color: #b3b4ba">{{c.time}}</span>
+<span class="v" style="flex: none; display: inline-flex; align-items: center; justify-content: center; min-height: 36px; box-sizing: border-box; padding: 0 16px; border-radius: 6px; border: 1px solid #2f3238; font-size: 14px; font-weight: 500; color: #b3b4ba">View</span>
+</a>
+</sc-for>
+</div>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#f5a524","options":["#f5a524","#ff7a45","#7fb3d5"]},"$preview":{"width":1440,"height":980}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#f5a524';
+    const done = { bg: accent, fg: '#0c0d0f', border: accent };
+    const current = { bg: 'transparent', fg: accent, border: accent };
+    const todo = { bg: 'transparent', fg: '#8b8d94', border: '#2f3238' };
+    const lessons = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => {
+      const s = n <= 5 ? done : n === 6 ? current : todo;
+      const label = n <= 5 ? 'Lesson ' + n + ', complete' : n === 6 ? 'Lesson ' + n + ', up next' : 'Lesson ' + n + ', not started';
+      return {
+        n, label, bg: s.bg, fg: s.fg, border: s.border,
+        isDone: n <= 5, showNum: n > 5,
+        hasNext: n < 8, grow: n < 8 ? '1 1 0' : '0 0 auto',
+        line: n <= 5 ? accent : '#2f3238'
+      };
+    });
+    const muted = '#9a9ca3';
+    const plain = { tagBorder: '#2f3238', tagBg: 'transparent', tagFg: '#ecebe8' };
+    const hot = { tagBorder: accent, tagBg: accent, tagFg: '#0c0d0f' };
+    return {
+      accent,
+      lessons,
+      courses: [
+        { title: 'Pointers & Memory in C', note: 'Recommended next · Builds on Programming from Zero', noteColor: accent, lang: 'C', level: 'Beginner', lessons: '9 lessons', time: '3 h', ...hot },
+        { title: 'Rust Foundations', note: 'Builds on Programming from Zero', noteColor: muted, lang: 'Rust', level: 'Intermediate', lessons: '9 lessons', time: '3 h', ...plain },
+        { title: 'Go Foundations', note: 'Builds on Programming from Zero', noteColor: muted, lang: 'Go', level: 'Intermediate', lessons: '11 lessons', time: '4 h', ...plain },
+        { title: 'Systems Programming in C', note: '—', noteColor: muted, lang: 'C', level: '—', lessons: '7 lessons', time: '3 h', ...plain }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
