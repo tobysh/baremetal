@@ -1,6 +1,6 @@
 # Interactive shell: isolation design
 
-Status: design, not implemented (30 October 2026). Decision: one microVM per shell session. Threat model and the existing one-shot sandbox: `docs/security.md`. Lab content: `docs/security-labs.md`.
+Status: designed and implemented on a development machine (privilege split, broker, web side, deployment artefacts); **not verified on a real host**. See "Status" at the end for what remains. Decision: one microVM per shell session. Threat model and the existing one-shot sandbox: `docs/security.md`. Lab content: `docs/security-labs.md`.
 
 ## Why not bubblewrap
 

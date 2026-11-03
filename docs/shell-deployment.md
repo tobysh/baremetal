@@ -7,7 +7,7 @@ Status: written 30 October 2026 and **not yet exercised on a real host**. Everyt
 | Artefact | Source in the repository | Installed at |
 |---|---|---|
 | Slice (limits for everything below) | `deploy/systemd/baremetal-shell.slice` | `/etc/systemd/system/` |
-| Launcher (root, starts and kills VMs only) | `deploy/systemd/baremetal-shell-launcher.service`, entry `scripts/shell-launcher.mts` (being written) | `/etc/systemd/system/` |
+| Launcher (root, starts and kills VMs only) | `deploy/systemd/baremetal-shell-launcher.service`, entry `scripts/shell-launcher.mts` | `/etc/systemd/system/` |
 | Broker (unprivileged, sessions and limits) | `deploy/systemd/baremetal-shell-broker.service`, entry `scripts/shell-broker.mts` | `/etc/systemd/system/` |
 | Socket directories | `deploy/shell/tmpfiles.d/baremetal-shell.conf` | `/etc/tmpfiles.d/` |
 | `/dev/kvm` permissions | `deploy/shell/udev/99-baremetal-kvm.rules` | `/etc/udev/rules.d/` |

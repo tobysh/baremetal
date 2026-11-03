@@ -1,6 +1,6 @@
 # Security model
 
-Current state as of 30 October 2026. Baremetal runs untrusted code from anonymous visitors, so runner isolation and the sandbox outweigh everything else. Production now requires a separate runner socket service; systemd host verification is still pending. The original audit plan and fix plan are in `docs/archive/` (`security-audit-plan.md`, `security-remediation-plan.md`); the IDs below (L1, R1 ...) match them. Host-level setup is in `docs/deployment-hardening.md`.
+Last reviewed 30 October 2026. Baremetal runs untrusted code from anonymous visitors, so runner isolation and the sandbox outweigh everything else. Production requires a separate runner socket service; systemd host verification is still pending. The IDs below (L1, R1, ...) are the audit finding labels used in code comments and regression fixtures. Host-level setup is in `docs/deployment-hardening.md`; the system overview is in `docs/architecture.md`.
 
 ## Assets and attackers
 
@@ -55,4 +55,4 @@ Assets: the web server host (shared kernel with the separately configured runner
 
 ## If re-auditing
 
-`docs/archive/security-audit-plan.md` holds the work packages (sandbox, integrity, auth, authorization, injection, tutor, HTTP, deployment, dependencies, privacy) and the severity scale; use it as the checklist, and record findings with a regression `check()` each.
+Cover these areas, and record each finding with a regression `check()` in `scripts/security/`: sandbox escape, result integrity (forged or partial transcripts, harness disclosure), authentication and sessions, authorization (admin and other users' data), injection and markdown rendering, tutor prompt and solution leakage, HTTP handling (body limits, origin checks, proxy headers), deployment configuration, dependencies (`npm audit --omit=dev`), and privacy (export, deletion, retention). Rate severity by what an anonymous visitor can reach first.

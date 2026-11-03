@@ -1,6 +1,6 @@
 # Gamification
 
-Current design. The original phased plan, with full rationale, is `docs/archive/gamification-plan.md`. Phases A to D4 are built; D5 (community features) is not.
+Current design of XP, levels, seals, challenges, reviews and the Codex. Implemented: everything below under "What exists". Not built: community seasons and rank ("Not built" at the end).
 
 ## Principles
 
@@ -28,8 +28,6 @@ Current design. The original phased plan, with full rationale, is `docs/archive/
 | UI | Course map, stats, daily pick, level-up and course-complete dialogs, achievement toasts, profile showcase, `/leaderboard` and `/u/[username]` (noindex, opt-out). |
 
 Collections: `xp_events`, `achievements` (unique `(userId, id)`), `reviews` (unique `(userId, exerciseId)`); progress fields `hintsUsed`, `hintsUsedAtPass`, `attemptsAtPass`; user fields `timezone`, `weeklyGoal`. All are in data export and account deletion and listed in `content/legal/privacy.md`.
-
-Deviations from the original plan: challenges as `#challenge` progress docs, derived rhythm, no `bestMs` (no timing data), `fifty-runs-unaided` became `unaided-25`.
 
 ## Maintenance rules
 

@@ -2,116 +2,77 @@
 
 [![CI](https://github.com/tobysh/baremetal/actions/workflows/ci.yml/badge.svg)](https://github.com/tobysh/baremetal/actions/workflows/ci.yml)
 
-**Learn low-level programming by writing real programs.** Baremetal is an interactive learning platform for C, Rust, Go, x86-64 assembly, and operating-system fundamentals. Work through short lessons in your browser, run your code against hidden tests, and ask an AI tutor for guidance when you get stuck.
+**Learn low-level programming by writing real programs.** Baremetal teaches C, Rust, Go, x86-64 assembly and operating-system fundamentals. You read a short lesson, write code in the browser, and run it against hidden tests. An AI tutor explains and hints instead of handing over the answer.
 
-The goal is to help you understand what your code is doing. The tutor offers explanations and hints instead of simply giving away the solution.
+## What's in it
 
-## Explore the curriculum
+- **A curriculum of ~625 lessons in ~56 courses**, as markdown and code files under [`content/`](content/): programming from zero, C (memory, data structures, concurrency, networking, allocators, debugging), Rust, Go (services, concurrency, databases, distributed systems), assembly, and a bare-metal x86-64 kernel that boots in QEMU. A security path covers C bugs, cryptography, packets, forensics, detection and fictional offensive labs; all security exercises use synthetic data and never touch a real target.
+- **An in-browser editor** with Run and Test, explained failures, progressive hints and a ⌘K command palette.
+- **A sandboxed runner**: compilers and learner programs run under bubblewrap with no network, strict limits, and a verdict protocol designed to resist hardcoded or forged results.
+- **A tutor** (Anthropic or a local Ollama model) that never sees the reference solution.
+- **Progress and motivation without pressure**: XP, levels, seals, optional challenges, spaced reviews, a weekly rhythm, achievements and opt-in public profiles.
+- **Accounts**: scrypt, optional two-factor, email verification, data export and deletion.
+- An optional **interactive shell** in throwaway Firecracker microVMs (built, not yet verified on a real host).
 
-- **Start from the basics:** learn to program in C, then build confidence with functions, data, memory, and pointers.
-- **Learn systems languages:** study Rust and Go, from core language features to HTTP services, concurrency, and testing.
-- **Understand the machine:** write x86-64 assembly and build parts of an operating system that runs in an emulated computer.
-- **Work through phased security labs:** parse JSON captures, calculate IPv4 subnets and routes, audit tar permissions, craft toy web payloads, correlate scan logs and search directory graphs in [Security Investigation Labs](content/sec-synthetic-labs/track.json). See the [lesson guide](docs/security-labs.md) for scope and execution details.
-- **Practice offensive infrastructure testing:** probe fictional exposed stores, weak management logins and an outdated toy agent; model Linux privilege escalation, account persistence and service persistence with verified cleanup. See the [offensive lab guide](docs/offensive-infrastructure-lab.md).
-- **Build inert payloads:** construct toy bytecode, packages and validated loaders, then trace behavior under explicit data permissions and resource budgets. See the [toy malware-development guide](docs/toy-maldev.md).
-- **Practice security with synthetic targets:** investigate C bugs, toy cryptography, packet captures, digital forensics, detection rules, inert sample formats, and fictional application-security scenarios.
+Stack: Next.js 16 (App Router, Cache Components, Turbopack), React 19, Tailwind v4, MongoDB, CodeMirror.
 
-Security exercises use made-up data and simulated systems. They do not connect to real targets. See the [acceptable use and privacy information](content/legal/).
+## Run it locally
 
-## What you get
-
-- An in-browser editor with instant run and test feedback.
-- Hidden tests that check a range of inputs, with explanations for common failures.
-- Optional hints and an AI tutor powered by Anthropic or a local Ollama model.
-- Progress tracking, reviews, challenges, achievements, and public profiles.
-- A sandboxed code runner with no network access for learner programs.
-
-## Run Baremetal locally
-
-Baremetal is a Linux-first project. To run the app and its exercises, install:
-
-- Node.js 22 or newer and npm.
-- MongoDB.
-- GCC (the Rust linker), Rust, Go, and [Bubblewrap](https://github.com/containers/bubblewrap) for the code runner.
-- QEMU (`qemu-system-x86_64`) to run the operating-system lessons.
-
-Clone the repository, install dependencies, and create the local MongoDB data directory:
+Linux is the supported platform. You need Node.js 22+, MongoDB, and, to run exercises, gcc, Rust, Go, [bubblewrap](https://github.com/containers/bubblewrap) and `qemu-system-x86_64`.
 
 ```bash
-git clone https://github.com/tobysh/baremetal.git
-cd baremetal
+git clone https://github.com/tobysh/baremetal.git && cd baremetal
 npm ci
 mkdir -p .data/db
 ```
 
-Create `.env.local` in the project root. At minimum, set an application secret of 32 or more characters:
+Create `.env.local`:
 
 ```dotenv
 MONGODB_URI=mongodb://127.0.0.1:27017
 MONGODB_DB=baremetal
-AUTH_SECRET=replace-with-output-from-openssl-rand-base64-48
+AUTH_SECRET=<output of: openssl rand -base64 48>
+# optional: ANTHROPIC_API_KEY=…   (or TUTOR_PROVIDER=ollama)
+# optional: SMTP_URL=… and EMAIL_FROM=…  (signup email verification and password recovery)
 ```
 
-Generate a secret with `openssl rand -base64 48`. The local environment file and database directory are ignored by Git. The AI tutor uses Anthropic when `ANTHROPIC_API_KEY` is set. To use Ollama instead, set `TUTOR_PROVIDER=ollama` and configure `OLLAMA_HOST` and `OLLAMA_MODEL` if needed. The app itself works without a tutor provider configured.
-
-Start MongoDB and the app in separate terminals:
+Then, in two terminals:
 
 ```bash
-npm run db
+npm run db     # MongoDB, data in .data/db
+npm run dev    # http://localhost:3000
 ```
 
-```bash
-npm run dev
-```
+The site works without a tutor provider. All variables are listed in [docs/configuration.md](docs/configuration.md).
 
-Open [http://localhost:3000](http://localhost:3000). To enable account email verification and password recovery locally, configure `SMTP_URL` and `EMAIL_FROM` too.
-
-## Useful commands
+## Common commands
 
 | Command | Purpose |
-| --- | --- |
-| `npm run dev` | Start the development server |
-| `npm run build` / `npm run start` | Build and serve the production app |
-| `npm run lint` | Check code style and common errors |
-| `npx tsc --noEmit` | Type-check the TypeScript code |
-| `npm run verify:content` | Check lesson starters, solutions, and hidden tests |
-| `npm run check:ids` | Ensure published lesson IDs remain stable for learner progress |
-| `npm run check:curriculum` | Check draft isolation and strict published-content loading |
-| `npm run check:learning` | Check recommendations, prerequisites, cohort calculations and diagnostics |
-| `npm run test:runner` | Verify the runner socket, all languages, admission and cancellation |
-| `npm run test:regressions` | Run isolated auth, budget, API and browser checks in a temporary production build (requires MongoDB) |
-| `npm run check:theme` | Check the design-token rules |
-| `npm run test:e2e -- http://localhost:3100` | Run the auth and security checks against a running server |
+|---|---|
+| `npm run dev` / `build` / `start` | Develop, build and serve |
+| `npm run lint`, `npx tsc --noEmit` | Style and types |
+| `npm run verify:content [-- <track>]` | Every solution passes, every starter compiles but fails |
+| `npm run check:ids`, `check:theme`, `check:learning`, `check:curriculum` | Fast guards (stable lesson ids, design tokens, prerequisites, drafts) |
+| `npm run test:runner`, `test:regressions`, `test:browser` | Runner transport, isolated full-stack and Playwright suites |
+| `npm run test:e2e -- http://localhost:3100` | Auth and security checks against a running server |
+| `npm run make-admin -- <email>` | Grant admin |
+| `npm run recompute-xp`, `backfill-achievements` | Maintenance (site stopped!) |
+| `npm run backup-db`, `restore-db` | Database backup and restore |
 
-The full content verifier needs the relevant compiler toolchains, Bubblewrap, and QEMU. See [CI](.github/workflows/ci.yml) for the automated checks and toolchain setup.
-- `npm run load:run-mix -- --users 5 --seconds 60` load-tests `/api/run` (Test mode, reference solutions, weighted language mix, optional `--shared-ip` to simulate a classroom). It refuses non-localhost URLs unless you pass `--i-own-this-host`. The target needs a runner service and, for anonymous traffic, a raised `RUN_LIMIT_ANON_IP`; results are in `docs/capacity.md`.
-
-## For contributors
-
-Curriculum lessons live under `content/<track>/<lesson>/`. A lesson usually includes `lesson.md`, `task.md`, `hints.md`, `starter.*`, `solution.*`, and either hidden `tests.*` or `cases.json`. Keep lesson IDs stable: they are used to store learner progress. Run `npm run verify:content -- <track>` while developing a track, then run the full verifier before opening a pull request.
-
-Unfinished courses can set `"draft": true` in `track.json`; unfinished lessons in published courses can set `draft: true` in their frontmatter. Drafts stay on disk but are excluded from the catalogue, search, exercise lookup and content execution checks. Remove the flag only after completing and verifying the content. Missing files in published content remain errors. Run `npm run check:curriculum` to check draft isolation.
-
-For code changes, run lint and type-checking as well. Please keep security exercises synthetic and keep learner code execution inside the sandbox.
-
-## How it works
-
-- **Curriculum:** Markdown and code files define lessons, tasks, hints, starters, solutions, and tests.
-- **Runner:** Production execution uses a separate Unix-socket service; GCC, Rust, and Go toolchains run inside Bubblewrap. Kernel exercises boot in QEMU with no disk or network.
-- **Tutor:** Anthropic or Ollama provides guided help. Authored hints and common-error explanations remain available without a tutor call.
-- **Accounts:** password hashing, secure sessions, optional two-factor authentication, progress export, and account deletion.
-- **Privacy:** analytics are consent-based. See the [Privacy Notice](content/legal/privacy.md) and [Cookie Notice](content/legal/cookies.md).
+[CONTRIBUTING.md](CONTRIBUTING.md) says which checks to run for which change.
 
 ## Documentation
 
-- [Security model and known limitations](docs/security.md)
-- [Deployment hardening checklist](docs/deployment-hardening.md)
-- [Learning validation and cohort definitions](docs/learning-validation.md)
-- [Gamification and review system](docs/gamification.md)
-- [Legal notices](content/legal/)
+Start with the [documentation index](docs/README.md). The most useful pages:
 
-Production startup requires `RUNNER_SOCKET`; use the systemd templates in `deploy/systemd/` and the deployment checklist to install the separate runner service. Production deployment needs additional setup for a trusted reverse proxy, HTTPS, MongoDB authentication, email delivery, runner isolation, and resource limits. Follow the [deployment checklist](docs/deployment-hardening.md) before exposing an instance publicly.
+- [Architecture](docs/architecture.md): components, request flows, runner internals, data model.
+- [Writing content](docs/content-authoring.md): the lesson format and the rules that keep tests honest.
+- [Contributing](CONTRIBUTING.md): setup, checks, conventions.
+- [Security model](docs/security.md) and [deployment guide](docs/deployment-hardening.md): read both before exposing an instance publicly. Production needs a reverse proxy, HTTPS, MongoDB authentication, email delivery and a separate runner service.
+- [Configuration reference](docs/configuration.md).
+
+Legal notices (Terms, Privacy, Cookies) are in [`content/legal/`](content/legal/).
 
 ## License
 
-There is currently no `LICENSE` file in this repository. Until a license is added, the source is available to view on GitHub, but reuse and redistribution are not granted. Contact the maintainer about licensing.
+There is currently no `LICENSE` file. Until one is added, the source is viewable on GitHub but reuse and redistribution are not granted. Contact the maintainer about licensing.

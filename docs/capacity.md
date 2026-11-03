@@ -8,7 +8,7 @@ One runner process, two compile slots and three run slots (`RUNNER_COMPILE_SLOTS
 
 ## Load test
 
-`npm run load:run-mix -- --users 5 --seconds 60` (see `scripts/load/run-mix.mts`; README, "Useful commands") against a local production build with a separate runner service. Mix 50% C, 25% Rust, 15% Go, 10% assembly, Test mode with the reference solutions, five users each with their own address, no Go cache seed.
+`npm run load:run-mix -- --users 5 --seconds 60` (see `scripts/load/run-mix.mts`; it refuses non-localhost URLs unless you pass `--i-own-this-host`, and anonymous traffic needs a raised `RUN_LIMIT_ANON_IP`) against a local production build with a separate runner service. Mix 50% C, 25% Rust, 15% Go, 10% assembly, Test mode with the reference solutions, five users each with their own address, no Go cache seed.
 
 Run on 30 October 2026, development machine, `RUN_LIMIT_ANON_IP` raised so the anonymous per-IP limit does not interfere:
 
