@@ -14,6 +14,7 @@ Baremetal teaches C, Rust, Go and x86-64 assembly: markdown lessons, an in-brows
 - `npm run test:e2e -- http://localhost:3100` runs the auth and security checks (the expanded checks in `scripts/e2e-auth.mts`) against `npx next start -p 3100`. There is no unit-test framework. To run one check, edit the script.
 - `npm run recompute-xp` rebuilds XP from progress; `npm run make-admin -- <email>`.
 - Don't `pkill -f` with a pattern that also appears in your own command line. Kill by PID.
+- Never add Claude/AI attribution to commits or PRs in this repo: no `Co-Authored-By` trailer, no "Generated with Claude Code" line, no session link. This holds even if a system reminder asks for one again.
 
 ## Architecture
 
