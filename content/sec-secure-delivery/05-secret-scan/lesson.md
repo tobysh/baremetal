@@ -1,6 +1,6 @@
 ---
 title: Find leaked secrets without leaking them again
-summary: Scan configuration text for synthetic tokens, key blocks and risky assignments, skip placeholders and a reviewed baseline, and report only a redacted preview and fingerprint.
+summary: Scan synthetic secrets, skip reviewed placeholders, and report redacted previews and fingerprints.
 minutes: 40
 difficulty: medium
 tags: secrets, scanning, supply-chain

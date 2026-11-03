@@ -1,0 +1,1 @@
+Implement `Aggregate(rows) []Group`. Group by `Key` (including one shared NULL group). Preserve first-seen group order. `Rows` counts every row, `Count` counts valid values, and `Sum.Valid` is true exactly when at least one value is valid. Empty input produces no groups. Do not mutate input.

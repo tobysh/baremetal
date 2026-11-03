@@ -207,6 +207,17 @@ int main(void) {
     result r;
     rbest b;
 
+    // Depth-first search finds thread 0's longer failure before trying thread 1.
+    // A shortest-counterexample search must choose the two-step failure instead.
+    static const insn slow_fail[] = {
+        {OP_SETI,0,0,0,0}, {OP_ADDI,0,-1,0,0}, {OP_STORE,0,0,0,0}, {OP_END,0,0,0,0}
+    };
+    static const insn fast_fail[] = {
+        {OP_SETI,0,-1,0,0}, {OP_STORE,0,0,0,0}, {OP_END,0,0,0,0}
+    };
+    p = mk(2, slow_fail, fast_fail, 0); expect_range(&p, 0, 0, 10);
+    CHECK("shorter failure in a later DFS branch", same_as_minimal(&p, why, sizeof why), "%s", why);
+
     p = mk_counter(2, INC_RACY); expect_sum(&p, 0, 0, 2);
     CHECK("racy counter, two threads", same_as_minimal(&p, why, sizeof why), "%s", why);
     model_check(&p, &r);

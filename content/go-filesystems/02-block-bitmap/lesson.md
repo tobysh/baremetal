@@ -22,3 +22,5 @@ Every bitmap change is exactly **one block write**: read block 1, change a bit, 
 - allocating past `NBlocks`, even when the device is bigger than the filesystem.
 
 A failed call must not write.
+
+Run the starter to inspect the public example, then implement the contract in the task. The reference implementation produces the specified results for these same inputs.

@@ -1,6 +1,6 @@
 ---
 title: Leader Replication and Commit
-summary: Track what each follower holds, back off on rejection, ignore stale replies, and advance the commit index only when a majority has an entry from the current term.
+summary: Track follower progress, handle stale replies, and commit current-term entries only after majority replication.
 minutes: 50
 difficulty: hard
 tags: distributed, replication, raft, commit

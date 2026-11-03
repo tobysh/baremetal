@@ -147,8 +147,11 @@ func TestBuildLengths_is_deterministic_under_ties(t *testing.T) {
 	if got := BuildLengths([]int{1, 1, 1, 1, 1}); fmt.Sprint(got) != "[3 3 2 2 2]" {
 		t.Errorf("five equal weights: %v; want [3 3 2 2 2] (smallest symbols merge first, so they end up deepest)", got)
 	}
-	if got := BuildLengths([]int{2, 1, 1, 2}); fmt.Sprint(got) != "[2 2 2 2]" {
-		t.Errorf("[2 1 1 2]: %v; want [2 2 2 2]", got)
+	// Merge symbols 1 and 2 first (weight 2, minimum symbol 1).
+	// At weight 2, symbol 0 precedes that node, which precedes symbol 3.
+	// The second merge therefore makes a weight-4 subtree containing 0,1,2.
+	if got := BuildLengths([]int{2, 1, 1, 2}); fmt.Sprint(got) != "[2 3 3 1]" {
+		t.Errorf("[2 1 1 2]: %v; want [2 3 3 1]", got)
 	}
 }
 

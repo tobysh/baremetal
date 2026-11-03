@@ -1,0 +1,1 @@
+Implement EncodeDir and DecodeDir. Encode preserves order. Decode rejects lengths not divisible by 16, empty names, nonzero bytes after the first name NUL, slash, non-ASCII bytes, zero inode numbers and duplicate names. Encode applies the same validation. Errors return nil output. Empty directories are valid. Never modify input.

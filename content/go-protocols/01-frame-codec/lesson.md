@@ -1,6 +1,6 @@
 ---
 title: A Checksummed Frame Codec
-summary: Define a wire format with a magic byte, type, length and CRC32, then encode and decode one frame from a byte buffer, telling "need more bytes" from "this is broken".
+summary: Encode and decode frames with a magic byte, type, length and CRC32; distinguish incomplete input from invalid input.
 minutes: 30
 difficulty: medium
 tags: framing, crc32, binary

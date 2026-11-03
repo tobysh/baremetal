@@ -28,3 +28,5 @@ Six direct blocks of 64 bytes give a maximum file size of 384 bytes. Inode numbe
 The new blocks are written before the inode points at them, and the old ones are released only after the inode no longer does. That makes the replacement a single switch (the inode write). It costs extra space during the rewrite: the old and new copies exist together, so rewriting a big file on a nearly full disk can fail with `ErrNoSpace` even though the final result would fit. If that happens, or the data is over 384 bytes (`ErrTooBig`), the file must be unchanged and no block may stay allocated.
 
 `AllocInode` and `ReadFile` are given.
+
+Run the starter to inspect the public example, then implement the contract in the task. The reference implementation produces the specified results for these same inputs.

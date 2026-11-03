@@ -1,6 +1,6 @@
 ---
 title: Review Against a Defect Inventory
-summary: Review a credit-pool service with eight marked regions. Name which regions hold real defects, prove each with a counterexample, and fix them without touching the clean ones.
+summary: Review a credit-pool service, identify defective regions, prove them with counterexamples, and preserve correct behavior.
 minutes: 45
 difficulty: hard
 tags: code-review, counterexamples, specification

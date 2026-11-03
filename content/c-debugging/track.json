@@ -1,7 +1,7 @@
 {
   "title": "Debugging and Profiling in C",
   "summary": "Diagnose before you change code: read evidence from corrupted memory, crashes, thread snapshots and measurements, then fix and defend the repair.",
-  "description": "Pilot course. Every lesson hands you a deterministic failing program and some evidence, such as a memory dump, a trace or a counter table. You learn to say what the evidence proves and what it only suggests, then to make the smallest correct change and show it did not break anything else. Lessons use supplied diagnostic output, so nothing depends on an interactive debugger inside the sandbox. More lessons (crash traces, deadlock snapshots, measured slow paths and a mixed investigation) are planned; see docs/curriculum-expansion-plan.md.",
+  "description": "Every lesson hands you a deterministic failing program and evidence: guard bytes, a crash trace, a thread snapshot, work counters or a regression baseline. Learn to separate what the evidence proves from what it only suggests, make a focused repair and show that existing behavior still works. The six lessons finish with a mixed investigation. Supplied diagnostic output makes the course independent of an interactive debugger or hardware profiler inside the sandbox.",
   "level": "Intermediate",
   "language": "c",
   "path": "c",

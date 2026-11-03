@@ -19,13 +19,8 @@ export const metadata: Metadata = {
   alternates: { canonical: "/learn" },
 };
 
-const LANG_FILTERS = [
-  { id: "c", label: "C" }, { id: "rust", label: "Rust" }, { id: "go", label: "Go" },
-  { id: "asm", label: "Assembly" }, { id: "kernel", label: "Kernel" }, { id: "security", label: "Security" },
-] as const;
 const LEVEL_FILTERS = ["Beginner", "Intermediate", "Advanced"] as const;
 
-const matchesLang = (t: Track, lang: string) => (lang === "security" ? t.path === "security" : t.path !== "security" && t.language === lang);
 
 export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
   const tracks = getTracks();
@@ -52,7 +47,7 @@ export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
         Pick a path. Courses are in order within each one. New to programming? Start with <Link className="text-accent underline underline-offset-2" href="/learn/first-steps">Programming from Zero</Link>, then continue into C. You can choose another path at any time.
       </p>
       <Suspense fallback={null}><RecommendedLearning /></Suspense>
-      <Suspense fallback={<CourseFilterBar lang={null} level={null} />}><CourseFilters searchParams={searchParams} tracks={tracks} /></Suspense>
+      <Suspense fallback={<CourseFilterBar level={null} />}><CourseFilters searchParams={searchParams} tracks={tracks} /></Suspense>
       <nav aria-label="Paths" className="mt-8 flex flex-wrap gap-2 border-b border-border pb-6 text-sm">
         {groups.map((g) => (
           <a key={g.id} href={`#path-${g.id}`} className="inline-flex min-h-11 items-center rounded-lg bg-surface px-4 py-2 text-muted hover:bg-surface-2 hover:text-text">
@@ -115,49 +110,38 @@ export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
 }
 
 /**
- * Plain-link filters (`?lang=rust&level=Beginner`). The catalogue itself is always rendered in full so the page stays
+ * Plain-link filters (`?level=Beginner`). The catalogue itself is always rendered in full so the page stays
  * cacheable and indexable; this small request-time part only emits CSS that hides what doesn't match, which works
  * without JavaScript.
  */
 async function CourseFilters({ searchParams, tracks }: { searchParams: PageProps<"/learn">["searchParams"]; tracks: Track[] }) {
   const params = await searchParams;
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? null;
-  const lang = LANG_FILTERS.find((l) => l.id === one(params.lang))?.id ?? null;
   const level = LEVEL_FILTERS.find((l) => l === one(params.level)) ?? null;
-  const shown = tracks.filter((t) => (!lang || matchesLang(t, lang)) && (!level || t.level === level));
-  const css = !lang && !level ? "" : [
+  const shown = tracks.filter((t) => !level || t.level === level);
+  const css = !level ? "" : [
     ...tracks.filter((t) => !shown.includes(t)).map((t) => `[data-track="${t.slug}"]{display:none}`),
     ...groupByPath(tracks).filter((g) => !g.tracks.some((t) => shown.includes(t))).map((g) => `#path-${g.id}{display:none}`),
   ].join("");
   return (
     <>
       {css && <style>{css}</style>}
-      <CourseFilterBar lang={lang} level={level} empty={shown.length === 0} />
+      <CourseFilterBar level={level} empty={shown.length === 0} />
     </>
   );
 }
 
-function CourseFilterBar({ lang, level, empty = false }: { lang: string | null; level: string | null; empty?: boolean }) {
-  const href = (nextLang: string | null, nextLevel: string | null) => {
-    const q = new URLSearchParams();
-    if (nextLang) q.set("lang", nextLang);
-    if (nextLevel) q.set("level", nextLevel);
-    return q.size ? `/learn?${q}` : "/learn";
-  };
+function CourseFilterBar({ level, empty = false }: { level: string | null; empty?: boolean }) {
+  const href = (nextLevel: string | null) => (nextLevel ? `/learn?${new URLSearchParams({ level: nextLevel })}` : "/learn");
   const chip = (active: boolean) => `inline-flex min-h-11 items-center rounded-lg border px-3 py-2 text-sm ${active ? "border-accent bg-accent-soft text-text" : "border-border text-muted hover:bg-surface-2 hover:text-text"}`;
   return (
     <section aria-label="Filter courses" className="mt-8 space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-muted">Language</span>
-        <Link href={href(null, level)} aria-current={!lang ? "true" : undefined} className={chip(!lang)} scroll={false}>All</Link>
-        {LANG_FILTERS.map((l) => <Link key={l.id} href={href(l.id, level)} aria-current={lang === l.id ? "true" : undefined} className={chip(lang === l.id)} scroll={false}>{l.label}</Link>)}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-muted">Level</span>
-        <Link href={href(lang, null)} aria-current={!level ? "true" : undefined} className={chip(!level)} scroll={false}>All</Link>
-        {LEVEL_FILTERS.map((l) => <Link key={l} href={href(lang, l)} aria-current={level === l ? "true" : undefined} className={chip(level === l)} scroll={false}>{l}</Link>)}
+        <Link href={href(null)} aria-current={!level ? "true" : undefined} className={chip(!level)} scroll={false}>All</Link>
+        {LEVEL_FILTERS.map((l) => <Link key={l} href={href(l)} aria-current={level === l ? "true" : undefined} className={chip(level === l)} scroll={false}>{l}</Link>)}
       </div>
-      {empty && <p role="status" className="text-sm text-muted">No courses match both filters. <Link href="/learn" className="text-accent underline underline-offset-2">Clear them</Link>.</p>}
+      {empty && <p role="status" className="text-sm text-muted">No courses match this filter. <Link href="/learn" className="text-accent underline underline-offset-2">Clear it</Link>.</p>}
     </section>
   );
 }

@@ -1,6 +1,6 @@
 ---
 title: Version and Feature Negotiation
-summary: Let two peers of different ages agree on a protocol version and a feature set, ignore what they do not understand, and refuse only when a requirement cannot be met.
+summary: Negotiate protocol versions and features, ignore unknown optional capabilities, and reject unmet requirements.
 minutes: 40
 difficulty: medium
 tags: negotiation, compatibility, versioning

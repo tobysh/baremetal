@@ -2,6 +2,8 @@
 
 Status: proposed roadmap. This document gathers the course additions and exercise formats discussed in this session. It does not authorize deployment, infrastructure changes or implementation of every item.
 
+Implementation progress and model limitations are recorded in [31 October curriculum recovery](curriculum-recovery-2026-10-31.md). The roadmap below remains a design reference rather than a claim that every proposed feature is implemented.
+
 ## Starting point
 
 Baremetal already has C, Rust, Go, assembly, OS development, database and security courses. Extend those foundations into projects that combine concepts and require investigation, maintenance and reasoning about failure.
