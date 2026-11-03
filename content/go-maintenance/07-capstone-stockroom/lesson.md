@@ -1,6 +1,6 @@
 ---
 title: "Capstone: The Stockroom"
-summary: Extend a stockroom inventory with reservations, persist them in the stored format without stranding older readers, and upgrade old files while regression tests pin everything else.
+summary: Add stockroom reservations, migrate stored data, and preserve compatibility with older readers.
 minutes: 60
 difficulty: hard
 tags: capstone, migration, regression, compatibility

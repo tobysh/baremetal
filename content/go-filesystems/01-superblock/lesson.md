@@ -25,3 +25,5 @@ The superblock holds seven 32-bit words: magic `0x424D4653`, version `1`, `NBloc
 A superblock read from a disk is untrusted input. A wrong magic means this is not BMFS at all. A `DataStart` that disagrees with `NInodes` would make every later lesson read the wrong blocks. `ReadSuper` must reject anything inconsistent with `ErrBadSuper` instead of handing the rest of the system a layout it cannot trust.
 
 Limit: one bitmap block has 64 x 8 = 512 bits, so a BMFS filesystem has at most 512 blocks. That is a design simplification, not a recommendation.
+
+Run the starter to inspect the public example, then implement the contract in the task. The reference implementation produces the specified results for these same inputs.

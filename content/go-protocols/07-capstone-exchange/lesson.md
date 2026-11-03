@@ -1,6 +1,6 @@
 ---
 title: "Capstone: Client and Server over a Faulty Pipe"
-summary: Combine framing, scanning, negotiation and flow control into a request/response client and server that finish correctly over a link that splits, drops, corrupts and duplicates bytes.
+summary: Combine framing, negotiation and flow control over a simulated link that splits, drops, corrupts and duplicates bytes.
 minutes: 75
 difficulty: hard
 tags: capstone, protocol, retransmission

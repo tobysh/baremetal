@@ -11,6 +11,5 @@
     "Reason about safety under message loss, duplication, partitions and restarts.",
     "Build term-based leader election, log replication and durable recovery as deterministic state machines.",
     "Check a replicated store against invariants across many seeded failure schedules."
-  ],
-  "draft": true
+  ]
 }

@@ -1,0 +1,1 @@
+Implement heap_map(out, cap). Return the number of map characters needed, excluding the terminating NUL. If cap > 0, write up to cap-1 characters and a NUL; out may be NULL only when cap is zero. Each block emits one H followed by size/16 copies of . or U. Do not modify heap state, counters, or bytes beyond cap. Empty heaps produce an empty string.

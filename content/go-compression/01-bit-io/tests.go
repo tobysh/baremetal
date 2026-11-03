@@ -67,7 +67,7 @@ func refPack(items []bitItem) []byte {
 	out := make([]byte, len(s)/8)
 	for i := range out {
 		for j := 0; j < 8; j++ {
-			out[i] = out[i]<<1 | s[i*8+j] - '0'
+			out[i] = out[i]<<1 | (s[i*8+j] - '0')
 		}
 	}
 	return out
@@ -84,6 +84,9 @@ func writeAll(items []bitItem) *BitWriter {
 func TestWriter_known_answers(t *testing.T) {
 	a := []bitItem{{5, 3}, {1, 1}, {255, 8}, {0, 2}}
 	b := []bitItem{{0x1234, 13}, {3, 2}, {0xDEADBEEFCAFEBABE, 64}, {1, 1}}
+	if got := hex.EncodeToString(refPack(a)); got != "bff0" {
+		t.Fatalf("string reference packed known bits to %s; want bff0", got)
+	}
 	if got := hex.EncodeToString(writeAll(a).Bytes()); got != "bff0" {
 		t.Errorf("101 1 11111111 00 packed to %s; want bff0", got)
 	}
