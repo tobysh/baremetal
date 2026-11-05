@@ -32,6 +32,7 @@ Also read `AGENTS.md` (Next.js 16 differs from training data; read `node_modules
 ## Theme
 
 - **Colours come from tokens only** (`src/app/globals.css`): `bg`, `surface`, `surface-2`, `border`, `text`, `muted`, `accent`, `ok`, `err`, plus `--code-*` for the editor. Never hard-code hex values in components. Every token has a dark value (default) and a light value (OS preference or `data-theme="light"`); add both when adding a token.
+- **Navbar spans the full viewport width** (logo at the left edge, actions at the right edge, 16/24px gutters), independent of the page `Container` width. Never cap it with a max-width.
 - **Dark:** ink background `#0e1013`, amber accent `#f5a524`. **Light:** warm paper `#fbfaf7`, amber `#b86e00`.
 - **Fonts:** IBM Plex Sans for UI, IBM Plex Mono for code.
 - **Difficulty colours:** Easy green (`--easy`), Medium amber (`--medium`), Hard red (`--hard`), Impossible dark red (`--impossible`, a solid badge). Use `DifficultyBadge`.

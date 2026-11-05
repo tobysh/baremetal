@@ -46,7 +46,7 @@ export function Badge({ children, tone = "neutral" }: { children: ReactNode; ton
 /**
  * Page width variants. `narrow` is a reading column (legal, settings, profiles), `compact` a list column (leaderboard),
  * `standard` the default (about 1152px) and `wide` the dashboard. The site header follows the page's variant through
- * the `data-container` attribute (see globals.css), so the logo lines up with the content's left edge.
+ * the `data-container` attribute (informational only; the navbar is always full width).
  */
 export type ContainerWidth = "narrow" | "compact" | "standard" | "wide";
 export function Container({ children, className = "", width = "standard" }: { children: ReactNode; className?: string; width?: ContainerWidth }) {

@@ -5,13 +5,13 @@ import { getProgressMap } from "@/lib/progress";
 import { computeRhythm } from "@/lib/rhythm";
 import { LogoMark } from "./logo";
 import { HeaderNavigation } from "./header-navigation";
-import { Container, Skeleton } from "./ui";
+import { Skeleton } from "./ui";
 import { SITE } from "@/lib/site";
 
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg">
-      <Container className="site-header-inner flex h-16 items-center gap-5 sm:gap-8">
+      <div className="flex h-16 w-full items-center gap-5 px-4 sm:gap-8 sm:px-6">
         <Link href="/" className="flex shrink-0 items-center gap-2.5 display text-[17px] font-bold" aria-label={`${SITE.name} home`}>
           <LogoMark />
           <span>{SITE.name}</span>
@@ -19,7 +19,7 @@ export function SiteHeader() {
         <Suspense fallback={<Skeleton className="ml-auto h-10 w-24" />}>
           <AccountNavigation />
         </Suspense>
-      </Container>
+      </div>
     </header>
   );
 }

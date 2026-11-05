@@ -396,18 +396,15 @@ input:hover:not(:disabled), textarea:hover:not(:disabled), select:hover:not(:dis
 
 /* Landing-page demo (see RunDemo in page.tsx). The base styles are the finished frame; the
    animation is only attached when motion is welcome, so reduced motion shows a static result.
-   It plays four times, pauses while hovered or focused within, then rests on the final frame. */
+   It plays once, pauses while hovered or focused within, then rests on the final frame. */
 @media (prefers-reduced-motion: no-preference) {
-  .demo-a { animation-duration: 12s; animation-iteration-count: 4; animation-timing-function: steps(14); animation-fill-mode: backwards; }
-  .demo-run { animation-duration: 12s; animation-iteration-count: 4; animation-timing-function: ease-out; }
-  .demo-reset { animation-duration: 12s; animation-iteration-count: 4; animation-timing-function: linear; }
-  .demo-ph { animation-duration: 12s; animation-iteration-count: 4; animation-timing-function: linear; }
+  .demo-a { animation-duration: 12s; animation-iteration-count: 1; animation-timing-function: steps(14); animation-fill-mode: backwards; }
+  .demo-run { animation-duration: 12s; animation-iteration-count: 1; animation-timing-function: ease-out; }
+  .demo-reset { animation-duration: 12s; animation-iteration-count: 1; animation-timing-function: linear; }
+  .demo-ph { animation-duration: 12s; animation-iteration-count: 1; animation-timing-function: linear; }
   .demo:hover *, .demo:hover { animation-play-state: paused; }
 }
 
-/* The header's inner width follows the page's Container variant, so the logo sits on the content's left edge. */
-body:has([data-container="wide"]) .site-header-inner { max-width: 96rem; }
-body:has([data-container="compact"]) .site-header-inner { max-width: 56rem; }
 
 /* Room under the page for the fixed mobile tab bar (see MobileTabBar). */
 @media (max-width: 1023.98px) {

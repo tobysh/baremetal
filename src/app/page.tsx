@@ -251,7 +251,7 @@ const DEMO_DESCRIPTION =
  * A looping write, Run, tests-pass demo in plain CSS (no JavaScript, no images). Each moving piece
  * gets its own generated keyframes so it can start at its own moment in one 12 s timeline. The
  * default styles are the finished frame, and the animation is only attached when motion is
- * welcome, so reduced-motion visitors see a static, complete picture. It plays four times and
+ * welcome, so reduced-motion visitors see a static, complete picture. It plays once and
  * pauses under the pointer, then rests on the final frame.
  */
 function RunDemo() {
