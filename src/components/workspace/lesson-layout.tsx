@@ -31,8 +31,15 @@ export function LessonLayout({ reading, workspace }: { reading: ReactNode; works
     function show(target: LessonTarget) {
       setView(target);
       setFocused((current) => (target === "lesson" ? false : current));
+      // The editor is lazy and, on phones, only just became visible, so focus it once the pane has laid out.
+      const focusEditor = (tries = 0) => {
+        const el = document.querySelector<HTMLElement>("#view-panel-code .cm-content");
+        if (el && el.offsetParent !== null) el.focus();
+        else if (tries < 10) setTimeout(() => focusEditor(tries + 1), 60);
+        else document.getElementById("view-panel-code")?.focus();
+      };
       requestAnimationFrame(() => {
-        if (target === "code") document.querySelector<HTMLElement>("#view-panel-code .cm-content")?.focus();
+        if (target === "code") focusEditor();
         else {
           const reading = document.getElementById("view-panel-lesson");
           reading?.focus({ preventScroll: true });

@@ -7,45 +7,57 @@ import type { ProgressDoc } from "@/lib/models";
 import type { Rhythm } from "@/lib/rhythm";
 import { sealsFor } from "@/lib/rewards-context";
 import { Seal, SealLegend } from "./seals";
-import { ButtonLink } from "./ui";
+import { ButtonLink, ProgressBar } from "./ui";
 import { MapControls } from "./map-controls";
+
+/**
+ * The "today" strip: review, resume and weekly rhythm are segments of ONE panel, divided by hairlines.
+ * Segments size to their content (no h-full), so mismatched heights never leave a hole in the grid.
+ */
+export function ActivityStrip({ children }: { children: React.ReactNode }) {
+  return <div className="panel grid divide-y divide-line md:grid-cols-[repeat(auto-fit,minmax(260px,1fr))] md:divide-x md:divide-y-0">{children}</div>;
+}
+
+const segment = "flex min-w-0 flex-col gap-1 p-4 sm:p-5";
 
 /** The weekly goal as a small ring plus plain-text counts. The rest-week detail is visible text. */
 export function RhythmCard({ rhythm }: { rhythm: Rhythm }) {
   if (rhythm.goal <= 0) {
     return (
-      <section aria-labelledby="rhythm-h" className="panel h-full p-6">
-        <h2 id="rhythm-h" className="display-sm text-lg font-bold">Weekly rhythm</h2>
-        <p className="mt-2 text-sm text-muted">You have no weekly goal set. <Link href="/settings" className="text-accent underline underline-offset-2">Choose one</Link> if a little structure helps.</p>
+      <section aria-labelledby="rhythm-h" className={segment}>
+        <h2 id="rhythm-h" className="display-sm text-base font-bold">Weekly rhythm</h2>
+        <p className="text-sm text-muted">You have no weekly goal set. <Link href="/settings" className="text-accent underline underline-offset-2">Choose one</Link> if a little structure helps.</p>
       </section>
     );
   }
   const frac = Math.min(1, rhythm.thisWeek / rhythm.goal);
-  const R = 30;
+  const R = 24;
   const C = 2 * Math.PI * R;
   const left = rhythm.goal - rhythm.thisWeek;
   return (
-    <section aria-labelledby="rhythm-h" className="panel h-full p-6">
-      <h2 id="rhythm-h" className="display-sm text-lg font-bold">Weekly rhythm</h2>
-      <div className="mt-4 flex items-center gap-5">
-        <div className="relative size-[76px] shrink-0">
-          <svg viewBox="0 0 76 76" className="size-full -rotate-90" role="img" aria-label={`${rhythm.thisWeek} of ${rhythm.goal} lessons this week`}>
-            <circle cx="38" cy="38" r={R} fill="none" stroke="var(--track, var(--line-strong))" strokeWidth="7" />
-            <circle cx="38" cy="38" r={R} fill="none" stroke="var(--accent)" strokeWidth="7" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - frac)} />
+    <section aria-labelledby="rhythm-h" className={segment}>
+      <h2 id="rhythm-h" className="display-sm text-base font-bold">Weekly rhythm</h2>
+      <div className="mt-1 flex items-center gap-4">
+        <div className="relative size-14 shrink-0">
+          <svg viewBox="0 0 60 60" className="size-full -rotate-90" role="img" aria-label={`${rhythm.thisWeek} of ${rhythm.goal} lessons this week`}>
+            <circle cx="30" cy="30" r={R} fill="none" stroke="var(--track, var(--line-strong))" strokeWidth="6" />
+            <circle cx="30" cy="30" r={R} fill="none" stroke="var(--accent)" strokeWidth="6" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - frac)} />
           </svg>
         </div>
         <div className="min-w-0 text-sm">
-          <p className="font-semibold tabular-nums">{rhythm.thisWeek} of {rhythm.goal} {rhythm.goal === 1 ? "lesson" : "lessons"} this week</p>
-          <p className="mt-1 text-muted">{left <= 0 ? `Goal met this week${rhythm.thisWeek > rhythm.goal ? ` (${rhythm.thisWeek} lessons)` : ""}.` : `${left} more ${left === 1 ? "lesson" : "lessons"} to reach it.`}</p>
-          <p className="mt-2"><span className="display text-2xl font-bold text-accent">{rhythm.current}</span> <span className="text-muted">week streak, {rhythm.current === 1 ? "week" : "weeks"} in a row</span></p>
-          {rhythm.best > rhythm.current && <p className="text-muted">Best: {rhythm.best} {rhythm.best === 1 ? "week" : "weeks"}</p>}
+          <p className="font-semibold tabular-nums">{rhythm.thisWeek} of {rhythm.goal} {rhythm.goal === 1 ? "lesson" : "lessons"} this week{left <= 0 && ". Goal met"}</p>
+          <p className="text-muted"><span className="font-semibold text-text tabular-nums">{rhythm.current}</span> week streak{rhythm.best > rhythm.current && ` · best ${rhythm.best}`}</p>
         </div>
       </div>
-      <p className="mt-4 text-sm text-muted">
-        {rhythm.rest > 0
-          ? `${rhythm.rest} rest ${rhythm.rest === 1 ? "week" : "weeks"} saved: one covers a missed week automatically.`
-          : "A rest week is saved for every four weeks you meet your goal, and covers a missed week automatically."}
-      </p>
+      <details className="mt-1 text-sm text-muted">
+        <summary className="inline-flex min-h-9 cursor-pointer items-center font-medium text-text-2 hover:text-accent">How rest weeks work</summary>
+        <p className="mt-1">
+          {rhythm.rest > 0
+            ? `${rhythm.rest} rest ${rhythm.rest === 1 ? "week" : "weeks"} saved: one covers a missed week automatically. `
+            : ""}
+          A rest week is saved for every four weeks you meet your goal, and covers a missed week automatically.
+        </p>
+      </details>
     </section>
   );
 }
@@ -56,16 +68,11 @@ export function ReviewCard({ due }: { due: DueReview[] }) {
   if (due.length === 0) return null;
   const more = due.length - 1;
   return (
-    <section aria-labelledby="review-h" className="panel flex h-full flex-col p-6">
-      <h2 id="review-h" className="display-sm text-lg font-bold">Ready for review</h2>
-      <p className="mt-2 text-sm text-muted">{due.length} {due.length === 1 ? "lesson is" : "lessons are"} due for a second look.</p>
-      <p className="mt-6 text-sm font-semibold text-accent">Up next</p>
-      <p className="mt-1 break-words font-medium">{due[0].title}</p>
-      <p className="text-sm text-muted">{due[0].trackTitle}</p>
-      {more > 0 && <p className="mt-2 text-sm text-muted">+{more} more due</p>}
-      <div className="pt-6">
-        <ButtonLink href={due[0].href} variant="secondary">Start review</ButtonLink>
-      </div>
+    <section aria-labelledby="review-h" className={segment}>
+      <h2 id="review-h" className="display-sm text-base font-bold">Ready for review</h2>
+      <p className="text-sm text-muted"><span className="font-semibold text-text tabular-nums">{due.length}</span> {due.length === 1 ? "lesson is" : "lessons are"} due{more > 0 && ` · up next: ${due[0].title}`}</p>
+      {more === 0 && <p className="break-words text-sm font-medium">{due[0].title} <span className="font-normal text-muted">· {due[0].trackTitle}</span></p>}
+      <div className="pt-2"><ButtonLink href={due[0].href} variant="secondary">Start review</ButtonLink></div>
     </section>
   );
 }
@@ -76,83 +83,109 @@ export type ContinueTarget = { href: string; title: string; trackTitle: string; 
 export function ContinueCard({ target }: { target: ContinueTarget }) {
   const when = target.updatedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
   return (
-    <section aria-labelledby="continue-h" className="panel flex h-full flex-col p-6">
-      <h2 id="continue-h" className="display-sm text-lg font-bold">Continue where you left off</h2>
-      <p className="mt-2 break-words font-medium">{target.title}</p>
-      <p className="text-sm text-muted">{target.trackTitle} · last worked on {when}</p>
-      <p className="mt-3 text-sm text-muted">Your saved code is waiting.</p>
-      <div className="mt-auto pt-4">
-        <ButtonLink href={target.href} variant="secondary">Resume lesson</ButtonLink>
-      </div>
+    <section aria-labelledby="continue-h" className={segment}>
+      <h2 id="continue-h" className="display-sm text-base font-bold">Continue where you left off</h2>
+      <p className="break-words text-sm font-medium">{target.title}</p>
+      <p className="text-sm text-muted">{target.trackTitle} · last worked on {when}. Your saved code is waiting.</p>
+      <div className="pt-2"><ButtonLink href={target.href} variant="secondary">Resume lesson</ButtonLink></div>
     </section>
   );
 }
 
+/** Desktop only: on phones the strip keeps to review, resume and rhythm. */
 export function PickCard({ pick }: { pick: DailyPick }) {
   return (
-    <section aria-labelledby="pick-h" className="panel flex h-full flex-col p-6">
-      <h2 id="pick-h" className="display-sm text-lg font-bold">Today&apos;s pick</h2>
-      <p className="mt-2 text-sm font-semibold text-accent">{pick.label}</p>
-      <p className="mt-1 break-words font-medium">{pick.lesson.title}</p>
-      <p className="text-sm text-muted">{pick.track.title}</p>
-      <p className="mt-3 text-sm text-muted">Just a suggestion. Skip it freely.</p>
-      <div className="mt-auto pt-4">
-        <ButtonLink href={pick.href} variant="secondary">Open</ButtonLink>
-      </div>
+    <section aria-labelledby="pick-h" className={`${segment} hidden md:flex`}>
+      <h2 id="pick-h" className="display-sm text-base font-bold">Today&apos;s pick</h2>
+      <p className="text-sm font-semibold text-text-2">{pick.label}</p>
+      <p className="break-words text-sm font-medium">{pick.lesson.title} <span className="font-normal text-muted">· {pick.track.title}</span></p>
+      <p className="text-sm text-muted">Just a suggestion. Skip it freely.</p>
+      <div className="pt-2"><ButtonLink href={pick.href} variant="secondary">Open</ButtonLink></div>
     </section>
   );
 }
 
-/** The Codex: every achievement, earned ones first. Locked ones show their condition so they can be aimed at. */
-export function CodexPanel({ unlocked, collapsed = false }: { unlocked: Map<string, Date>; collapsed?: boolean }) {
+export type CodexFilter = "earned" | "all" | "locked";
+
+const fmtDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+
+/** Dashboard preview: the most recent entries only. The full list lives at /dashboard/codex. */
+export function CodexPreview({ unlocked }: { unlocked: Map<string, Date> }) {
+  const earned = ACHIEVEMENTS.filter((a) => unlocked.has(a.id)).sort((a, b) => +unlocked.get(b.id)! - +unlocked.get(a.id)!);
+  return (
+    <section aria-labelledby="codex-h" className="panel flex min-w-0 flex-col p-4 sm:p-5">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 id="codex-h" className="display-sm text-base font-bold">Codex <span className="font-normal text-muted tabular-nums">{earned.length} of {ACHIEVEMENTS.length}</span></h2>
+        <Link href="/dashboard/codex" className="inline-flex min-h-9 items-center text-sm font-medium text-accent hover:underline">View Codex</Link>
+      </div>
+      {earned.length === 0 ? (
+        <p className="mt-2 text-sm text-muted">Nothing earned yet, and that is fine. Pass your first lesson and the first entry lands here.</p>
+      ) : (
+        <ul className="mt-2 divide-y divide-line">
+          {earned.slice(0, 3).map((a) => (
+            <li key={a.id} className="py-2">
+              <p className="text-sm font-semibold">{a.name} <span className="font-normal text-muted">· {fmtDate(unlocked.get(a.id)!)}</span></p>
+              <p className="text-sm text-text-2">{a.description}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** The full Codex with Earned / All / Locked views. Locked entries show their condition so they can be aimed at. */
+export function CodexPanel({ unlocked, filter }: { unlocked: Map<string, Date>; filter: CodexFilter }) {
   const earned = ACHIEVEMENTS.filter((a) => unlocked.has(a.id)).sort((a, b) => +unlocked.get(b.id)! - +unlocked.get(a.id)!);
   const locked = ACHIEVEMENTS.filter((a) => !unlocked.has(a.id));
-  const body = (
-    <>
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="codex-h" className="display text-[21px] font-bold">Codex <span className="text-accent">{earned.length}</span><span className="text-base font-normal text-muted"> of {ACHIEVEMENTS.length}</span></h2>
-        <p className="text-sm text-muted">Recognition only. Achievements never change your XP.</p>
-      </div>
-      {earned.length === 0 && (
+  const tabs: { id: CodexFilter; label: string; count: number }[] = [
+    { id: "earned", label: "Earned", count: earned.length },
+    { id: "all", label: "All", count: ACHIEVEMENTS.length },
+    { id: "locked", label: "Locked", count: locked.length },
+  ];
+  const showEarned = filter !== "locked";
+  const showLocked = filter !== "earned";
+  return (
+    <section aria-labelledby="codex-h">
+      <p className="text-sm text-muted">Recognition only. Achievements never change your XP.</p>
+      <h2 id="codex-h" className="sr-only">Achievements</h2>
+      <nav aria-label="Codex view" className="mt-4 flex gap-2 overflow-x-auto">
+        {tabs.map((t) => (
+          <Link key={t.id} href={`/dashboard/codex?show=${t.id}`} replace aria-current={t.id === filter ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-medium ${t.id === filter ? "border-accent bg-accent-soft text-accent" : "border-line-strong text-text-2 hover:bg-surface-2"}`}>
+            {t.label} <span className="tabular-nums text-muted">{t.count}</span>
+          </Link>
+        ))}
+      </nav>
+      {filter === "earned" && earned.length === 0 && (
         <p className="mt-4 rounded-lg border border-line bg-surface-2 p-4 text-sm text-text-2">
-          Nothing earned yet, and that is fine. Pass your first lesson and the first entry lands here. Locked ones below show what to aim for.
+          Nothing earned yet, and that is fine. Pass your first lesson and the first entry lands here. <Link href="/dashboard/codex?show=locked" className="text-accent underline underline-offset-2">See what to aim for</Link>.
         </p>
       )}
-      <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {earned.map((a) => (
-          <li key={a.id} className="rounded-lg border border-accent/40 bg-accent-soft p-4">
-            <p className="font-semibold">{a.name}</p>
-            <p className="mt-0.5 text-sm text-text-2">{a.description}</p>
-            <p className="mt-1.5 text-sm text-muted">{unlocked.get(a.id)!.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
+      <ul className="mt-4 divide-y divide-line rounded-lg border border-line">
+        {showEarned && earned.map((a) => (
+          <li key={a.id} className="bg-accent-soft/40 px-4 py-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+              <p className="font-semibold">{a.name}</p>
+              <p className="text-sm text-muted">{fmtDate(unlocked.get(a.id)!)}</p>
+            </div>
+            <p className="text-sm text-text-2">{a.description}</p>
           </li>
         ))}
-        {locked.map((a) => (
-          <li key={a.id} className="rounded-lg border border-dashed border-line-strong p-4">
-            <p className="font-semibold text-muted">{a.secret ? "A hidden achievement" : a.name}</p>
-            <p className="mt-0.5 text-sm text-muted">{a.secret ? "Keep going and you may find it." : a.description}</p>
+        {showLocked && locked.map((a) => (
+          <li key={a.id} className="px-4 py-3">
+            <p className="font-semibold text-text-2">{a.secret ? "A hidden achievement" : a.name}</p>
+            <p className="text-sm text-muted">{a.secret ? "Keep going and you may find it." : a.description}</p>
           </li>
         ))}
       </ul>
-    </>
+    </section>
   );
-  if (collapsed) {
-    return (
-      <details id="codex" className="panel group scroll-mt-24 p-5 open:p-6 open:sm:p-8 md:open:col-span-2">
-        <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <span className="display text-[19px] font-bold">Codex <span className="text-base font-normal text-muted">0 of {ACHIEVEMENTS.length} earned</span></span>
-          <span className="text-sm text-muted">Pass a lesson to unlock the first entry. <span className="text-accent group-open:hidden">Show all</span></span>
-        </summary>
-        <div className="mt-5">{body}</div>
-      </details>
-    );
-  }
-  return <section id="codex" aria-labelledby="codex-h" className="panel scroll-mt-24 p-6 sm:p-8">{body}</section>;
 }
 
 export type MonthXp = { label: string; xp: number };
 
 /** Private, comparison-free numbers: where the XP came from, how often hints were needed, and the seals earned. */
-export function StatsPanel({ months, seals, firstTry, hints, tracks, collapsed = false }: { collapsed?: boolean; months: MonthXp[]; seals: { passed: number; unaided: number; challenge: number }; firstTry: number; hints: { recent: number; earlier: number | null }; tracks: { title: string; done: number; total: number }[] }) {
+export function StatsPanel({ months, seals, firstTry, hints, tracks }: { months: MonthXp[]; seals: { passed: number; unaided: number; challenge: number }; firstTry: number; hints: { recent: number; earlier: number | null }; tracks: { title: string; done: number; total: number }[] }) {
   const max = Math.max(1, ...months.map((m) => m.xp));
   const W = 300;
   const H = 110;
@@ -208,18 +241,7 @@ export function StatsPanel({ months, seals, firstTry, hints, tracks, collapsed =
       </div>
     </>
   );
-  if (collapsed) {
-    return (
-      <details className="panel group p-5 open:p-6 open:sm:p-8 md:open:col-span-2">
-        <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <span className="display text-[19px] font-bold">Your numbers</span>
-          <span className="text-sm text-muted">Nothing to chart yet. <span className="text-accent group-open:hidden">Show</span></span>
-        </summary>
-        <div className="mt-5">{body}</div>
-      </details>
-    );
-  }
-  return <section aria-labelledby="stats-h" className="panel p-6 sm:p-8">{body}</section>;
+  return <section aria-labelledby="stats-h" className="panel p-5 sm:p-8">{body}</section>;
 }
 
 /** Lesson nodes for one course. Each circle has a 36px hit area even though it draws at 28px. */
@@ -266,14 +288,12 @@ export function CourseMap({ tracks, progress, recommendedSlug, upNextLessonSlug 
   const isOpen = (t: Track) => t.slug === recommendedSlug || (started(t) && !complete(t));
   const bySlug = new Map(tracks.map((t) => [t.slug, t]));
   return (
-    <section aria-labelledby="map-h" className="panel p-6 sm:p-8">
+    <section aria-labelledby="map-h" className="panel hidden p-6 sm:p-8 md:block">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h2 id="map-h" className="display text-[21px] font-bold">Course map</h2>
-        <div className="flex flex-wrap items-center gap-x-4">
-          <SealLegend />
-          <MapControls targetId="map-body" />
-        </div>
+        <MapControls targetId="map-body" />
       </div>
+      <div className="mt-2"><SealLegend /></div>
       <div id="map-body" className="mt-4 divide-y divide-line">
         {groups.map((g) => {
           const groupDone = g.tracks.reduce((n, t) => n + done(t), 0);
@@ -321,6 +341,23 @@ export function CourseMap({ tracks, progress, recommendedSlug, upNextLessonSlug 
           );
         })}
       </div>
+    </section>
+  );
+}
+
+/** Phones: one course, its progress and the way to the full list. The full map is desktop; every course is also listed at /learn. */
+export function CoursePreview({ track, done, nextTitle }: { track: Track; done: number; nextTitle: string }) {
+  return (
+    <section aria-labelledby="preview-h" className="panel p-4 md:hidden">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 id="preview-h" className="display-sm text-base font-bold">Course path</h2>
+        <Link href="/learn" className="inline-flex min-h-9 items-center text-sm font-medium text-accent hover:underline">All courses</Link>
+      </div>
+      <Link href={`/learn/${track.slug}`} className="mt-2 block rounded-lg py-1">
+        <p className="font-medium">{track.title}</p>
+        <p className="text-sm text-muted tabular-nums">{done} of {track.lessons.length} lessons · next: {nextTitle}</p>
+      </Link>
+      <div className="mt-2"><ProgressBar value={done / Math.max(1, track.lessons.length)} label={`${track.title} progress`} /></div>
     </section>
   );
 }

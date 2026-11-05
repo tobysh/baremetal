@@ -42,6 +42,8 @@ const nextConfig: NextConfig = {
     return [
       { source: "/:path*", headers: securityHeaders },
       { source: "/api/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
+      // The worker script itself must always be revalidated so updates reach installed copies.
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }, { key: "Service-Worker-Allowed", value: "/" }] },
     ];
   },
 };

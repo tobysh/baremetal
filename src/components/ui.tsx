@@ -43,10 +43,16 @@ export function Badge({ children, tone = "neutral" }: { children: ReactNode; ton
   return <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${tones[tone]}`}>{children}</span>;
 }
 
-export function Container({ children, className = "", width = "standard" }: { children: ReactNode; className?: string; width?: "narrow" | "standard" | "wide" }) {
-  const widths = { narrow: "max-w-3xl", standard: "max-w-6xl", wide: "max-w-[96rem]" };
-  const maxWidth = /\bmax-w-/.test(className) ? "" : widths[width];
-  return <div className={`mx-auto w-full ${maxWidth} px-4 sm:px-6 lg:px-8 ${className}`}>{children}</div>;
+/**
+ * Page width variants. `narrow` is a reading column (legal, settings, profiles), `compact` a list column (leaderboard),
+ * `standard` the default (about 1152px) and `wide` the dashboard. The site header follows the page's variant through
+ * the `data-container` attribute (see globals.css), so the logo lines up with the content's left edge.
+ */
+export type ContainerWidth = "narrow" | "compact" | "standard" | "wide";
+export function Container({ children, className = "", width = "standard" }: { children: ReactNode; className?: string; width?: ContainerWidth }) {
+  const widths = { narrow: "max-w-3xl", compact: "max-w-4xl", standard: "max-w-6xl", wide: "max-w-[96rem]" };
+  const custom = /\bmax-w-/.test(className);
+  return <div data-container={custom ? undefined : width} className={`mx-auto w-full ${custom ? "" : widths[width]} px-4 sm:px-6 lg:px-8 ${className}`}>{children}</div>;
 }
 
 export function PageHeader({ title, description, action }: { title: string; description?: ReactNode; action?: ReactNode }) {

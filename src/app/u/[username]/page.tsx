@@ -35,7 +35,7 @@ export default async function ProfilePage({ params }: PageProps<"/u/[username]">
   const name = (await params).username.toLowerCase();
   if (!USERNAME_RE.test(name)) notFound();
   return (
-    <Container className="max-w-3xl py-10 sm:py-14">
+    <Container width="narrow" className="py-10 sm:py-14">
       <Suspense fallback={<ProfileSkeleton />}>
         <Profile params={params} />
       </Suspense>

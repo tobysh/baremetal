@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import type { PublicExercise } from "@/lib/curriculum/types";
 import type { PublicPractice } from "@/lib/curriculum/practice";
 import { PracticePanel } from "../practice/practice-panel";
+import { TaskStrip } from "./task-strip";
 import { MiniMarkdown } from "./mini-markdown";
 import type { ChatMessage } from "./tutor-chat";
 import { Workspace, type Variant } from "./workspace";
@@ -79,11 +80,8 @@ export function LessonWorkspace(props: {
       )}
       <div hidden={practiceOpen} className="min-w-0 lg:h-full">
       {variant !== "challenge" && (
-        // The task lives in the other view on small screens; keep it one tap away while coding.
-        <details className="mb-2 panel text-sm lg:hidden">
-          <summary className="min-h-11 cursor-pointer px-4 py-3 font-medium">Task</summary>
-          <div className="px-4 pb-4"><MiniMarkdown text={lesson.task} /></div>
-        </details>
+        // The task lives in the reading pane (another view on small screens); keep the objective pinned above the editor.
+        <TaskStrip task={lesson.task} />
       )}
       {variant === "challenge" && challenge && (
         <section aria-label="Challenge" className="mb-2 panel p-4 text-sm">

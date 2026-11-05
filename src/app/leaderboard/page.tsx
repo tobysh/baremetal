@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { LevelChip } from "@/components/gamification";
 import { Card, Container, Skeleton } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import { getLeaderboard, searchUsers } from "@/lib/community";
@@ -17,10 +16,13 @@ export const metadata: Metadata = {
 
 export default function LeaderboardPage({ searchParams }: PageProps<"/leaderboard">) {
   return (
-    <Container className="max-w-3xl py-10 sm:py-14">
+    <Container width="compact" className="py-10 sm:py-14">
       <h1 className="display text-3xl font-bold sm:text-4xl">Leaderboard</h1>
       <p className="mt-3 max-w-xl text-muted">Small steps add up. See what learners are building, one lesson at a time.</p>
-      <p className="mt-2 text-sm text-muted">XP per lesson: Easy 5 · Medium 10 · Hard 20 · Impossible 40.</p>
+      <details className="mt-3 text-sm text-muted">
+        <summary className="cursor-pointer font-medium text-text-2 hover:text-accent">How XP works</summary>
+        <p className="mt-2">XP per lesson: Easy 5 · Medium 10 · Hard 20 · Impossible 40. Each lesson earns XP once, the first time you pass it.</p>
+      </details>
       <form action="/leaderboard" role="search" className="mt-6 flex gap-2">
         <label htmlFor="q" className="sr-only">
           Find a learner by username
@@ -67,6 +69,7 @@ async function Results({ searchParams }: { searchParams: PageProps<"/leaderboard
         <h2 id="results" className="display-sm text-lg font-bold">
           {found.length ? `Learners matching “${q.trim()}”` : `No public profiles match “${q.trim()}”.`}
         </h2>
+        {found.length === 0 && <p className="mt-2 text-sm text-muted">Usernames are lowercase letters, digits, - and _. Try the first few letters, or go back to the board.</p>}
         {found.length > 0 && (
           <ul className="mt-3 divide-y divide-border overflow-hidden panel">
             {found.map((u) => (
@@ -95,6 +98,7 @@ async function Results({ searchParams }: { searchParams: PageProps<"/leaderboard
           ))}
         </ol>
       )}
+      {rows.length > 0 && rows.length < 5 && <p className="mt-4 text-sm text-muted">Only a few learners are on the board so far. Pass a lesson and choose a public username in settings to join them.</p>}
       {me && !me.username && (
         <p className="mt-4 text-sm text-muted">
           <Link href="/settings" className="text-accent underline underline-offset-2">
@@ -111,14 +115,14 @@ function Row({ rank, username, xp, isMe }: { rank?: number; username: string; xp
   const l = levelFor(xp);
   return (
     <li>
-      <Link href={`/u/${username}`} className={`flex items-center gap-3 px-4 py-4 transition-colors hover:bg-surface-2 ${isMe ? "bg-accent-soft" : ""}`}>
-        {rank !== undefined && <span className="w-7 shrink-0 text-right font-mono text-sm text-muted tabular-nums">{rank}</span>}
-        <span className="min-w-0 flex-1 truncate font-medium">
+      <Link href={`/u/${username}`} className={`grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-4 transition-colors hover:bg-surface-2 sm:grid-cols-[2rem_minmax(0,1fr)_9rem_6rem] ${isMe ? "bg-accent-soft" : ""}`}>
+        <span className="text-right font-mono text-sm text-muted tabular-nums">{rank ?? ""}</span>
+        <span className="min-w-0 truncate font-medium">
           {username}
           {isMe && <span className="ml-2 text-xs font-normal text-muted">(you)</span>}
-          <span className="block text-xs font-normal text-muted">{l.title}</span>
         </span>
-        <LevelChip xp={xp} />
+        <span className="hidden text-sm text-muted sm:block">{l.title}</span>
+        <span className="text-right text-sm font-medium tabular-nums">{xp} XP</span>
       </Link>
     </li>
   );

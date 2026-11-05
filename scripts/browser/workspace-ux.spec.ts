@@ -71,14 +71,14 @@ test("the reading pane divider works from the keyboard on wide screens", async (
   await expect(divider).toHaveAttribute("aria-valuenow", "32");
 });
 
-test("a collapsible task summary appears above the editor on phones only", async ({ page }) => {
+test("a collapsible task summary stays above the editor", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto(lesson);
   await reject(page);
   await page.getByRole("tab", { name: "Code & feedback" }).click();
   await expect(page.getByText("Task", { exact: true })).toBeVisible();
   await page.setViewportSize({ width: 1280, height: 900 });
-  await expect(page.getByText("Task", { exact: true })).not.toBeVisible();
+  await expect(page.getByText("Task", { exact: true })).toBeVisible();
 });
 
 test("course filters are plain links that hide non-matching courses", async ({ page }) => {

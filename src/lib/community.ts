@@ -10,6 +10,8 @@ import { buildContext } from "./rewards-context";
 // lessons. Never names, emails or code.
 
 const PUBLIC = { profilePublic: { $ne: false }, username: { $type: "string" } } as const;
+// The public board and search only list learners who have earned XP, so empty or test accounts never appear.
+const LISTED = { ...PUBLIC, xp: { $gt: 0 } } as const;
 type PublicUser = Pick<UserDoc, "_id" | "username" | "xp" | "createdAt" | "timezone" | "weeklyGoal">;
 const projection = { username: 1, xp: 1, createdAt: 1, timezone: 1, weeklyGoal: 1 } as const;
 
@@ -19,7 +21,7 @@ export async function getLeaderboard(limit = 50): Promise<LeaderboardRow[]> {
   const db = await getDb();
   const rows = await db
     .collection<UserDoc>("users")
-    .find(PUBLIC, { projection })
+    .find(LISTED, { projection })
     .sort({ xp: -1, createdAt: 1 })
     .limit(limit)
     .toArray();
@@ -33,7 +35,7 @@ export async function searchUsers(query: string, limit = 20): Promise<{ username
   const db = await getDb();
   const rows = await db
     .collection<UserDoc>("users")
-    .find({ ...PUBLIC, username: { $regex: `^${q}` } }, { projection })
+    .find({ ...LISTED, username: { $regex: `^${q}` } }, { projection })
     .sort({ xp: -1 })
     .limit(limit)
     .toArray();

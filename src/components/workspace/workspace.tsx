@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type CSSProperties, type KeyboardEvent, type PointerEvent, Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Fragment, type CSSProperties, type KeyboardEvent, type PointerEvent, Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { LANGUAGE_FILE, LANGUAGE_LABEL, type PublicExercise } from "@/lib/curriculum/types";
 import { track } from "../analytics";
 import { MiniMarkdown } from "./mini-markdown";
@@ -182,6 +182,9 @@ export function Workspace({
   const activeTour = showTour ? TOUR[tourStep]?.id : undefined;
   const ring = (id: string) => (activeTour === id ? " ring-2 ring-accent ring-offset-2 ring-offset-surface" : "");
   const [stdin, setStdin] = useState("");
+  // Only lessons whose starter reads input show the box straight away; the rest get an "Add input" button.
+  const readsInput = /scanf|fgets|getchar|getline|fread|\bstdin\b|read_line|Scanner|bufio|fmt\.Scan|io::stdin|\bread\b\s*\(/.test(exercise.starter);
+  const [showStdin, setShowStdin] = useState(false);
   const [busy, setBusy] = useState<null | "run" | "test">(null);
   const router = useRouter();
   const [result, setResult] = useState<RunResponse | null>(null);
@@ -436,14 +439,15 @@ export function Workspace({
 
   return (
     <div ref={rootRef} onKeyDown={onKeyDown} className="flex flex-col overflow-clip panel lg:min-h-0 lg:flex-1">
-      <div className="sticky top-16 z-10 flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-surface px-3 py-3 lg:static">
+      <div className="sticky top-16 z-10 flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-surface px-3 py-3 lg:relative">
         <span className="font-mono text-xs text-muted">{LANGUAGE_FILE[exercise.language]}</span>
         <span className="text-xs text-muted" aria-live="polite">
           {variant === "review" ? "Review draft: saved solution unchanged" : recovered ? "Recovered browser draft. Save it to your account." : saveState === "error" ? "Couldn't save. Your draft is still in the editor." : signedIn ? (saveState === "saved" && savedAt !== null ? <SavedAgo key={savedAt} at={savedAt} /> : saveState === "saving" ? "Saving…" : edited !== null ? "Unsaved changes" : "") : saveState === "saved" && savedAt !== null ? <SavedAgo key={savedAt} at={savedAt} where=" in this browser" /> : "Saved in this browser only"}
         </span>
         {(saveState === "error" || recovered) && <button type="button" onClick={retrySave} className="min-h-11 rounded-md px-2 text-xs text-accent underline underline-offset-2">{recovered ? "Save recovered draft" : "Retry save"}</button>}
         <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-          <button type="button" title="Replace your code with the starter. You can undo it for a few seconds." className="min-h-11 rounded-md border border-border px-2.5 text-xs text-muted hover:bg-surface-2 hover:text-text sm:min-h-9" onClick={resetCode}>
+          <EditorMenu mod={mod} fontSize={fontSize} tabWidth={tabWidth} />
+          <button type="button" title="Replace your code with the starter. You can undo it for a few seconds." className="min-h-11 rounded-md px-2.5 text-sm text-muted hover:bg-surface-2 hover:text-text sm:min-h-9" onClick={resetCode}>
             Reset code
           </button>
           {/* Rendered right after Reset so the next Tab reaches Undo, though it is positioned over the page. */}
@@ -462,11 +466,6 @@ export function Workspace({
             className={`inline-flex h-11 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium hover:bg-surface-2 disabled:opacity-60 sm:h-9${ring("run")}`}
           >
             {busy === "run" ? "Running…" : "Run"}
-            <span className="inline-flex items-center gap-0.5 max-sm:hidden">
-              <Kbd>{mod}</Kbd>
-              <Kbd>⇧</Kbd>
-              <Kbd>↵</Kbd>
-            </span>
           </button>
           {ready ? (
             <>
@@ -487,10 +486,6 @@ export function Workspace({
                 className="inline-flex h-11 items-center gap-2 rounded-lg bg-accent px-3 text-sm font-medium text-accent-ink hover:brightness-110 sm:h-9"
               >
                 {nextLabel ?? "Next lesson →"}
-                <span className="inline-flex items-center gap-0.5 max-sm:hidden">
-                  <Kbd>{mod}</Kbd>
-                  <Kbd>↵</Kbd>
-                </span>
               </Link>
             </>
           ) : (
@@ -504,23 +499,12 @@ export function Workspace({
               className={`inline-flex h-11 items-center gap-2 rounded-lg bg-accent px-3 text-sm font-medium text-accent-ink hover:brightness-110 disabled:opacity-60 sm:h-9${ring("test")}`}
             >
               {busy === "test" ? "Testing…" : "Test"}
-              <span className="inline-flex items-center gap-0.5 max-sm:hidden">
-                <Kbd>{mod}</Kbd>
-                <Kbd>↵</Kbd>
-              </span>
             </button>
           )}
         </div>
+        {showTour && <Tour step={tourStep} onStep={setTourStep} onClose={() => writePref(tourKey, "1")} />}
       </div>
 
-      {showTour && (
-        <Tour
-          step={tourStep}
-          mod={mod}
-          onStep={setTourStep}
-          onClose={() => writePref(tourKey, "1")}
-        />
-      )}
       <div className="h-[22rem] min-h-0 lg:h-auto lg:min-h-[8rem] lg:shrink lg:grow-0 lg:basis-(--split)" style={{ "--split": `${split}%` } as CSSProperties}>
         {isClient ? (
           <Suspense fallback={<CodeFallback code={code} fontSize={fontSize} tabWidth={tabWidth} />}>
@@ -531,35 +515,6 @@ export function Workspace({
         )}
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-t border-border px-3 py-1 text-[11px] text-muted">
-        <p className="hidden min-w-0 flex-1 sm:block">
-          <Kbd>{mod}</Kbd>+<Kbd>↵</Kbd> {ready ? "Next lesson" : "Test"} · <Kbd>{mod}</Kbd>+<Kbd>⇧</Kbd>+<Kbd>↵</Kbd> Run · <Kbd>Tab</Kbd> indent · <Kbd>{mod}</Kbd>+<Kbd>/</Kbd> comment ·{" "}
-          <Kbd>Esc</Kbd> then <Kbd>Tab</Kbd> leave editor · <Kbd>Alt</Kbd>+<Kbd>1</Kbd> lesson · <Kbd>Alt</Kbd>+<Kbd>2</Kbd> editor
-        </p>
-        <div role="group" aria-label="Editor settings" className="ml-auto flex shrink-0 flex-wrap items-center gap-2 whitespace-nowrap">
-          <span className="flex items-center gap-1">
-            Text
-            <button type="button" aria-label="Smaller text" disabled={fontSize <= FONT_MIN} onClick={() => writePref(fontKey, String(fontSize - 1))} className="min-h-8 min-w-8 rounded-md border border-border text-xs hover:bg-surface-2 hover:text-text disabled:opacity-50">A−</button>
-            <span className="min-w-8 text-center tabular-nums" aria-label={`Font size ${fontSize} pixels`}>{fontSize}px</span>
-            <button type="button" aria-label="Larger text" disabled={fontSize >= FONT_MAX} onClick={() => writePref(fontKey, String(fontSize + 1))} className="min-h-8 min-w-8 rounded-md border border-border text-xs hover:bg-surface-2 hover:text-text disabled:opacity-50">A+</button>
-          </span>
-          <label className="flex items-center gap-1">
-            Tab width
-            <select value={tabWidth} onChange={(e) => writePref(tabKey, e.target.value)} className="min-h-8 rounded-md border border-field bg-bg px-1 text-text">
-              {TAB_WIDTHS.map((w) => <option key={w} value={w}>{w}</option>)}
-            </select>
-          </label>
-          {/* Always rendered so the bar keeps its width and doesn't reflow when a setting changes. */}
-          <button
-            type="button"
-            onClick={() => { writePref(fontKey, null); writePref(tabKey, null); }}
-            disabled={fontSize === FONT_DEFAULT && tabWidth === TAB_DEFAULT}
-            tabIndex={fontSize === FONT_DEFAULT && tabWidth === TAB_DEFAULT ? -1 : undefined}
-            aria-hidden={fontSize === FONT_DEFAULT && tabWidth === TAB_DEFAULT ? true : undefined}
-            className="min-h-8 rounded-md px-2 hover:bg-surface-2 hover:text-text disabled:invisible"
-          >Default view</button>
-        </div>
-      </div>
       <div
         role="separator" aria-orientation="horizontal" aria-label="Resize the editor and the panel below it" aria-valuemin={30} aria-valuemax={75} aria-valuenow={split}
         tabIndex={0} data-dragging={dragging}
@@ -598,7 +553,10 @@ export function Workspace({
 
       <div className="h-[20rem] min-h-0 lg:h-auto lg:flex-1">
         <div role="tabpanel" id="panel-output" aria-labelledby="tab-output" tabIndex={0} hidden={tab !== "output"} className="h-full overflow-y-auto p-4">
-          {exercise.mode === "stdout" && (
+          {exercise.mode === "stdout" && !readsInput && !showStdin && (
+            <button type="button" onClick={() => setShowStdin(true)} className="mb-3 min-h-9 rounded-md border border-border px-2.5 text-xs text-muted hover:bg-surface-2 hover:text-text">Add input</button>
+          )}
+          {exercise.mode === "stdout" && (readsInput || showStdin) && (
             <div className="mb-4">
               <label htmlFor="stdin" className="text-xs text-muted">
                 Program input (stdin), used by Run
@@ -780,6 +738,7 @@ function OutputPanel({
         <p>
           Press <strong className="text-text">Test</strong> to check your solution, or <strong className="text-text">Run</strong> to run your own <code className="font-mono">main</code>.
         </p>
+        <p className="mt-2">Run shows what your code prints. Test checks it against the lesson.</p>
         {passed && <SuccessBanner nextHref={nextHref} nextLabel={nextLabel} signedIn={signedIn} again variant={variant} />}
       </div>
     );
@@ -899,29 +858,88 @@ function SavedAgo({ at, where = "" }: { at: number; where?: string }) {
 }
 
 const TOUR = [
-  { id: "run", title: "Run", body: (mod: string) => `Compiles and runs your own main(), so you can try things out. Shortcut: ${mod}+Shift+Enter.` },
-  { id: "test", title: "Test", body: (mod: string) => `Checks your solution against the hidden tests and saves your progress when they pass. Shortcut: ${mod}+Enter.` },
-  { id: "hints", title: "Hints", body: () => "Stuck? Open the Hints tab. They appear one at a time and cost nothing." },
-  { id: "tutor", title: "AI tutor", body: () => "Ask the tutor in the AI tutor tab. It explains and nudges, but never hands over the answer." },
+  { id: "run", title: "Run", body: "Run shows what your code prints." },
+  { id: "test", title: "Test", body: "Test checks your code against the lesson's hidden tests and saves your progress." },
+  { id: "hints", title: "Hints", body: "Stuck? The Hints tab reveals one hint at a time, at no cost." },
+  { id: "tutor", title: "AI tutor", body: "The AI tutor explains and nudges, but never hands over the answer." },
 ];
 
-function Tour({ step, mod, onStep, onClose }: { step: number; mod: string; onStep: (n: number) => void; onClose: () => void }) {
+/** A small coachmark under the toolbar: it overlays the page, so opening it never shifts the editor. */
+function Tour({ step, onStep, onClose }: { step: number; onStep: (n: number) => void; onClose: () => void }) {
   const item = TOUR[step];
   const last = step === TOUR.length - 1;
   return (
-    <section aria-label="Quick tour" className="shrink-0 border-b border-border bg-accent-soft px-3 py-2 text-sm">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <p className="min-w-0 flex-1">
-          <span className="text-xs text-muted">Tour {step + 1} of {TOUR.length} · </span>
-          <strong>{item.title}.</strong> {item.body(mod)}
-        </p>
-        <div className="flex items-center gap-1">
-          {step > 0 && <button type="button" onClick={() => onStep(step - 1)} className="min-h-9 rounded-md border border-border px-2.5 text-xs hover:bg-surface-2">Back</button>}
-          <button type="button" onClick={() => (last ? onClose() : onStep(step + 1))} className="min-h-9 rounded-md bg-accent px-2.5 text-xs font-medium text-accent-ink hover:brightness-110">{last ? "Done" : "Next"}</button>
-          {!last && <button type="button" onClick={onClose} className="min-h-9 rounded-md px-2.5 text-xs text-muted hover:bg-surface-2 hover:text-text">Skip tour</button>}
-        </div>
+    <section aria-label="Quick tour" className="absolute right-3 top-full z-30 mt-2 w-72 max-w-[calc(100%-1.5rem)] rounded-xl border border-accent bg-surface p-3 text-sm shadow-lg">
+      <p className="text-xs text-muted">Step {step + 1} of {TOUR.length}</p>
+      <p className="mt-1"><strong>{item.title}.</strong> {item.body}</p>
+      <div className="mt-3 flex items-center gap-1">
+        <button type="button" onClick={onClose} className="min-h-9 rounded-md px-2.5 text-xs text-muted hover:bg-surface-2 hover:text-text">{last ? "Close" : "Skip"}</button>
+        <span className="ml-auto" />
+        {step > 0 && <button type="button" onClick={() => onStep(step - 1)} className="min-h-9 rounded-md border border-border px-2.5 text-xs hover:bg-surface-2">Back</button>}
+        <button type="button" onClick={() => (last ? onClose() : onStep(step + 1))} className="min-h-9 rounded-md bg-accent px-2.5 text-xs font-medium text-accent-ink hover:brightness-110">{last ? "Done" : "Next"}</button>
       </div>
     </section>
+  );
+}
+
+/** Editor preferences and the keyboard shortcuts, opened from one button (or with ?). Preferences keep their saved keys. */
+function EditorMenu({ mod, fontSize, tabWidth }: { mod: string; fontSize: number; tabWidth: number }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const opener = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const typing = !!t?.closest("input, textarea, select, [contenteditable], .cm-editor");
+      if (e.key === "?" && !typing && !e.metaKey && !e.ctrlKey) { e.preventDefault(); setOpen((o) => !o); }
+      else if (e.key === "Escape" && open) { setOpen(false); opener.current?.focus(); }
+    };
+    const onDown = (e: MouseEvent) => { if (open && !box.current?.contains(e.target as Node) && !opener.current?.contains(e.target as Node)) setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onDown);
+    return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("mousedown", onDown); };
+  }, [open]);
+  const atDefault = fontSize === FONT_DEFAULT && tabWidth === TAB_DEFAULT;
+  return (
+    <>
+      <button ref={opener} type="button" aria-expanded={open} aria-haspopup="dialog" title="Editor settings and keyboard shortcuts (?)" onClick={() => setOpen(!open)} className="min-h-11 rounded-md px-2.5 text-sm text-muted hover:bg-surface-2 hover:text-text sm:min-h-9">
+        Settings &amp; shortcuts
+      </button>
+      {open && (
+        <div ref={box} role="dialog" aria-label="Editor settings and keyboard shortcuts" className="absolute right-3 top-full z-30 mt-2 w-80 max-w-[calc(100%-1.5rem)] rounded-xl border border-border bg-surface p-4 text-sm shadow-lg">
+          <div role="group" aria-label="Editor settings" className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span className="flex items-center gap-1">
+              Text
+              <button type="button" aria-label="Smaller text" disabled={fontSize <= FONT_MIN} onClick={() => writePref(fontKey, String(fontSize - 1))} className="min-h-9 min-w-9 rounded-md border border-border hover:bg-surface-2 disabled:opacity-50">A−</button>
+              <span className="min-w-10 text-center tabular-nums" aria-label={`Font size ${fontSize} pixels`}>{fontSize}px</span>
+              <button type="button" aria-label="Larger text" disabled={fontSize >= FONT_MAX} onClick={() => writePref(fontKey, String(fontSize + 1))} className="min-h-9 min-w-9 rounded-md border border-border hover:bg-surface-2 disabled:opacity-50">A+</button>
+            </span>
+            <label className="flex items-center gap-1">
+              Tab width
+              <select value={tabWidth} onChange={(e) => writePref(tabKey, e.target.value)} className="min-h-9 rounded-md border border-field bg-bg px-1">
+                {TAB_WIDTHS.map((w) => <option key={w} value={w}>{w}</option>)}
+              </select>
+            </label>
+            <button type="button" onClick={() => { writePref(fontKey, null); writePref(tabKey, null); }} disabled={atDefault} className="min-h-9 rounded-md px-2 text-accent hover:bg-surface-2 disabled:text-muted disabled:opacity-60">Default view</button>
+          </div>
+          <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted">Keyboard shortcuts</h3>
+          <dl className="mt-2 grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-1.5 text-text-2">
+            {([
+              [<><Kbd>{mod}</Kbd>+<Kbd>↵</Kbd></>, "Test, or the next lesson once passed"],
+              [<><Kbd>{mod}</Kbd>+<Kbd>⇧</Kbd>+<Kbd>↵</Kbd></>, "Run"],
+              [<Kbd key="t">Tab</Kbd>, "Indent"],
+              [<><Kbd>{mod}</Kbd>+<Kbd>/</Kbd></>, "Comment a line"],
+              [<><Kbd>Esc</Kbd> then <Kbd>Tab</Kbd></>, "Leave the editor"],
+              [<><Kbd>Alt</Kbd>+<Kbd>1</Kbd></>, "Lesson"],
+              [<><Kbd>Alt</Kbd>+<Kbd>2</Kbd></>, "Editor"],
+              [<Kbd key="q">?</Kbd>, "Open or close this panel"],
+            ] as const).map(([keys, label], i) => (
+              <Fragment key={i}><dt className="whitespace-nowrap">{keys}</dt><dd>{label}</dd></Fragment>
+            ))}
+          </dl>
+        </div>
+      )}
+    </>
   );
 }
 

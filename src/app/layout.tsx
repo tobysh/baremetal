@@ -4,6 +4,7 @@ import { Archivo, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { Analytics } from "@/components/analytics";
 import { CookieBanner } from "@/components/consent";
 import { InlineScript } from "@/components/inline-script";
+import { ServiceWorker } from "@/components/service-worker";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { themeInitScript } from "@/components/theme-toggle";
@@ -27,6 +28,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: dark)", color: "#0e1013" },
     { media: "(prefers-color-scheme: light)", color: "#fbfaf7" },
@@ -54,6 +56,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* usePathname() needs a boundary on routes whose URL isn't known at build time (e.g. /u/[username]). */}
         <Suspense fallback={null}>
           <NavProgress />
+          <ServiceWorker />
           <Analytics />
         </Suspense>
       </body>

@@ -51,16 +51,23 @@ export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
       </Suspense>
       <h1 className="sr-only">Courses</h1>
       <Suspense fallback={<Skeleton className="h-64 w-full" />}><RecommendedLearning /></Suspense>
-      <h2 id="all-courses" className="display-sm mt-14 scroll-mt-20 text-2xl font-bold">All courses</h2>
+      <h2 id="all-courses" className="display-sm mt-10 scroll-mt-20 text-2xl sm:mt-14 font-bold">All courses</h2>
       <p className="mt-1 max-w-2xl text-muted">Courses run in order within each path. Prerequisites are advice, never locks.</p>
       <Suspense fallback={<CourseFilterBar lang={null} level={null} type={null} counts={counts} tracks={tracks} />}><CourseFilters searchParams={searchParams} tracks={tracks} counts={counts} /></Suspense>
-      <nav aria-label="Jump to a path" className="mt-1 flex flex-wrap items-baseline gap-x-4 text-sm text-muted">
-        <span>Jump to:</span>
-        {groups.map((g) => (
-          <a key={g.id} href={`#path-${g.id}`} className="py-2 text-accent underline-offset-2 hover:underline">
-            {g.title} ↓
-          </a>
-        ))}
+      <nav aria-label="Learning paths" className="mt-4">
+        <ul className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))]">
+          {groups.map((g) => (
+            <li key={g.id} data-path-link={g.id}>
+              <a href={`#path-${g.id}`} className="flex h-full flex-col rounded-xl border border-border bg-surface p-4 hover:border-accent">
+                <span className="flex items-baseline justify-between gap-2">
+                  <span className="font-semibold">{g.title}</span>
+                  <span className="text-sm text-muted tabular-nums">{g.tracks.length} {g.tracks.length === 1 ? "course" : "courses"}</span>
+                </span>
+                <span className="mt-1 text-sm text-muted">{g.blurb}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
       </nav>
       {groups.map((g) => (
         <section key={g.id} id={`path-${g.id}`} aria-labelledby={`h-${g.id}`} className="mt-12 scroll-mt-20">
@@ -72,17 +79,17 @@ export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
             {g.tracks.map((t, i) => (
               <li key={t.slug} data-track={t.slug} className="grid gap-4 py-5 md:grid-cols-[minmax(0,1fr)_14rem] md:gap-10">
                 <div>
-                  <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted">
-                    {g.tracks.length > 1 && <span className="font-mono">{i + 1} of {g.tracks.length} ·</span>}
-                    <span>{t.level}</span><span aria-hidden="true">·</span><span>{LANGUAGE_LABEL[t.language]}</span>
-                    <span aria-hidden="true">·</span><span>{t.lessons.length} lessons, about {Math.round(t.lessons.reduce((m, l) => m + l.minutes, 0) / 60 * 2) / 2} h</span>
-                  </p>
-                  <h3 className="mt-1 text-lg font-semibold">
+                  <h3 className="text-lg font-semibold">
+                    {g.tracks.length > 1 && <span className="mr-2 font-mono text-sm font-normal text-muted">{i + 1}/{g.tracks.length}</span>}
                     <Link href={`/learn/${t.slug}`} className="hover:text-accent">{t.title}</Link>
                   </h3>
                   <p className="mt-1 text-muted">{t.summary}</p>
+                  <p className="mt-2 flex flex-wrap items-center gap-x-2 text-sm text-muted">
+                    <span>{LANGUAGE_LABEL[t.language]}</span><span aria-hidden="true">·</span><span>{t.level}</span>
+                    <span aria-hidden="true">·</span><span>{t.lessons.length} lessons, about {Math.round(t.lessons.reduce((m, l) => m + l.minutes, 0) / 60 * 2) / 2} h</span>
+                  </p>
                   <details className="mt-2">
-                    <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-accent">What you&apos;ll learn</summary>
+                    <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-text-2 hover:text-text">What you&apos;ll learn</summary>
                     <ul className="list-disc space-y-1 pl-5 text-sm text-text-2">{t.outcomes.map((outcome) => <li key={outcome}>{outcome}</li>)}</ul>
                     {t.prerequisite && (
                       <p className="mt-2 text-sm text-muted">
@@ -119,7 +126,7 @@ async function CourseFilters({ searchParams, tracks, counts }: { searchParams: P
   const shown = tracks.filter((t) => (!lang || matchesLang(t, lang)) && (!level || t.level === level) && (!type || trackTypeCounts(t)[type] > 0));
   const css = !lang && !level && !type ? "" : [
     ...tracks.filter((t) => !shown.includes(t)).map((t) => `[data-track="${t.slug}"]{display:none}`),
-    ...groupByPath(tracks).filter((g) => !g.tracks.some((t) => shown.includes(t))).map((g) => `#path-${g.id}{display:none}`),
+    ...groupByPath(tracks).filter((g) => !g.tracks.some((t) => shown.includes(t))).map((g) => `#path-${g.id},[data-path-link="${g.id}"]{display:none}`),
   ].join("");
   return (
     <>
@@ -163,10 +170,10 @@ function CourseFilterBar({ lang, level, type, counts, tracks }: { lang: string |
       </>)}
       {/* Level and content type are tucked away until asked for, so the courses stay on screen. Open when one is active. */}
       <details open={extra > 0} className="group mt-2">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm text-accent [&::-webkit-details-marker]:hidden">
-          <span className="underline underline-offset-2">More filters{extra ? ` (${extra})` : ""}</span>
+        <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium text-text-2 hover:bg-surface-2 hover:text-text [&::-webkit-details-marker]:hidden">
+          <span>More filters{extra ? ` (${extra} active)` : ""}</span>
           <span aria-hidden="true" className="transition-transform group-open:rotate-180">▾</span>
-          <span className="text-muted">Level, lesson types</span>
+          <span className="font-normal text-muted">Level, lesson types</span>
         </summary>
         <div className="mt-2 grid gap-4 rounded-xl border border-border bg-surface p-4">
           {group("Level", "how far along you are", <>
@@ -180,8 +187,8 @@ function CourseFilterBar({ lang, level, type, counts, tracks }: { lang: string |
           </>)}
         </div>
       </details>
-      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-        <p role="status"><span className="font-semibold">{total}</span> <span className="text-muted">of {tracks.length} courses{filtered ? " match" : ""}</span></p>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 text-sm">
+        <p role="status"><span className="font-semibold tabular-nums">{filtered ? `${total} of ${tracks.length}` : tracks.length}</span> <span className="text-muted">{filtered ? "courses match" : "courses"}</span></p>
         {filtered && <Link href="/learn" scroll={false} className="inline-flex min-h-11 items-center text-accent underline underline-offset-2">Clear filters</Link>}
       </div>
       {total === 0 && <p role="status" className="text-sm text-muted">No course has all of those together. <Link href="/learn" className="text-accent underline underline-offset-2">Clear the filters</Link>.</p>}
@@ -218,18 +225,22 @@ async function RecommendedLearning() {
   const next = recommendLearning(tracks, progress, undefined, { experience: user?.experience });
   const done = next ? next.track.lessons.filter((l) => progress.get(l.exercise.id)?.status === "passed").length : 0;
   const started = progress.size > 0;
+  const ctaLabel = next ? (done > 0 || progress.get(next.lesson.exercise.id)?.status === "started" ? "Continue" : "Start") : "";
+  const reason = next?.reason && !/course|working through/i.test(next.reason) ? next.reason : null;
   return (
-    <section aria-label="Recommended for you" className="mt-2 rounded-2xl border border-accent bg-accent-soft p-6 sm:p-10">
+    <section aria-label="Recommended for you" className="mt-2 rounded-2xl border border-accent bg-accent-soft p-5 sm:p-8">
       <p className="text-sm font-semibold text-accent">{started ? "Continue where you left off" : user ? "Recommended for you" : "Start here"}</p>
       {next ? <>
         <h2 className="display mt-2 text-3xl font-bold sm:text-4xl">{next.track.title}</h2>
-        <p className="mt-2 text-lg text-text-2">Next lesson: {next.lesson.title}</p>
-        <p className="mt-3 max-w-2xl text-text-2">{next.reason ?? next.track.summary}</p>
-        {started && <div className="mt-4 max-w-md"><div className="flex justify-between text-sm text-text-2"><span>{next.track.title}</span><span className="tabular-nums">{done} / {next.track.lessons.length} lessons</span></div><ProgressBar value={done / Math.max(1, next.track.lessons.length)} label={`${next.track.title} progress`} /></div>}
-        <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2">
-          <Link className="inline-flex min-h-12 items-center rounded-lg bg-accent px-6 text-lg font-semibold text-accent-ink" href={`/learn/${next.track.slug}/${next.lesson.slug}`}>{started ? "Continue" : "Start learning"} →</Link>
-          <Link className="text-sm text-accent underline underline-offset-2" href={`/learn/${next.track.slug}`}>About this course</Link>
-          <a className="text-sm text-accent underline underline-offset-2" href="#all-courses">Browse all courses ↓</a>
+        {(reason ?? (!started ? next.track.summary : null)) && <p className="mt-2 max-w-2xl text-text-2">{reason ?? next.track.summary}</p>}
+        {started && <div className="mt-4 max-w-2xl"><p className="text-sm text-text-2">Next lesson: <span className="font-medium text-text">{next.lesson.title}</span></p><div className="mt-3 flex items-center gap-3"><div className="min-w-0 flex-1"><ProgressBar value={done / Math.max(1, next.track.lessons.length)} label={`${next.track.title} progress`} /></div><span className="shrink-0 text-sm tabular-nums text-text-2">{done} / {next.track.lessons.length} lessons</span></div></div>}
+        {!started && <p className="mt-2 text-text-2">First lesson: {next.lesson.title}</p>}
+        <div className="mt-5 flex flex-col gap-x-6 gap-y-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <Link className="inline-flex min-h-12 items-center justify-center rounded-lg bg-accent px-6 text-center text-base font-semibold text-accent-ink" href={`/learn/${next.track.slug}/${next.lesson.slug}`}>{ctaLabel}: {next.lesson.title} →</Link>
+          <span className="flex gap-x-6">
+            <Link className="inline-flex min-h-11 items-center text-sm text-accent underline underline-offset-2" href={`/learn/${next.track.slug}`}>About this course</Link>
+            <a className="inline-flex min-h-11 items-center text-sm text-accent underline underline-offset-2" href="#all-courses">Browse all courses ↓</a>
+          </span>
         </div>
       </> : <>
         <h2 className="display mt-2 text-3xl font-bold">You have finished this path.</h2>

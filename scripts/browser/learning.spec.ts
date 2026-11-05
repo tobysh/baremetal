@@ -47,7 +47,7 @@ test("a Go pass continues Go despite unfinished beginner lessons", async ({ page
   await db.collection("progress").insertOne({ userId, exerciseId: go.lessons[0].exercise.id, trackSlug: go.slug, status: "passed", code: "", attempts: 1, startedAt: new Date(), passedAt: new Date(), updatedAt: new Date() });
   await page.goto("/dashboard");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(go.lessons[1].title);
-  await expect(page.getByRole("link", { name: "Start lesson" })).toHaveAttribute("href", `/learn/${go.slug}/${go.lessons[1].slug}`);
+  await expect(page.getByRole("link", { name: "Continue" })).toHaveAttribute("href", `/learn/${go.slug}/${go.lessons[1].slug}`);
 });
 
 test("anonymous final lesson offers the C course transition", async ({ page }) => {

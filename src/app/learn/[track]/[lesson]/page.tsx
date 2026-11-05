@@ -6,7 +6,7 @@ import { JsonLd } from "@/components/json-ld";
 import { LessonSkeleton } from "@/components/skeletons";
 import { Markdown } from "@/components/markdown";
 import { DifficultyBadge } from "@/components/gamification";
-import { Badge, Skeleton } from "@/components/ui";
+import { Badge, ProgressBar, Skeleton } from "@/components/ui";
 import { LessonWorkspace } from "@/components/workspace/lesson-workspace";
 import { SealRow } from "@/components/seals";
 import { CookieSettingsButton } from "@/components/consent";
@@ -109,27 +109,24 @@ async function Lesson({ params, searchParams }: { params: PageProps<"/learn/[tra
             <DifficultyBadge difficulty={lesson.difficulty} />
             <Badge>{lesson.minutes} min</Badge>
             {lesson.kind === "review" && <Badge tone="accent">Review</Badge>}
+            {lesson.tags.length > 0 && (
+              <ul aria-label="Topics" className="flex flex-wrap gap-x-2 font-mono text-xs text-muted">
+                {lesson.tags.map((t) => <li key={t}>#{t}</li>)}
+              </ul>
+            )}
             <Suspense fallback={null}>
               <LessonSeals exerciseId={exercise.id} hasChallenge={!!lesson.challenge} />
             </Suspense>
           </div>
-          {lesson.tags.length > 0 && (
-            <ul aria-label="Topics" className="mt-2 flex flex-wrap gap-1.5">
-              {lesson.tags.map((t) => (
-                <li key={t} className="rounded-md bg-surface-2 px-2 py-0.5 font-mono text-xs text-muted">
-                  #{t}
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="mt-3 max-w-xs"><ProgressBar value={(index + 1) / track.lessons.length} label={`Lesson ${index + 1} of ${track.lessons.length} in ${track.title}`} /></div>
           <h1 className="display mt-3 text-3xl font-bold">{lesson.title}</h1>
           <p className="mt-2 text-muted">{lesson.summary}</p>
-          <Markdown className="mt-6">{lesson.body}</Markdown>
+          <Markdown className="mt-6 max-w-[68ch]">{lesson.body}</Markdown>
           <section aria-labelledby="task" className="mt-10 panel p-5">
             <h2 id="task" className="display-sm text-lg font-bold">
               Your task
             </h2>
-            <Markdown className="mt-3">{exercise.task}</Markdown>
+            <Markdown className="mt-3 max-w-[68ch]">{exercise.task}</Markdown>
             <LessonJump target="code" className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-accent px-4 text-sm font-semibold text-accent-ink hover:brightness-110">
               Start coding →
             </LessonJump>

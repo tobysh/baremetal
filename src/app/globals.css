@@ -401,5 +401,31 @@ input:hover:not(:disabled), textarea:hover:not(:disabled), select:hover:not(:dis
   .demo-a { animation-duration: 12s; animation-iteration-count: 4; animation-timing-function: steps(14); animation-fill-mode: backwards; }
   .demo-run { animation-duration: 12s; animation-iteration-count: 4; animation-timing-function: ease-out; }
   .demo-reset { animation-duration: 12s; animation-iteration-count: 4; animation-timing-function: linear; }
+  .demo-ph { animation-duration: 12s; animation-iteration-count: 4; animation-timing-function: linear; }
   .demo:hover *, .demo:hover { animation-play-state: paused; }
+}
+
+/* The header's inner width follows the page's Container variant, so the logo sits on the content's left edge. */
+body:has([data-container="wide"]) .site-header-inner { max-width: 96rem; }
+body:has([data-container="compact"]) .site-header-inner { max-width: 56rem; }
+
+/* Room under the page for the fixed mobile tab bar (see MobileTabBar). */
+@media (max-width: 1023.98px) {
+  body:has([data-tabbar]) { padding-bottom: calc(3.5rem + env(safe-area-inset-bottom)); }
+}
+
+/* Landing page: hero atmosphere (faint grid fading out, one amber glow behind the editor) and the closing glow. */
+.hero-atmos::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: linear-gradient(to right, var(--border) 1px, transparent 1px), linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 48px 48px; opacity: 0.35;
+  mask-image: radial-gradient(ellipse 70% 80% at 70% 40%, #000 20%, transparent 75%);
+}
+.hero-atmos::after {
+  content: ""; position: absolute; pointer-events: none; width: 46rem; height: 32rem; right: -8rem; top: 8%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 14%, transparent), transparent);
+}
+.cta-glow::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 60% 90% at 50% 100%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%);
 }

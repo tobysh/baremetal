@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function SecurityPage({ searchParams }: PageProps<"/settings/security">) {
   return (
-    <Container className="max-w-3xl py-10 sm:py-14">
+    <Container width="narrow" className="py-10 sm:py-14">
       <h1 className="display text-3xl font-bold sm:text-4xl">Account settings</h1>
       <p className="mt-3 text-muted">Keep your account protected and your recovery options ready.</p>
       <SettingsNav current="security" />

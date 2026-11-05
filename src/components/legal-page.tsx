@@ -11,7 +11,7 @@ const DOCS: { id: LegalDoc; title: string }[] = [
 
 export function LegalPage({ doc, title }: { doc: LegalDoc; title: string }) {
   return (
-    <Container className="max-w-3xl py-10 sm:py-14">
+    <Container width="narrow" className="py-10 sm:py-14">
       <nav aria-label="Legal documents" className="flex flex-wrap gap-2 text-sm">
         {DOCS.map((d) => (
           <Link

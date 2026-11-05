@@ -69,9 +69,9 @@ export function CookieBanner() {
     <section
       role="region"
       aria-label="Cookie preferences"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface text-text"
+      className="fixed inset-x-0 bottom-0 z-50 max-h-[45dvh] overflow-y-auto border-t border-border bg-surface text-text sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-[26rem] sm:max-w-[calc(100vw-2rem)] sm:rounded-xl sm:border sm:shadow-lg"
     >
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:gap-4 sm:px-6 lg:px-8">
+      <div className="flex w-full flex-col gap-2 px-4 py-3 sm:gap-3 sm:p-4">
         <div className="min-w-0 flex-1 text-xs leading-snug text-muted sm:text-sm">
           <h2 className="inline font-semibold text-text">Cookies and analytics.</h2>{" "}
           Essential cookies keep you signed in. With your permission we also count page visits, privately and without ads.{" "}

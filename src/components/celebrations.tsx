@@ -38,7 +38,7 @@ function Toast({ item, onDismiss }: { item: Unlocked; onDismiss: (id: string) =>
         <p className="text-xs font-semibold text-accent">Achievement unlocked</p>
         <p className="display-sm mt-0.5 font-bold">{item.name}</p>
         <p className="mt-0.5 text-sm text-muted">{item.description}</p>
-        <Link href="/dashboard#codex" className="mt-1 inline-block text-xs text-accent underline underline-offset-2">
+        <Link href="/dashboard/codex" className="mt-1 inline-block text-xs text-accent underline underline-offset-2">
           See your Codex
         </Link>
       </div>
