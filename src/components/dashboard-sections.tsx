@@ -54,14 +54,17 @@ export type DueReview = { href: string; title: string; trackTitle: string };
 
 export function ReviewCard({ due }: { due: DueReview[] }) {
   if (due.length === 0) return null;
+  const more = due.length - 1;
   return (
     <section aria-labelledby="review-h" className="panel flex h-full flex-col p-6">
       <h2 id="review-h" className="display-sm text-lg font-bold">Ready for review</h2>
-      <p className="mt-2 text-sm text-muted">{due.length} {due.length === 1 ? "lesson is" : "lessons are"} ready for a second look. Revisit earlier lessons to strengthen recall. Reviews don&apos;t earn XP.</p>
-      <p className="mt-3 font-medium">{due[0].title}</p>
+      <p className="mt-2 text-sm text-muted">{due.length} {due.length === 1 ? "lesson is" : "lessons are"} due for a second look.</p>
+      <p className="mt-6 text-sm font-semibold text-accent">Up next</p>
+      <p className="mt-1 break-words font-medium">{due[0].title}</p>
       <p className="text-sm text-muted">{due[0].trackTitle}</p>
-      <div className="mt-auto pt-4">
-        <ButtonLink href={due[0].href} variant="secondary">Review lesson</ButtonLink>
+      {more > 0 && <p className="mt-2 text-sm text-muted">+{more} more due</p>}
+      <div className="pt-6">
+        <ButtonLink href={due[0].href} variant="secondary">Start review</ButtonLink>
       </div>
     </section>
   );

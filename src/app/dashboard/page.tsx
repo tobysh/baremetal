@@ -94,7 +94,7 @@ async function DashboardBody() {
       <div className="flex flex-wrap items-stretch gap-6">
         <div className="flex min-w-0 flex-[999_1_600px] flex-col gap-6">
         {nextUp ? (
-          <section aria-label="Resume course" className={`panel flex min-w-0 flex-col justify-between gap-8 p-6 sm:p-8 ${hasCards ? "" : "lg:flex-1"}`}>
+          <section aria-label="Resume course" className={`panel flex min-w-0 flex-col justify-between gap-8 p-6 sm:p-8 lg:flex-1`}>
             <div className="flex flex-col">
               <p className="text-sm text-muted">
                 {nextUp.track.title} <span className="text-line-strong">/</span> Lesson {nextUp.track.lessons.indexOf(nextUp.lesson) + 1} of {nextUp.track.lessons.length} <span className="text-line-strong">/</span> {LANGUAGE_LABEL[nextUp.track.language]}, {nextUp.track.level}
@@ -113,7 +113,7 @@ async function DashboardBody() {
             </div>
           </section>
         ) : (
-          <section aria-label="All lessons passed" className={`panel flex min-w-0 flex-col justify-between gap-8 p-6 sm:p-8 ${hasCards ? "" : "lg:flex-1"}`}>
+          <section aria-label="All lessons passed" className={`panel flex min-w-0 flex-col justify-between gap-8 p-6 sm:p-8 lg:flex-1`}>
             <div>
               <h1 className="display text-3xl font-bold leading-[1.1] sm:text-[34px]">Every lesson passed.</h1>
               <p className="mt-3 max-w-[560px] text-base leading-relaxed text-text-2">Revisit a course, try a different solution, or build something of your own.</p>
@@ -122,7 +122,7 @@ async function DashboardBody() {
           </section>
         )}
       {hasCards && (
-        <div className="grid gap-6 lg:flex-1 [grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))]">
+        <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))]">
           {continueTarget && <ContinueCard target={continueTarget} />}
           <ReviewCard due={dueReviews} />
           {pick && !(pick.kind === "review" && dueReviews.length > 0) && <PickCard pick={pick} />}

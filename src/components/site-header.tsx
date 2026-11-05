@@ -11,7 +11,7 @@ import { SITE } from "@/lib/site";
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg">
-      <Container className="flex h-16 items-center gap-5 sm:gap-8">
+      <Container className="max-w-none flex h-16 items-center gap-5 sm:gap-8">
         <Link href="/" className="flex shrink-0 items-center gap-2.5 display text-[17px] font-bold" aria-label={`${SITE.name} home`}>
           <LogoMark />
           <span>{SITE.name}</span>
