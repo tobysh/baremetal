@@ -12,6 +12,7 @@ import { DifficultyBadge } from "@/components/gamification";
 import { Badge, Container, Skeleton } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import { getTrack, getTracks, lessonPath } from "@/lib/curriculum";
+import { unfinishedLesson } from "@/lib/learning";
 import { getProgressMap } from "@/lib/progress";
 import { SITE, absoluteUrl } from "@/lib/site";
 import { LANGUAGE_LABEL } from "@/lib/curriculum/types";
@@ -161,6 +162,8 @@ function TypeFilter({ trackSlug, type }: { trackSlug: string; type: LessonType |
 
 function LessonList({ trackSlug, progress }: { trackSlug: string; progress?: Map<string, ProgressDoc> }) {
   const track = getTrack(trackSlug)!;
+  // Only for learners with some progress: a brand-new learner just sees the list from lesson 1.
+  const upNext = progress && track.lessons.some((l) => progress.has(l.exercise.id)) ? unfinishedLesson(track, progress)?.slug : undefined;
   return (
     <ol className="mt-4 divide-y divide-border overflow-hidden panel">
       {track.lessons.map((l, i) => {
@@ -168,7 +171,7 @@ function LessonList({ trackSlug, progress }: { trackSlug: string; progress?: Map
         const seals = progress ? sealsFor(progress, l.exercise.id) : null;
         return (
           <li key={l.slug} data-lesson={l.slug}>
-            <Link href={lessonPath(track.slug, l.slug)} className="flex items-start gap-4 p-5 hover:bg-surface-2">
+            <Link href={lessonPath(track.slug, l.slug)} aria-current={l.slug === upNext ? "step" : undefined} className={`flex items-start gap-4 p-5 hover:bg-surface-2${l.slug === upNext ? " bg-accent-soft" : ""}`}>
               <span
                 className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border font-mono text-xs ${done ? "border-transparent bg-ok-soft text-ok" : "border-border text-muted"}`}
                 aria-hidden="true"
@@ -178,6 +181,7 @@ function LessonList({ trackSlug, progress }: { trackSlug: string; progress?: Map
               <span className="min-w-0 flex-1">
                 <span className="font-medium">{l.title}</span>
                 {done && <span className="ml-2 text-xs font-medium text-ok">Completed</span>}
+                {l.slug === upNext && <span className="ml-2 text-xs font-medium text-accent">Up next</span>}
                 <span className="mt-1 block text-sm text-muted">{l.summary}</span>
                 <span className="mt-2 flex flex-wrap gap-1.5">
                   {lessonTypes(l).map((t) => (

@@ -1,10 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { loadPaletteIndex, type PaletteIndex } from "./command-palette-actions";
 
-type Item = { href: string; label: string; hint: string; haystack: string };
+type Kind = "Page" | "Learning path" | "Course" | "Lesson";
+/** `strong` is matched at full weight (title, tags); `weak` (summary, outcomes) at reduced weight. `rank` prefers beginner entry points on ties. */
+type Item = { href: string; label: string; kind: Kind; context: string; strong: string; weak: string; rank: number };
+const LEVEL_RANK: Record<string, number> = { Beginner: 0, Intermediate: 1, Advanced: 2 };
 
 /** Higher is better; -1 means no match. Substring beats an in-order subsequence. */
 function score(query: string, text: string): number {
@@ -49,25 +53,45 @@ export default function PaletteDialog({ open, onClose, signedIn, username }: { o
   }, [open]);
 
   const items = useMemo<Item[]>(() => {
+    const page = (href: string, label: string): Item => ({ href, label, kind: "Page", context: "", strong: label.toLowerCase(), weak: "", rank: 0 });
     const pages: Item[] = [
-      ...(signedIn ? [{ href: "/dashboard", label: "Dashboard", hint: "Page" }] : []),
-      { href: "/learn", label: "Courses", hint: "Page" },
-      { href: "/shell", label: "Shell", hint: "Page" },
-      { href: "/leaderboard", label: "Leaderboard", hint: "Page" },
-      ...(signedIn ? [{ href: "/settings", label: "Settings", hint: "Page" }] : []),
-      ...(signedIn && username ? [{ href: `/u/${username}`, label: "Your profile", hint: "Page" }] : []),
-    ].map((p) => ({ ...p, haystack: p.label.toLowerCase() }));
+      ...(signedIn ? [page("/dashboard", "Dashboard")] : []),
+      page("/learn", "Courses"),
+      page("/shell", "Shell"),
+      page("/leaderboard", "Leaderboard"),
+      ...(signedIn ? [page("/settings", "Settings")] : []),
+      ...(signedIn && username ? [page(`/u/${username}`, "Your profile")] : []),
+    ];
     if (!index) return pages;
-    const tracks = index.tracks.map(([slug, title]): Item => ({ href: `/learn/${slug}`, label: title, hint: "Course", haystack: `${title} ${slug}`.toLowerCase() }));
-    const lessons = index.lessons.map(([t, slug, title]): Item => ({ href: `/learn/${index.tracks[t][0]}/${slug}`, label: title, hint: index.tracks[t][1], haystack: `${title} ${index.tracks[t][1]}`.toLowerCase() }));
-    return [...pages, ...tracks, ...lessons];
+    const paths = index.paths.map(([id, title, blurb]): Item => ({ href: `/learn#path-${id}`, label: title, kind: "Learning path", context: blurb, strong: title.toLowerCase(), weak: blurb.toLowerCase(), rank: 0 }));
+    const tracks = index.tracks.map(([slug, title, language, level, about]): Item => ({
+      href: `/learn/${slug}`, label: title, kind: "Course", context: `${language} · ${level}`,
+      strong: `${title} ${slug} ${language}`.toLowerCase(), weak: about.toLowerCase(), rank: LEVEL_RANK[level] ?? 1,
+    }));
+    const lessons = index.lessons.map(([t, slug, title, summary, tags]): Item => ({
+      href: `/learn/${index.tracks[t][0]}/${slug}`, label: title, kind: "Lesson", context: `${index.tracks[t][1]} · ${summary}`,
+      strong: `${title} ${tags.replace(/-/g, " ")} ${tags}`.toLowerCase(), weak: `${summary} ${index.tracks[t][1]} ${index.tracks[t][2]}`.toLowerCase(), rank: LEVEL_RANK[index.tracks[t][3]] ?? 1,
+    }));
+    return [...pages, ...paths, ...tracks, ...lessons];
   }, [index, signedIn, username]);
 
   const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return items.slice(0, 8);
+    const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!words.length) return items.filter((i) => i.kind === "Page" || i.kind === "Learning path").slice(0, 8);
+    const kindWeight: Record<Kind, number> = { Page: 40, "Learning path": 30, Course: 20, Lesson: 0 };
     return items
-      .map((item) => ({ item, s: score(q, item.haystack) }))
+      .map((item) => {
+        // Every word must match somewhere; title and tag hits count fully, summary and outcome hits only substring-wise.
+        let total = 0;
+        for (const w of words) {
+          const s = score(w, item.strong);
+          const weak = item.weak.includes(w) ? 150 : -1;
+          const best = Math.max(s, weak);
+          if (best < 0) return { item, s: -1 };
+          total += best;
+        }
+        return { item, s: total / words.length + kindWeight[item.kind] - item.rank * 15 };
+      })
       .filter((r) => r.s > 0)
       .sort((a, b) => b.s - a.s)
       .slice(0, 12)
@@ -109,8 +133,8 @@ export default function PaletteDialog({ open, onClose, signedIn, username }: { o
           aria-controls={`${id}-list`}
           aria-activedescendant={results[active] ? `${id}-${active}` : undefined}
           aria-autocomplete="list"
-          aria-label="Search lessons, courses and pages"
-          placeholder="Search lessons, courses and pages"
+          aria-label="Search courses, lessons and pages"
+          placeholder="Search a topic, language or lesson"
           autoComplete="off"
           spellCheck={false}
           value={query}
@@ -126,15 +150,24 @@ export default function PaletteDialog({ open, onClose, signedIn, username }: { o
               aria-selected={i === active}
               onPointerMove={() => setActive(i)}
               onClick={() => go(item)}
-              className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg px-3 text-sm ${i === active ? "bg-accent-soft text-accent" : ""}`}
+              className={`flex min-h-11 cursor-pointer items-center py-1.5 justify-between gap-3 rounded-lg px-3 text-sm ${i === active ? "bg-accent-soft text-accent" : ""}`}
             >
-              <span className="truncate">{item.label}</span>
-              <span className="shrink-0 truncate text-xs text-muted">{item.hint}</span>
+              <span className="min-w-0">
+                <span className="block truncate">{item.label}</span>
+                {item.context && <span className={`block truncate text-xs ${i === active ? "text-text-2" : "text-muted"}`}>{item.context}</span>}
+              </span>
+              <span className="shrink-0 rounded border border-border px-1.5 py-0.5 text-xs text-muted">{item.kind}</span>
             </li>
           ))}
         </ul>
+        {results.length === 0 && index && (
+          <p className="px-4 pb-3 text-sm text-text-2">
+            Nothing matches “{query.trim()}”. Try a topic such as “pointers” or a language such as “Rust”, or{" "}
+            <Link href="/learn" onClick={onClose} className="text-accent underline underline-offset-2">browse all courses</Link>.
+          </p>
+        )}
         <p role="status" className="border-t border-border px-4 py-2 text-xs text-muted">
-          {failed ? "Could not load lessons; pages only." : results.length === 0 ? "No matches." : !index ? "Loading lessons…" : `${results.length} result${results.length === 1 ? "" : "s"}. Arrow keys to move, Enter to open, Esc to close.`}
+          {failed ? "Could not load lessons; showing pages only." : !index ? "Loading lessons…" : results.length === 0 ? "No results." : `${results.length} result${results.length === 1 ? "" : "s"}. Searches titles, summaries, tags and course outcomes, not lesson text. Esc closes.`}
         </p>
       </div>
     </dialog>

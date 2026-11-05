@@ -932,6 +932,7 @@ function EditorMenu({ mod, fontSize, tabWidth }: { mod: string; fontSize: number
               [<><Kbd>Esc</Kbd> then <Kbd>Tab</Kbd></>, "Leave the editor"],
               [<><Kbd>Alt</Kbd>+<Kbd>1</Kbd></>, "Lesson"],
               [<><Kbd>Alt</Kbd>+<Kbd>2</Kbd></>, "Editor"],
+              [<><Kbd>{mod}</Kbd>+<Kbd>K</Kbd></>, "Search courses and lessons"],
               [<Kbd key="q">?</Kbd>, "Open or close this panel"],
             ] as const).map(([keys, label], i) => (
               <Fragment key={i}><dt className="whitespace-nowrap">{keys}</dt><dd>{label}</dd></Fragment>
