@@ -1,0 +1,32 @@
+{
+  "kind": "predict",
+  "prompt": "A rate limiter holds 2 tokens and refills one per 1000 ms. The test clock starts at 0 and never moves on its own. Predict each `Allow()`.",
+  "code": "c := &stepClock{}\nl := NewLimiter(c, 2, 1000)\nl.Allow()\nl.Allow()\n// 1: l.Allow() at t = 0\nc.now = 1000\n// 2: l.Allow()   3: l.Allow()",
+  "trace": [
+    {
+      "label": "third call at t = 0",
+      "choices": [
+        "true",
+        "false"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "first call at t = 1000",
+      "choices": [
+        "true",
+        "false"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "second call at t = 1000",
+      "choices": [
+        "true",
+        "false"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Without time passing there is nothing to refill, so the third call is refused. Moving the fake clock to 1000 ms earns exactly one token, which the next call spends. No sleeping is needed, which is the point of a fake clock."
+}

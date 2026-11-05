@@ -1,0 +1,14 @@
+{
+  "kind": "predict",
+  "prompt": "What does this program print?",
+  "code": "char s[] = \"cab\";\ns[1] = '\\0';\nprintf(\"%s|%d\\n\", s, (int)sizeof s);",
+  "choices": [
+    "c|4",
+    "cab|4",
+    "c|2",
+    "c|3",
+    "cab|3"
+  ],
+  "answer": 0,
+  "explain": "Writing `'\\0'` into the middle of the array ends the string there, so `%s` stops after `c`. The array itself is still 4 bytes (`c`, `a`, `b` and the original terminator), so `sizeof` is unchanged."
+}

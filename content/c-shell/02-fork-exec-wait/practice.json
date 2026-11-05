@@ -1,0 +1,22 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the body of `run_command`: start the program in a child, then have the parent wait for it and return its exit code. One line does not belong.",
+  "base": "#define _GNU_SOURCE\n#include <stdio.h>\n#include <stdlib.h>\n#include <errno.h>\n#include <unistd.h>\n#include <sys/types.h>\n#include <sys/wait.h>\n\nint run_command(char *const argv[]) {\n{{code}}\n}\n\nint main(void) {\n    char *const cmd[] = {\"sh\", \"-c\", \"exit 5\", NULL};\n    printf(\"exit code %d\\n\", run_command(cmd));\n    return 0;\n}\n",
+  "lines": [
+    "    pid_t pid = fork();",
+    "    if (pid < 0) return -1;",
+    "    if (pid == 0) {",
+    "        execvp(argv[0], argv);",
+    "        _exit(127);",
+    "    }",
+    "    int status;",
+    "    while (waitpid(pid, &status, 0) < 0) {",
+    "        if (errno != EINTR) return -1;",
+    "    }",
+    "    return WIFEXITED(status) ? WEXITSTATUS(status) : -1;"
+  ],
+  "distractors": [
+    "    if (pid > 0) execvp(argv[0], argv);"
+  ],
+  "explain": "Only the child (where `fork` returned 0) runs `execvp`; if it fails the child exits with 127. The parent waits with `waitpid`, retrying when a signal interrupts it, and reports the exit code. Running `execvp` in the parent would replace the shell itself."
+}

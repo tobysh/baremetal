@@ -1,0 +1,17 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the first half of `parse_request`: split head from body, reject an empty head, then read the request line. One line does not belong.",
+  "base": "use std::collections::HashMap;\n\n// ---- from the previous lesson ----\n#[derive(Debug, PartialEq)]\nstruct RequestLine {\n    method: String,\n    path: String,\n    version: String,\n}\n\nfn parse_request_line(line: &str) -> Option<RequestLine> {\n    let parts: Vec<&str> = line.split(' ').collect();\n    if parts.len() != 3 || !parts[2].starts_with(\"HTTP/\") {\n        return None;\n    }\n    Some(RequestLine {\n        method: parts[0].to_string(),\n        path: parts[1].to_string(),\n        version: parts[2].to_string(),\n    })\n}\n// ---- end of previous lesson ----\n\n#[derive(Debug)]\nstruct Request {\n    method: String,\n    path: String,\n    headers: HashMap<String, String>,\n    body: String,\n}\n\nfn parse_request(raw: &str) -> Result<Request, String> {\n{{code}}\n    let rl = parse_request_line(first).ok_or_else(|| format!(\"bad request line: {}\", first))?;\n    let mut headers = HashMap::new();\n    for line in lines {\n        let (name, value) = line\n            .split_once(':')\n            .ok_or_else(|| format!(\"malformed header: {}\", line))?;\n        headers.insert(name.trim().to_lowercase(), value.trim().to_string());\n    }\n    Ok(Request { method: rl.method, path: rl.path, headers, body: body.to_string() })\n}\n\nfn main() {\n    let raw = \"POST /x HTTP/1.1\\r\\nHost: localhost:8080\\r\\nContent-Length: 2\\r\\n\\r\\nhi\";\n    println!(\"{:?}\", parse_request(raw));\n}\n",
+  "lines": [
+    "    let (head, body) = raw.split_once(\"\\r\\n\\r\\n\").unwrap_or((raw, \"\"));",
+    "    if head.is_empty() {",
+    "        return Err(\"missing request line\".to_string());",
+    "    }",
+    "    let mut lines = head.split(\"\\r\\n\");",
+    "    let first = lines.next().unwrap_or(\"\");"
+  ],
+  "distractors": [
+    "    let (body, head) = raw.split_once(\"\\r\\n\\r\\n\").unwrap_or((raw, \"\"));"
+  ],
+  "explain": "`split_once(\"\\r\\n\\r\\n\")` returns the head first and the body second. A request with no body would be rejected if the two were swapped. The head is split into lines and the first one is the request line."
+}

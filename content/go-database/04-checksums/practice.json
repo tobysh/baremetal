@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "A whole frame is present, but its stored checksum disagrees with the payload. Fill the check so that this counts as damage (not as a torn tail).",
+  "template": "if got := crc32.{{0}}(payload); got {{1}} want {\n\treturn {{2}}\n}",
+  "answers": [
+    "ChecksumIEEE",
+    "!=",
+    "ErrCorrupt"
+  ],
+  "tokens": [
+    "ChecksumIEEE",
+    "!=",
+    "ErrCorrupt",
+    "NewIEEE",
+    "==",
+    "io.ErrUnexpectedEOF"
+  ],
+  "runTests": false,
+  "explain": "`crc32.ChecksumIEEE` computes the CRC of the bytes. A mismatch on a complete frame means bits changed, which is corruption. `io.ErrUnexpectedEOF` is for a stream that simply stops early."
+}

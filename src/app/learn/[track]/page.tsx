@@ -15,6 +15,7 @@ import { getTrack, getTracks, lessonPath } from "@/lib/curriculum";
 import { getProgressMap } from "@/lib/progress";
 import { SITE, absoluteUrl } from "@/lib/site";
 import { LANGUAGE_LABEL } from "@/lib/curriculum/types";
+import { TYPE_FILTERS, TYPE_LABEL, lessonTypes, parseTypeFilter, trackTypeCounts, type LessonType } from "@/lib/curriculum/lesson-types";
 
 export function generateStaticParams() {
   return getTracks().map((t) => ({ track: t.slug }));
@@ -31,15 +32,15 @@ export async function generateMetadata({ params }: PageProps<"/learn/[track]">):
   };
 }
 
-export default function TrackPage({ params }: PageProps<"/learn/[track]">) {
+export default function TrackPage({ params, searchParams }: PageProps<"/learn/[track]">) {
   return (
     <Suspense fallback={<TrackSkeleton />}>
-      <TrackContent params={params} />
+      <TrackContent params={params} searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function TrackContent({ params }: { params: PageProps<"/learn/[track]">["params"] }) {
+async function TrackContent({ params, searchParams }: { params: PageProps<"/learn/[track]">["params"]; searchParams: PageProps<"/learn/[track]">["searchParams"] }) {
   const track = getTrack((await params).track);
   if (!track) notFound();
   const tracks = getTracks();
@@ -81,7 +82,7 @@ async function TrackContent({ params }: { params: PageProps<"/learn/[track]">["p
         </Link>{" "}
         / <span aria-current="page">{track.title}</span>
       </nav>
-      <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14">
+      <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14">
         <div>
           <div className="flex flex-wrap gap-2">
             <Badge>{track.level}</Badge>
@@ -106,6 +107,10 @@ async function TrackContent({ params }: { params: PageProps<"/learn/[track]">["p
             </Suspense>
           </div>
           <div className="display-sm mt-12 flex items-baseline justify-between gap-4"><h2 className="text-xl font-bold">Course syllabus</h2><span className="text-sm text-muted">{track.lessons.length} lessons</span></div>
+          {/* The full syllabus is always rendered (indexable, cacheable); only this small part reads `?type=` and hides rows. */}
+          <Suspense fallback={<TypeFilter trackSlug={track.slug} type={null} />}>
+            <TypeFilterFromParams trackSlug={track.slug} searchParams={searchParams} />
+          </Suspense>
           <Suspense fallback={<LessonList trackSlug={track.slug} />}>
             <LessonListWithProgress trackSlug={track.slug} />
           </Suspense>
@@ -125,6 +130,35 @@ async function TrackContent({ params }: { params: PageProps<"/learn/[track]">["p
   );
 }
 
+const TYPE_ICON: Record<LessonType, string> = { lesson: "</>", review: "↻", challenge: "★", parsons: "☰", blanks: "▭", predict: "▶", bug: "⚑", choice: "◉", typed: "⌨", match: "⇄" };
+
+async function TypeFilterFromParams({ trackSlug, searchParams }: { trackSlug: string; searchParams: PageProps<"/learn/[track]">["searchParams"] }) {
+  return <TypeFilter trackSlug={trackSlug} type={parseTypeFilter((await searchParams).type)} />;
+}
+
+/** Chip row (`?type=`) plus the CSS that hides lessons of other types. Hidden types with no lessons are not offered. */
+function TypeFilter({ trackSlug, type }: { trackSlug: string; type: LessonType | null }) {
+  const track = getTrack(trackSlug)!;
+  const counts = trackTypeCounts(track);
+  const offered = TYPE_FILTERS.filter((t) => counts[t] > 0 || t === type);
+  const hidden = type ? track.lessons.filter((l) => !lessonTypes(l).includes(type)) : [];
+  const css = hidden.map((l) => `[data-lesson="${l.slug}"]{display:none}`).join("");
+  if (!type && !TYPE_FILTERS.some((t) => t !== "lesson" && counts[t] > 0)) return null;
+  const chip = (active: boolean) => `inline-flex min-h-11 shrink-0 items-center rounded-lg border px-3 py-2 text-sm ${active ? "border-accent bg-accent-soft text-text" : "border-border text-muted hover:bg-surface-2 hover:text-text"}`;
+  const href = (t: LessonType | null) => (t ? `/learn/${trackSlug}?type=${t}` : `/learn/${trackSlug}`);
+  return (
+    <section aria-label="Filter lessons" className="mt-4">
+      {css && <style>{css}</style>}
+      <div role="group" aria-label="Lesson type" className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap">
+        <span className="shrink-0 text-sm text-muted">Type</span>
+        <Link href={href(null)} aria-current={!type ? "true" : undefined} className={chip(!type)} scroll={false}>All</Link>
+        {offered.map((t) => <Link key={t} href={href(t)} aria-current={type === t ? "true" : undefined} className={chip(type === t)} scroll={false}>{TYPE_LABEL[t]}</Link>)}
+      </div>
+      {type && hidden.length === track.lessons.length && <p role="status" className="mt-3 text-sm text-muted">No lessons in this course are of that type. <Link href={href(null)} className="text-accent underline underline-offset-2">Show all lessons</Link>.</p>}
+    </section>
+  );
+}
+
 function LessonList({ trackSlug, progress }: { trackSlug: string; progress?: Map<string, ProgressDoc> }) {
   const track = getTrack(trackSlug)!;
   return (
@@ -133,7 +167,7 @@ function LessonList({ trackSlug, progress }: { trackSlug: string; progress?: Map
         const done = progress?.get(l.exercise.id)?.status === "passed";
         const seals = progress ? sealsFor(progress, l.exercise.id) : null;
         return (
-          <li key={l.slug}>
+          <li key={l.slug} data-lesson={l.slug}>
             <Link href={lessonPath(track.slug, l.slug)} className="flex items-start gap-4 p-5 hover:bg-surface-2">
               <span
                 className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border font-mono text-xs ${done ? "border-transparent bg-ok-soft text-ok" : "border-border text-muted"}`}
@@ -143,13 +177,16 @@ function LessonList({ trackSlug, progress }: { trackSlug: string; progress?: Map
               </span>
               <span className="min-w-0 flex-1">
                 <span className="font-medium">{l.title}</span>
-                {l.kind === "review" && (
-                  <span className="ml-2 align-middle">
-                    <Badge tone="accent">Review</Badge>
-                  </span>
-                )}
                 {done && <span className="ml-2 text-xs font-medium text-ok">Completed</span>}
                 <span className="mt-1 block text-sm text-muted">{l.summary}</span>
+                <span className="mt-2 flex flex-wrap gap-1.5">
+                  {lessonTypes(l).map((t) => (
+                    <span key={t} className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs ${t === "review" ? "border-accent bg-accent-soft text-text" : "border-border text-muted"}`}>
+                      <span aria-hidden="true">{TYPE_ICON[t]}</span>
+                      {TYPE_LABEL[t]}
+                    </span>
+                  ))}
+                </span>
                 {l.tags.length > 0 && (
                   <span className="mt-2 flex flex-wrap gap-1.5">
                     {l.tags.map((t) => (

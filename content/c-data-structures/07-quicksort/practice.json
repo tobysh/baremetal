@@ -1,0 +1,21 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the body of `partition`: it uses the last element as the pivot, moves everything not greater than it to the front, then puts the pivot in its final place and returns that index. One line does not belong.",
+  "base": "#include <stdio.h>\n#include <stddef.h>\n\nstatic void swap(int *x, int *y) {\n    int t = *x;\n    *x = *y;\n    *y = t;\n}\n\nsize_t partition(int *a, size_t n) {\n{{code}}\n}\n\nvoid quicksort(int *a, size_t n) {\n    while (n >= 2) {\n        size_t p = partition(a, n);\n        if (p < n - p - 1) {\n            quicksort(a, p);\n            a += p + 1;\n            n -= p + 1;\n        } else {\n            quicksort(a + p + 1, n - p - 1);\n            n = p;\n        }\n    }\n}\n\nint quickselect(int *a, size_t n, size_t k) {\n    for (;;) {\n        size_t p = partition(a, n);\n        if (p == k) return a[p];\n        if (k < p) {\n            n = p;\n        } else {\n            a += p + 1;\n            n -= p + 1;\n            k -= p + 1;\n        }\n    }\n}\n\nint main(void) {\n    int a[] = {9, 4, 7, 1, 8, 2, 6};\n    quicksort(a, 7);\n    for (int i = 0; i < 7; i++) printf(\"%d \", a[i]);\n    printf(\"\\n\");\n    return 0;\n}\n",
+  "lines": [
+    "    int pivot = a[n - 1];",
+    "    size_t i = 0;",
+    "    for (size_t j = 0; j + 1 < n; j++) {",
+    "        if (a[j] <= pivot) {",
+    "            swap(&a[i], &a[j]);",
+    "            i++;",
+    "        }",
+    "    }",
+    "    swap(&a[i], &a[n - 1]);",
+    "    return i;"
+  ],
+  "distractors": [
+    "    swap(&a[0], &a[n - 1]);"
+  ],
+  "explain": "The pivot is read first and left at the end while the loop gathers small elements at the front (`i` counts them). The final swap drops the pivot at index `i`, between the small and the large elements. Swapping the pivot away earlier would break that."
+}

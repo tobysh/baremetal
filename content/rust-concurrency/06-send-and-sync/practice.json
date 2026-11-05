@@ -1,0 +1,12 @@
+{
+  "kind": "predict",
+  "prompt": "You spawn a thread whose closure captures one value. Which captured value makes `thread::spawn` refuse to compile?",
+  "choices": [
+    "`Arc<Mutex<Vec<i32>>>`",
+    "`String`",
+    "`Rc<Vec<i32>>`",
+    "`mpsc::Sender<u8>`"
+  ],
+  "answer": 2,
+  "explain": "`Rc` uses a non-atomic reference count, so it is not `Send`: two threads could update the count at once. `Arc` is the thread-safe version, `String` is plain owned data, and `Sender` is `Send`."
+}

@@ -1,0 +1,52 @@
+{
+  "kind": "predict",
+  "prompt": "Doubles live in `xmm` registers. Follow the distance computation `sqrt(3*3 + 16)` and some conversions.",
+  "trace": [
+    {
+      "label": "After `mulsd xmm0, xmm0` with xmm0 = 3.0",
+      "choices": [
+        "6.0",
+        "9.0",
+        "3.0"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After `addsd xmm0, [b]` where b = 16.0",
+      "choices": [
+        "25.0",
+        "19.0",
+        "144.0"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "After `sqrtsd xmm0, xmm0`",
+      "choices": [
+        "5.0",
+        "12.5",
+        "25.0"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`cvttsd2si rax, xmm1` with xmm1 = 2.9",
+      "choices": [
+        "2",
+        "3",
+        "2.9"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`cvttsd2si rax, xmm1` with xmm1 = -2.9",
+      "choices": [
+        "-3",
+        "-2",
+        "-2.9"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "`cvttsd2si` truncates towards zero, so -2.9 becomes -2, not -3. Floating point arithmetic happens in `xmm` registers with the `sd` (scalar double) variants."
+}

@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Finish `parse_int`: the sign for a leading minus, the place-value multiplier, and the operator that turns a digit character into its number.",
+  "template": "int parse_int(char s[]) {\n    int i = 0;\n    int sign = 1;\n    if (s[i] == '-') {\n        sign = {{0}};\n        i++;\n    } else if (s[i] == '+') {\n        i++;\n    }\n    int value = 0;\n    while (s[i] >= '0' && s[i] <= '9') {\n        value = value * {{1}} + (s[i] {{2}} '0');\n        i++;\n    }\n    return sign * value;\n}",
+  "answers": [
+    "-1",
+    "10",
+    "-"
+  ],
+  "tokens": [
+    "-1",
+    "10",
+    "-",
+    "2",
+    "+",
+    "1"
+  ],
+  "explain": "A leading `-` sets the sign to -1. Each new digit shifts the earlier digits one decimal place (`* 10`). A digit character minus `'0'` gives its numeric value.",
+  "runTests": false
+}

@@ -1,0 +1,43 @@
+{
+  "kind": "predict",
+  "prompt": "Count the interleavings (schedules) of independent threads that each run a fixed number of steps.",
+  "trace": [
+    {
+      "label": "Two threads with 2 steps each",
+      "choices": [
+        "4",
+        "6",
+        "8"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Two threads, 3 steps and 2 steps",
+      "choices": [
+        "6",
+        "10",
+        "12"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Three threads, 1 step each",
+      "choices": [
+        "3",
+        "6",
+        "9"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Three threads, 2 steps each",
+      "choices": [
+        "6",
+        "30",
+        "90"
+      ],
+      "answer": 2
+    }
+  ],
+  "explain": "You choose which positions in the schedule belong to each thread: 4!/(2!2!) = 6, 5!/(3!2!) = 10, 3! = 6 and 6!/(2!2!2!) = 90. Counts explode quickly, which is why checkers need pruning."
+}

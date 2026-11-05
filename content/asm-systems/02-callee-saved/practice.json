@@ -1,0 +1,17 @@
+{
+  "kind": "parsons",
+  "prompt": "A function that must keep its argument alive across a call to `helper`. One line does not belong.",
+  "lines": [
+    "    push rbx",
+    "    mov rbx, rdi",
+    "    call helper",
+    "    add rax, rbx",
+    "    pop rbx",
+    "    ret"
+  ],
+  "distractors": [
+    "    sub rsp, 8"
+  ],
+  "runTests": false,
+  "explain": "`rbx` is callee-saved: save it, use it to hold the value across the call, and restore it before returning. At entry rsp is 8 mod 16; one push makes it 16-aligned for the `call`, so an extra `sub rsp, 8` would break alignment."
+}

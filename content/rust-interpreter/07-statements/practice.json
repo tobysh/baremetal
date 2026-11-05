@@ -1,0 +1,19 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the `let` arm of `parse_stmt`: `let name = expr;`. One line does not belong.",
+  "lines": [
+    "        Some(Token::Let) => {",
+    "            s.next();",
+    "            let name = s.expect_ident()?;",
+    "            s.expect(&Token::Eq)?;",
+    "            let e = parse_expr(s, 0)?;",
+    "            s.expect(&Token::Semi)?;",
+    "            Ok(Stmt::Let(name, e))",
+    "        }"
+  ],
+  "runTests": false,
+  "distractors": [
+    "            s.expect(&Token::EqEq)?;"
+  ],
+  "explain": "The parser consumes `let`, then an identifier, then `=`, then an expression, then the required `;`. Expecting `==` instead of `=` would reject every real declaration."
+}

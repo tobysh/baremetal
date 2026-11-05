@@ -1,0 +1,20 @@
+{
+  "kind": "parsons",
+  "prompt": "Assemble `Memoize`: the returned function remembers results in a map that lives between calls and only calls `f` for inputs it has not seen. One line is a decoy.",
+  "lines": [
+    "\tcache := map[int]int{}",
+    "\treturn func(x int) int {",
+    "\t\tif v, ok := cache[x]; ok {",
+    "\t\t\treturn v",
+    "\t\t}",
+    "\t\tv := f(x)",
+    "\t\tcache[x] = v",
+    "\t\treturn v",
+    "\t}"
+  ],
+  "distractors": [
+    "\tvar cache map[int]int"
+  ],
+  "base": "package main\n\nimport (\n\t\"fmt\"\n\t\"sort\"\n)\n\ntype Person struct {\n\tName string\n\tAge  int\n}\n\nfunc SortPeople(ps []Person) {\n\tsort.Slice(ps, func(i, j int) bool {\n\t\tif ps[i].Age != ps[j].Age {\n\t\t\treturn ps[i].Age < ps[j].Age\n\t\t}\n\t\treturn ps[i].Name < ps[j].Name\n\t})\n}\n\nfunc TopWords(words []string, n int) []string {\n\tcounts := map[string]int{}\n\tfor _, w := range words {\n\t\tcounts[w]++\n\t}\n\tdistinct := make([]string, 0, len(counts))\n\tfor w := range counts {\n\t\tdistinct = append(distinct, w)\n\t}\n\tsort.Slice(distinct, func(i, j int) bool {\n\t\ta, b := distinct[i], distinct[j]\n\t\tif counts[a] != counts[b] {\n\t\t\treturn counts[a] > counts[b]\n\t\t}\n\t\treturn a < b\n\t})\n\tif n < 0 {\n\t\tn = 0\n\t}\n\tif n > len(distinct) {\n\t\tn = len(distinct)\n\t}\n\treturn distinct[:n]\n}\n\nfunc Counter() func() int {\n\tn := 0\n\treturn func() int {\n\t\tn++\n\t\treturn n\n\t}\n}\n\nfunc Memoize(f func(int) int) func(int) int {\n{{code}}\n}\n\n// Try it with Run.\nfunc main() {\n\tnext := Counter()\n\tfmt.Println(next(), next(), next())\n\tfmt.Println(TopWords([]string{\"b\", \"a\", \"b\", \"c\", \"a\", \"b\"}, 2))\n}\n",
+  "explain": "The map is created once, outside the returned closure, and the closure keeps it alive. A nil map (`var cache map[int]int`) cannot be written to, so it would panic on the first store."
+}

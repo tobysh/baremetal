@@ -1,0 +1,17 @@
+{
+  "kind": "parsons",
+  "prompt": "Put the lines in order to build a function that swaps two integers through mutable references.",
+  "base": "{{code}}\n\nfn main() {\n    let (mut a, mut b) = (1, 2);\n    swap(&mut a, &mut b);\n    println!(\"{} {}\", a, b);\n}",
+  "lines": [
+    "fn swap(a: &mut i32, b: &mut i32) {",
+    "    let t = *a;",
+    "    *a = *b;",
+    "    *b = t;",
+    "}"
+  ],
+  "distractors": [
+    "    a = b;"
+  ],
+  "runTests": false,
+  "explain": "Save one value in `t` first, then overwrite through the references with `*`. Writing `a = b;` would only change the local reference, not the numbers it points at."
+}

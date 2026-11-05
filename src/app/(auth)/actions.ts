@@ -15,8 +15,9 @@ import {
   startPending2fa,
   verifyPassword,
 } from "@/lib/auth";
-import { decrypt, hmac, randomToken, sha256 } from "@/lib/crypto";
+import { decrypt, randomToken, sha256 } from "@/lib/crypto";
 import { verifyCaptcha } from "@/lib/captcha";
+import { issuePasswordReset, RESET_MINUTES } from "@/lib/account-ops";
 import { queueEmail, scheduleEmailDelivery, sendEmail } from "@/lib/email";
 import { fieldErrors, formValues, type FormState } from "@/lib/forms";
 import { usernameProblem } from "@/lib/gamification";
@@ -25,6 +26,7 @@ import { checkPassword } from "@/lib/password";
 import { accountCaptchaRequired, authRateLimit, envLimit, recordAccountFailure, clearLoginFailures, finishLoginFailure, finishOtpFailure, formatWait, logAuthEvent, loginGuard, otpGuard, refundLoginAttempt, refundOtpAttempt, reserveLoginAttempt, reserveOtpAttempt, requestContext } from "@/lib/security";
 import { hashBackupCode, legacyBackupCodeHash, verifyTotp } from "@/lib/totp";
 import { absoluteUrl } from "@/lib/site";
+import { isSuspended } from "@/lib/suspension";
 
 const email = z.email("Enter a valid email address, like you@example.com").max(254).transform((e) => e.trim().toLowerCase());
 const TOO_MANY = "Too many attempts from your network. Please wait 15 minutes and try again.";
@@ -148,6 +150,10 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   }
 
   await refundLoginAttempt(addr, ip);
+  if (isSuspended(user)) {
+    await logAuthEvent("login_blocked", { email: addr, userId: user._id.toHexString(), reason: user.suspension?.kind });
+    return { message: user.suspension?.kind === "banned" ? "This account has been closed." : "This account is temporarily locked. Contact support if you think this is a mistake.", values };
+  }
   if (user.emailVerified === false) return { message: "Please verify your email before signing in. Check your inbox for the link.", values };
   if (user.twoFactor?.enabled) {
     await startPending2fa(user._id, next, user.sessionVersion ?? 0);
@@ -174,7 +180,7 @@ export async function verifySecondFactor(_prev: FormState, formData: FormData): 
   const db = await getDb();
   const users = db.collection<UserDoc>("users");
   const user = await users.findOne({ _id: pending.userId });
-  if (!user?.twoFactor?.enabled || pending.sessionVersion !== (user.sessionVersion ?? 0)) {
+  if (!user?.twoFactor?.enabled || pending.sessionVersion !== (user.sessionVersion ?? 0) || isSuspended(user)) {
     await clearPending2fa();
     redirect("/login");
   }
@@ -220,8 +226,6 @@ export async function verifySecondFactor(_prev: FormState, formData: FormData): 
 
 // ---------- Password reset ----------
 
-const RESET_MINUTES = 30;
-
 export async function requestPasswordReset(_prev: FormState, formData: FormData): Promise<FormState> {
   const values = formValues(formData, ["email"]);
   if (!(await authRateLimit("forgot-password", 5))) return { message: TOO_MANY, values };
@@ -241,17 +245,7 @@ export async function requestPasswordReset(_prev: FormState, formData: FormData)
   await logAuthEvent("password_reset_requested", { email: addr, reason: user ? undefined : "unknown_email" });
   if (!user) { scheduleEmailDelivery(); return done; }
 
-  const token = randomToken(32);
-  await db.collection("password_resets").deleteMany({ userId: user._id });
-  await db.collection("password_resets").insertOne({
-    tokenHash: sha256(token),
-    userId: user._id,
-    requestedIp: hmac("rate-ip", ip),
-    expiresAt: new Date(Date.now() + RESET_MINUTES * 60_000),
-  });
-  // Delivery failures are logged, never surfaced: a different response for
-  // registered emails would reveal which accounts exist.
-  await queueEmail(user.email, "Reset your Baremetal password", `Hi ${user.name},\n\nSomeone asked to reset your password. Use this link within ${RESET_MINUTES} minutes:\n\n${absoluteUrl("/reset-password")}#${token}\n\nIf you didn't ask for this, ignore this email.`);
+  if (!isSuspended(user) || user.suspension?.kind !== "banned") await issuePasswordReset(user, ip);
   scheduleEmailDelivery();
   return done;
 }
@@ -314,7 +308,7 @@ export async function verifyEmail(_prev: FormState, formData: FormData): Promise
   const passwordHash = await hashPassword(parsed.data.password);
   const claimed = await db.collection("email_verifications").deleteOne({ _id: record._id, expiresAt: { $gt: new Date() } });
   if (!claimed.deletedCount) return { message: "This verification link is invalid or already used." };
-  const result = await db.collection<UserDoc>("users").updateOne({ _id: user._id, emailVerified: false }, { $set: { emailVerified: true, passwordHash, passwordChangedAt: new Date() } });
+  const result = await db.collection<UserDoc>("users").updateOne({ _id: user._id, emailVerified: false }, { $set: { emailVerified: true, passwordHash, passwordChangedAt: new Date(), ...(user.termsVersion === "pending" ? { termsAcceptedAt: new Date(), termsVersion: TERMS_VERSION } : {}) } });
   if (!result.matchedCount) return { message: "This verification link is invalid or already used." };
   return { ok: true, message: "Email verified. You can now sign in." };
 }

@@ -1,0 +1,39 @@
+{
+  "kind": "predict",
+  "prompt": "A simulated link may split frames across reads, duplicate them, corrupt bytes or drop them. Each frame carries a sequence number and a CRC.",
+  "trace": [
+    {
+      "label": "The same frame (sequence 4) arrives twice. The receiver",
+      "choices": [
+        "delivers both",
+        "delivers it once and ignores the repeat"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "A frame arrives with a bad CRC. The receiver",
+      "choices": [
+        "delivers it anyway",
+        "discards it and resynchronises"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "A frame is split in two reads. The receiver",
+      "choices": [
+        "rejects the first half",
+        "waits for the rest"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "A frame is dropped on the link. Who recovers it?",
+      "choices": [
+        "the sender, by retransmitting after no acknowledgement",
+        "the CRC, automatically"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "A checksum can detect damage but not repair it. Sequence numbers make duplicates harmless, buffering handles splits, and retransmission handles loss."
+}

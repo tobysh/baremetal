@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "In this VM, jump targets are absolute instruction indices. `JumpIfFalse` should continue at exactly the target when the condition is false. Tap the faulty line.",
+  "code": "Op::JumpIfFalse(target) => match self.pop()? {\n    Value::Bool(false) => ip = *target + 1,\n    Value::Bool(true) => {}\n    _ => return Err(RuntimeError::TypeMismatch(\"condition must be a boolean\".to_string())),\n},",
+  "bugLine": 2,
+  "explain": "A target is the index of the next instruction to run, so the VM sets `ip = *target`. Adding one skips the first instruction of the branch or loop body."
+}

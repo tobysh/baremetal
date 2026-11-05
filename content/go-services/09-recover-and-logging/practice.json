@@ -1,0 +1,22 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the body of the deferred function in a panic-recovery middleware. It must ignore the no-panic case, let `http.ErrAbortHandler` pass through, report the rest and answer 500 if nothing was sent yet. One line is a decoy.",
+  "lines": [
+    "\t\t\t\tv := recover()",
+    "\t\t\t\tif v == nil {",
+    "\t\t\t\t\treturn",
+    "\t\t\t\t}",
+    "\t\t\t\tif v == http.ErrAbortHandler {",
+    "\t\t\t\t\tpanic(v)",
+    "\t\t\t\t}",
+    "\t\t\t\treport(v)",
+    "\t\t\t\tif !sw.wrote {",
+    "\t\t\t\t\thttp.Error(sw, \"internal server error\", http.StatusInternalServerError)",
+    "\t\t\t\t}"
+  ],
+  "distractors": [
+    "\t\t\t\tlog.Println(v)"
+  ],
+  "base": "package main\n\nimport (\n\t\"fmt\"\n\t\"net/http\"\n\t\"net/http/httptest\"\n)\n\ntype Middleware func(http.Handler) http.Handler\n\ntype statusWriter struct {\n\thttp.ResponseWriter\n\tstatus int\n\tbytes  int\n\twrote  bool\n}\n\nfunc (w *statusWriter) WriteHeader(code int) {\n\tif !w.wrote {\n\t\tw.status = code\n\t\tw.wrote = true\n\t}\n\tw.ResponseWriter.WriteHeader(code)\n}\n\nfunc (w *statusWriter) Write(b []byte) (int, error) {\n\tif !w.wrote {\n\t\tw.WriteHeader(http.StatusOK)\n\t}\n\tn, err := w.ResponseWriter.Write(b)\n\tw.bytes += n\n\treturn n, err\n}\n\nfunc (w *statusWriter) Unwrap() http.ResponseWriter {\n\treturn w.ResponseWriter\n}\n\nfunc AccessLog(log func(method, path string, status, bytes int)) Middleware {\n\treturn func(next http.Handler) http.Handler {\n\t\treturn http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {\n\t\t\tsw := &statusWriter{ResponseWriter: w}\n\t\t\tnext.ServeHTTP(sw, r)\n\t\t\tstatus := sw.status\n\t\t\tif !sw.wrote {\n\t\t\t\tstatus = http.StatusOK\n\t\t\t}\n\t\t\tlog(r.Method, r.URL.Path, status, sw.bytes)\n\t\t})\n\t}\n}\n\nfunc Recover(report func(v any)) Middleware {\n\treturn func(next http.Handler) http.Handler {\n\t\treturn http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {\n\t\t\tsw := &statusWriter{ResponseWriter: w}\n\t\t\tdefer func() {\n{{code}}\n\t\t\t}()\n\t\t\tnext.ServeHTTP(sw, r)\n\t\t})\n\t}\n}\n\nfunc main() {\n\tvar h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {\n\t\tpanic(\"oops\")\n\t})\n\th = Recover(func(v any) { fmt.Println(\"recovered:\", v) })(h)\n\th = AccessLog(func(m, p string, s, b int) { fmt.Println(m, p, s, b) })(h)\n\trec := httptest.NewRecorder()\n\th.ServeHTTP(rec, httptest.NewRequest(\"GET\", \"/boom\", nil))\n\tfmt.Println(rec.Code, rec.Body.String())\n}\n",
+  "explain": "`recover()` returns nil when there was no panic. `ErrAbortHandler` is the server's own signal, so it is re-panicked. A 500 is only possible while nothing has been written to the client yet."
+}

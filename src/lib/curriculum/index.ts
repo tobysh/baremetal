@@ -2,8 +2,9 @@
 // Server-only in practice (uses fs); scripts import it directly.
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
-import { challengeIdOf, isChallengeId, isDifficulty } from "../gamification";
+import { challengeIdOf, isChallengeId, isDifficulty, isPracticeId, practiceIdOf } from "../gamification";
 import { compareTracks } from "./paths";
+import { parsePractice } from "./practice";
 import type { Exercise, Lesson, Track } from "./types";
 
 const CONTENT_DIR = path.join(process.cwd(), "content");
@@ -69,6 +70,27 @@ function loadLesson(trackDir: string, dirName: string, language: Track["language
       },
     };
   }
+  const practiceFile = path.join(dir, "practice.json");
+  let practice: Lesson["practice"];
+  if (existsSync(practiceFile)) {
+    try {
+      practice = parsePractice(JSON.parse(read(practiceFile)), dirName);
+    } catch (e) {
+      throw e instanceof SyntaxError ? new Error(`${dirName}/practice.json is not valid JSON: ${e.message}`) : e;
+    }
+  }
+  const quizFile = path.join(dir, "quiz.json");
+  let quiz: Lesson["quiz"];
+  if (existsSync(quizFile)) {
+    let raw: unknown;
+    try {
+      raw = JSON.parse(read(quizFile));
+    } catch (e) {
+      throw new Error(`${dirName}/quiz.json is not valid JSON: ${(e as Error).message}`);
+    }
+    if (!Array.isArray(raw) || raw.length < 1 || raw.length > 12) throw new Error(`${dirName}/quiz.json must be an array of 1-12 questions`);
+    quiz = raw.map((q, i) => parsePractice(q, `${dirName}/quiz.json[${i}]`));
+  }
   if (!meta.title || !meta.summary || !meta.id) throw new Error(`Lesson ${dir} is missing title, summary or id`);
   if (!isDifficulty(meta.difficulty)) throw new Error(`Lesson ${dir} needs difficulty: easy | medium | hard | impossible`);
   if (meta.kind && meta.kind !== "lesson" && meta.kind !== "review") throw new Error(`Lesson ${dir}: kind must be lesson or review`);
@@ -85,6 +107,8 @@ function loadLesson(trackDir: string, dirName: string, language: Track["language
     body: body.trim(),
     exercise,
     challenge,
+    practice,
+    quiz,
   };
 }
 
@@ -143,4 +167,19 @@ export function findExercise(exerciseId: string) {
   return undefined;
 }
 
+/** Finds the lesson behind a practice id (`<lesson id>#practice`); only lessons that have a practice.json match. */
+export function findPractice(practiceId: string) {
+  if (!isPracticeId(practiceId)) return undefined;
+  for (const track of getTracks()) {
+    for (const lesson of track.lessons) {
+      if (lesson.practice && practiceIdOf(lesson.exercise.id) === practiceId) return { track, lesson, exercise: lesson.exercise, practice: lesson.practice };
+    }
+  }
+  return undefined;
+}
+
+export { PRACTICE_KINDS, assembleParsons, canonicalSubmission, checkPractice, revealAnswer, fillBlanks, parsePractice, toPublicPractice } from "./practice";
+export type { Practice, PracticeCheck, PracticeKind, PracticeSubmission, PublicPractice } from "./practice";
+export { TYPE_FILTERS, TYPE_LABEL, isLessonType, lessonTypes, parseTypeFilter, trackTypeCounts, typeCounts } from "./lesson-types";
+export type { LessonType, TypeCounts } from "./lesson-types";
 export const lessonPath = (trackSlug: string, lessonSlug: string) => `/learn/${trackSlug}/${lessonSlug}`;

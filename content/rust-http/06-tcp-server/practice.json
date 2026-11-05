@@ -1,0 +1,21 @@
+{
+  "kind": "parsons",
+  "prompt": "Put the end of `handle_connection` in order: decode what arrived, parse the request line, pick a response, and write it back. One line does not belong.",
+  "base": "use std::io::{Read, Write};\nuse std::net::{TcpListener, TcpStream};\nuse std::time::Duration;\n\n// ---- from previous lessons ----\n#[derive(Debug, PartialEq)]\nstruct RequestLine {\n    method: String,\n    path: String,\n    version: String,\n}\n\nfn parse_request_line(line: &str) -> Option<RequestLine> {\n    let parts: Vec<&str> = line.split(' ').collect();\n    if parts.len() != 3 || !parts[2].starts_with(\"HTTP/\") {\n        return None;\n    }\n    Some(RequestLine {\n        method: parts[0].to_string(),\n        path: parts[1].to_string(),\n        version: parts[2].to_string(),\n    })\n}\n\nfn reason_phrase(status: u16) -> &'static str {\n    match status {\n        200 => \"OK\",\n        201 => \"Created\",\n        400 => \"Bad Request\",\n        404 => \"Not Found\",\n        405 => \"Method Not Allowed\",\n        500 => \"Internal Server Error\",\n        _ => \"Unknown\",\n    }\n}\n\nfn build_response(status: u16, content_type: &str, body: &str) -> String {\n    format!(\n        \"HTTP/1.1 {} {}\\r\\nContent-Type: {}\\r\\nContent-Length: {}\\r\\nConnection: close\\r\\n\\r\\n{}\",\n        status,\n        reason_phrase(status),\n        content_type,\n        body.len(),\n        body\n    )\n}\n\nfn route(method: &str, path: &str) -> (u16, String) {\n    let segs: Vec<&str> = path.split('/').collect();\n    let known = match segs.as_slice() {\n        [\"\", \"\"] | [\"\", \"health\"] => true,\n        [\"\", \"echo\", text] => !text.is_empty(),\n        [\"\", \"add\", _, _] => true,\n        _ => false,\n    };\n    if !known {\n        return (404, \"not found\".to_string());\n    }\n    if method != \"GET\" {\n        return (405, \"method not allowed\".to_string());\n    }\n    match segs.as_slice() {\n        [\"\", \"\"] => (200, \"Welcome to Baremetal\".to_string()),\n        [\"\", \"health\"] => (200, \"ok\".to_string()),\n        [\"\", \"echo\", text] => (200, text.to_string()),\n        [\"\", \"add\", a, b] => match (a.parse::<i64>(), b.parse::<i64>()) {\n            (Ok(x), Ok(y)) => match x.checked_add(y) {\n                Some(sum) => (200, sum.to_string()),\n                None => (400, \"bad number\".to_string()),\n            },\n            _ => (400, \"bad number\".to_string()),\n        },\n        _ => (404, \"not found\".to_string()),\n    }\n}\n// ---- end of previous lessons ----\n\nfn handle_connection(mut stream: TcpStream) {\n    let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));\n    let mut buf: Vec<u8> = Vec::new();\n    let mut chunk = [0u8; 1024];\n    loop {\n        match stream.read(&mut chunk) {\n            Ok(0) => break,\n            Ok(n) => buf.extend_from_slice(&chunk[..n]),\n            Err(_) => break,\n        }\n        if buf.windows(4).any(|w| w == b\"\\r\\n\\r\\n\") || buf.len() >= 8192 {\n            break;\n        }\n    }\n{{code}}\n    let _ = stream.flush();\n}\n\nfn main() {\n    let listener = TcpListener::bind(\"127.0.0.1:8080\").unwrap();\n    println!(\"listening on http://127.0.0.1:8080\");\n    for stream in listener.incoming() {\n        handle_connection(stream.unwrap());\n    }\n}\n",
+  "lines": [
+    "    let text = String::from_utf8_lossy(&buf);",
+    "    let first = text.lines().next().unwrap_or(\"\");",
+    "    let response = match parse_request_line(first) {",
+    "        Some(rl) => {",
+    "            let (status, body) = route(&rl.method, &rl.path);",
+    "            build_response(status, \"text/plain\", &body)",
+    "        }",
+    "        None => build_response(400, \"text/plain\", \"bad request\"),",
+    "    };",
+    "    let _ = stream.write_all(response.as_bytes());"
+  ],
+  "distractors": [
+    "    let _ = stream.write_all(&buf);"
+  ],
+  "explain": "`from_utf8_lossy` never fails on odd bytes. The first line is parsed, and a valid one is routed while an invalid one becomes a 400. Only then is the response written. Writing the raw request back first would corrupt what the client reads."
+}

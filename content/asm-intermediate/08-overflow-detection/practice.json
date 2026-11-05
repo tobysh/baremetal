@@ -1,0 +1,37 @@
+{
+  "kind": "predict",
+  "prompt": "All additions are 8-bit, in `al`. Which flags are set after each one?",
+  "trace": [
+    {
+      "label": "`mov al, 127` then `add al, 1`",
+      "choices": [
+        "Only CF",
+        "Only OF",
+        "Both CF and OF",
+        "Neither"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`mov al, 255` then `add al, 1`",
+      "choices": [
+        "Only CF",
+        "Only OF",
+        "Both CF and OF",
+        "Neither"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`mov al, 0x80` then `add al, 0x80`",
+      "choices": [
+        "Only CF",
+        "Only OF",
+        "Both CF and OF",
+        "Neither"
+      ],
+      "answer": 2
+    }
+  ],
+  "explain": "OF flags signed overflow, CF flags unsigned wrap. 127+1 is -128 as signed (OF only). 255+1 wraps to 0 unsigned (CF only). -128 + -128 is both a signed overflow and an unsigned carry."
+}

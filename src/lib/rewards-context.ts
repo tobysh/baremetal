@@ -1,7 +1,7 @@
 // Builds the Codex context from stored documents. No server-only import, so scripts can use it too.
 import type { CodexContext } from "./achievements";
 import type { Track } from "./curriculum/types";
-import { challengeIdOf, isChallengeId } from "./gamification";
+import { challengeIdOf, isChallengeId, isPracticeId } from "./gamification";
 import type { ProgressDoc, ReviewDoc, UserDoc } from "./models";
 import { computeRhythm } from "./rhythm";
 
@@ -14,6 +14,7 @@ export function buildContext(tracks: Track[], progress: ProgressDoc[], reviews: 
   for (const p of progress) {
     if (p.status !== "passed") continue;
     if (!p.xpWithheld && p.passedAt) events.push(p.passedAt);
+    if (isPracticeId(p.exerciseId)) continue; // practice counts toward the weekly rhythm above, never toward the Codex
     if (isChallengeId(p.exerciseId)) challenges.add(p.exerciseId.slice(0, p.exerciseId.length - "#challenge".length));
     else passed.set(p.exerciseId, { passedAt: p.passedAt ?? new Date(0), attemptsAtPass: p.attemptsAtPass ?? p.attempts, unaided: !!p.unaided });
   }

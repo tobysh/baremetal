@@ -1,0 +1,37 @@
+{
+  "kind": "predict",
+  "prompt": "Writes get increasing sequence numbers: seq 1 `put x=1`, then a snapshot is taken (at seq 1), seq 2 `put x=2`, seq 3 `delete x`.",
+  "trace": [
+    {
+      "label": "Reading x through the old snapshot gives",
+      "choices": [
+        "1",
+        "2",
+        "missing",
+        "an error"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Reading x on the live store gives",
+      "choices": [
+        "1",
+        "2",
+        "missing",
+        "an error"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "A new snapshot taken now reads x as",
+      "choices": [
+        "1",
+        "2",
+        "missing",
+        "an error"
+      ],
+      "answer": 2
+    }
+  ],
+  "explain": "A snapshot only sees versions with a sequence number at or below its own, so later writes and the delete are invisible to it. The live store and any new snapshot see the delete."
+}

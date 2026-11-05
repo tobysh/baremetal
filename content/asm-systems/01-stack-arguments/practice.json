@@ -1,0 +1,34 @@
+{
+  "kind": "predict",
+  "prompt": "System V: the first six integer arguments are in registers; the seventh and eighth are on the stack. At function entry `[rsp]` holds the return address.",
+  "trace": [
+    {
+      "label": "At entry, the seventh argument is at",
+      "choices": [
+        "[rsp]",
+        "[rsp+8]",
+        "[rsp+16]"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "At entry, the eighth argument is at",
+      "choices": [
+        "[rsp+8]",
+        "[rsp+16]",
+        "[rsp+24]"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After `push rbp` and `mov rbp, rsp`, the eighth is at",
+      "choices": [
+        "[rbp+16]",
+        "[rbp+24]",
+        "[rbp+32]"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "The caller pushed the arguments before `call`, which pushed the return address. `push rbp` adds one more 8-byte slot, so every offset grows by 8."
+}

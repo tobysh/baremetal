@@ -1,0 +1,18 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the eviction step of `lru_put`: when the cache is over capacity, drop the least recently used entry (the tail). Memory must be released last. One line does not belong.",
+  "base": "#include <stdio.h>\n#include <stdlib.h>\n\ntypedef struct LNode {\n    int key;\n    int val;\n    struct LNode *prev;\n    struct LNode *next;\n    struct LNode *hnext;\n} LNode;\n\ntypedef struct {\n    size_t cap;\n    size_t count;\n    LNode *head;\n    LNode *tail;\n    LNode **buckets;\n    size_t nb;\n} Lru;\n\nLru *lru_new(size_t cap) {\n    if (cap == 0) return NULL;\n    Lru *c = calloc(1, sizeof *c);\n    if (c == NULL) return NULL;\n    c->nb = 2 * cap + 1;\n    c->buckets = calloc(c->nb, sizeof *c->buckets);\n    if (c->buckets == NULL) {\n        free(c);\n        return NULL;\n    }\n    c->cap = cap;\n    return c;\n}\n\nstatic size_t bucket_of(const Lru *c, int key) {\n    return (unsigned)key % c->nb;\n}\n\nstatic LNode *find(const Lru *c, int key) {\n    for (LNode *n = c->buckets[bucket_of(c, key)]; n; n = n->hnext)\n        if (n->key == key) return n;\n    return NULL;\n}\n\nstatic void list_unlink(Lru *c, LNode *n) {\n    if (n->prev) n->prev->next = n->next; else c->head = n->next;\n    if (n->next) n->next->prev = n->prev; else c->tail = n->prev;\n    n->prev = n->next = NULL;\n}\n\nstatic void list_push_front(Lru *c, LNode *n) {\n    n->prev = NULL;\n    n->next = c->head;\n    if (c->head) c->head->prev = n; else c->tail = n;\n    c->head = n;\n}\n\nstatic void chain_remove(Lru *c, LNode *n) {\n    LNode **link = &c->buckets[bucket_of(c, n->key)];\n    while (*link && *link != n) link = &(*link)->hnext;\n    if (*link) *link = n->hnext;\n}\n\nint lru_get(Lru *c, int key, int *out) {\n    LNode *n = find(c, key);\n    if (n == NULL) return -1;\n    list_unlink(c, n);\n    list_push_front(c, n);\n    *out = n->val;\n    return 0;\n}\n\nvoid lru_put(Lru *c, int key, int val) {\n    LNode *n = find(c, key);\n    if (n) {\n        n->val = val;\n        list_unlink(c, n);\n        list_push_front(c, n);\n        return;\n    }\n    n = malloc(sizeof *n);\n    if (n == NULL) return;\n    n->key = key;\n    n->val = val;\n    size_t b = bucket_of(c, key);\n    n->hnext = c->buckets[b];\n    c->buckets[b] = n;\n    list_push_front(c, n);\n    c->count++;\n{{code}}\n}\n\nsize_t lru_size(const Lru *c) {\n    return c->count;\n}\n\nint lru_oldest(const Lru *c, int *key) {\n    if (c->tail == NULL) return -1;\n    *key = c->tail->key;\n    return 0;\n}\n\nvoid lru_free(Lru *c) {\n    if (c == NULL) return;\n    LNode *n = c->head;\n    while (n) {\n        LNode *next = n->next;\n        free(n);\n        n = next;\n    }\n    free(c->buckets);\n    free(c);\n}\n\nint main(void) {\n    Lru *c = lru_new(2);\n    if (c == NULL) {\n        printf(\"lru_new is not implemented yet\\n\");\n        return 0;\n    }\n    lru_put(c, 1, 10);\n    lru_put(c, 2, 20);\n    int v;\n    lru_get(c, 1, &v);\n    lru_put(c, 3, 30);\n    printf(\"key 2 evicted: %s (expected yes)\\n\", lru_get(c, 2, &v) == -1 ? \"yes\" : \"no\");\n    lru_free(c);\n    return 0;\n}\n",
+  "lines": [
+    "    if (c->count > c->cap) {",
+    "        LNode *victim = c->tail;",
+    "        list_unlink(c, victim);",
+    "        chain_remove(c, victim);",
+    "        free(victim);",
+    "        c->count--;",
+    "    }"
+  ],
+  "distractors": [
+    "        c->tail = NULL;"
+  ],
+  "explain": "The victim is the tail of the recency list. Take it out of the list and out of its hash chain, and only then free it: the unlink and chain removal still read the node. Finally the count goes back down to the capacity."
+}

@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "One loop step that adds four floats at a time from two arrays into a third.",
+  "template": "    movups xmm0, [rdi + rax*4]\n    movups xmm1, [rsi + rax*4]\n    {{0}} xmm0, xmm1\n    movups [rdx + rax*4], xmm0\n    add rax, {{1}}",
+  "answers": [
+    "addps",
+    "4"
+  ],
+  "tokens": [
+    "addps",
+    "addss",
+    "addpd",
+    "4",
+    "16",
+    "1"
+  ],
+  "runTests": false,
+  "explain": "`addps` adds four packed single-precision floats at once; `addss` would add only one. The index counts floats, so four are consumed per step. Index scaling by 4 already converts floats to bytes."
+}

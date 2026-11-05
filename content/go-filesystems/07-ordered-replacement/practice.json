@@ -1,0 +1,15 @@
+{
+  "kind": "parsons",
+  "prompt": "Replace a file's contents safely: the new data must be written and published before the old blocks are freed. Order the lines. One line does not belong.",
+  "lines": [
+    "newBlocks := alloc(len(data))",
+    "writeData(newBlocks, data)",
+    "old := publish(inode, newBlocks)",
+    "free(old)"
+  ],
+  "runTests": false,
+  "distractors": [
+    "free(inode.blocks)"
+  ],
+  "explain": "At every instant the inode points at complete data: first the old, then the new. The old blocks are freed only after the switch, so a crash never leaves a file pointing at nothing."
+}

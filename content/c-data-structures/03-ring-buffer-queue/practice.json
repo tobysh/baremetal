@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "A ring buffer stores items starting at `head`. Fill the blanks so `q_push` refuses when full and writes the new item at the first free slot, wrapping around the end of the array.",
+  "template": "int q_push(Queue *q, int x) {\n    if (q->len {{0}} q->cap) return -1;\n    q->buf[(q->head {{1}} q->len) {{2}} q->cap] = x;\n    q->len++;\n    return 0;\n}",
+  "answers": [
+    "==",
+    "+",
+    "%"
+  ],
+  "tokens": [
+    "==",
+    "+",
+    "%",
+    "!=",
+    "-",
+    "/"
+  ],
+  "explain": "The queue is full when `len == cap`. The next free slot is `len` places after `head`, and `% cap` wraps the position back to the start of the array.",
+  "runTests": false
+}

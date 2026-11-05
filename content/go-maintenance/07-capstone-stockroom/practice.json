@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "This is `Load` from the capstone. What does `Load(\"# stock\\nbolt,10\\nnut,x\\n\")` return as its error?",
+  "code": "for i, line := range strings.Split(data, \"\\n\") {\n\tline = strings.TrimSpace(strings.TrimSuffix(line, \"\\r\"))\n\tif !isRecord(line) {\n\t\tcontinue\n\t}\n\tit, err := parseRecord(line)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"line %d: %v\", i+1, err)\n\t}\n\t// ... store it\n}",
+  "choices": [
+    "line 3: bad quantity",
+    "line 2: bad quantity",
+    "line 3: want 2 or 3 fields",
+    "bad quantity"
+  ],
+  "answer": 0,
+  "explain": "Comment lines are skipped but still counted, so `nut,x` is line 3. It has two fields, which is allowed, but the quantity `x` is not a number, so the message is `line 3: bad quantity`."
+}

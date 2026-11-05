@@ -1,0 +1,18 @@
+{
+  "kind": "blanks",
+  "prompt": "Complete the word counter: look up the key, insert 0 only if it is missing, then add one through the returned reference.",
+  "template": "use std::collections::HashMap;\n\nfn main() {\n    let mut counts: HashMap<&str, u32> = HashMap::new();\n    for w in [\"x\", \"y\", \"x\"] {\n        *counts.{{0}}(w).{{1}}(0) += 1;\n    }\n    println!(\"{}\", counts[\"x\"]);\n}",
+  "tokens": [
+    "entry",
+    "or_insert",
+    "insert",
+    "get",
+    "or_default"
+  ],
+  "answers": [
+    "entry",
+    "or_insert"
+  ],
+  "runTests": false,
+  "explain": "`entry(key)` gives access to the slot, and `or_insert(0)` fills it with 0 only when empty and returns `&mut u32`, which the leading `*` lets you increment."
+}

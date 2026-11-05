@@ -1,0 +1,27 @@
+{
+  "kind": "predict",
+  "prompt": "`eval` walks an expression tree and returns `Result<i64, EvalError>`. `?` passes an error up, so evaluation stops at the first one. Work out both results.",
+  "trace": [
+    {
+      "label": "`eval(Add(Num(2), Mul(Num(3), Neg(Num(4)))))` is",
+      "choices": [
+        "Ok(-10)",
+        "Ok(-14)",
+        "Ok(14)",
+        "Ok(10)"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`eval(Div(Num(7), Sub(Num(2), Num(2))))` is",
+      "choices": [
+        "Err(DivByZero)",
+        "Ok(0)",
+        "Err(Overflow)",
+        "a panic"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "`Neg(Num(4))` is -4, then `3 * -4 = -12`, then `2 + -12 = -10`. In the second tree the divisor evaluates to 0, and the evaluator returns an error instead of crashing."
+}

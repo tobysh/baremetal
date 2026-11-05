@@ -17,6 +17,7 @@ export type AuthEventType =
   | "2fa_disabled"
   | "backup_code_used"
   | "account_deleted"
+  | "login_blocked"
   | "rate_limited"
   | "captcha_failed";
 

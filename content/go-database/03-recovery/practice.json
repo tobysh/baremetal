@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This replay should rebuild the map from the log. A power cut can leave a half-written record at the very end. Tap the line that makes recovery lose data in that case.",
+  "code": "func Replay(r io.Reader) (map[string][]byte, error) {\n\tm := map[string][]byte{}\n\tfor {\n\t\tk, v, err := ReadRecord(r)\n\t\tif err == io.EOF {\n\t\t\treturn m, nil\n\t\t}\n\t\tif err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\tm[string(k)] = v\n\t}\n}",
+  "bugLine": 9,
+  "explain": "A torn tail shows up as `io.ErrUnexpectedEOF`. Returning `nil, err` throws away every record that was already recovered. A torn tail should end the replay with the map built so far; only genuine damage should be an error."
+}

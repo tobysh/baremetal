@@ -1,0 +1,43 @@
+{
+  "kind": "predict",
+  "prompt": "A compiler turns `(1 + 2) * x - 4` into stack bytecode: operands first, then the operator (postorder). Work out the instruction list and how deep the stack gets.",
+  "trace": [
+    {
+      "label": "Instruction at index 2",
+      "choices": [
+        "Const(2)",
+        "Binary(Add)",
+        "Load(\"x\")"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Instruction at index 4",
+      "choices": [
+        "Binary(Mul)",
+        "Load(\"x\")",
+        "Const(4)"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Total instructions",
+      "choices": [
+        "5",
+        "6",
+        "7"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "Maximum stack depth",
+      "choices": [
+        "2",
+        "3",
+        "4"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "Postorder gives `Const 1, Const 2, Add, Load x, Mul, Const 4, Sub`, seven instructions. The stack grows to 2 after the second push, drops to 1 after each operator, and never needs a third slot."
+}

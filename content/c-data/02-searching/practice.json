@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "To find the **last** match, walk the array backwards. Fill the three slots in the loop header so it visits every index from the end down to 0.",
+  "template": "int last_index_of(int a[], int n, int target) {\n    for (int i = {{0}}; i {{1}} 0; i{{2}}) {\n        if (a[i] == target) return i;\n    }\n    return -1;\n}",
+  "answers": [
+    "n - 1",
+    ">=",
+    "--"
+  ],
+  "tokens": [
+    "n - 1",
+    ">=",
+    "--",
+    "n",
+    ">",
+    "++"
+  ],
+  "explain": "Start at the final index `n - 1`, keep going while `i >= 0` (index 0 must be checked too) and count down with `--`.",
+  "runTests": false
+}

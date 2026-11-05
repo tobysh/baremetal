@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "Two background jobs finish at nearly the same moment and one stays a zombie. The `SIGCHLD` handler is at fault. Tap the faulty line.",
+  "code": "static void on_sigchld(int sig) {\n    (void)sig;\n    int saved = errno;\n    if (waitpid(-1, NULL, WNOHANG) > 0) reaped++;\n    errno = saved;\n}",
+  "bugLine": 4,
+  "explain": "Standard signals do not queue: if two children exit before the handler runs, you get just one `SIGCHLD`. The handler must loop (`while (waitpid(-1, NULL, WNOHANG) > 0)`) to reap every finished child."
+}

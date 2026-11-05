@@ -1,0 +1,39 @@
+{
+  "kind": "predict",
+  "prompt": "`parse_request_line` splits on single spaces and needs exactly three parts, the last starting with `HTTP/`. Decide for each line whether it gives `Some` or `None`.",
+  "trace": [
+    {
+      "label": "`GET /index.html HTTP/1.1`",
+      "choices": [
+        "Some",
+        "None"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`GET  /index.html HTTP/1.1` (two spaces)",
+      "choices": [
+        "Some",
+        "None"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`get / HTTP/1.0`",
+      "choices": [
+        "Some",
+        "None"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`GET / FTP/1.1`",
+      "choices": [
+        "Some",
+        "None"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "A doubled space creates an empty extra part (four parts in all). Case is kept as written, so lowercase `get` is accepted. A version must begin with `HTTP/`, and two parts are too few."
+}

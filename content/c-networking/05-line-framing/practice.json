@@ -1,0 +1,19 @@
+{
+  "kind": "parsons",
+  "prompt": "Pull one complete line out of a buffer of received bytes, or report that no full line has arrived yet. One line does not belong.",
+  "lines": [
+    "    char *nl = memchr(buf, '\\n', len);",
+    "    if (nl == NULL) {",
+    "        return 0;",
+    "    }",
+    "    size_t n = nl - buf;",
+    "    memcpy(line, buf, n);",
+    "    line[n] = '\\0';",
+    "    return n + 1;"
+  ],
+  "distractors": [
+    "    line[n + 1] = '\\0';"
+  ],
+  "runTests": false,
+  "explain": "Look for the delimiter first; no newline means the line is incomplete, so consume nothing. Otherwise copy `n` bytes, terminate at index `n`, and report `n + 1` consumed bytes so the newline is skipped."
+}

@@ -1,0 +1,18 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the body of `arena_alloc`: reject bad requests, work out the padding needed for the alignment, check there is room (without overflowing), then bump the offset and return the block. One line does not belong.",
+  "base": "#include <stdio.h>\n#include <stdint.h>\n#include <stddef.h>\n\ntypedef struct { unsigned char *base; size_t cap; size_t off; } Arena;\n\nvoid arena_init(Arena *a, void *buf, size_t cap) {\n    a->base = buf;\n    a->cap = cap;\n    a->off = 0;\n}\n\nvoid *arena_alloc(Arena *a, size_t size, size_t align) {\n{{code}}\n}\n\nsize_t arena_used(const Arena *a) {\n    return a->off;\n}\n\nsize_t arena_mark(const Arena *a) {\n    return a->off;\n}\n\nvoid arena_rewind(Arena *a, size_t mark) {\n    if (mark <= a->off) a->off = mark;\n}\n\nvoid arena_reset(Arena *a) {\n    a->off = 0;\n}\n\n// Public example: run it and read the offsets.\nint main(void) {\n    _Alignas(16) unsigned char buf[64];\n    Arena a;\n    arena_init(&a, buf, sizeof buf);\n    char *c = arena_alloc(&a, 3, 1);\n    double *d = arena_alloc(&a, sizeof(double), _Alignof(double));\n    size_t m = arena_mark(&a);\n    int *i = arena_alloc(&a, 4 * sizeof(int), 16);\n    printf(\"c at +%td, d at +%td, i at +%td, used %zu\\n\",\n           c ? (unsigned char *)c - buf : -1, d ? (unsigned char *)d - buf : -1, i ? (unsigned char *)i - buf : -1, arena_used(&a));\n    arena_rewind(&a, m);\n    printf(\"after rewind: used %zu (expected %zu)\\n\", arena_used(&a), m);\n    printf(\"too big: %p (expected (nil))\\n\", arena_alloc(&a, 1000, 1));\n    arena_reset(&a);\n    printf(\"after reset: used %zu\\n\", arena_used(&a));\n    return 0;\n}\n",
+  "lines": [
+    "    if (size == 0 || align == 0 || (align & (align - 1)) != 0) return NULL;",
+    "    uintptr_t addr = (uintptr_t)a->base + a->off;",
+    "    size_t pad = (align - (addr & (align - 1))) & (align - 1);",
+    "    size_t room = a->cap - a->off;",
+    "    if (pad > room || size > room - pad) return NULL;",
+    "    a->off += pad + size;",
+    "    return a->base + a->off - size;"
+  ],
+  "distractors": [
+    "    a->off += size;"
+  ],
+  "explain": "The block's address is `base + off + pad`, so the padding bytes are consumed too: the offset advances by `pad + size`. Compare against the room *left* (`cap - off`) rather than adding to avoid integer overflow."
+}

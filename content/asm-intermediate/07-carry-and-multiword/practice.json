@@ -1,0 +1,17 @@
+{
+  "kind": "parsons",
+  "prompt": "Add two 128-bit numbers stored as two 64-bit words each: `[rdi]` plus `[rsi]`, result in `[rdi]`. Low word first. One line does not belong.",
+  "lines": [
+    "    mov rax, [rdi]",
+    "    add rax, [rsi]",
+    "    mov [rdi], rax",
+    "    mov rax, [rdi + 8]",
+    "    adc rax, [rsi + 8]",
+    "    mov [rdi + 8], rax"
+  ],
+  "distractors": [
+    "    add rax, [rsi + 8]"
+  ],
+  "runTests": false,
+  "explain": "`mov` does not change the flags, so the carry from the low `add` survives to the high `adc`, which adds it in. A second `add` would drop the carry."
+}

@@ -1,0 +1,17 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the body of `kind_name`, which turns a shape kind into its name and says `\"unknown\"` for any number that is not in the enum. One line does not belong.",
+  "base": "#include <stdio.h>\n\ntypedef enum {\n    SHAPE_CIRCLE,\n    SHAPE_RECT,\n    SHAPE_TRIANGLE\n} ShapeKind;\n\ntypedef struct {\n    ShapeKind kind;\n    union {\n        struct { int r; } circle;\n        struct { int w, h; } rect;\n        struct { int base, height; } tri;\n    } u;\n} Shape;\n\nShape make_circle(int r) {\n    Shape s = {0};\n    s.kind = SHAPE_CIRCLE;\n    s.u.circle.r = r;\n    return s;\n}\n\nShape make_rect(int w, int h) {\n    Shape s = {0};\n    s.kind = SHAPE_RECT;\n    s.u.rect.w = w;\n    s.u.rect.h = h;\n    return s;\n}\n\nShape make_triangle(int base, int height) {\n    Shape s = {0};\n    s.kind = SHAPE_TRIANGLE;\n    s.u.tri.base = base;\n    s.u.tri.height = height;\n    return s;\n}\n\ndouble shape_area(const Shape *s) {\n    switch (s->kind) {\n        case SHAPE_CIRCLE:   return 3.14159 * s->u.circle.r * s->u.circle.r;\n        case SHAPE_RECT:     return (double)s->u.rect.w * s->u.rect.h;\n        case SHAPE_TRIANGLE: return s->u.tri.base * s->u.tri.height / 2.0;\n    }\n    return 0.0;\n}\n\nconst char *kind_name(ShapeKind k) {\n{{code}}\n}\n\nint count_kind(const Shape *shapes, int n, ShapeKind k) {\n    int count = 0;\n    for (int i = 0; i < n; i++) {\n        if (shapes[i].kind == k) {\n            count++;\n        }\n    }\n    return count;\n}\n\nint main(void) {\n    Shape r = make_rect(3, 4);\n    printf(\"%s: %.2f\\n\", kind_name(r.kind), shape_area(&r));\n    return 0;\n}\n",
+  "lines": [
+    "    switch (k) {",
+    "        case SHAPE_CIRCLE:   return \"circle\";",
+    "        case SHAPE_RECT:     return \"rectangle\";",
+    "        case SHAPE_TRIANGLE: return \"triangle\";",
+    "    }",
+    "    return \"unknown\";"
+  ],
+  "distractors": [
+    "        default: return \"circle\";"
+  ],
+  "explain": "One `case` per enum value, then a `return \"unknown\"` after the `switch` for anything else. A `default` that returns a real name would label every invalid kind as a circle."
+}

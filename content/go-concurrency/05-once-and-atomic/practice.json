@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "What does this program print?",
+  "code": "var once sync.Once\nfor i := 0; i < 3; i++ {\n\tonce.Do(func() { fmt.Println(\"init\", i) })\n}\nfmt.Println(\"done\")",
+  "choices": [
+    "init 0, then done",
+    "init 0, init 1, init 2, then done",
+    "init 2, then done",
+    "done only"
+  ],
+  "answer": 0,
+  "explain": "`Once.Do` runs its function only the first time, no matter how many times it is called. The closure sees `i` as 0 on that first call, and then \"done\" is printed."
+}

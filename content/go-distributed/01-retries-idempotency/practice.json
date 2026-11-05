@@ -1,0 +1,17 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines of a server handler that applies each request exactly once, even when the client retries. One line does not belong.",
+  "lines": [
+    "if res, ok := s.seen[req.ID]; ok {",
+    "\treturn res",
+    "}",
+    "res := s.apply(req)",
+    "s.seen[req.ID] = res",
+    "return res"
+  ],
+  "runTests": false,
+  "distractors": [
+    "\ts.apply(req)"
+  ],
+  "explain": "A retry carries the same request id, so the server remembers the first result and replays it instead of applying the request again."
+}

@@ -1,0 +1,35 @@
+{
+  "kind": "predict",
+  "prompt": "A buffered channel is filled and then closed. Predict what each receive returns as `v, ok`.",
+  "code": "ch := make(chan int, 2)\nch <- 1\nch <- 2\nclose(ch)\n\nv1, ok1 := <-ch\nv2, ok2 := <-ch\nv3, ok3 := <-ch",
+  "trace": [
+    {
+      "label": "first receive",
+      "choices": [
+        "1 true",
+        "1 false",
+        "0 false"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "second receive",
+      "choices": [
+        "2 true",
+        "0 false",
+        "2 false"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "third receive",
+      "choices": [
+        "0 true",
+        "0 false",
+        "blocks forever"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Values already in the buffer are still delivered after `close`, with `ok` true. Once the buffer is empty, a receive on a closed channel returns the zero value and `ok` false immediately, without blocking."
+}

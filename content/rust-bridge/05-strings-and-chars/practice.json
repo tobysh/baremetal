@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "In UTF-8 the letter `ï` takes two bytes. What happens when this program runs?",
+  "code": "fn main() {\n    let s = String::from(\"naïve\");\n    let part = &s[0..3];\n    println!(\"{}\", part);\n}",
+  "choices": [
+    "It panics: byte index 3 is not a character boundary",
+    "It prints `naï`",
+    "It prints `nai`",
+    "It does not compile"
+  ],
+  "answer": 0,
+  "explain": "String slices use byte offsets, and `n`, `a` take one byte each while `ï` takes bytes 2 and 3. Byte 3 is the middle of `ï`, so Rust panics instead of producing broken text. Use `chars().take(3)` to work with characters."
+}

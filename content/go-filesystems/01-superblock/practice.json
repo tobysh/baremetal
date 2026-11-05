@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Fill in the checks for decoding a superblock from a block of bytes. Reject anything that is too short, has the wrong magic, or describes a bitmap that does not fit.",
+  "template": "if len(b) < superSize {\n\treturn Super{}, ErrShort\n}\nif binary.LittleEndian.Uint32(b[0:4]) {{0}} Magic {\n\treturn Super{}, ErrMagic\n}\ns.BlockCount = binary.LittleEndian.{{1}}(b[8:12])\nif s.BitmapStart+s.BitmapLen {{2}} s.BlockCount {\n\treturn Super{}, ErrLayout\n}",
+  "answers": [
+    "!=",
+    "Uint32",
+    ">"
+  ],
+  "tokens": [
+    "!=",
+    "Uint32",
+    ">",
+    "==",
+    "Uint64",
+    "<"
+  ],
+  "runTests": false,
+  "explain": "Wrong magic means this is not our filesystem. A 4-byte field is read with `Uint32` (`Uint64` would read 8 bytes). The bitmap region ends at start + length; ending past the last block is the error."
+}

@@ -1,0 +1,43 @@
+{
+  "kind": "predict",
+  "prompt": "A hash table has 8 slots and uses linear probing. The hash is `key % 8`. Insert keys 3, 11 and 19 in that order.",
+  "trace": [
+    {
+      "label": "Key 11 lands in slot",
+      "choices": [
+        "3",
+        "4",
+        "5"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Key 19 lands in slot",
+      "choices": [
+        "4",
+        "5",
+        "6"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "A lookup of 19 inspects how many slots?",
+      "choices": [
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "A lookup of the absent key 27 inspects how many slots (until it sees an empty one)?",
+      "choices": [
+        "3",
+        "4",
+        "5"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Colliding keys form a cluster. A hit costs the probes up to its slot, and a miss walks the whole cluster to the first empty slot. Counting probes is evidence you can compare against a binary search."
+}

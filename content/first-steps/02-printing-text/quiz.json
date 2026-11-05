@@ -1,0 +1,38 @@
+[
+  {
+    "kind": "match",
+    "prompt": "Match each escape sequence with what it prints.",
+    "pairs": [
+      {
+        "left": "\\n",
+        "right": "a new line"
+      },
+      {
+        "left": "\\t",
+        "right": "a tab"
+      },
+      {
+        "left": "\\\"",
+        "right": "a double quote"
+      },
+      {
+        "left": "\\\\",
+        "right": "one backslash"
+      }
+    ],
+    "explain": "The backslash starts an escape sequence; two characters in the source stand for one character in the output."
+  },
+  {
+    "kind": "predict",
+    "prompt": "What does this print?",
+    "code": "printf(\"Hello, \");\nprintf(\"world!\\n\");",
+    "choices": [
+      "Hello, world!",
+      "Hello,\nworld!",
+      "Hello, \\nworld!",
+      "Nothing, it does not compile"
+    ],
+    "answer": 0,
+    "explain": "No `\\n` after `Hello, `, so the next `printf` carries on on the same line."
+  }
+]

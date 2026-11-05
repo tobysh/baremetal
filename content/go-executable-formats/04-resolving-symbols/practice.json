@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "The resolver collects each object's defined global symbols into one table. Tap the line that hides a duplicate definition.",
+  "code": "for _, s := range o.Syms {\n\tif !s.Defined || !s.Global {\n\t\tcontinue\n\t}\n\tdefs[s.Name] = s\n}",
+  "bugLine": 5,
+  "explain": "Assigning into the map silently replaces an earlier definition. Check `if _, dup := defs[s.Name]; dup` first and report a duplicate-symbol error. Local symbols are skipped so two objects can each have a private `helper`."
+}

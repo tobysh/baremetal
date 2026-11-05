@@ -1,0 +1,16 @@
+{
+  "kind": "parsons",
+  "prompt": "Decode a 12-bit two's complement sensor reading (each step is 5 millidegrees). One line does not belong.",
+  "lines": [
+    "    int32_t raw = reg & 0xFFF;",
+    "    if (raw & 0x800) {",
+    "        raw -= 0x1000;",
+    "    }",
+    "    return raw * 5;"
+  ],
+  "distractors": [
+    "        raw += 0x1000;"
+  ],
+  "runTests": false,
+  "explain": "Mask to 12 bits, test the sign bit (0x800), and subtract 0x1000 to sign-extend. Adding 0x1000 would make negatives larger instead."
+}

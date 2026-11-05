@@ -1,0 +1,23 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the body of `vec_push`. When the vector is full it grows with `realloc` (4 first, then doubling) without losing the old data if memory runs out. One line does not belong.",
+  "base": "#include <stdio.h>\n#include <stdlib.h>\n\ntypedef struct {\n    int *data;\n    size_t len;\n    size_t cap;\n} IntVec;\n\nvoid vec_init(IntVec *v) {\n    v->data = NULL;\n    v->len = 0;\n    v->cap = 0;\n}\n\nint vec_push(IntVec *v, int x) {\n{{code}}\n}\n\nint vec_pop(IntVec *v, int *out) {\n    if (v->len == 0) {\n        return -1;\n    }\n    v->len--;\n    *out = v->data[v->len];\n    return 0;\n}\n\nvoid vec_free(IntVec *v) {\n    free(v->data);\n    v->data = NULL;\n    v->len = 0;\n    v->cap = 0;\n}\n\nint main(void) {\n    IntVec v;\n    vec_init(&v);\n    for (int i = 0; i < 10; i++) vec_push(&v, i * i);\n    printf(\"len = %zu, cap = %zu\\n\", v.len, v.cap);\n    vec_free(&v);\n    return 0;\n}\n",
+  "lines": [
+    "    if (v->len == v->cap) {",
+    "        size_t new_cap = v->cap == 0 ? 4 : v->cap * 2;",
+    "        int *bigger = realloc(v->data, new_cap * sizeof *bigger);",
+    "        if (bigger == NULL) {",
+    "            return -1;",
+    "        }",
+    "        v->data = bigger;",
+    "        v->cap = new_cap;",
+    "    }",
+    "    v->data[v->len] = x;",
+    "    v->len++;",
+    "    return 0;"
+  ],
+  "distractors": [
+    "        v->data = realloc(v->data, new_cap * sizeof *v->data);"
+  ],
+  "explain": "Ask `realloc` through a temporary pointer. Only if it succeeds do you store the new pointer and capacity. Assigning the result directly to `v->data` would lose the original block when `realloc` returns `NULL`."
+}

@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Sum an array of 32-bit signed ints. Index with the right scale, widen with sign, and advance the counter.",
+  "template": "sum_i32:\n    xor eax, eax\n    xor ecx, ecx\n.Lloop:\n    cmp rcx, rsi\n    jae .Ldone\n    {{2}} rdx, dword ptr [rdi + rcx*{{0}}]\n    add rax, rdx\n    {{1}} rcx\n    jmp .Lloop\n.Ldone:\n    ret",
+  "answers": [
+    "4",
+    "inc",
+    "movsxd"
+  ],
+  "tokens": [
+    "4",
+    "8",
+    "inc",
+    "dec",
+    "movsxd",
+    "movzx"
+  ],
+  "runTests": false,
+  "explain": "Each element is 4 bytes, so the scale is 4. `movsxd` sign-extends a 32-bit value into 64 bits; negative numbers stay negative. `movzx` cannot take a dword source."
+}

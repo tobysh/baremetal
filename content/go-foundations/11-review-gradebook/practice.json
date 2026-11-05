@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "Callers use `errors.Is(err, ErrBadScore)` on this error and never get a match. Tap the faulty line.",
+  "code": "func (s Student) Average() (float64, error) {\n\tif len(s.Scores) == 0 {\n\t\treturn 0, ErrNoScores\n\t}\n\ttotal := 0\n\tfor _, sc := range s.Scores {\n\t\tif sc < 0 || sc > 100 {\n\t\t\treturn 0, fmt.Errorf(\"score %d: %v\", sc, ErrBadScore)\n\t\t}\n\t\ttotal += sc\n\t}\n\treturn float64(total) / float64(len(s.Scores)), nil\n}",
+  "bugLine": 8,
+  "explain": "`%v` only copies the text of the error, so the link to `ErrBadScore` is lost. `%w` wraps it, which is what `errors.Is` follows."
+}

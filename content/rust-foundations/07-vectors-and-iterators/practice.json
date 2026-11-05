@@ -1,0 +1,19 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines so the program prints the sum of the squares of the numbers greater than 2. One line does not belong.",
+  "base": "fn main() {\n{{code}}\n}",
+  "lines": [
+    "    let nums = vec![1, 2, 3, 4, 5];",
+    "    let total: i32 = nums",
+    "        .iter()",
+    "        .filter(|&&x| x > 2)",
+    "        .map(|&x| x * x)",
+    "        .sum();",
+    "    println!(\"{}\", total);"
+  ],
+  "distractors": [
+    "        .collect();"
+  ],
+  "runTests": false,
+  "explain": "An iterator chain starts at the vector, goes through adaptors, and ends with a consumer. `.sum()` consumes it; `.collect()` would build a collection, not a number."
+}

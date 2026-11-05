@@ -1,0 +1,18 @@
+{
+  "kind": "blanks",
+  "prompt": "Split the numbers in two groups with one adaptor, and flatten the words of several lines into one stream with another.",
+  "template": "fn main() {\n    let v = [3, 12, 7, 25];\n    let (small, big): (Vec<i32>, Vec<i32>) = v.iter().copied().{{0}}(|&x| x < 10);\n\n    let lines = [\"one two\", \"three\"];\n    let words: Vec<&str> = lines.iter().{{1}}(|l| l.split_whitespace()).collect();\n    println!(\"{:?} {:?} {:?}\", small, big, words);\n}",
+  "tokens": [
+    "partition",
+    "flat_map",
+    "map",
+    "filter",
+    "split"
+  ],
+  "answers": [
+    "partition",
+    "flat_map"
+  ],
+  "runTests": false,
+  "explain": "`partition` sends each item to one of two collections, which is why the result is a pair of `Vec`s. `flat_map` runs a function that returns an iterator and joins all the results; plain `map` would leave you with an iterator of iterators."
+}

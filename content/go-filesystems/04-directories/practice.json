@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "A directory entry's name must be unambiguous. This validator accepts something it should not. Tap the line that lets bad names through.",
+  "code": "func validName(n string) bool {\n\tif n == \"\" || len(n) > MaxName {\n\t\treturn false\n\t}\n\treturn !strings.Contains(n, \"/\")\n}",
+  "bugLine": 5,
+  "explain": "Names such as `.` and `..` are ambiguous with directory navigation, and a NUL byte can end a name early in fixed-size records. The final check must also reject those, not just `/`."
+}

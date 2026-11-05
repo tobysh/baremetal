@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`max_of` should return the largest item, but for an array of only negative numbers it returns 0. Tap the faulty line.",
+  "code": "int max_of(const int *a, int n) {\n    int best = 0;\n    for (int i = 1; i < n; i++) {\n        if (a[i] > best) {\n            best = a[i];\n        }\n    }\n    return best;\n}",
+  "bugLine": 2,
+  "explain": "Starting `best` at 0 invents a value that may not be in the array. If every item is negative, none beats 0. Start from the first real item, `a[0]`."
+}

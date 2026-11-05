@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "`subsets_from` counts the subsets that make the remaining sum. At every item it either takes it or skips it. Fill the base-case test, the new remaining sum when the item is taken, and how the two branches combine.",
+  "template": "static int subsets_from(const int *a, int n, int index, int remaining) {\n    if (index {{0}} n) {\n        return remaining == 0 ? 1 : 0;\n    }\n    int taken = subsets_from(a, n, index + 1, remaining {{1}} a[index]);\n    int left = subsets_from(a, n, index + 1, remaining);\n    return taken {{2}} left;\n}",
+  "answers": [
+    "==",
+    "-",
+    "+"
+  ],
+  "tokens": [
+    "==",
+    "-",
+    "+",
+    "!=",
+    "*"
+  ],
+  "explain": "When every item has been decided (`index == n`) the subset counts only if nothing remains. Taking an item lowers the remaining target by its value, and the total is the number of ways with the item plus the number of ways without it.",
+  "runTests": false
+}

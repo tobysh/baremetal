@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "Compute `5*x + 3` and `9*x` with `lea`, using only valid scale factors.",
+  "template": "# rax = 5 * rdi + 3\nlea rax, [rdi + rdi*{{0}} + {{1}}]\n# rcx = 9 * rdi\nlea rcx, [rdi + rdi*{{2}}]",
+  "answers": [
+    "4",
+    "3",
+    "8"
+  ],
+  "tokens": [
+    "4",
+    "3",
+    "8",
+    "5",
+    "9"
+  ],
+  "runTests": false,
+  "explain": "A scale can only be 1, 2, 4 or 8. So 5x is x + 4x, and 9x is x + 8x. The constant is the displacement."
+}

@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "Several threads call `take` on a shared counter. Tap the line that lets two threads both succeed when only one unit is left.",
+  "code": "int take(Counter *c) {\n    pthread_mutex_lock(&c->lock);\n    int ok = c->value > 0;\n    pthread_mutex_unlock(&c->lock);\n    if (ok) c->value--;\n    return ok;\n}",
+  "bugLine": 4,
+  "explain": "The check and the decrement must happen under one lock hold. Unlocking after the check lets another thread also see `value > 0` before either decrements, so the counter can go negative."
+}

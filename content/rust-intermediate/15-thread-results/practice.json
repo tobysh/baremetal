@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "A worker thread panics. Does the whole program die? Ignore the panic message that goes to stderr and say what is printed to stdout.",
+  "code": "use std::thread;\n\nfn main() {\n    let h = thread::spawn(|| -> i32 {\n        panic!(\"boom\")\n    });\n    match h.join() {\n        Ok(v) => println!(\"ok {v}\"),\n        Err(_) => println!(\"worker panicked\"),\n    }\n    println!(\"main still running\");\n}",
+  "choices": [
+    "worker panicked\nmain still running",
+    "ok 0\nmain still running",
+    "Nothing: the whole process aborts",
+    "main still running"
+  ],
+  "answer": 0,
+  "explain": "A panic only unwinds its own thread. `join()` returns `Err` carrying the panic payload, so the parent can report it and carry on."
+}

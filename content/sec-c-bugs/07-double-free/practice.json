@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`release` may be called twice on the same struct (say, from two error paths). Tap the line that makes the second call dangerous.",
+  "code": "void release(session *s) {\n    if (s->token) {\n        free(s->token);\n    }\n    free(s);\n}\n",
+  "bugLine": 3,
+  "explain": "`s->token` still holds the old address after `free`, so a second `release` frees it again. Set `s->token = NULL` right after freeing; `free(NULL)` does nothing."
+}

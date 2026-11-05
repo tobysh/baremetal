@@ -1,0 +1,18 @@
+{
+  "kind": "blanks",
+  "prompt": "Finish two branch-free routines: minimum of two signed numbers, and a 0 or 1 'is negative' flag.",
+  "template": "min2:\n    mov rax, rdi\n    cmp rdi, rsi\n    {{0}} rax, rsi\n    ret\nis_neg:\n    test rdi, rdi\n    {{1}} al\n    movzx eax, al\n    ret",
+  "answers": [
+    "cmovg",
+    "sets"
+  ],
+  "tokens": [
+    "cmovg",
+    "cmovl",
+    "sets",
+    "setg",
+    "setns"
+  ],
+  "runTests": false,
+  "explain": "After `cmp rdi, rsi`, `cmovg` replaces rax with rsi when rdi is greater, leaving the smaller one. `test` sets the sign flag from the top bit, and `sets` stores it as 0 or 1."
+}

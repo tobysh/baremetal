@@ -1,0 +1,19 @@
+{
+  "kind": "parsons",
+  "prompt": "Rebuild `SleepCtx`: wait for the duration, but give up early with the context's error if it is cancelled. One line does not belong.",
+  "lines": [
+    "\ttimer := time.NewTimer(d)",
+    "\tdefer timer.Stop()",
+    "\tselect {",
+    "\tcase <-timer.C:",
+    "\t\treturn nil",
+    "\tcase <-ctx.Done():",
+    "\t\treturn ctx.Err()",
+    "\t}"
+  ],
+  "distractors": [
+    "\ttimer.Close()"
+  ],
+  "base": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc SleepCtx(ctx context.Context, d time.Duration) error {\n{{code}}\n}\n\nfunc Ticks(ctx context.Context) <-chan int {\n\tout := make(chan int)\n\tgo func() {\n\t\tdefer close(out)\n\t\tfor i := 0; ; i++ {\n\t\t\tselect {\n\t\t\tcase out <- i:\n\t\t\tcase <-ctx.Done():\n\t\t\t\treturn\n\t\t\t}\n\t\t}\n\t}()\n\treturn out\n}\n\nfunc CallWithTimeout(d time.Duration, f func(ctx context.Context) (int, error)) (int, error) {\n\tctx, cancel := context.WithTimeout(context.Background(), d)\n\tdefer cancel()\n\treturn f(ctx)\n}\n\nfunc main() {\n\tctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)\n\tdefer cancel()\n\tfmt.Println(SleepCtx(ctx, time.Second))\n}\n",
+  "explain": "A timer plus `select` lets the wait be interrupted; `time.Sleep` cannot be cancelled. `defer timer.Stop()` frees the timer if the context wins."
+}

@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "The client sends a request and prints the reply. Tap the line that can print garbage.",
+  "code": "int s = socket(AF_INET, SOCK_STREAM, 0);\nif (connect(s, (struct sockaddr *)&addr, sizeof addr) < 0) return 1;\nwrite(s, \"HELLO\\n\", 6);\nchar buf[64];\nssize_t n = read(s, buf, sizeof buf);\nprintf(\"%s\\n\", buf);",
+  "bugLine": 6,
+  "explain": "`read` does not add a terminating NUL, and it may return only part of the reply. Use `n` to terminate the string (and loop until the newline) before printing it with `%s`."
+}

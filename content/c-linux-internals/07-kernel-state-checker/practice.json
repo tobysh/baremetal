@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "These are all the processes in a simulated kernel. Which invariant is broken?",
+  "code": "process 5: fd0 -> file A, fd1 -> file A\nprocess 6: fd0 -> file B\nfile A refcount = 3\nfile B refcount = 1",
+  "choices": [
+    "Open file A's refcount should be 2, not 3",
+    "Open file A's refcount should be 1",
+    "Open file B's refcount should be 0",
+    "Everything is consistent"
+  ],
+  "answer": 0,
+  "explain": "A reference count must equal the number of descriptors that name the file. Two descriptors in process 5 point at A, so the count is 2. A checker compares the stored count with the number it recounts."
+}

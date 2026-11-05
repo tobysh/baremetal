@@ -1,0 +1,20 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the body of `spawn_group`, which starts a command as the leader of its own process group so a whole job can be signalled later. Both parent and child call `setpgid`. One line does not belong.",
+  "base": "#define _GNU_SOURCE\n#include <stdio.h>\n#include <signal.h>\n#include <errno.h>\n#include <unistd.h>\n#include <sys/types.h>\n#include <sys/wait.h>\n\npid_t spawn_group(char *const argv[]) {\n{{code}}\n}\n\nint kill_group(pid_t pgid, int sig) {\n    return kill(-pgid, sig) == 0 ? 0 : -1;\n}\n\nint wait_job(pid_t pid, int *stopped) {\n    int status;\n    *stopped = 0;\n    while (waitpid(pid, &status, WUNTRACED) < 0) {\n        if (errno != EINTR) return -1;\n    }\n    if (WIFSTOPPED(status)) {\n        *stopped = 1;\n        return 128 + WSTOPSIG(status);\n    }\n    if (WIFEXITED(status)) return WEXITSTATUS(status);\n    if (WIFSIGNALED(status)) return 128 + WTERMSIG(status);\n    return -1;\n}\n\nint main(void) {\n    char *const cmd[] = {\"sleep\", \"30\", NULL};\n    pid_t job = spawn_group(cmd);\n    printf(\"job %d, group %d, my group %d\\n\", (int)job, (int)getpgid(job), (int)getpgrp());\n    kill_group(job, SIGTERM);\n    int stopped = 0;\n    printf(\"status %d\\n\", wait_job(job, &stopped));\n    return 0;\n}\n",
+  "lines": [
+    "    pid_t pid = fork();",
+    "    if (pid < 0) return -1;",
+    "    if (pid == 0) {",
+    "        setpgid(0, 0);",
+    "        execvp(argv[0], argv);",
+    "        _exit(127);",
+    "    }",
+    "    setpgid(pid, pid);",
+    "    return pid;"
+  ],
+  "distractors": [
+    "    waitpid(pid, NULL, 0);"
+  ],
+  "explain": "Both sides call `setpgid(child, child)` because either could run first; whichever goes first wins and the other is harmless. Waiting inside `spawn_group` would stop the shell from returning to its prompt and make the job foreground only."
+}

@@ -1,0 +1,34 @@
+{
+  "kind": "predict",
+  "prompt": "`switch` over 0 to 3 compiles to `cmp edi, 3` / `ja .Ldefault` / an indirect jump through a table.",
+  "trace": [
+    {
+      "label": "x = 2 goes to",
+      "choices": [
+        ".Lcase2",
+        ".Lcase3",
+        ".Ldefault"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "x = 4 goes to",
+      "choices": [
+        ".Lcase0",
+        ".Ldefault",
+        "past the end of the table"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "x = -1 goes to",
+      "choices": [
+        ".Ldefault",
+        ".Lcase3",
+        "before the table"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "`ja` is an unsigned comparison, so a negative number looks huge and takes the default too. One bounds check covers both ends, which is why the table lookup is always safe."
+}

@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Struct `S { char tag; int val; long big; }` is laid out with natural alignment. Write the field accesses.",
+  "template": "get_tag:\n    {{0}} eax, byte ptr [rdi]\n    ret\nget_val:\n    mov eax, dword ptr [rdi + {{1}}]\n    ret\nget_big:\n    mov rax, [rdi + {{2}}]\n    ret",
+  "answers": [
+    "movsx",
+    "4",
+    "8"
+  ],
+  "tokens": [
+    "movsx",
+    "movzx",
+    "4",
+    "8",
+    "1",
+    "5"
+  ],
+  "runTests": false,
+  "explain": "`tag` is at 0 and takes 1 byte; `val` needs 4-byte alignment, so it is at 4; `big` needs 8, so it is at 8, and the struct is 16 bytes. A `char` is signed here, so it is sign-extended."
+}

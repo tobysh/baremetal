@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`largest` should return the shape with the biggest area, but it returns the smallest. Tap the faulty line.",
+  "code": "fn largest(shapes: &[Box<dyn Shape>]) -> Option<&Box<dyn Shape>> {\n    let mut best = shapes.first()?;\n    for s in shapes {\n        if s.area() < best.area() {\n            best = s;\n        }\n    }\n    Some(best)\n}",
+  "bugLine": 4,
+  "explain": "The comparison is the wrong way round: `best` is replaced whenever a shape is smaller. It should be `s.area() > best.area()`."
+}

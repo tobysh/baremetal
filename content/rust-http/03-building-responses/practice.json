@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "Complete the response builder. The status line names the HTTP version and a reason phrase, and `Content-Length` counts bytes.",
+  "template": "fn reason_phrase(status: u16) -> &'static str {\n    match status {\n        200 => \"OK\",\n        201 => \"Created\",\n        400 => \"Bad Request\",\n        404 => \"Not Found\",\n        405 => \"Method Not Allowed\",\n        500 => \"Internal Server Error\",\n        _ => \"Unknown\",\n    }\n}\n\nfn build_response(status: u16, content_type: &str, body: &str) -> String {\n    format!(\n        \"HTTP/{{0}} {} {}\\r\\nContent-Type: {}\\r\\nContent-Length: {}\\r\\nConnection: close\\r\\n\\r\\n{}\",\n        status,\n        reason_phrase({{1}}),\n        content_type,\n        body.{{2}}(),\n        body\n    )\n}\n\nfn main() {\n    let r = build_response(200, \"text/plain\", \"héllo\");\n    println!(\"{:?}\", r);\n}\n",
+  "tokens": [
+    "1.1",
+    "1.0",
+    "status",
+    "body",
+    "len",
+    "is_empty"
+  ],
+  "answers": [
+    "1.1",
+    "status",
+    "len"
+  ],
+  "explain": "The server speaks `HTTP/1.1`, the reason phrase comes from the numeric status, and `len()` counts bytes (not characters), which is what `Content-Length` means."
+}

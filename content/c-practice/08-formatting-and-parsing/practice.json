@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`format_pairs` builds `key=value;` text into `buf`. With several pairs it can write past the end of the buffer. Tap the faulty line.",
+  "code": "for (int i = 0; i < n; i++) {\n    int w = snprintf(buf + used, cap, \"%s=%s;\", pairs[i].key, pairs[i].value);\n    if (w < 0 || (size_t)w >= cap - used) {\n        return -1;\n    }\n    used += (size_t)w;\n}",
+  "bugLine": 2,
+  "explain": "`buf + used` is already `used` bytes into the buffer, so only `cap - used` bytes remain. Passing the full `cap` tells `snprintf` it has room it does not have."
+}

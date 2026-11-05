@@ -1,0 +1,28 @@
+{
+  "kind": "predict",
+  "prompt": "`add_two` is called with `rdi = 40` and `rsi = 2`. Fill in what `rax` holds after each instruction.",
+  "code": "mov rax, rdi\nadd rax, rsi\nret",
+  "trace": [
+    {
+      "label": "[rax] after `mov rax, rdi`",
+      "choices": [
+        "2",
+        "40",
+        "42",
+        "0"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[rax] after `add rax, rsi`",
+      "choices": [
+        "40",
+        "42",
+        "38",
+        "2"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "`mov` copies the first argument into `rax`, then `add` adds the second to it in place. Whatever `rax` holds at `ret` is the return value, 42."
+}

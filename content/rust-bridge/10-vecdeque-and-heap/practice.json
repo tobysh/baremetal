@@ -1,0 +1,38 @@
+{
+  "kind": "predict",
+  "prompt": "A `BinaryHeap` always pops its largest item, and `Reverse` flips that. A `VecDeque` allows pushes and pops at both ends.",
+  "code": "let mut h = BinaryHeap::new();\nh.push(3);\nh.push(9);\nh.push(1);\n\nlet mut r = BinaryHeap::new();\nr.push(Reverse(3));\nr.push(Reverse(9));\nr.push(Reverse(1));\n\nlet mut d = VecDeque::new();\nd.push_back(1);\nd.push_back(2);\nd.push_front(0);",
+  "trace": [
+    {
+      "label": "`h.pop()` is",
+      "choices": [
+        "Some(3)",
+        "Some(9)",
+        "Some(1)",
+        "None"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`r.pop()` is",
+      "choices": [
+        "Some(Reverse(1))",
+        "Some(Reverse(9))",
+        "Some(Reverse(3))",
+        "None"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`d.pop_back()` is",
+      "choices": [
+        "Some(0)",
+        "Some(1)",
+        "Some(2)",
+        "None"
+      ],
+      "answer": 2
+    }
+  ],
+  "explain": "The heap is a priority queue, not a sorted list, and the default is a max-heap. Wrapping values in `Reverse` gives a min-heap. In the deque, `push_front(0)` makes the order `[0, 1, 2]`, so `pop_back` takes `2`."
+}

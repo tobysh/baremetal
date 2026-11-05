@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "`sort_ints` takes a comparison function. Fill the blanks: the star that declares the parameter as a pointer to function, the test that decides a shift is needed (the left element should come after the key), and the slot the key finally drops into.",
+  "template": "void sort_ints(int *a, int n, int ({{0}})(int, int)) {\n    for (int i = 1; i < n; i++) {\n        int key = a[i];\n        int j = i - 1;\n        while (j >= 0 && cmp(a[j], key) {{1}} 0) {\n            a[j + 1] = a[j];\n            j--;\n        }\n        a[{{2}}] = key;\n    }\n}",
+  "answers": [
+    "*cmp",
+    ">",
+    "j + 1"
+  ],
+  "tokens": [
+    "*cmp",
+    ">",
+    "j + 1",
+    "&cmp",
+    "<",
+    "j"
+  ],
+  "explain": "`int (*cmp)(int, int)` is a pointer to a function taking two ints. `cmp(x, y) > 0` means x should come after y, so x shifts right. The key lands in `a[j + 1]`, just right of the last element that did not need to move.",
+  "runTests": false
+}

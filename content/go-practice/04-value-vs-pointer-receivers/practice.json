@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`IncAll` runs without errors but every counter is still 0 afterwards. Tap the faulty line.",
+  "code": "type Counter struct{ n int }\n\nfunc (c Counter) Inc() { c.n++ }\n\nfunc (c *Counter) Value() int { return c.n }\n\nfunc IncAll(cs []Counter) {\n\tfor i := range cs {\n\t\tcs[i].Inc()\n\t}\n}",
+  "bugLine": 3,
+  "explain": "A value receiver gets a copy of the counter, so `c.n++` changes the copy and is lost on return. Use a pointer receiver, `func (c *Counter) Inc()`, to modify the original."
+}

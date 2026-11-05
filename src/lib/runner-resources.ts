@@ -1,4 +1,4 @@
-import { mkdir, writeFile, rmdir } from "node:fs/promises";
+import { mkdir, writeFile, rmdir, readdir, stat } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -48,4 +48,32 @@ export async function runnerResources(compiling: boolean): Promise<{ command: st
     await cleanup();
     throw error;
   }
+}
+
+export async function cleanupStaleCgroups() {
+  const root = process.env.RUNNER_CGROUP_ROOT;
+  if (!root) return;
+  const resolved = path.resolve(root);
+  const entries = await readdir(resolved).catch(() => [] as string[]);
+  const cutoff = Date.now() - 15 * 60_000;
+  await Promise.all(entries.filter((e) => e.startsWith("job-")).map(async (e) => {
+    const group = path.join(resolved, e);
+    try {
+      const info = await stat(group);
+      if (info.mtimeMs >= cutoff) return;
+    } catch { return; }
+    try { await writeFile(path.join(group, "cgroup.kill"), "1"); } catch { /* Already empty or gone. */ }
+    for (let attempt = 0; attempt < 20; attempt++) {
+      try { await rmdir(group); return; }
+      catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code === "ENOENT") return;
+        if ((code !== "EBUSY" && code !== "ENOTEMPTY") || attempt === 19) {
+          console.error("[runner] stale cgroup cleanup failed", { group, error });
+          return;
+        }
+        await delay(25);
+      }
+    }
+  }));
 }

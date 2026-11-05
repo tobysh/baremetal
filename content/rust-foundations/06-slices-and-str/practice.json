@@ -1,0 +1,28 @@
+{
+  "kind": "predict",
+  "prompt": "In `\"héllo\"` the letter `é` takes two bytes in UTF-8. Answer each question about it.",
+  "code": "let s = \"héllo\";",
+  "trace": [
+    {
+      "label": "`s.len()` is",
+      "choices": [
+        "5",
+        "6",
+        "4",
+        "It does not compile"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`s.chars().count()` is",
+      "choices": [
+        "5",
+        "6",
+        "4",
+        "It does not compile"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "`len()` counts bytes, and `é` is two of them, giving 6. `chars()` walks Unicode characters, so there are 5. This is why slicing a `&str` must land on a character boundary."
+}

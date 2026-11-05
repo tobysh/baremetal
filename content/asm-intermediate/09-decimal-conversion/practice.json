@@ -1,0 +1,45 @@
+{
+  "kind": "predict",
+  "prompt": "Converting numbers to and from decimal text with repeated division and multiplication by 10.",
+  "trace": [
+    {
+      "label": "Converting 4096: the first remainder (`rdx` after `div` by 10) is",
+      "choices": [
+        "4",
+        "6",
+        "40",
+        "409"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "The second remainder is",
+      "choices": [
+        "9",
+        "0",
+        "4",
+        "40"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Parsing \"47\": rax after the first character",
+      "choices": [
+        "4",
+        "7",
+        "47"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "After the second character",
+      "choices": [
+        "7",
+        "47",
+        "74"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Dividing by 10 yields the lowest digit first, so the buffer is filled backwards (or reversed afterwards). Parsing goes the other way: multiply what you have by 10 and add the new digit."
+}

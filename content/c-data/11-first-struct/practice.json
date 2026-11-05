@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "What does this program print?",
+  "code": "typedef struct { int hours; int minutes; } Time;\n\nvoid bump(Time t) {\n    t.hours++;\n}\n\nint main(void) {\n    Time x = {1, 30};\n    bump(x);\n    printf(\"%d\\n\", x.hours);\n    return 0;\n}",
+  "choices": [
+    "1",
+    "2",
+    "30",
+    "It does not compile"
+  ],
+  "answer": 0,
+  "explain": "Structs are passed by value, just like ints: `bump` receives a copy, changes the copy and throws it away. The caller's `x` is untouched, so it still prints 1."
+}

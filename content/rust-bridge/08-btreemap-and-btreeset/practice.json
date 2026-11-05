@@ -1,0 +1,28 @@
+{
+  "kind": "predict",
+  "prompt": "A `BTreeMap` keeps its keys sorted. Answer from this map, inserted in this order.",
+  "code": "let mut m = BTreeMap::new();\nm.insert(30, \"c\");\nm.insert(10, \"a\");\nm.insert(20, \"b\");",
+  "trace": [
+    {
+      "label": "`m.keys().collect::<Vec<_>>()` is",
+      "choices": [
+        "[30, 10, 20]",
+        "[10, 20, 30]",
+        "[30, 20, 10]",
+        "[20, 10, 30]"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`m.range(15..30).map(|(_, v)| *v).collect::<Vec<_>>()` is",
+      "choices": [
+        "[\"b\"]",
+        "[\"b\", \"c\"]",
+        "[\"a\", \"b\"]",
+        "[\"c\"]"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "A `BTreeMap` iterates in key order whatever the insertion order (a `HashMap` makes no such promise). `15..30` is a half-open range, so 30 is excluded; `15..=30` would include it."
+}

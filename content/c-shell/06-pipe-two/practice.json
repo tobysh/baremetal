@@ -1,0 +1,16 @@
+{
+  "kind": "parsons",
+  "prompt": "This is the child that runs the **left** side of `left | right`. Order its lines so its standard output goes into the pipe, no stray pipe ends stay open, and the program runs. One line does not belong.",
+  "base": "#define _GNU_SOURCE\n#include <stdio.h>\n#include <errno.h>\n#include <unistd.h>\n#include <sys/types.h>\n#include <sys/wait.h>\n\nstatic int wait_for(pid_t pid) {\n    int status;\n    while (waitpid(pid, &status, 0) < 0) {\n        if (errno != EINTR) return -1;\n    }\n    if (WIFEXITED(status)) return WEXITSTATUS(status);\n    if (WIFSIGNALED(status)) return 128 + WTERMSIG(status);\n    return -1;\n}\n\nint run_pipe2(char **left, char **right, int out_fd) {\n    int p[2];\n    if (pipe(p) < 0) return -1;\n\n    pid_t a = fork();\n    if (a < 0) {\n        close(p[0]);\n        close(p[1]);\n        return -1;\n    }\n    if (a == 0) {\n{{code}}\n    }\n\n    pid_t b = fork();\n    if (b < 0) {\n        close(p[0]);\n        close(p[1]);\n        wait_for(a);\n        return -1;\n    }\n    if (b == 0) {\n        dup2(p[0], STDIN_FILENO);\n        if (out_fd >= 0) {\n            dup2(out_fd, STDOUT_FILENO);\n            if (out_fd != STDOUT_FILENO) close(out_fd);\n        }\n        close(p[0]);\n        close(p[1]);\n        execvp(right[0], right);\n        _exit(127);\n    }\n\n    close(p[0]);\n    close(p[1]);\n    wait_for(a);\n    return wait_for(b);\n}\n\nint main(void) {\n    char *left[] = {\"echo\", \"hello pipes\", NULL};\n    char *right[] = {\"tr\", \"a-z\", \"A-Z\", NULL};\n    int r = run_pipe2(left, right, -1);\n    printf(\"status %d\\n\", r);\n    return 0;\n}\n",
+  "lines": [
+    "        dup2(p[1], STDOUT_FILENO);",
+    "        close(p[0]);",
+    "        close(p[1]);",
+    "        execvp(left[0], left);",
+    "        _exit(127);"
+  ],
+  "distractors": [
+    "        dup2(p[0], STDOUT_FILENO);"
+  ],
+  "explain": "`p[1]` is the write end of the pipe, so the left command's stdout is `dup2`-ed onto it. Once duplicated, both original pipe ends must be closed in the child, otherwise the reader would never see end-of-file. Then `execvp` replaces the child."
+}

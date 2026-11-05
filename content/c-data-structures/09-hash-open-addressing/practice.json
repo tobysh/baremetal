@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "After `oa_del`, a key that collided earlier in the probe sequence can no longer be found, even though it is still in the table. Tap the faulty line.",
+  "code": "int oa_del(OAMap *m, int key) {\n    long f = find_slot(m, key);\n    if (f < 0) return -1;\n    m->slots[f].state = EMPTY;\n    m->count--;\n    return 0;\n}",
+  "bugLine": 4,
+  "explain": "Lookups stop at the first EMPTY slot. If a deleted slot becomes EMPTY, any key that was placed *past* it during probing now looks absent. Marking it DELETED (a tombstone) tells lookups to keep probing, while inserts may reuse the slot."
+}

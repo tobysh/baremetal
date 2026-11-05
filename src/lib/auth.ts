@@ -10,6 +10,7 @@ import { ObjectId } from "mongodb";
 import { getDb } from "./db";
 import { randomToken, sha256 } from "./crypto";
 import type { ExperienceLevel, SessionDoc, UserDoc } from "./models";
+import { isSuspended } from "./suspension";
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number, opts: object) => Promise<Buffer>;
 // N=2^15, r=8: ~32 MiB and ~50ms per hash on a desktop CPU.
@@ -118,7 +119,7 @@ async function loadUser(): Promise<UserDoc | null> {
     .findOne({ tokenHash: sha256(token), expiresAt: { $gt: new Date() } });
   if (!session) return null;
   const user = await db.collection<UserDoc>("users").findOne({ _id: session.userId });
-  if (!user || (user.sessionVersion ?? 0) !== session.sessionVersion) return null;
+  if (!user || (user.sessionVersion ?? 0) !== session.sessionVersion || isSuspended(user)) return null;
   return user;
 }
 
@@ -199,5 +200,3 @@ export async function clearPending2fa() {
 }
 
 export { safeNext } from "./redirects";
-
-export const toObjectId = (id: string) => new ObjectId(id);

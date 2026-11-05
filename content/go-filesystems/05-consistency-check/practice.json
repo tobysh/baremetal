@@ -1,0 +1,37 @@
+{
+  "kind": "predict",
+  "prompt": "A tiny disk. Inode A owns blocks `3, 4`. Inode B owns blocks `4, 5`. The bitmap marks blocks `3, 4, 6` as used and block 5 as free.",
+  "trace": [
+    {
+      "label": "Block 4 is",
+      "choices": [
+        "fine",
+        "owned by two inodes",
+        "leaked",
+        "marked free but used"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Block 5 is",
+      "choices": [
+        "fine",
+        "owned by two inodes",
+        "leaked",
+        "owned but marked free"
+      ],
+      "answer": 3
+    },
+    {
+      "label": "Block 6 is",
+      "choices": [
+        "fine",
+        "owned by two inodes",
+        "leaked",
+        "owned but marked free"
+      ],
+      "answer": 2
+    }
+  ],
+  "explain": "A checker compares who actually owns each block with what the bitmap claims. Two owners of one block is the most dangerous: writing one file can corrupt the other."
+}

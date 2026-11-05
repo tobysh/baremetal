@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "Integer evaluation should report `DivByZero` for `1 / 0` and `Overflow` only for real overflow. Tap the line that gets one of these wrong.",
+  "code": "fn apply_int(op: BinOp, x: i64, y: i64) -> Result<Value, RuntimeError> {\n    match op {\n        BinOp::Add => x.checked_add(y).map(Value::Int).ok_or(RuntimeError::Overflow),\n        BinOp::Mul => x.checked_mul(y).map(Value::Int).ok_or(RuntimeError::Overflow),\n        BinOp::Div => x.checked_div(y).map(Value::Int).ok_or(RuntimeError::Overflow),\n        BinOp::Lt => Ok(Value::Bool(x < y)),\n        _ => unreachable!(),\n    }\n}",
+  "bugLine": 5,
+  "explain": "`checked_div` returns `None` both for a zero divisor and for `i64::MIN / -1`. Reporting `Overflow` for both mislabels `1 / 0`. Check `y == 0` first and return `DivByZero`."
+}

@@ -1,0 +1,43 @@
+{
+  "kind": "predict",
+  "prompt": "A REPL session evaluates these inputs in order, sharing one environment. It tries to parse as an expression first and only falls back to running statements if that fails. `ok_lines` counts successful non-blank inputs.\n\n1. `let a = 2;`\n2. `a * 3`\n3. `a +`\n4. `print a;`",
+  "trace": [
+    {
+      "label": "Response to input 1",
+      "choices": [
+        "(nothing)",
+        "2",
+        "error"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Response to input 2",
+      "choices": [
+        "(nothing)",
+        "6",
+        "error"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`ok_lines` after input 3",
+      "choices": [
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Response to input 4",
+      "choices": [
+        "(nothing)",
+        "2",
+        "error"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "A `let` statement is not an expression, so it runs as a statement and prints nothing. `a * 3` is an expression and echoes its value. `a +` fails both ways, so it adds an error response without changing the count. `print a;` runs as a statement and its output is the response."
+}

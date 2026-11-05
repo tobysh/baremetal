@@ -1,0 +1,18 @@
+{
+  "kind": "blanks",
+  "prompt": "When a key is used, the cache moves it to the most-recent end of the list. Complete the two steps: take the key out of its old position, then put it at the back.",
+  "template": "struct Lru {\n    order: Vec<String>,\n}\n\nimpl Lru {\n    fn touch(&mut self, key: &str) {\n        if let Some(pos) = self.order.iter().position(|k| k == key) {\n            let k = self.order.{{0}}(pos);\n            self.order.{{1}}(k);\n        }\n    }\n}\n\nfn main() {\n    let mut c = Lru { order: vec![\"a\".to_string(), \"b\".to_string()] };\n    c.touch(\"a\");\n    println!(\"{:?}\", c.order);\n}",
+  "tokens": [
+    "remove",
+    "push",
+    "pop",
+    "insert",
+    "push_front"
+  ],
+  "answers": [
+    "remove",
+    "push"
+  ],
+  "runTests": false,
+  "explain": "`remove(pos)` takes the element out of the middle and returns it, and `push` appends it at the end, so the front stays the least recently used. `pop` takes no index, and `Vec` has no `push_front`."
+}

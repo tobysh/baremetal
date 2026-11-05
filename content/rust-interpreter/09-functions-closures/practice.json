@@ -1,0 +1,19 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the core of `call_function`: build a scope from the function's captured environment, bind the parameters and run the body. One line does not belong.",
+  "lines": [
+    "    let local = f.env.child();",
+    "    for (p, a) in f.params.iter().zip(args) {",
+    "        local.define(p, a);",
+    "    }",
+    "    match exec_stmts(&f.body, &local)? {",
+    "        Flow::Return(v) => Ok(v),",
+    "        Flow::Normal => Ok(Value::Nil),",
+    "    }"
+  ],
+  "runTests": false,
+  "distractors": [
+    "        return Ok(Value::Nil);"
+  ],
+  "explain": "The call scope is a child of the environment the function captured, not of the caller's, which is what makes closures work. Parameters are defined in it, the body runs, and falling off the end gives `Nil`. Returning `Nil` early would never run the body."
+}

@@ -1,0 +1,21 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines that link a new node `n` in at the **back** of the deque (the nodes are already allocated and checked). Remember the empty case. One line does not belong.",
+  "base": "#include <stdio.h>\n#include <stdlib.h>\n\ntypedef struct DNode {\n    int value;\n    struct DNode *prev;\n    struct DNode *next;\n} DNode;\n\ntypedef struct {\n    DNode *head;\n    DNode *tail;\n    int size;\n} Deque;\n\nvoid deque_init(Deque *d) {\n    d->head = NULL;\n    d->tail = NULL;\n    d->size = 0;\n}\n\nint push_front(Deque *d, int value) {\n    DNode *n = malloc(sizeof(DNode));\n    if (n == NULL) {\n        return -1;\n    }\n    n->value = value;\n    n->prev = NULL;\n    n->next = d->head;\n    if (d->head != NULL) {\n        d->head->prev = n;\n    } else {\n        d->tail = n;\n    }\n    d->head = n;\n    d->size++;\n    return 0;\n}\n\nint push_back(Deque *d, int value) {\n    DNode *n = malloc(sizeof(DNode));\n    if (n == NULL) {\n        return -1;\n    }\n{{code}}\n    return 0;\n}\n\nint pop_front(Deque *d, int *out) {\n    if (d->head == NULL) {\n        return -1;\n    }\n    DNode *n = d->head;\n    *out = n->value;\n    d->head = n->next;\n    if (d->head != NULL) {\n        d->head->prev = NULL;\n    } else {\n        d->tail = NULL;\n    }\n    free(n);\n    d->size--;\n    return 0;\n}\n\nint pop_back(Deque *d, int *out) {\n    if (d->tail == NULL) {\n        return -1;\n    }\n    DNode *n = d->tail;\n    *out = n->value;\n    d->tail = n->prev;\n    if (d->tail != NULL) {\n        d->tail->next = NULL;\n    } else {\n        d->head = NULL;\n    }\n    free(n);\n    d->size--;\n    return 0;\n}\n\nint deque_remove(Deque *d, int value) {\n    for (DNode *n = d->head; n != NULL; n = n->next) {\n        if (n->value == value) {\n            if (n->prev != NULL) {\n                n->prev->next = n->next;\n            } else {\n                d->head = n->next;\n            }\n            if (n->next != NULL) {\n                n->next->prev = n->prev;\n            } else {\n                d->tail = n->prev;\n            }\n            free(n);\n            d->size--;\n            return 1;\n        }\n    }\n    return 0;\n}\n\nvoid deque_reverse(Deque *d) {\n    DNode *n = d->head;\n    while (n != NULL) {\n        DNode *next = n->next;\n        n->next = n->prev;\n        n->prev = next;\n        n = next;\n    }\n    DNode *tmp = d->head;\n    d->head = d->tail;\n    d->tail = tmp;\n}\n\nvoid deque_free(Deque *d) {\n    DNode *n = d->head;\n    while (n != NULL) {\n        DNode *next = n->next;\n        free(n);\n        n = next;\n    }\n    deque_init(d);\n}\n\nint main(void) {\n    Deque d;\n    deque_init(&d);\n    push_back(&d, 1);\n    push_back(&d, 2);\n    printf(\"size = %d\\n\", d.size);\n    deque_free(&d);\n    return 0;\n}\n",
+  "lines": [
+    "    n->value = value;",
+    "    n->next = NULL;",
+    "    n->prev = d->tail;",
+    "    if (d->tail != NULL) {",
+    "        d->tail->next = n;",
+    "    } else {",
+    "        d->head = n;",
+    "    }",
+    "    d->tail = n;",
+    "    d->size++;"
+  ],
+  "distractors": [
+    "    d->head->prev = n;"
+  ],
+  "explain": "The new node points back at the old tail. If there was a tail, the old tail points forward at it; otherwise the deque was empty and the new node is also the head. Finally it becomes the tail and the size grows."
+}

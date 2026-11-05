@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "`FormatV2` writes the new record format. What does it return for a member with ID 7, name Ada, email `ada@x.io` and no phone number?",
+  "code": "func FormatV2(m Member) string {\n\treturn fmt.Sprintf(\"v2|%d|%s|%s|%s\",\n\t\tm.ID, esc(m.Name), esc(m.Email), esc(m.Phone))\n}",
+  "choices": [
+    "v2|7|Ada|ada@x.io|",
+    "v2|7|Ada|ada@x.io",
+    "7|Ada|ada@x.io|",
+    "v2|7|Ada|ada@x.io|0"
+  ],
+  "answer": 0,
+  "explain": "Version 2 always has four fields after the `v2` tag. An empty phone is still a field, so the line ends with a separator. That keeps parsing unambiguous: a v2 line with three fields would be rejected."
+}

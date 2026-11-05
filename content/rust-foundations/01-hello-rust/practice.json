@@ -1,0 +1,17 @@
+{
+  "kind": "blanks",
+  "prompt": "Fill the two gaps so the program stores the language name in a variable and prints it on its own line using a macro.",
+  "template": "fn main() {\n    {{0}} language = \"Rust\";\n    {{1}}!(\"Language: {}\", language);\n}",
+  "tokens": [
+    "let",
+    "var",
+    "println",
+    "printf"
+  ],
+  "answers": [
+    "let",
+    "println"
+  ],
+  "runTests": false,
+  "explain": "Variables are introduced with `let`. `println!` is a macro (note the `!`) that adds a newline; there is no `printf!` in Rust."
+}

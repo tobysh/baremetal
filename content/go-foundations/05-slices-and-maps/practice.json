@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This function should count words, but it crashes at run time. Tap the faulty line.",
+  "code": "func WordCount(text string) map[string]int {\n\tvar counts map[string]int\n\tfor _, w := range strings.Fields(strings.ToLower(text)) {\n\t\tcounts[w]++\n\t}\n\treturn counts\n}",
+  "bugLine": 2,
+  "explain": "A map declared with `var` is nil. Reading a nil map is fine, but writing to it panics. Create it with `make(map[string]int)` first."
+}

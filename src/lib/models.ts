@@ -24,6 +24,8 @@ export type UserDoc = {
   weeklyGoal?: number;
   /** New accounts are false until verified; absent on legacy accounts. */
   emailVerified?: boolean;
+  /** Set from the admin panel. A lock blocks sign-in (until `until`, or until lifted); a ban is permanent and hides the profile. */
+  suspension?: { kind: "locked" | "banned"; reason?: string; at: Date; until?: Date };
   passwordHash: string;
   experience: ExperienceLevel;
   role: "user" | "admin";
@@ -88,7 +90,7 @@ export type ProgressDoc = {
 };
 
 /** Every XP grant. The unique (userId, source, ref) index is the "award once" guarantee. */
-export type XpEventDoc = { _id: ObjectId; userId: ObjectId; source: "lesson" | "challenge"; ref: string; xp: number; at: Date };
+export type XpEventDoc = { _id: ObjectId; userId: ObjectId; source: "lesson" | "challenge" | "practice"; ref: string; xp: number; at: Date };
 
 export type AchievementDoc = { _id: ObjectId; userId: ObjectId; id: string; unlockedAt: Date };
 

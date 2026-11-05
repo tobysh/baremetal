@@ -1,0 +1,22 @@
+{
+  "kind": "parsons",
+  "prompt": "Build the fan-in: several producer threads send into one channel and the caller collects until every sender is gone. One line does not belong.",
+  "base": "use std::sync::mpsc::{self, Receiver};\nuse std::thread;\n\nfn fan_in(producers: usize, per: usize) -> Vec<usize> {\n{{code}}\n    all.sort();\n    all\n}\n\nfn pipeline(input: Vec<i32>) -> Vec<i32> {\n    let (in_tx, in_rx) = mpsc::channel::<i32>();\n    let (out_tx, out_rx) = mpsc::channel::<i32>();\n    let worker = thread::spawn(move || {\n        for n in in_rx {\n            out_tx.send(n * 2 + 1).unwrap();\n        }\n    });\n    for n in input {\n        in_tx.send(n).unwrap();\n    }\n    drop(in_tx);\n    let out: Vec<i32> = out_rx.iter().collect();\n    worker.join().unwrap();\n    out\n}\n\nfn drain_ready(rx: &Receiver<i32>) -> Vec<i32> {\n    rx.try_iter().collect()\n}\n\n// Try it with Run.\nfn main() {\n    println!(\"{:?}\", fan_in(3, 2));\n    println!(\"{:?}\", pipeline(vec![1, 2, 3]));\n}\n",
+  "lines": [
+    "    let (tx, rx) = mpsc::channel();",
+    "    for p in 0..producers {",
+    "        let tx = tx.clone();",
+    "        thread::spawn(move || {",
+    "            for k in 0..per {",
+    "                tx.send(p * 1000 + k).unwrap();",
+    "            }",
+    "        });",
+    "    }",
+    "    drop(tx);",
+    "    let mut all: Vec<usize> = rx.iter().collect();"
+  ],
+  "distractors": [
+    "    drop(rx);"
+  ],
+  "explain": "Each producer gets its own clone of the sender, and the original sender is dropped so the channel closes once the producers finish. Without that `drop(tx)`, `rx.iter()` would wait forever. Dropping the receiver would make sends fail."
+}

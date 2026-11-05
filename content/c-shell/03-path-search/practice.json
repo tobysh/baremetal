@@ -1,0 +1,22 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines that walk a colon-separated `PATH`, trying `dir/name` in each directory in turn and stopping after the last one. One line does not belong.",
+  "base": "#define _GNU_SOURCE\n#include <stdio.h>\n#include <string.h>\n#include <errno.h>\n#include <unistd.h>\n#include <sys/types.h>\n#include <sys/stat.h>\n#include <sys/wait.h>\n\nstatic int usable(const char *p) {\n    struct stat st;\n    return stat(p, &st) == 0 && S_ISREG(st.st_mode) && access(p, X_OK) == 0;\n}\n\nint find_in_path(const char *name, const char *path, char *out, size_t out_size) {\n    if (strchr(name, '/')) {\n        if (strlen(name) >= out_size || !usable(name)) return -1;\n        strcpy(out, name);\n        return 0;\n    }\n{{code}}\n    return -1;\n}\n\nint run_with_path(char *const argv[], const char *path) {\n    pid_t pid = fork();\n    if (pid < 0) return -1;\n    if (pid == 0) {\n        char full[512];\n        if (find_in_path(argv[0], path, full, sizeof full) == 0) execv(full, argv);\n        _exit(127);\n    }\n    int status;\n    while (waitpid(pid, &status, 0) < 0) {\n        if (errno != EINTR) return -1;\n    }\n    return WIFEXITED(status) ? WEXITSTATUS(status) : -1;\n}\n\nint main(void) {\n    char buf[256];\n    if (find_in_path(\"ls\", \"/nonexistent:/usr/bin\", buf, sizeof buf) == 0) printf(\"found %s\\n\", buf);\n    else printf(\"not found\\n\");\n    return 0;\n}\n",
+  "lines": [
+    "    const char *p = path;",
+    "    for (;;) {",
+    "        const char *colon = strchr(p, ':');",
+    "        size_t len = colon ? (size_t)(colon - p) : strlen(p);",
+    "        if (len > 0) {",
+    "            int n = snprintf(out, out_size, \"%.*s/%s\", (int)len, p, name);",
+    "            if (n >= 0 && (size_t)n < out_size && usable(out)) return 0;",
+    "        }",
+    "        if (!colon) break;",
+    "        p = colon + 1;",
+    "    }"
+  ],
+  "distractors": [
+    "        if (!colon) return -1;"
+  ],
+  "explain": "Find the next colon, measure the directory (to the colon, or to the end for the last entry), skip empty entries and test `dir/name`. When there is no colon left the last entry was just tried, so break; otherwise continue after the colon."
+}

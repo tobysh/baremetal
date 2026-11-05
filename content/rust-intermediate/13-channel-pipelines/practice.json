@@ -1,0 +1,18 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines so a worker thread sends a message to the main thread. One line does not belong.",
+  "base": "use std::sync::mpsc;\nuse std::thread;\n\nfn main() {\n{{code}}\n}",
+  "lines": [
+    "    let (tx, rx) = mpsc::channel();",
+    "    thread::spawn(move || {",
+    "        tx.send(String::from(\"done\")).unwrap();",
+    "    });",
+    "    let msg = rx.recv().unwrap();",
+    "    println!(\"{}\", msg);"
+  ],
+  "distractors": [
+    "    let msg = tx.recv().unwrap();"
+  ],
+  "runTests": false,
+  "explain": "The sender moves into the worker, and the receiving end waits in the main thread. Only the `Receiver` can `recv`; the `Sender` can only `send`."
+}

@@ -1,0 +1,18 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the body of the helper that makes room for one more element: do nothing if there is space, otherwise double the capacity (4 the first time), keeping the old data safe if `realloc` fails. One line does not belong.",
+  "base": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\ntypedef struct {\n    int *data;\n    size_t len;\n    size_t cap;\n} IntVec;\n\nvoid vec_init(IntVec *v) {\n    v->data = NULL;\n    v->len = 0;\n    v->cap = 0;\n}\n\nstatic int reserve_one(IntVec *v) {\n{{code}}\n}\n\nint vec_push(IntVec *v, int x) {\n    if (reserve_one(v) != 0) return -1;\n    v->data[v->len++] = x;\n    return 0;\n}\n\nint vec_get(const IntVec *v, size_t i, int *out) {\n    if (i >= v->len) return -1;\n    *out = v->data[i];\n    return 0;\n}\n\nint vec_pop(IntVec *v, int *out) {\n    if (v->len == 0) return -1;\n    *out = v->data[--v->len];\n    return 0;\n}\n\nint vec_insert(IntVec *v, size_t i, int x) {\n    if (i > v->len) return -1;\n    if (reserve_one(v) != 0) return -1;\n    memmove(&v->data[i + 1], &v->data[i], (v->len - i) * sizeof v->data[0]);\n    v->data[i] = x;\n    v->len++;\n    return 0;\n}\n\nvoid vec_free(IntVec *v) {\n    free(v->data);\n    vec_init(v);\n}\n\nint main(void) {\n    IntVec v;\n    vec_init(&v);\n    for (int i = 0; i < 10; i++) vec_push(&v, i * i);\n    printf(\"len %zu, cap %zu\\n\", v.len, v.cap);\n    vec_free(&v);\n    return 0;\n}\n",
+  "lines": [
+    "    if (v->len < v->cap) return 0;",
+    "    size_t new_cap = v->cap == 0 ? 4 : v->cap * 2;",
+    "    int *bigger = realloc(v->data, new_cap * sizeof *bigger);",
+    "    if (bigger == NULL) return -1;",
+    "    v->data = bigger;",
+    "    v->cap = new_cap;",
+    "    return 0;"
+  ],
+  "distractors": [
+    "    v->data = realloc(v->data, new_cap * sizeof *v->data);"
+  ],
+  "explain": "Assign `realloc`'s result to a temporary first. If it fails you get `NULL` back, and writing that straight into `v->data` would lose your only pointer to the old block. Only after the check do you store the new pointer and capacity."
+}

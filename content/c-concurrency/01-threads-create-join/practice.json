@@ -1,0 +1,19 @@
+{
+  "kind": "parsons",
+  "prompt": "Start three worker threads, then wait for all of them before announcing that the program is done. One line does not belong.",
+  "lines": [
+    "    pthread_t t[3];",
+    "    for (int i = 0; i < 3; i++) {",
+    "        pthread_create(&t[i], NULL, work, (void *)(long)i);",
+    "    }",
+    "    for (int i = 0; i < 3; i++) {",
+    "        pthread_join(t[i], NULL);",
+    "    }",
+    "    puts(\"all done\");"
+  ],
+  "distractors": [
+    "    pthread_exit(NULL);"
+  ],
+  "runTests": false,
+  "explain": "Start every thread first, so they run side by side, then join each one. `pthread_join` is what makes `main` wait; `pthread_exit` in `main` would end only the main thread and skip the final message."
+}

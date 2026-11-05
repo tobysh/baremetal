@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "Finish the worker: register it with the WaitGroup, mark it done when it exits, and pull job indexes from the shared channel until it is closed.",
+  "template": "package main\n\nimport (\n\t\"fmt\"\n\t\"sync\"\n)\n\nfunc Process(inputs []int, workers int, f func(int) int) []int {\n\tif workers < 1 {\n\t\tworkers = 1\n\t}\n\tout := make([]int, len(inputs))\n\tjobs := make(chan int)\n\tvar wg sync.WaitGroup\n\tfor w := 0; w < workers; w++ {\n\t\twg.{{0}}(1)\n\t\tgo func() {\n\t\t\tdefer wg.{{1}}()\n\t\t\tfor i := range {{2}} {\n\t\t\t\tout[i] = f(inputs[i])\n\t\t\t}\n\t\t}()\n\t}\n\tfor i := range inputs {\n\t\tjobs <- i\n\t}\n\tclose(jobs)\n\twg.Wait()\n\treturn out\n}\n\nfunc Generate(nums ...int) <-chan int {\n\tout := make(chan int)\n\tgo func() {\n\t\tdefer close(out)\n\t\tfor _, n := range nums {\n\t\t\tout <- n\n\t\t}\n\t}()\n\treturn out\n}\n\nfunc Square(in <-chan int) <-chan int {\n\tout := make(chan int)\n\tgo func() {\n\t\tdefer close(out)\n\t\tfor n := range in {\n\t\t\tout <- n * n\n\t\t}\n\t}()\n\treturn out\n}\n\nfunc Collect(in <-chan int) []int {\n\tresult := []int{}\n\tfor v := range in {\n\t\tresult = append(result, v)\n\t}\n\treturn result\n}\n\n// Try it with Run.\nfunc main() {\n\tfmt.Println(Collect(Square(Generate(1, 2, 3, 4))))\n}\n",
+  "answers": [
+    "Add",
+    "Done",
+    "jobs"
+  ],
+  "tokens": [
+    "Add",
+    "Done",
+    "Wait",
+    "jobs",
+    "inputs",
+    "out"
+  ],
+  "explain": "Each worker is counted with `Add` before it starts and calls `Done` when finished. All workers receive from the same `jobs` channel, so each index is handled by exactly one of them; ranging over `inputs` would make every worker repeat everything."
+}

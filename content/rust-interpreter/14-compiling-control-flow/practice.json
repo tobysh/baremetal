@@ -1,0 +1,23 @@
+{
+  "kind": "parsons",
+  "prompt": "Compile a `while` loop: remember where the loop starts, emit the condition and a placeholder jump, emit the body, jump back, then patch the placeholder. One line does not belong.",
+  "lines": [
+    "        Stmt::While(cond, body) => {",
+    "            let start = code.len();",
+    "            code.extend(compile_expr(cond)?);",
+    "            let jump_false = code.len();",
+    "            code.push(Op::JumpIfFalse(0));",
+    "            for s in body {",
+    "                emit_stmt(s, code)?;",
+    "            }",
+    "            code.push(Op::Jump(start));",
+    "            let end = code.len();",
+    "            code[jump_false] = Op::JumpIfFalse(end);",
+    "        }"
+  ],
+  "runTests": false,
+  "distractors": [
+    "            code.push(Op::Jump(end));"
+  ],
+  "explain": "The start index is recorded before the condition so the loop can jump back to it. The `JumpIfFalse(0)` placeholder is patched once the loop's end index is known, after the back-jump has been pushed. Using `end` before it exists cannot work."
+}

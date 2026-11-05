@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This reads a NUL-terminated name from a string table at an offset taken from the file. Tap the line that can crash on a hostile file.",
+  "code": "func readName(strtab []byte, off uint32) (string, error) {\n\tend := bytes.IndexByte(strtab[off:], 0)\n\tif end < 0 {\n\t\treturn \"\", ErrBadName\n\t}\n\treturn string(strtab[off : int(off)+end]), nil\n}",
+  "bugLine": 2,
+  "explain": "`strtab[off:]` panics if `off` is greater than the table length. Offsets from the file are untrusted: check `int(off) <= len(strtab)` before slicing."
+}

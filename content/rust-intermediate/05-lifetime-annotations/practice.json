@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "The result borrows from `text`, never from `prefix`. Place the lifetime names so the signature says exactly that.",
+  "template": "fn strip<{{0}}>(text: &{{1}} str, prefix: &str) -> &{{2}} str {\n    text.strip_prefix(prefix).unwrap_or(text)\n}\n\nfn main() {\n    println!(\"{}\", strip(\"v2:alpha\", \"v2:\"));\n}",
+  "tokens": [
+    "'a",
+    "'a",
+    "'a",
+    "'b",
+    "'static"
+  ],
+  "answers": [
+    "'a",
+    "'a",
+    "'a"
+  ],
+  "runTests": false,
+  "explain": "Declare `'a` once in the angle brackets, then use it on the input that the output comes from and on the output. `prefix` gets no name because the result never points into it."
+}

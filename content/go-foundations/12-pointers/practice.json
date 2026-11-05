@@ -1,0 +1,19 @@
+{
+  "kind": "parsons",
+  "prompt": "Reverse a linked list in place. Order the lines so each node is pointed back at the previous one without losing the rest of the list. One line is a decoy.",
+  "lines": [
+    "\tvar prev *Node",
+    "\tfor head != nil {",
+    "\t\tnext := head.Next",
+    "\t\thead.Next = prev",
+    "\t\tprev = head",
+    "\t\thead = next",
+    "\t}",
+    "\treturn prev"
+  ],
+  "distractors": [
+    "\thead.Next = next"
+  ],
+  "base": "package main\n\ntype Node struct {\n\tValue int\n\tNext  *Node\n}\n\n// Swap exchanges the values *a and *b.\nfunc Swap(a, b *int) {\n\t*a, *b = *b, *a\n}\n\n// Increment adds 1 to *p (does nothing if p is nil).\nfunc Increment(p *int) {\n\tif p != nil {\n\t\t*p++\n\t}\n}\n\n// Push returns a new list with v in front of head.\nfunc Push(head *Node, v int) *Node {\n\treturn &Node{Value: v, Next: head}\n}\n\n// Reverse reverses the list in place and returns the new head.\nfunc Reverse(head *Node) *Node {\n{{code}}\n}\n",
+  "explain": "Save `head.Next` before overwriting it, point the node backwards, then step both pointers forward. When `head` is nil, `prev` is the new first node."
+}

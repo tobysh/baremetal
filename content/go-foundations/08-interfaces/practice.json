@@ -1,0 +1,17 @@
+{
+  "kind": "blanks",
+  "prompt": "Complete this type switch so `Describe` recognises a `Rect` value and can read its `W` and `H` fields.",
+  "template": "package main\n\nimport (\n\t\"fmt\"\n\t\"math\"\n)\n\ntype Shape interface {\n\tArea() float64\n\tPerimeter() float64\n}\n\ntype Rect struct{ W, H float64 }\ntype Circle struct{ R float64 }\n\nfunc (r Rect) Area() float64        { return r.W * r.H }\nfunc (r Rect) Perimeter() float64   { return 2 * (r.W + r.H) }\nfunc (c Circle) Area() float64      { return math.Pi * c.R * c.R }\nfunc (c Circle) Perimeter() float64 { return 2 * math.Pi * c.R }\n\n// Largest returns the shape with the biggest area (nil if there are none).\nfunc Largest(shapes []Shape) Shape {\n\tvar best Shape\n\tfor _, s := range shapes {\n\t\tif best == nil || s.Area() > best.Area() {\n\t\t\tbest = s\n\t\t}\n\t}\n\treturn best\n}\n\n// Describe names the concrete shape: \"rect 3x4\", \"circle r=2.5\" or \"unknown\".\nfunc Describe(s Shape) string {\n\tswitch v := s.({{0}}) {\n\tcase {{1}}:\n\t\treturn fmt.Sprintf(\"rect %vx%v\", v.W, v.H)\n\tcase Circle:\n\t\treturn fmt.Sprintf(\"circle r=%v\", v.R)\n\tdefault:\n\t\treturn \"unknown\"\n\t}\n}\n",
+  "answers": [
+    "type",
+    "Rect"
+  ],
+  "tokens": [
+    "type",
+    "interface",
+    "Rect",
+    "Shape",
+    "*Rect"
+  ],
+  "explain": "`s.(type)` is only legal inside a `switch`. In the `Rect` case `v` has the concrete type, so its fields are available."
+}

@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This calls the function whose address is in `rdi` exactly n times (`rsi`). Tap the line that fails on the second pass.",
+  "code": "apply_n:\n    push rbx\n    mov rbx, rsi\n.Lagain:\n    test rbx, rbx\n    jz .Ldone\n    call rdi\n    dec rbx\n    jmp .Lagain\n.Ldone:\n    pop rbx\n    ret",
+  "bugLine": 7,
+  "explain": "`rdi` is caller-saved, so the callee may change it. The loop needs the function pointer in a callee-saved register such as r12 (saved and restored) and `call r12`."
+}

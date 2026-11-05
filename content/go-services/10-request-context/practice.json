@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "A request id is added to the context, but handlers behind this middleware no longer stop when the client disconnects or a timeout fires. Tap the faulty line.",
+  "code": "func RequestID(gen func() string) Middleware {\n\treturn func(next http.Handler) http.Handler {\n\t\treturn http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {\n\t\t\tid := r.Header.Get(\"X-Request-ID\")\n\t\t\tif id == \"\" {\n\t\t\t\tid = gen()\n\t\t\t}\n\t\t\tw.Header().Set(\"X-Request-ID\", id)\n\t\t\tnext.ServeHTTP(w, r.WithContext(context.WithValue(context.Background(), idKey{}, id)))\n\t\t})\n\t}\n}",
+  "bugLine": 9,
+  "explain": "Deriving from `context.Background()` throws away everything on the request's context: cancellation, deadlines and earlier values. Always derive from `r.Context()`."
+}

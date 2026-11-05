@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`item_make` should copy at most 15 characters into a 16-byte `name`. Long names corrupt memory. Tap the faulty line.",
+  "code": "Item item_make(char name[], int qty, int price_cents) {\n    Item it;\n    int i = 0;\n    while (name[i] != '\\0' && i < 16) {\n        it.name[i] = name[i];\n        i++;\n    }\n    it.name[i] = '\\0';\n    it.qty = qty;\n    it.price_cents = price_cents;\n    return it;\n}",
+  "bugLine": 4,
+  "explain": "`name` has 16 bytes, indexes 0 to 15, and one must stay free for the terminator. With `i < 16` the loop can reach `i == 16` and then write the terminator at `name[16]`, one byte past the array. The limit must be `i < 15`."
+}

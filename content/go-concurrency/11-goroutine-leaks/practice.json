@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "Each call to `First` leaves goroutines stuck forever. Tap the faulty line.",
+  "code": "func First(fns ...func() int) int {\n\tch := make(chan int)\n\tfor _, f := range fns {\n\t\tgo func() { ch <- f() }()\n\t}\n\treturn <-ch\n}",
+  "bugLine": 2,
+  "explain": "Only one result is ever received. On an unbuffered channel every slower goroutine blocks on its send forever. A buffer as large as the number of senders (`make(chan int, len(fns))`) lets them all finish."
+}

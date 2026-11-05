@@ -1,0 +1,18 @@
+{
+  "kind": "parsons",
+  "prompt": "Put the body of `pop` in order. It must sleep while the queue is empty and check again whenever it wakes up. One line does not belong.",
+  "base": "use std::collections::VecDeque;\nuse std::sync::{Condvar, Mutex};\nuse std::time::Duration;\n\nstruct BlockingQueue<T> {\n    items: Mutex<VecDeque<T>>,\n    ready: Condvar,\n}\n\nimpl<T> BlockingQueue<T> {\n    fn new() -> BlockingQueue<T> {\n        BlockingQueue { items: Mutex::new(VecDeque::new()), ready: Condvar::new() }\n    }\n\n    fn push(&self, item: T) {\n        self.items.lock().unwrap().push_back(item);\n        self.ready.notify_one();\n    }\n\n    fn pop(&self) -> T {\n{{code}}\n    }\n\n    fn pop_timeout(&self, timeout: Duration) -> Option<T> {\n        let g = self.items.lock().unwrap();\n        let (mut g, _) = self.ready.wait_timeout_while(g, timeout, |q| q.is_empty()).unwrap();\n        g.pop_front()\n    }\n\n    fn len(&self) -> usize {\n        self.items.lock().unwrap().len()\n    }\n}\n\n// Try it with Run.\nfn main() {\n    let q = BlockingQueue::new();\n    q.push(1);\n    q.push(2);\n    println!(\"{} {}\", q.pop(), q.len());\n}\n",
+  "lines": [
+    "        let mut g = self.items.lock().unwrap();",
+    "        loop {",
+    "            if let Some(x) = g.pop_front() {",
+    "                return x;",
+    "            }",
+    "            g = self.ready.wait(g).unwrap();",
+    "        }"
+  ],
+  "distractors": [
+    "        drop(g);"
+  ],
+  "explain": "Hold the lock, try to take an item, and if there is none wait on the condvar, which releases the lock while sleeping and hands it back on wake-up. The loop re-checks because wake-ups can be spurious. Dropping the guard first would leave nothing to wait with."
+}

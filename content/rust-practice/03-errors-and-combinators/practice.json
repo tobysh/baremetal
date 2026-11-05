@@ -1,0 +1,18 @@
+{
+  "kind": "blanks",
+  "prompt": "Pick the combinators: one converts only the error part of a `Result`, the other searches an iterator and gives back an `Option` of the item.",
+  "template": "fn port(s: &str) -> Result<u16, String> {\n    s.trim().parse::<u16>().{{0}}(|e| e.to_string())\n}\n\nfn first_even(v: &[i32]) -> Option<i32> {\n    v.iter().copied().{{1}}(|x| x % 2 == 0)\n}\n\nfn main() {\n    println!(\"{:?} {:?}\", port(\"80\"), first_even(&[3, 4]));\n}",
+  "tokens": [
+    "map_err",
+    "map",
+    "find",
+    "filter",
+    "position"
+  ],
+  "answers": [
+    "map_err",
+    "find"
+  ],
+  "runTests": false,
+  "explain": "`map_err` leaves `Ok` untouched and rewrites the error, which is how a `ParseIntError` becomes a `String`. `find` returns the first matching item; `filter` would return another iterator and `position` would return an index."
+}

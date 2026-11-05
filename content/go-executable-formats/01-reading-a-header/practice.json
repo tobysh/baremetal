@@ -1,0 +1,22 @@
+{
+  "kind": "blanks",
+  "prompt": "Fill in the header checks for untrusted bytes. Do the table-end arithmetic in 64 bits so a huge count cannot wrap around.",
+  "template": "if len(b) < {{0}} {\n\treturn Header{}, ErrShort\n}\nh.Count = binary.LittleEndian.{{1}}(b[8:12])\nend := uint64(h.TableOff) + uint64(h.Count)*{{2}}\nif end > {{3}} {\n\treturn Header{}, ErrBadTable\n}",
+  "answers": [
+    "headerSize",
+    "Uint32",
+    "entrySize",
+    "uint64(len(b))"
+  ],
+  "tokens": [
+    "headerSize",
+    "Uint32",
+    "entrySize",
+    "uint64(len(b))",
+    "Uint16",
+    "h.Count",
+    "uint32(len(b))"
+  ],
+  "runTests": false,
+  "explain": "Check the length before indexing. `b[8:12]` is 4 bytes, so `Uint32`. The table needs count x entry size bytes after its offset, and that end must lie inside the data."
+}

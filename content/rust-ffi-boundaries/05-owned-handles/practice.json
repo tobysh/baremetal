@@ -1,0 +1,44 @@
+{
+  "kind": "predict",
+  "prompt": "`LIVE` counts live counters. Trace it through this code. Each handle must be freed exactly once, and a null handle is ignored.",
+  "code": "let a = counter_new(1);\nlet b = counter_new(1);\ncounter_free(a);\ncounter_free(std::ptr::null_mut());\ncounter_into_inner(b);",
+  "trace": [
+    {
+      "label": "LIVE after line 2",
+      "choices": [
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "LIVE after line 3",
+      "choices": [
+        "0",
+        "1",
+        "2"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "LIVE after line 4",
+      "choices": [
+        "0",
+        "1",
+        "2"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "LIVE after line 5",
+      "choices": [
+        "0",
+        "1",
+        "2"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "`counter_new` boxes a counter and leaks it as a raw pointer, adding one live object. `counter_free(null)` does nothing. `counter_into_inner` takes the handle back with `Box::from_raw` and drops it, so the count returns to 0."
+}

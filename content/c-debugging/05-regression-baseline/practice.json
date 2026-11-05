@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`distinct_fast` should match `distinct_baseline`, but it returns 1 for an empty array. Tap the line responsible.",
+  "code": "int distinct_fast(const int *a, int n) {\n    unsigned char seen[101];\n    memset(seen, 0, sizeof seen);\n    int count = 1;\n    seen[abs(a[0])] = 1;\n    for (int i = 1; i < n; i++) {\n        int v = abs(a[i]);\n        if (!seen[v]) { seen[v] = 1; count++; }\n    }\n    return count;\n}\n",
+  "bugLine": 4,
+  "explain": "Starting at 1 and pre-marking `a[0]` assumes the array has an element. With n = 0 it counts one value that does not exist (and reads a[0]). Start from `count = 0` and let the loop begin at i = 0."
+}

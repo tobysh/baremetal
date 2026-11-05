@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Complete the `match` so each coin gives its value in cents, and the `Dime` variant carries the number of dimes.",
+  "template": "enum Coin {\n    Penny,\n    Nickel,\n    Dimes(u32),\n}\n\nfn cents(c: &Coin) -> u32 {\n    {{0}} c {\n        Coin::Penny => 1,\n        Coin::Nickel => 5,\n        Coin::Dimes({{1}}) {{2}} *n * 10,\n    }\n}",
+  "tokens": [
+    "match",
+    "n",
+    "=>",
+    "if",
+    "_",
+    "->"
+  ],
+  "answers": [
+    "match",
+    "n",
+    "=>"
+  ],
+  "runTests": false,
+  "explain": "`match` picks an arm by pattern. A pattern like `Dimes(n)` binds the inner value to `n`, and `=>` separates the pattern from its result. `_` would ignore the value, so `n` would not exist."
+}

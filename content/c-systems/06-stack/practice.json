@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`stack_pop` returns the wrong value: it hands back whatever sat *above* the top item. Tap the faulty line.",
+  "code": "int stack_pop(Stack *s, int *out) {\n    if (s->size == 0) {\n        return -1;\n    }\n    *out = s->items[s->size];\n    s->size--;\n    return 0;\n}",
+  "bugLine": 5,
+  "explain": "With `size` items stored, the top one is at index `size - 1`. Either decrement `size` first and then read `items[size]`, or read `items[size - 1]`. Reading `items[size]` returns an unused slot."
+}

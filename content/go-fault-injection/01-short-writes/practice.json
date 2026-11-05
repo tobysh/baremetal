@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "This writer accepts at most 3 bytes per call. `WriteFull` keeps calling `Write` with what is left. What does the program print?",
+  "code": "type dribble struct{ got []string }\n\nfunc (d *dribble) Write(p []byte) (int, error) {\n\tn := min(3, len(p))\n\td.got = append(d.got, string(p[:n]))\n\treturn n, nil\n}\n\nd := &dribble{}\nn, err := WriteFull(d, []byte(\"abcdefgh\"))\nfmt.Println(n, err, d.got)",
+  "choices": [
+    "8 <nil> [abc def gh]",
+    "3 <nil> [abc]",
+    "8 <nil> [abcdefgh]",
+    "8 short write [abc def gh]"
+  ],
+  "answer": 0,
+  "explain": "A short write is not an error, it just means \"try again with the rest\". `WriteFull` loops until all 8 bytes are accepted: 3, 3, then 2 bytes."
+}

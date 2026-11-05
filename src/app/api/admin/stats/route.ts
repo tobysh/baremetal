@@ -7,6 +7,12 @@ import { getSiteStats } from "@/lib/stats";
 export async function GET(req: Request) {
   const admin = await adminFromRequest();
   if (!admin) return jsonError(403, "Forbidden.");
-  const days = Math.min(180, Math.max(1, Number(new URL(req.url).searchParams.get("days")) || 30));
-  return NextResponse.json(await getSiteStats(days), { headers: { "Cache-Control": "no-store" } });
+  const url = new URL(req.url);
+  const days = Math.min(180, Math.max(1, Number(url.searchParams.get("days")) || 30));
+  const stats = await getSiteStats(days);
+  if (url.searchParams.get("format") === "csv") {
+    const rows = ["day,pageviews,visitors", ...stats.daily.map((d) => `${d.day},${d.views},${d.visitors}`)];
+    return new NextResponse(rows.join("\n") + "\n", { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="baremetal-daily-${days}d.csv"`, "Cache-Control": "no-store" } });
+  }
+  return NextResponse.json(stats, { headers: { "Cache-Control": "no-store" } });
 }

@@ -11,7 +11,7 @@ export async function GET() {
   if (!user) return jsonError(401, "Sign in to export your data.");
   if (!(await rateLimit(`export:${user._id.toHexString()}`, 5, 3600))) return jsonError(429, "Too many exports — try again later.");
   const db = await getDb();
-  const [progress, tutor, sessions, securityLog, xpEvents, achievements, reviews, pendingEmail, verification, tutorSpend] = await Promise.all([
+  const [progress, tutor, sessions, securityLog, xpEvents, achievements, reviews, pendingEmail, verification, tutorSpend, adminActions] = await Promise.all([
     db.collection("progress").find({ userId: user._id }, { projection: { _id: 0, userId: 0 } }).toArray(),
     db.collection("tutor_threads").find({ userId: user._id }, { projection: { _id: 0, userId: 0 } }).toArray(),
     db.collection("sessions").find({ userId: user._id }, { projection: { _id: 0, createdAt: 1, expiresAt: 1, userAgent: 1 } }).toArray(),
@@ -25,6 +25,7 @@ export async function GET() {
     db.collection("email_queue").find({ recipientHash: hmac("email-queue-recipient", user.email.toLowerCase()) }, { projection: { _id: 0, createdAt: 1, nextAttempt: 1, expiresAt: 1, attempts: 1 } }).toArray(),
     db.collection("email_verifications").find({ userId: user._id }, { projection: { _id: 0, expiresAt: 1 } }).toArray(),
     db.collection("tutor_spend").find({ key: { $regex: `^u:${user._id.toHexString()}:` } }, { projection: { _id: 0, key: 1, micro: 1, createdAt: 1 } }).toArray(),
+    db.collection("admin_audit").find({ targetId: user._id.toHexString() }, { projection: { _id: 0, action: 1, note: 1, ts: 1 } }).toArray(),
   ]);
   const data = {
     exportedAt: new Date().toISOString(),
@@ -42,6 +43,7 @@ export async function GET() {
       createdAt: user.createdAt,
       termsAcceptedAt: user.termsAcceptedAt,
       termsVersion: user.termsVersion,
+      suspension: user.suspension ? { kind: user.suspension.kind, at: user.suspension.at, until: user.suspension.until ?? null, reason: user.suspension.reason ?? null } : null,
       passwordChangedAt: user.passwordChangedAt,
       twoFactorEnabled: !!user.twoFactor?.enabled,
       unusedBackupCodes: user.twoFactor?.backupCodeHashes.length ?? 0,
@@ -57,6 +59,7 @@ export async function GET() {
     pendingEmailDelivery: pendingEmail,
     pendingEmailVerification: verification,
     tutorSpend,
+    administratorActions: adminActions,
   };
   return new NextResponse(JSON.stringify(data, null, 2), {
     headers: {

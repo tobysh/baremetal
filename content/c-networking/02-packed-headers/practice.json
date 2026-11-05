@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This sends a header by writing the struct's memory. Tap the line that makes the bytes on the wire unreliable.",
+  "code": "struct Hdr { uint8_t ver; uint32_t len; uint16_t id; };\n\nvoid send_hdr(int fd, uint32_t len, uint16_t id) {\n    struct Hdr h = { 1, len, id };\n    write(fd, &h, sizeof h);\n}",
+  "bugLine": 5,
+  "explain": "The compiler inserts padding between the fields, and `len` and `id` go out in the host's byte order. The receiver cannot rely on the layout. Encode each field into a byte buffer explicitly instead."
+}

@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "`longest` returns a reference that lives only as long as the shorter of its two inputs. What happens with this code?",
+  "code": "let a = String::from(\"tower\");\nlet result;\n{\n    let b = String::from(\"keep\");\n    result = longest(&a, &b);\n}\nprintln!(\"{}\", result);",
+  "choices": [
+    "Compile error: `b` does not live long enough",
+    "It prints `tower`",
+    "It prints `keep`",
+    "It prints nothing but compiles"
+  ],
+  "answer": 0,
+  "explain": "Both inputs share one lifetime `'a`, so the result may not outlive `b`, even though `tower` is the longer string. The borrow checker works from the signature, not from the values. Move the `println!` inside the block to fix it."
+}

@@ -1,0 +1,12 @@
+{
+  "kind": "predict",
+  "prompt": "A cold cache has 64 byte lines and is big enough to hold the array. A loop reads `a[0]` to `a[63]` in order, where `a` is 64 ints of 4 bytes, aligned to a line. How many misses?",
+  "choices": [
+    "64",
+    "16",
+    "4",
+    "1"
+  ],
+  "answer": 2,
+  "explain": "One line holds 16 ints, so the first touch of each line misses and the next 15 reads hit. 64 reads span 4 lines: 4 misses. Walking memory in order makes every fetched byte useful."
+}

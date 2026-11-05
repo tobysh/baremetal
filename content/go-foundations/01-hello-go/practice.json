@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "What does this program print?",
+  "code": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tname := \"Go\"\n\tn := 3\n\tfmt.Printf(\"%s has %d letters? %t\\n\", name, n, len(name) == n)\n}",
+  "choices": [
+    "Go has 3 letters? false",
+    "Go has 3 letters? true",
+    "Go has 2 letters? false",
+    "%s has %d letters? %t"
+  ],
+  "answer": 0,
+  "explain": "`%s` formats a string, `%d` an integer and `%t` a boolean. `len(\"Go\")` is 2, so the comparison with 3 is false."
+}

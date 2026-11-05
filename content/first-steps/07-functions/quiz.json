@@ -1,0 +1,27 @@
+[
+  {
+    "kind": "choice",
+    "prompt": "What does `return` do inside a function?",
+    "choices": [
+      "Ends the function and hands a value back to the caller",
+      "Prints the value",
+      "Restarts the function",
+      "Declares the function's type"
+    ],
+    "answer": 0,
+    "explain": "`return` leaves the function immediately and the value becomes the result of the call expression."
+  },
+  {
+    "kind": "predict",
+    "prompt": "What does this print?",
+    "code": "int twice(int n) { return n * 2; }\n\nint main(void) {\n    printf(\"%d\", twice(twice(3)));\n}",
+    "choices": [
+      "12",
+      "6",
+      "9",
+      "3"
+    ],
+    "answer": 0,
+    "explain": "The inner call returns 6, which is passed to the outer call, giving 12."
+  }
+]

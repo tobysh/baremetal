@@ -1,0 +1,38 @@
+{
+  "kind": "predict",
+  "prompt": "This queue keeps an inbox and an outbox. `dequeue` pops from the outbox, and when it is empty it first moves everything from the inbox over (reversing it). What does each `dequeue` return?",
+  "code": "q.enqueue(1);\nq.enqueue(2);\nq.enqueue(3);\nlet a = q.dequeue();\nq.enqueue(4);\nlet b = q.dequeue();\nlet c = q.dequeue();",
+  "trace": [
+    {
+      "label": "`a` is",
+      "choices": [
+        "Some(1)",
+        "Some(3)",
+        "Some(2)",
+        "None"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`b` is",
+      "choices": [
+        "Some(4)",
+        "Some(2)",
+        "Some(3)",
+        "None"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`c` is",
+      "choices": [
+        "Some(4)",
+        "Some(2)",
+        "Some(3)",
+        "None"
+      ],
+      "answer": 2
+    }
+  ],
+  "explain": "Reversing the inbox into the outbox turns last-in-first-out into first-in-first-out. `4` waits in the inbox until the outbox is empty, so `2` and `3` come out first."
+}

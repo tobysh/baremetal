@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "In this part of `cd`, a failed `chdir` should make the shell's last status 1 (like a real shell), but the status stays 0. Tap the faulty line.",
+  "code": "if (chdir(dir) != 0) {\n    fprintf(stderr, \"cd: %s: %s\\n\", dir, strerror(errno));\n    *status = 0;\n} else {\n    *status = 0;\n}",
+  "bugLine": 3,
+  "explain": "A failed `cd` must report failure, so `*status` is 1 in the error branch. Otherwise `cd nowhere && echo ok` would wrongly continue, since the shell would see success."
+}

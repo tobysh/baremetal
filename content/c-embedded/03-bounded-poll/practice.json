@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This waits for READY on a device with a timeout in ticks of a 32-bit counter that wraps. Tap the line that fails near the wrap.",
+  "code": "int wait_ready(uint32_t timeout) {\n    uint32_t start = ticks();\n    uint32_t deadline = start + timeout;\n    while (!(STATUS & READY)) {\n        if (ticks() > deadline) return -1;\n    }\n    return 0;\n}",
+  "bugLine": 5,
+  "explain": "When `start + timeout` wraps past zero, `deadline` is tiny and the comparison fires at once (or never). Compare elapsed time instead: `ticks() - start >= timeout` is correct across the wrap with unsigned arithmetic."
+}

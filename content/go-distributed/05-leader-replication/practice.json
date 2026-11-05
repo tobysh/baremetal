@@ -1,0 +1,35 @@
+{
+  "kind": "predict",
+  "prompt": "A 5-node cluster. The leader's own log reaches index 5. Followers have matched up to indexes `5, 4, 3, 1`. A leader may commit an index once a majority (3 of 5) hold it, and only if that entry is from the current term.",
+  "trace": [
+    {
+      "label": "The highest index held by a majority",
+      "choices": [
+        "5",
+        "4",
+        "3",
+        "1"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Entry 4 is from an older term. Commit it by counting replicas?",
+      "choices": [
+        "Yes, 3 hold it",
+        "No, wait for a current-term entry above it to be on a majority"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "A late reply says a follower matches only index 2, but we recorded 4. The recorded match becomes",
+      "choices": [
+        "2",
+        "4",
+        "0",
+        "3"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Sorting the match indexes (5, 5, 4, 3, 1) and taking the middle gives 4. Raft only commits older-term entries indirectly, once a current-term entry after them is on a majority. A stale reply must never move progress backwards."
+}

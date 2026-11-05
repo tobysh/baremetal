@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Complete `Env::assign`: update the nearest existing binding, searching outwards through the parent scopes.",
+  "template": "    fn assign(&self, name: &str, v: Value) -> bool {\n        let mut frame = self.frame.borrow_mut();\n        if let Some(slot) = frame.vars.{{0}}(name) {\n            *slot = v;\n            return true;\n        }\n        match &frame.{{1}} {\n            Some(p) => p.{{2}}(name, v),\n            None => false,\n        }\n    }",
+  "tokens": [
+    "get_mut",
+    "parent",
+    "assign",
+    "get",
+    "vars",
+    "define"
+  ],
+  "answers": [
+    "get_mut",
+    "parent",
+    "assign"
+  ],
+  "explain": "`get_mut` gives a mutable slot to overwrite in this frame. If the name is not here, try the enclosing frame by recursing with `assign`; `define` would wrongly create a new variable in the parent. Reaching the global frame without a hit returns false.",
+  "runTests": false
+}

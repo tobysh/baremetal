@@ -1,0 +1,47 @@
+{
+  "kind": "predict",
+  "prompt": "Rows of (group, v): `(a, 1)`, `(a, NULL)`, `(NULL, 5)`, `(NULL, NULL)`. GROUP BY puts all NULL keys into one group.",
+  "trace": [
+    {
+      "label": "Number of groups",
+      "choices": [
+        "2",
+        "3",
+        "4",
+        "1"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "COUNT(*) for group a",
+      "choices": [
+        "1",
+        "2",
+        "0",
+        "NULL"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "COUNT(v) for group a",
+      "choices": [
+        "1",
+        "2",
+        "0",
+        "NULL"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "SUM(v) for the NULL group",
+      "choices": [
+        "5",
+        "0",
+        "NULL",
+        "an error"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "For grouping, NULLs are treated as the same key. COUNT(*) counts rows, COUNT(v) skips NULL values, and SUM ignores NULLs (it is NULL only when every value is NULL)."
+}

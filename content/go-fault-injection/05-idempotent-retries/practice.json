@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "A debit of 30 on a ledger holding 100 does succeed, but the first reply is lost and reported as a timeout. `Pay` retries with the same id. What is printed?",
+  "code": "l := NewLedger(100)\nlose := true\ncall := func(id string, amt int) error {\n\terr := l.Debit(id, amt)\n\tif lose {\n\t\tlose = false\n\t\treturn ErrTimeout // reply lost after the work was done\n\t}\n\treturn err\n}\nerr := Pay(call, \"order-1\", 30, 3)\nfmt.Println(\"err:\", err, \"balance:\", l.Balance())",
+  "choices": [
+    "err: <nil> balance: 70",
+    "err: <nil> balance: 40",
+    "err: timeout balance: 70",
+    "err: gave up, outcome unknown balance: 70"
+  ],
+  "answer": 0,
+  "explain": "The ledger remembers each id with its amount, so the retry is recognised as a repeat and answers success without taking the money again. Without that, the balance would be 40."
+}

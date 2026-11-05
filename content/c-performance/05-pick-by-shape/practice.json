@@ -1,0 +1,23 @@
+{
+  "kind": "predict",
+  "prompt": "Count the values two sorted arrays share, using either a merge (about |A| + |B| steps) or one binary search per item of the smaller array (about |small| x log2 |big| steps).",
+  "trace": [
+    {
+      "label": "|A| = 10, |B| = 1,000,000. Cheaper is",
+      "choices": [
+        "Merge, about 1,000,010 steps",
+        "Binary search, about 200 steps"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "|A| = |B| = 1,000,000. Cheaper is",
+      "choices": [
+        "Merge, about 2,000,000 steps",
+        "Binary search, about 20,000,000 steps"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "The best algorithm depends on the shape of the input. Lopsided sizes favour searching from the small side. Similar sizes favour a single pass, since log2 n searches add up to more than one scan."
+}

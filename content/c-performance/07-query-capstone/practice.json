@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Group rows by region with a counting sort. Build the counts, turn them into start offsets, then place each value.",
+  "template": "size_t count[R + 1] = {0};\nfor (size_t i = 0; i < n; i++) count[rows[i].region {{0}} 1]++;\nfor (int r = 0; r < R; r++) count[r + 1] {{1}} count[r];\nfor (size_t i = 0; i < n; i++)\n    out[count[rows[i].region]{{2}}] = rows[i].value;",
+  "answers": [
+    "+",
+    "+=",
+    "++"
+  ],
+  "tokens": [
+    "+",
+    "-",
+    "+=",
+    "=",
+    "++",
+    "--"
+  ],
+  "runTests": false,
+  "explain": "Counting at `region + 1` and then adding running totals makes `count[r]` the first output index for region r. Each placement post-increments its region's cursor, so rows with the same region fill consecutive slots."
+}

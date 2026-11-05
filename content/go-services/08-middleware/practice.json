@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "`Chain(final, tag(\"A\"), tag(\"B\"))` wraps the handler so the first middleware is outermost. Each `tag` prints its name before and after calling `next`, and `final` prints `handler`. What is the printed order?",
+  "code": "func tag(name string) Middleware {\n\treturn func(next http.Handler) http.Handler {\n\t\treturn http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {\n\t\t\tfmt.Print(name, \" in, \")\n\t\t\tnext.ServeHTTP(w, r)\n\t\t\tfmt.Print(name, \" out, \")\n\t\t})\n\t}\n}",
+  "choices": [
+    "A in, B in, handler, B out, A out",
+    "A in, B in, handler, A out, B out",
+    "B in, A in, handler, A out, B out",
+    "A in, A out, B in, B out, handler"
+  ],
+  "answer": 0,
+  "explain": "The outermost middleware runs first on the way in and last on the way out, like nested function calls: A in, B in, handler, B out, A out."
+}

@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`label_of` should return a name the caller can keep using. Tap the line that returns memory that is no longer valid.",
+  "code": "const char *label_of(int id) {\n    char *tmp = malloc(32);\n    if (!tmp) return NULL;\n    snprintf(tmp, 32, \"item-%d\", id);\n    free(tmp);\n    return tmp;\n}\n",
+  "bugLine": 6,
+  "explain": "The block was released on the line before, so the returned pointer dangles. Return the allocation and let the caller free it, or copy into a caller-supplied buffer."
+}

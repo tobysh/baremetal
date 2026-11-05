@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This function should sum `len` integers starting at `p`, but it sometimes reads garbage. Tap the faulty line.",
+  "code": "unsafe fn sum_raw(p: *const i32, len: usize) -> i64 {\n    let mut total = 0i64;\n    for i in 0..=len {\n        total += *p.add(i) as i64;\n    }\n    total\n}",
+  "bugLine": 3,
+  "explain": "`0..=len` includes `len`, so the last iteration reads one element past the end, which is undefined behaviour. The valid indices are `0..len`."
+}

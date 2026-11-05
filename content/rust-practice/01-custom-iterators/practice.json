@@ -1,0 +1,20 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines of an iterator that yields even numbers from `cur` up to `max` and then stops. One line does not belong.",
+  "base": "struct Evens {\n    cur: u32,\n    max: u32,\n}\n\nimpl Iterator for Evens {\n    type Item = u32;\n\n{{code}}\n}\n\nfn main() {\n    let v: Vec<u32> = Evens { cur: 0, max: 6 }.collect();\n    println!(\"{:?}\", v);\n}",
+  "lines": [
+    "    fn next(&mut self) -> Option<u32> {",
+    "        if self.cur > self.max {",
+    "            return None;",
+    "        }",
+    "        let out = self.cur;",
+    "        self.cur += 2;",
+    "        Some(out)",
+    "    }"
+  ],
+  "distractors": [
+    "        self.cur += 1;"
+  ],
+  "runTests": false,
+  "explain": "`next` first checks for the end, then remembers the current value, advances the state, and returns the remembered value. Advancing before saving would skip the first item."
+}

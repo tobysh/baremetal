@@ -1,0 +1,19 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the body of `dl_insert_after`, which links a new node in right after `pos`. The new node must be wired up before the old links change. One line does not belong.",
+  "base": "#include <stdio.h>\n#include <stdlib.h>\n\ntypedef struct Node {\n    int val;\n    struct Node *prev;\n    struct Node *next;\n} Node;\n\ntypedef struct {\n    Node *head;\n    Node *tail;\n    size_t len;\n} DList;\n\nvoid dl_init(DList *l) {\n    l->head = NULL;\n    l->tail = NULL;\n    l->len = 0;\n}\n\nstatic Node *new_node(int v) {\n    Node *n = malloc(sizeof *n);\n    if (n == NULL) return NULL;\n    n->val = v;\n    n->prev = NULL;\n    n->next = NULL;\n    return n;\n}\n\nint dl_push_front(DList *l, int v) {\n    Node *n = new_node(v);\n    if (n == NULL) return -1;\n    n->next = l->head;\n    if (l->head) l->head->prev = n; else l->tail = n;\n    l->head = n;\n    l->len++;\n    return 0;\n}\n\nint dl_insert_after(DList *l, Node *pos, int v) {\n{{code}}\n}\n\nint dl_push_back(DList *l, int v) {\n    if (l->tail == NULL) return dl_push_front(l, v);\n    return dl_insert_after(l, l->tail, v);\n}\n\nvoid dl_remove(DList *l, Node *n) {\n    if (n->prev) n->prev->next = n->next; else l->head = n->next;\n    if (n->next) n->next->prev = n->prev; else l->tail = n->prev;\n    free(n);\n    l->len--;\n}\n\nNode *dl_find(const DList *l, int v) {\n    for (Node *n = l->head; n; n = n->next)\n        if (n->val == v) return n;\n    return NULL;\n}\n\nvoid dl_reverse(DList *l) {\n    Node *n = l->head;\n    while (n) {\n        Node *next = n->next;\n        n->next = n->prev;\n        n->prev = next;\n        n = next;\n    }\n    Node *t = l->head;\n    l->head = l->tail;\n    l->tail = t;\n}\n\nvoid dl_free(DList *l) {\n    Node *n = l->head;\n    while (n) {\n        Node *next = n->next;\n        free(n);\n        n = next;\n    }\n    dl_init(l);\n}\n\nint main(void) {\n    DList l;\n    dl_init(&l);\n    dl_push_back(&l, 1);\n    dl_push_back(&l, 2);\n    dl_push_front(&l, 0);\n    for (Node *n = l.head; n; n = n->next) printf(\"%d \", n->val);\n    printf(\"\\n\");\n    dl_free(&l);\n    return 0;\n}\n",
+  "lines": [
+    "    Node *n = new_node(v);",
+    "    if (n == NULL) return -1;",
+    "    n->prev = pos;",
+    "    n->next = pos->next;",
+    "    if (pos->next) pos->next->prev = n; else l->tail = n;",
+    "    pos->next = n;",
+    "    l->len++;",
+    "    return 0;"
+  ],
+  "distractors": [
+    "    pos->prev = n;"
+  ],
+  "explain": "First build the new node and point it at both neighbours (`prev` is `pos`, `next` is the old `pos->next`). Then fix the node after it (or the tail), and only last make `pos->next` point at the new node. Changing `pos->next` earlier would lose the old neighbour."
+}

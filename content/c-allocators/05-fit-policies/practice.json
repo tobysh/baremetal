@@ -1,0 +1,33 @@
+{
+  "kind": "predict",
+  "prompt": "The heap has two free holes, one of 512 bytes and then one of 256 bytes, separated by used blocks (no other free space). Two requests arrive in order: 200 bytes, then 300 bytes.",
+  "trace": [
+    {
+      "label": "First fit places the 200-byte request in the hole of",
+      "choices": [
+        "256 bytes",
+        "512 bytes"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Best fit places the 200-byte request in the hole of",
+      "choices": [
+        "256 bytes",
+        "512 bytes"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Which policy fails the 300-byte request?",
+      "choices": [
+        "First fit",
+        "Best fit",
+        "Both",
+        "Neither"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "First fit takes the first hole that is big enough, so 200 bytes go into the 512 hole, leaving about 288 bytes. The 300-byte request then fits nowhere. Best fit puts the 200-byte request in the *tightest* hole that fits, the 256 one, which leaves the 512 hole whole for the 300-byte request."
+}

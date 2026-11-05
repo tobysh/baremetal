@@ -1,0 +1,47 @@
+{
+  "kind": "predict",
+  "prompt": "The router knows `GET /`, `/health`, `/echo/<text>` and `/add/<a>/<b>`. Which status does each request get?",
+  "trace": [
+    {
+      "label": "`GET /echo/`",
+      "choices": [
+        "200",
+        "400",
+        "404",
+        "405"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "`POST /health`",
+      "choices": [
+        "200",
+        "400",
+        "404",
+        "405"
+      ],
+      "answer": 3
+    },
+    {
+      "label": "`POST /nothing`",
+      "choices": [
+        "200",
+        "400",
+        "404",
+        "405"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "`GET /add/2/x`",
+      "choices": [
+        "200",
+        "400",
+        "404",
+        "405"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Unknown paths are 404 whatever the method, and `/echo/` with no text is not a known path. A known path with the wrong method is 405. `/add` with a non-number is a known path with a bad argument, so 400."
+}

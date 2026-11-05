@@ -15,6 +15,12 @@ export const challengeXpFor = (d: Difficulty) => Math.ceil(DIFFICULTIES[d].xp / 
 export const CHALLENGE_SUFFIX = "#challenge";
 export const isChallengeId = (id: string) => id.endsWith(CHALLENGE_SUFFIX);
 export const challengeIdOf = (lessonExerciseId: string) => lessonExerciseId + CHALLENGE_SUFFIX;
+/** A lesson's tap-and-drag practice pays a quarter of its XP, at least 1 (easy 1, medium 2, hard 5, impossible 10). */
+export const practiceXpFor = (d: Difficulty) => Math.max(1, Math.floor(DIFFICULTIES[d].xp / 4));
+/** Practice passes are stored as exercises with this suffix on the lesson's id. */
+export const PRACTICE_SUFFIX = "#practice";
+export const isPracticeId = (id: string) => id.endsWith(PRACTICE_SUFFIX);
+export const practiceIdOf = (lessonExerciseId: string) => lessonExerciseId + PRACTICE_SUFFIX;
 
 // Cumulative XP needed to reach each level (index 0 is level 1). Levels 2 and 3 come quickly so a new learner feels
 // movement; after that each level costs noticeably more than the last: 8, 24, 60, 120, 210, 330, 500, 720, 1000.

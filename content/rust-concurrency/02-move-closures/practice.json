@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This should return a greeting built on a new thread, but it will not compile. Tap the line that causes it.",
+  "code": "fn greet(name: String) -> JoinHandle<String> {\n    thread::spawn(|| {\n        format!(\"hello, {name}\")\n    })\n}",
+  "bugLine": 2,
+  "explain": "The new thread may outlive `greet`, so the closure cannot just borrow `name` from this stack frame. `thread::spawn(move || ...)` moves the string into the closure so the thread owns it."
+}

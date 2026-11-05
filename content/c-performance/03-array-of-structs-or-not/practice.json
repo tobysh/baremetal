@@ -1,0 +1,12 @@
+{
+  "kind": "predict",
+  "prompt": "A particle is 12 bytes (`float x, y, mass`). 1000 of them are stored in one array of structs. A loop reads only `x`. With 64 byte lines and a cold cache, about how many lines are fetched? (A separate `x` array would need about 63.)",
+  "choices": [
+    "63",
+    "188",
+    "1000",
+    "12"
+  ],
+  "answer": 1,
+  "explain": "Reading `x` still loads the whole 12 bytes of each struct, because neighbours share the line. 12000 bytes span about 188 lines, versus 4000 bytes (63 lines) for a packed `x` array."
+}

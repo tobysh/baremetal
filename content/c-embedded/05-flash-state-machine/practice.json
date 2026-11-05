@@ -1,0 +1,34 @@
+{
+  "kind": "predict",
+  "prompt": "A toy flash controller starts LOCKED. It unlocks only after it sees KEY1 and then KEY2 back to back. Any other write to the key register relocks it.",
+  "trace": [
+    {
+      "label": "After writing KEY1 only, the state is",
+      "choices": [
+        "LOCKED",
+        "ARMED (waiting for KEY2)",
+        "UNLOCKED"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Then a write of 0x00 arrives. The state is",
+      "choices": [
+        "ARMED",
+        "UNLOCKED",
+        "LOCKED"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "Now KEY1, then KEY2 are written. The state is",
+      "choices": [
+        "LOCKED",
+        "ARMED",
+        "UNLOCKED"
+      ],
+      "answer": 2
+    }
+  ],
+  "explain": "The sequence must be uninterrupted: a wrong write resets to LOCKED, so the unlock has to start over. This guards against stray writes accidentally enabling program or erase."
+}

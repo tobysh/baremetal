@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "An interactive shell must survive Ctrl-C. Fill the blanks: the flag that restarts interrupted system calls, the action that makes the shell ignore a signal, and the signal Ctrl-\\ sends.",
+  "template": "void setup_signals(void) {\n    struct sigaction sa;\n    sa.sa_handler = on_sigint;\n    sigemptyset(&sa.sa_mask);\n    sa.sa_flags = {{0}};\n    sigaction(SIGINT, &sa, NULL);\n    sa.sa_handler = {{1}};\n    sigaction({{2}}, &sa, NULL);\n}",
+  "answers": [
+    "SA_RESTART",
+    "SIG_IGN",
+    "SIGQUIT"
+  ],
+  "tokens": [
+    "SA_RESTART",
+    "SIG_IGN",
+    "SIGQUIT",
+    "SIG_DFL",
+    "SA_NOCLDSTOP",
+    "SIGTERM"
+  ],
+  "explain": "`SA_RESTART` makes blocked calls like `read` resume after the handler instead of failing. `SIG_IGN` ignores a signal. Ctrl-\\ sends `SIGQUIT`, which the shell ignores while its children get the default action back.",
+  "runTests": false
+}

@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "Make the output always `ping` then `pong`. Choose the starting counts and the semaphore that `ping` posts when it is done.",
+  "template": "sem_t a, b;\n\nvoid *ping(void *x) { sem_wait(&a); puts(\"ping\"); sem_post({{2}}); return NULL; }\nvoid *pong(void *x) { sem_wait(&b); puts(\"pong\"); sem_post(&a); return NULL; }\n\nint main(void) {\n    sem_init(&a, 0, {{0}});\n    sem_init(&b, 0, {{1}});\n    /* start both threads and join them */\n}",
+  "answers": [
+    "1",
+    "0",
+    "&b"
+  ],
+  "tokens": [
+    "0",
+    "1",
+    "2",
+    "&a",
+    "&b"
+  ],
+  "runTests": false,
+  "explain": "A semaphore with count 1 lets one `sem_wait` through at once; count 0 blocks. `ping` starts open, `pong` starts closed, and `ping` opens `pong`'s gate by posting `b`."
+}

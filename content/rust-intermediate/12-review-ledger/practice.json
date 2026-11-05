@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "Each line is `name: amount`. A balance may never go below zero, and the first error stops processing. What does `report` return for this text?",
+  "code": "ann: 50\nann: -80\nbob: 10",
+  "choices": [
+    "error: ann would go to -30",
+    "ann=-30, bob=10",
+    "ann=50, bob=10",
+    "error: line 2: bad amount (invalid digit found in string)"
+  ],
+  "answer": 0,
+  "explain": "`-80` parses fine as a number, so there is no parse error. The balance would be `50 - 80 = -30`, which is an overdraft, and processing stops before `bob` is read."
+}

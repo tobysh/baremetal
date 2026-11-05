@@ -1,0 +1,22 @@
+{
+  "kind": "parsons",
+  "prompt": "Put the lines of a LIMIT operator's `Next` in order. It must stop pulling from its child once it has produced enough rows. One line does not belong.",
+  "lines": [
+    "func (l *Limit) Next() (Row, bool) {",
+    "\tif l.seen >= l.n {",
+    "\t\treturn nil, false",
+    "\t}",
+    "\trow, ok := l.child.Next()",
+    "\tif !ok {",
+    "\t\treturn nil, false",
+    "\t}",
+    "\tl.seen++",
+    "\treturn row, true",
+    "}"
+  ],
+  "runTests": false,
+  "distractors": [
+    "\trows := drainAll(l.child)"
+  ],
+  "explain": "Checking the count before pulling means the child is never asked for row n+1. Draining the child first would do all the work that LIMIT exists to avoid."
+}

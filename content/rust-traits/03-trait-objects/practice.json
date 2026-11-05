@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "Both `Dog` and `Cat` implement `Animal`. What does the compiler say about this code?",
+  "code": "let zoo = vec![Dog, Cat];\nfor a in &zoo {\n    println!(\"{}\", a.sound());\n}",
+  "choices": [
+    "Mismatched types: the vector holds `Dog`, but `Cat` was given",
+    "It compiles and prints each sound",
+    "It compiles but panics at run time",
+    "Error: `Animal` cannot be used as a type"
+  ],
+  "answer": 0,
+  "explain": "A `Vec` holds one concrete type, and `Dog` and `Cat` are different types even though they share a trait. Write `Vec<Box<dyn Animal>>` with `Box::new(Dog)` to get a mixed collection with dynamic dispatch."
+}

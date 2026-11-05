@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This server is supposed to handle each connection on its own thread, but one slow client stalls everyone. Tap the line responsible.",
+  "code": "fn serve(listener: TcpListener, max_connections: usize) {\n    for _ in 0..max_connections {\n        if let Ok((stream, _)) = listener.accept() {\n            thread::spawn(move || handle_connection(stream)).join().unwrap();\n        }\n    }\n}",
+  "bugLine": 4,
+  "explain": "Calling `join()` right after `spawn` waits for that connection to finish before the loop can `accept` the next one, which makes the server sequential again. Collect the handles and join them after the accept loop."
+}

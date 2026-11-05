@@ -1,0 +1,16 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines of `push_front`: take the old head out of the list, then make a new node that points to it. One line does not belong.",
+  "base": "struct Node {\n    value: i32,\n    next: Option<Box<Node>>,\n}\n\nstruct List {\n    head: Option<Box<Node>>,\n}\n\nimpl List {\n{{code}}\n}\n\nfn main() {\n    let mut l = List { head: None };\n    l.push_front(1);\n}",
+  "lines": [
+    "    fn push_front(&mut self, value: i32) {",
+    "        let old = self.head.take();",
+    "        self.head = Some(Box::new(Node { value, next: old }));",
+    "    }"
+  ],
+  "distractors": [
+    "        self.head = Some(Box::new(Node { value, next: self.head }));"
+  ],
+  "runTests": false,
+  "explain": "`take()` moves the old head out and leaves `None` behind, so ownership can be given to the new node. Using `self.head` directly would try to move out of a borrowed struct."
+}

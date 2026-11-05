@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "Fill the three blanks so every thread shares the same counter and increments it safely.",
+  "template": "use std::sync::{Arc, Mutex};\nuse std::thread;\n\nfn count_up(threads: usize, per: usize) -> u64 {\n    let counter = Arc::new(Mutex::new(0u64));\n    let handles: Vec<_> = (0..threads)\n        .map(|_| {\n            let counter = Arc::{{0}}(&counter);\n            thread::spawn({{1}} || {\n                for _ in 0..per {\n                    *counter.{{2}}().unwrap() += 1;\n                }\n            })\n        })\n        .collect();\n    for h in handles {\n        h.join().unwrap();\n    }\n    let total = *counter.lock().unwrap();\n    total\n}\n\nstruct Account {\n    balance: Arc<Mutex<i64>>,\n}\n\nimpl Account {\n    fn new(balance: i64) -> Account {\n        Account { balance: Arc::new(Mutex::new(balance)) }\n    }\n\n    fn handle(&self) -> Account {\n        Account { balance: Arc::clone(&self.balance) }\n    }\n\n    fn deposit(&self, n: i64) {\n        *self.balance.lock().unwrap() += n;\n    }\n\n    fn withdraw(&self, n: i64) -> bool {\n        let mut g = self.balance.lock().unwrap();\n        if *g >= n {\n            *g -= n;\n            true\n        } else {\n            false\n        }\n    }\n\n    fn balance(&self) -> i64 {\n        *self.balance.lock().unwrap()\n    }\n}\n\nfn lock_even_if_poisoned(m: &Mutex<i32>) -> i32 {\n    *m.lock().unwrap_or_else(|e| e.into_inner())\n}\n\n// Try it with Run.\nfn main() {\n    println!(\"{}\", count_up(4, 1000));\n    let a = Account::new(100);\n    println!(\"{} {}\", a.withdraw(30), a.balance());\n}\n",
+  "tokens": [
+    "clone",
+    "move",
+    "lock",
+    "new",
+    "read",
+    "ref"
+  ],
+  "answers": [
+    "clone",
+    "move",
+    "lock"
+  ],
+  "explain": "`Arc::clone` hands each thread another pointer to the same `Mutex`, `move` gives the closure its own `Arc`, and `lock()` returns a guard that gives exclusive access while it lives."
+}

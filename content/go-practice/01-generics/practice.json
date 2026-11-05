@@ -1,0 +1,21 @@
+{
+  "kind": "blanks",
+  "prompt": "Complete the generic `Max`: constrain `T` to types that can be compared with `>`, return the zero value for an empty slice, and keep the biggest element.",
+  "template": "package main\n\nimport (\n\t\"cmp\"\n\t\"fmt\"\n)\n\nfunc Map[T, U any](xs []T, f func(T) U) []U {\n\tout := make([]U, 0, len(xs))\n\tfor _, x := range xs {\n\t\tout = append(out, f(x))\n\t}\n\treturn out\n}\n\nfunc Filter[T any](xs []T, keep func(T) bool) []T {\n\tout := make([]T, 0, len(xs))\n\tfor _, x := range xs {\n\t\tif keep(x) {\n\t\t\tout = append(out, x)\n\t\t}\n\t}\n\treturn out\n}\n\nfunc Reduce[T, A any](xs []T, init A, f func(A, T) A) A {\n\tacc := init\n\tfor _, x := range xs {\n\t\tacc = f(acc, x)\n\t}\n\treturn acc\n}\n\nfunc Max[T {{0}}](xs []T) (T, bool) {\n\tvar zero T\n\tif len(xs) == 0 {\n\t\treturn {{1}}, false\n\t}\n\tbest := xs[0]\n\tfor _, x := range xs[1:] {\n\t\tif x {{2}} best {\n\t\t\tbest = x\n\t\t}\n\t}\n\treturn best, true\n}\n\ntype Stack[T any] struct {\n\titems []T\n}\n\nfunc (s *Stack[T]) Push(x T) {\n\ts.items = append(s.items, x)\n}\n\nfunc (s *Stack[T]) Pop() (T, bool) {\n\tvar zero T\n\tif len(s.items) == 0 {\n\t\treturn zero, false\n\t}\n\tx := s.items[len(s.items)-1]\n\ts.items = s.items[:len(s.items)-1]\n\treturn x, true\n}\n\nfunc (s *Stack[T]) Len() int {\n\treturn len(s.items)\n}\n\n// Try it with Run.\nfunc main() {\n\tfmt.Println(Map([]int{1, 2, 3}, func(n int) int { return n * n }))\n}\n",
+  "answers": [
+    "cmp.Ordered",
+    "zero",
+    ">"
+  ],
+  "tokens": [
+    "cmp.Ordered",
+    "any",
+    "comparable",
+    "zero",
+    "nil",
+    "0",
+    ">",
+    "<"
+  ],
+  "explain": "`any` and `comparable` only allow `==`, so `>` needs `cmp.Ordered`. A variable declared as `var zero T` is the zero value of whatever `T` is; `nil` or `0` would not fit every type. Using `<` would find the minimum."
+}

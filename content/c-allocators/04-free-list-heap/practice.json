@@ -1,0 +1,34 @@
+{
+  "kind": "predict",
+  "prompt": "A heap holds three blocks in address order with 16-byte headers: A is free (payload 32), B is used (payload 48), C is free (payload 16). `heap_free` on B merges with the free block after it, then with the free block before it.",
+  "trace": [
+    {
+      "label": "After merging with C, B's payload is",
+      "choices": [
+        "64",
+        "80",
+        "96"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After merging B into A, A's payload is",
+      "choices": [
+        "96",
+        "112",
+        "128"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "Free blocks in the heap afterwards",
+      "choices": [
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "Merging with C: B grows by C's header and payload, 48 + 16 + 16 = 80. Merging B into A: A grows by B's header and payload, 32 + 16 + 80 = 128. The three blocks became one free block, so no two free blocks are adjacent. Headers are reclaimed too, which is why 128 is more than 32 + 48 + 16."
+}

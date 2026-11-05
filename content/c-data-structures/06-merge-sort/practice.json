@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This `merge` combines two sorted halves, but it breaks **stability**: records with equal keys from the left half can end up after those from the right. Tap the faulty line.",
+  "code": "void merge(const int *a, size_t na, const int *b, size_t nb, int *out) {\n    size_t i = 0, j = 0, k = 0;\n    while (i < na && j < nb) {\n        if (b[j] <= a[i]) out[k++] = b[j++];\n        else out[k++] = a[i++];\n    }\n    while (i < na) out[k++] = a[i++];\n    while (j < nb) out[k++] = b[j++];\n}",
+  "bugLine": 4,
+  "explain": "On a tie the element from the left half `a` must be taken first, because it came earlier in the input. With `<=` the right element wins ties; it must be strictly less (`<`) to jump ahead."
+}

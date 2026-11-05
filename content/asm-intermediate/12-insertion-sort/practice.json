@@ -1,0 +1,22 @@
+{
+  "kind": "parsons",
+  "prompt": "The inner shifting loop of insertion sort on 32-bit ints. The key is in `eax`, the position being filled is `rcx`, the array is `rdi`. One line does not belong.",
+  "lines": [
+    ".Lshift:",
+    "    test rcx, rcx",
+    "    jz .Lplace",
+    "    mov edx, [rdi + rcx*4 - 4]",
+    "    cmp edx, eax",
+    "    jle .Lplace",
+    "    mov [rdi + rcx*4], edx",
+    "    dec rcx",
+    "    jmp .Lshift",
+    ".Lplace:",
+    "    mov [rdi + rcx*4], eax"
+  ],
+  "distractors": [
+    "    jge .Lplace"
+  ],
+  "runTests": false,
+  "explain": "Stop at the array start or when the left neighbour is not bigger than the key. Otherwise copy the neighbour right, step left and try again. When the loop stops, the gap is at `rcx`."
+}

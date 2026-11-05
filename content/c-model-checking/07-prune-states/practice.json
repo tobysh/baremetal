@@ -1,0 +1,19 @@
+{
+  "kind": "parsons",
+  "prompt": "Breadth-first search that never expands a state twice. Mark the start state as seen, then expand and push only new states. One line does not belong.",
+  "lines": [
+    "    queue_push(&q, init), set_add(&seen, init);",
+    "    while (!queue_empty(&q)) {",
+    "        State s = queue_pop(&q);",
+    "        for (int t = 0; t < N; t++) {",
+    "            State n = step_thread(s, t);",
+    "            if (set_add(&seen, n)) queue_push(&q, n);",
+    "        }",
+    "    }"
+  ],
+  "distractors": [
+    "            queue_push(&q, n);"
+  ],
+  "runTests": false,
+  "explain": "`set_add` returns true only when the state is new, so each state enters the queue once. That is what lets a retry loop terminate. Pushing every successor would revisit states forever."
+}

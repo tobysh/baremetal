@@ -1,0 +1,21 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the body of the recursive merge sort helper: stop on 0 or 1 items, sort each half, merge the halves into `tmp`, then copy the result back. One line does not belong.",
+  "base": "#include <stdio.h>\n#include <stdlib.h>\n\nvoid insertion_sort(int *a, int n) {\n    for (int i = 1; i < n; i++) {\n        int key = a[i];\n        int j = i - 1;\n        while (j >= 0 && a[j] > key) {\n            a[j + 1] = a[j];\n            j--;\n        }\n        a[j + 1] = key;\n    }\n}\n\nint merge_sorted(const int *a, int na, const int *b, int nb, int *out) {\n    int i = 0, j = 0, k = 0;\n    while (i < na && j < nb) {\n        if (b[j] < a[i]) {\n            out[k++] = b[j++];\n        } else {\n            out[k++] = a[i++];\n        }\n    }\n    while (i < na) {\n        out[k++] = a[i++];\n    }\n    while (j < nb) {\n        out[k++] = b[j++];\n    }\n    return na + nb;\n}\n\nstatic void sort_rec(int *a, int n, int *tmp) {\n{{code}}\n}\n\nint merge_sort(int *a, int n) {\n    if (n < 2) {\n        return 0;\n    }\n    int *tmp = malloc((size_t)n * sizeof(int));\n    if (tmp == NULL) {\n        return -1;\n    }\n    sort_rec(a, n, tmp);\n    free(tmp);\n    return 0;\n}\n\nint main(void) {\n    int a[] = {5, 2, 9, 1};\n    insertion_sort(a, 4);\n    for (int i = 0; i < 4; i++) printf(\"%d \", a[i]);\n    printf(\"\\n\");\n    return 0;\n}\n",
+  "lines": [
+    "    if (n < 2) {",
+    "        return;",
+    "    }",
+    "    int mid = n / 2;",
+    "    sort_rec(a, mid, tmp);",
+    "    sort_rec(a + mid, n - mid, tmp);",
+    "    merge_sorted(a, mid, a + mid, n - mid, tmp);",
+    "    for (int i = 0; i < n; i++) {",
+    "        a[i] = tmp[i];",
+    "    }"
+  ],
+  "distractors": [
+    "    merge_sorted(a, mid, a + mid, n - mid, a);"
+  ],
+  "explain": "Sort the left half, sort the right half, then merge them into the scratch array `tmp` and copy back. Merging straight into `a` would overwrite items that have not been read yet."
+}

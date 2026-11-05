@@ -1,0 +1,17 @@
+{
+  "kind": "blanks",
+  "prompt": "Explore every interleaving. Test the invariant in each state reached, not just at the end, and recurse into the next state.",
+  "template": "void explore(State s) {\n    if ({{0}}(s)) report(s);\n    for (int t = 0; t < N; t++) {\n        if (can_step(&s, t)) {\n            State next = s;\n            step(&next, t);\n            explore({{1}});\n        }\n    }\n}",
+  "answers": [
+    "violates",
+    "next"
+  ],
+  "tokens": [
+    "violates",
+    "is_final",
+    "next",
+    "s"
+  ],
+  "runTests": false,
+  "explain": "Checking after every step catches a violation even if a later step repairs it. Recursing with `next` explores the new state; passing `s` would loop on the old one."
+}

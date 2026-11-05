@@ -1,0 +1,17 @@
+{
+  "kind": "blanks",
+  "prompt": "Finish `TryAcquire`: claim a slot if one is free right now and say so, otherwise say no without waiting.",
+  "template": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n)\n\ntype Limiter struct {\n\tslots chan struct{}\n}\n\nfunc NewLimiter(n int) *Limiter {\n\tif n < 1 {\n\t\tn = 1\n\t}\n\treturn &Limiter{slots: make(chan struct{}, n)}\n}\n\nfunc (l *Limiter) Acquire() { l.slots <- struct{}{} }\n\nfunc (l *Limiter) Release() { <-l.slots }\n\nfunc (l *Limiter) TryAcquire() bool {\n\tselect {\n\tcase l.slots <- struct{}{}:\n\t\treturn {{0}}\n\t{{1}}:\n\t\treturn {{2}}\n\t}\n}\n\nfunc (l *Limiter) AcquireCtx(ctx context.Context) error {\n\tselect {\n\tcase l.slots <- struct{}{}:\n\t\treturn nil\n\tcase <-ctx.Done():\n\t\treturn ctx.Err()\n\t}\n}\n\nfunc (l *Limiter) Do(f func()) {\n\tl.Acquire()\n\tdefer l.Release()\n\tf()\n}\n\nfunc main() {\n\tl := NewLimiter(1)\n\tl.Do(func() { fmt.Println(\"in the section\") })\n}\n",
+  "answers": [
+    "true",
+    "default",
+    "false"
+  ],
+  "tokens": [
+    "true",
+    "false",
+    "default",
+    "case"
+  ],
+  "explain": "Sending into a buffered channel succeeds only while it has room, so a successful send means the slot was taken (`true`). The `default` branch means the channel was full (`false`)."
+}

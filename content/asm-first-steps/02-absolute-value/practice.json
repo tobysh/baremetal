@@ -1,0 +1,43 @@
+{
+  "kind": "predict",
+  "prompt": "`abs_val` is called with `rdi = -5`. Trace `rax` and the sign flag (SF) through each instruction.",
+  "code": "mov rax, rdi\nneg rax\ncmovs rax, rdi",
+  "trace": [
+    {
+      "label": "[rax] after `mov rax, rdi`",
+      "choices": [
+        "-5",
+        "5",
+        "0"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[rax] after `neg rax`",
+      "choices": [
+        "-5",
+        "5",
+        "0"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[SF] after `neg rax`",
+      "choices": [
+        "0",
+        "1"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[rax] after `cmovs rax, rdi`",
+      "choices": [
+        "-5",
+        "5",
+        "0"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "`neg` turns -5 into 5 and sets SF from the result. 5 is positive, so SF is 0 and `cmovs` leaves `rax` alone. For a positive input `neg` would give a negative result, SF would be 1, and `cmovs` would copy the original back."
+}

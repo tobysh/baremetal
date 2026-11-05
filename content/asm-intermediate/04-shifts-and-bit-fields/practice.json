@@ -1,0 +1,34 @@
+{
+  "kind": "predict",
+  "prompt": "`eax` starts as 0xB4 (binary 1011 0100). Follow each step.",
+  "trace": [
+    {
+      "label": "`shr eax, 2` gives eax",
+      "choices": [
+        "0x2D",
+        "0x5A",
+        "0xB4"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "then `and eax, 3` gives eax",
+      "choices": [
+        "0x0",
+        "0x1",
+        "0x3"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "From a fresh 0xB4: `rol al, 1` gives al",
+      "choices": [
+        "0x68",
+        "0x69",
+        "0x5A"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Shifting right by 2 and masking with 3 extracts bits 2 and 3, here binary 01. A rotate moves the top bit around to the bottom instead of discarding it, so 1011 0100 becomes 0110 1001."
+}

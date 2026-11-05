@@ -1,0 +1,21 @@
+{
+  "kind": "blanks",
+  "prompt": "The map prints `H` for a block header, then one character per 16 bytes of payload: `.` if the block is free and `U` if it is used. Fill the four blanks.",
+  "template": "size_t heap_map(char *out, size_t cap) {\n    size_t n = 0;\n    for (Block *b = first_block(); b; b = next_block(b)) {\n        if (cap && n < cap - 1) out[n] = {{0}};\n        n++;\n        for (size_t i = 0; i < b->size / {{1}}; i++) {\n            if (cap && n < cap - 1) out[n] = b->is_free ? {{2}} : {{3}};\n            n++;\n        }\n    }\n    if (cap) out[n < cap ? n : cap - 1] = 0;\n    return n;\n}",
+  "answers": [
+    "'H'",
+    "16",
+    "'.'",
+    "'U'"
+  ],
+  "tokens": [
+    "'H'",
+    "16",
+    "'.'",
+    "'U'",
+    "'F'",
+    "32"
+  ],
+  "explain": "Every block starts with its header `H`. Payload sizes are multiples of 16, so `size / 16` characters follow, free ones as `.` and used ones as `U`, which makes holes easy to spot.",
+  "runTests": false
+}

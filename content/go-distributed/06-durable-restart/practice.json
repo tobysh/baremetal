@@ -1,0 +1,33 @@
+{
+  "kind": "predict",
+  "prompt": "A node grants its vote to candidate A in term 5, replies yes, and crashes before writing anything to disk. After restarting it has no memory of the vote.",
+  "trace": [
+    {
+      "label": "Candidate B now asks for a vote in term 5. The restarted node",
+      "choices": [
+        "refuses",
+        "grants it"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Two leaders could now be elected in term 5. This breaks",
+      "choices": [
+        "election safety",
+        "log compaction",
+        "heartbeat timing"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Which fact must be saved to disk before replying to a vote request?",
+      "choices": [
+        "current term and who we voted for",
+        "the commit index",
+        "the election timer"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "The term and the vote must be durable before the reply leaves the node. The commit index can be rebuilt from the log and the timer is just restarted."
+}

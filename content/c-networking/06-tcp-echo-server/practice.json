@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "Finish the server's setup after `bind`: start listening, accept one client, and echo back exactly the bytes that were read.",
+  "template": "int s = socket(AF_INET, SOCK_STREAM, 0);\nbind(s, (struct sockaddr *)&addr, sizeof addr);\n{{0}}(s, 8);\nint c = {{1}}(s, NULL, NULL);\nchar buf[256];\nssize_t n;\nwhile ((n = read(c, buf, sizeof buf)) > 0)\n    write(c, buf, {{2}});",
+  "answers": [
+    "listen",
+    "accept",
+    "n"
+  ],
+  "tokens": [
+    "listen",
+    "accept",
+    "connect",
+    "n",
+    "sizeof buf"
+  ],
+  "runTests": false,
+  "explain": "A server binds, listens and then accepts; `connect` is the client's call. Echo back only the `n` bytes actually received, not the whole buffer, which may hold stale data."
+}

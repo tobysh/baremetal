@@ -1,0 +1,16 @@
+{
+  "kind": "parsons",
+  "prompt": "Apply committed entries to the state machine. The loop must never touch entries that are not yet committed. One line does not belong.",
+  "lines": [
+    "for n.applied < n.commitIndex {",
+    "\tn.applied++",
+    "\te := n.log[n.applied]",
+    "\tn.applyEntry(e)",
+    "}"
+  ],
+  "runTests": false,
+  "distractors": [
+    "\te := n.log[len(n.log)-1]"
+  ],
+  "explain": "Only entries up to the commit index are safe to apply. Advancing `applied` first and then reading that index walks the log one committed entry at a time. The last log entry may not be committed."
+}

@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This `while` evaluator is meant to re-test the condition before every iteration, but loops either never stop or never run. Tap the faulty line.",
+  "code": "fn exec_while(cond: &Expr, body: &[Stmt], env: &Env) -> Result<Flow, RuntimeError> {\n    let test = eval(cond, env)?;\n    loop {\n        match &test {\n            Value::Bool(true) => {\n                exec_block(body, env)?;\n            }\n            Value::Bool(false) => return Ok(Flow::Normal),\n            _ => return Err(RuntimeError::TypeMismatch(\"condition must be a boolean\".to_string())),\n        }\n    }\n}",
+  "bugLine": 2,
+  "explain": "The condition is evaluated once, before the loop, so its value never changes. It must be evaluated again at the start of every iteration, inside the `loop`, so changes made by the body are seen."
+}

@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "`count_in_range` counts values in the inclusive range [lo, hi] using `upper_bound(hi) - lower_bound(lo)` on a sorted copy. The sorted data is below. What does `count_in_range` give for lo = 2 and hi = 7?",
+  "code": "// sorted: index 0..5\nint a[] = {1, 2, 2, 4, 7, 7};",
+  "choices": [
+    "3",
+    "4",
+    "5",
+    "6"
+  ],
+  "answer": 2,
+  "explain": "`lower_bound(2)` is the first index whose value is at least 2, which is 1. `upper_bound(7)` is the first index whose value is *greater* than 7, which is 6 (past the end). The difference 6 - 1 is 5: the values 2, 2, 4, 7, 7."
+}

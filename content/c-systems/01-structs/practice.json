@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "What does this program print?",
+  "code": "Point p = {2, 3};\nPoint q = p;\nq.x = 10;\npoint_scale(&p, 2);\nprintf(\"%d %d %d\\n\", p.x, p.y, q.x);",
+  "choices": [
+    "4 6 10",
+    "20 6 20",
+    "2 3 10",
+    "4 6 4"
+  ],
+  "answer": 0,
+  "explain": "`q = p` copies the whole struct, so `q` is independent: changing `q.x` does not touch `p`. `point_scale(&p, 2)` receives the address of `p` and doubles it in place, giving 4 and 6."
+}

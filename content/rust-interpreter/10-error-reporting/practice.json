@@ -1,0 +1,23 @@
+{
+  "kind": "blanks",
+  "prompt": "Finish `line_col`, which turns a byte offset into a one-based line and column. Stop once we reach the offset, start a new line at a newline, and restart the column counter.",
+  "template": "fn line_col(src: &str, pos: usize) -> (usize, usize) {\n    let mut line = 1;\n    let mut col = 1;\n    for (i, c) in src.char_indices() {\n        if i {{0}} pos {\n            break;\n        }\n        if c == '{{1}}' {\n            line {{2}} 1;\n            col = {{3}};\n        } else {\n            col += 1;\n        }\n    }\n    (line, col)\n}",
+  "tokens": [
+    ">=",
+    ">",
+    "\\n",
+    "\\r",
+    "+=",
+    "=",
+    "1",
+    "0"
+  ],
+  "answers": [
+    ">=",
+    "\\n",
+    "+=",
+    "1"
+  ],
+  "explain": "Scanning stops as soon as the index reaches `pos`, so characters at or after it are not counted. A newline bumps the line and resets the column to 1 (columns are one-based), otherwise the column grows by one.",
+  "runTests": false
+}

@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This generic function does not compile (\"binary operation `>` cannot be applied to type `&T`\"). Tap the line that has to change.",
+  "code": "fn largest<T>(items: &[T]) -> &T {\n    let mut best = &items[0];\n    for item in items {\n        if item > best {\n            best = item;\n        }\n    }\n    best\n}",
+  "bugLine": 1,
+  "explain": "The comparison is on line 4, but the compiler only knows that `T` is some type. The fix is a bound in the signature: `fn largest<T: PartialOrd>(...)`. Bounds are the promise a generic function makes about what it may do with `T`."
+}

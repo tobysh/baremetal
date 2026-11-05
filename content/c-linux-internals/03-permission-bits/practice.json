@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "Pick the right permission triplet from a 9-bit mode: owner bits first, then group, then others. Root skips the check.",
+  "template": "if (uid == 0) return 1;\nif (uid == file->owner) bits = (mode >> {{0}}) & 7;\nelse if (gid == file->group) bits = (mode >> {{1}}) & 7;\nelse bits = mode & {{2}};\nreturn (bits & want) != 0;",
+  "answers": [
+    "6",
+    "3",
+    "7"
+  ],
+  "tokens": [
+    "6",
+    "3",
+    "0",
+    "7",
+    "9"
+  ],
+  "runTests": false,
+  "explain": "Mode 0754 is owner 7, group 5, other 4. The owner triplet is at bits 8 to 6, group at 5 to 3, and other at 2 to 0. Only one class applies: the owner is judged by the owner bits even if the group bits are more generous."
+}

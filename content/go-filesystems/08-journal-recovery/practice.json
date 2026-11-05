@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Recovery replays the journal: only transactions that were fully committed are applied, then the journal is emptied. Fill the slots.",
+  "template": "for _, tx := range journal {\n\tif tx.{{0}} {\n\t\tfor _, w := range tx.writes {\n\t\t\tdisk.{{1}}(w.block, w.data)\n\t\t}\n\t}\n}\njournal = journal[:{{2}}]",
+  "answers": [
+    "Committed",
+    "Write",
+    "0"
+  ],
+  "tokens": [
+    "Committed",
+    "Write",
+    "0",
+    "Begun",
+    "Read",
+    "len(journal)"
+  ],
+  "runTests": false,
+  "explain": "A transaction without a commit record may be half-written, so it is skipped. Because replay just rewrites whole block images, running it twice gives the same disk. The journal is cleared only after the replay is done."
+}

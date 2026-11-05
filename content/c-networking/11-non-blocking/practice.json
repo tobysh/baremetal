@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "The descriptor is non-blocking and the peer is connected but has sent nothing. What is printed?",
+  "code": "fcntl(fd, F_SETFL, flags | O_NONBLOCK);\nssize_t n = read(fd, buf, 16);\nprintf(\"%zd %s\\n\", n, n < 0 && errno == EAGAIN ? \"again\" : \"other\");",
+  "choices": [
+    "-1 again",
+    "0 other",
+    "Nothing: the call blocks until data arrives",
+    "0 again"
+  ],
+  "answer": 0,
+  "explain": "A non-blocking read with no data returns -1 and sets `errno` to `EAGAIN`. Zero would mean end of file, which only happens when the peer closes."
+}

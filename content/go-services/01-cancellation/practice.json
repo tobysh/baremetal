@@ -1,0 +1,33 @@
+{
+  "kind": "predict",
+  "prompt": "A child context is derived from a parent. Predict what each call reports.",
+  "code": "parent, cancelParent := context.WithCancel(context.Background())\nchild, cancelChild := context.WithCancel(parent)\n\ncancelChild()\n// 1: parent.Err()   2: child.Err()\ncancelParent()\n// 3: child.Err()",
+  "trace": [
+    {
+      "label": "`parent.Err()` after `cancelChild()`",
+      "choices": [
+        "<nil>",
+        "context canceled"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`child.Err()` after `cancelChild()`",
+      "choices": [
+        "<nil>",
+        "context canceled"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`child.Err()` after `cancelParent()` too",
+      "choices": [
+        "<nil>",
+        "context canceled",
+        "context deadline exceeded"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Cancelling a child never touches its parent, but cancelling a parent cancels every context derived from it. Cancellation flows down the tree only."
+}

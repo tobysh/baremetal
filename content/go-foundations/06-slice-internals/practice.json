@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "Predict what is printed. Think about which array each slice points at.",
+  "code": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ta := []int{1, 2, 3, 4}\n\tb := a[:2]\n\tb = append(b, 99)\n\tfmt.Println(a, b)\n}",
+  "choices": [
+    "[1 2 3 4] [1 2 99]",
+    "[1 2 99 4] [1 2 99]",
+    "[1 2 99 4] [1 2 3 99]",
+    "[1 2 3 4] [1 2 3 4 99]"
+  ],
+  "answer": 1,
+  "explain": "`b` shares `a`'s array and has spare capacity (cap 4). Appending 99 writes into element 2 of the shared array, so `a` changes too, while `a` itself is still length 4."
+}

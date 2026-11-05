@@ -1,0 +1,36 @@
+{
+  "kind": "predict",
+  "prompt": "In the inventory, `add` merges into an existing item, and `remove` returns `false` and changes nothing when there is not enough stock. Follow the calls.",
+  "code": "let mut inv = Inventory::new();\ninv.add(\"bolt\", 10);\ninv.add(\"bolt\", 5);\nlet ok = inv.remove(\"bolt\", 20);\nlet left = inv.count(\"bolt\");",
+  "trace": [
+    {
+      "label": "after the two `add` calls, `count(\"bolt\")` is",
+      "choices": [
+        "5",
+        "10",
+        "15",
+        "2"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "`ok` is",
+      "choices": [
+        "true",
+        "false"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`left` is",
+      "choices": [
+        "0",
+        "15",
+        "-5",
+        "10"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Adding the same name twice keeps one entry with the quantities summed. A removal larger than the stock is refused entirely, so the count stays 15."
+}

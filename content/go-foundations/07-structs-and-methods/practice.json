@@ -1,0 +1,18 @@
+{
+  "kind": "parsons",
+  "prompt": "Put `Withdraw` back together. It must never overdraw the account and reports whether the money was taken. One line is a trap.",
+  "lines": [
+    "func (a *Account) Withdraw(n int) bool {",
+    "\tif n <= 0 || n > a.Balance {",
+    "\t\treturn false",
+    "\t}",
+    "\ta.Balance -= n",
+    "\treturn true",
+    "}"
+  ],
+  "distractors": [
+    "\ta.Balance = n"
+  ],
+  "base": "package main\n\nimport \"fmt\"\n\ntype Account struct {\n\tOwner   string\n\tBalance int\n}\n\n// NewAccount returns a new account with the given owner and opening balance.\nfunc NewAccount(owner string, opening int) *Account {\n\treturn &Account{Owner: owner, Balance: opening}\n}\n\n// Deposit adds n to the balance (ignoring non-positive n).\nfunc (a *Account) Deposit(n int) {\n\tif n > 0 {\n\t\ta.Balance += n\n\t}\n}\n\n// Withdraw removes n and reports success; it never overdraws.\n{{code}}\n\n// Summary returns \"<owner>: <balance>\".\nfunc (a Account) Summary() string {\n\treturn fmt.Sprintf(\"%s: %d\", a.Owner, a.Balance)\n}\n",
+  "explain": "Validate first and return `false` early, then change the balance, then report success. The pointer receiver lets the method change the real account."
+}

@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "`Premium` embeds `*Account` and overrides `Withdraw` to add the fee. Starting with a balance of 100 and a fee of 5, what is printed after withdrawing 10?",
+  "code": "p := NewPremium(\"ann\", 100, 5)\np.Withdraw(10)\nfmt.Println(p.Balance, p.Lines())",
+  "choices": [
+    "85 [ann: withdraw 15]",
+    "90 [ann: withdraw 10]",
+    "85 [ann: withdraw 10]",
+    "90 [ann: withdraw 15]"
+  ],
+  "answer": 0,
+  "explain": "`Premium.Withdraw` calls the embedded account's method with `10 + 5`. The balance is therefore 85, and the embedded `Logf` records what the account saw, which is a withdrawal of 15, with the owner as its prefix."
+}

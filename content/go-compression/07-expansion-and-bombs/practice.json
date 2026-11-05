@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`Decode` receives a header that claims the output size. Tap the line that makes a tiny malicious input able to exhaust memory.",
+  "code": "func Decode(src []byte, limit int) ([]byte, error) {\n\tn := int(binary.LittleEndian.Uint32(src))\n\tout := make([]byte, n)\n\tif n > limit {\n\t\treturn nil, ErrTooBig\n\t}\n\treturn inflate(out, src[4:])\n}",
+  "bugLine": 3,
+  "explain": "The buffer is allocated from the untrusted size before the limit check runs. A 4-byte header could ask for gigabytes. Compare `n` against the limit first, then allocate."
+}

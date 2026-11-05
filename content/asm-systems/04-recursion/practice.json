@@ -1,0 +1,43 @@
+{
+  "kind": "predict",
+  "prompt": "Recursive `fact(4)`: each call to itself pushes a return address and keeps `rdi` on the stack.",
+  "trace": [
+    {
+      "label": "At the deepest point, how many `fact` frames are active?",
+      "choices": [
+        "3",
+        "4",
+        "5"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "The value returned by fact(1)",
+      "choices": [
+        "0",
+        "1",
+        "2"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "The value returned by fact(2)",
+      "choices": [
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "The value returned by fact(3)",
+      "choices": [
+        "3",
+        "6",
+        "9"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Each pending multiplication waits on the stack until the call below returns: 1, then 2*1, then 3*2, and finally 4*6 = 24. The stack grows to four frames and unwinds back down."
+}

@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "A thread returns a value through its `void *` result. What does this program print?",
+  "code": "void *f(void *a) { return (void *)((long)a * 2); }\n\nint main(void) {\n    pthread_t t;\n    void *ret;\n    pthread_create(&t, NULL, f, (void *)21);\n    pthread_join(t, &ret);\n    printf(\"%ld\\n\", (long)ret);\n}",
+  "choices": [
+    "21",
+    "42",
+    "0, because `ret` is never written",
+    "A different address on every run"
+  ],
+  "answer": 1,
+  "explain": "`pthread_join(t, &ret)` stores the thread function's return value into `ret`. Here the thread returned the integer 42 disguised as a pointer, and the cast turns it back."
+}

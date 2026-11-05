@@ -1,0 +1,21 @@
+{
+  "kind": "parsons",
+  "prompt": "This is the heart of the Pratt loop: look at the next operator, stop if it binds too loosely, otherwise parse its right side and fold it into `lhs`. One line does not belong.",
+  "lines": [
+    "        let (l_bp, r_bp, op) = match s.peek().and_then(infix) {",
+    "            Some(x) => x,",
+    "            None => break,",
+    "        };",
+    "        if l_bp < min_bp {",
+    "            break;",
+    "        }",
+    "        s.next();",
+    "        let rhs = parse_expr(s, r_bp)?;",
+    "        lhs = Expr::Binary(op, Box::new(lhs), Box::new(rhs));"
+  ],
+  "runTests": false,
+  "distractors": [
+    "        let rhs = parse_expr(s, 0)?;"
+  ],
+  "explain": "The loop peeks for an infix operator, breaks when its left power is below `min_bp`, consumes it, and parses the right operand with the operator's right power, which is what controls associativity. Restarting with 0 would let the right side swallow everything."
+}

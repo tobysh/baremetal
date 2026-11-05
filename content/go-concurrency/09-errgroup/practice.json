@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "This uses the `Group` you built, with `WithContext`. After `Wait` returns, what does the line print?",
+  "code": "g, ctx := WithContext(context.Background())\ng.Go(func() error { return errors.New(\"boom\") })\nerr := g.Wait()\nfmt.Println(err, ctx.Err())",
+  "choices": [
+    "boom <nil>",
+    "boom context canceled",
+    "<nil> context canceled",
+    "<nil> <nil>"
+  ],
+  "answer": 1,
+  "explain": "The first error is remembered and returned by `Wait`. `Wait` also cancels the group's context so resources tied to it are released, which means `ctx.Err()` is `context canceled`."
+}

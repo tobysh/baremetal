@@ -9,6 +9,7 @@ import { MiniMarkdown } from "./mini-markdown";
 import { explainFailure, type Explanation } from "@/lib/diagnostics";
 import { errorLines } from "@/lib/error-lines";
 import { OutputDiff } from "./output-diff";
+import { HelpSheet } from "./help-sheet";
 import { TutorChat, type ChatMessage, type TutorControl } from "./tutor-chat";
 import { AchievementToasts, Celebration, type Reward, type TrackComplete, type Unlocked } from "../celebrations";
 
@@ -531,11 +532,11 @@ export function Workspace({
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-t border-border px-3 py-1 text-[11px] text-muted">
-        <p className="hidden sm:block">
+        <p className="hidden min-w-0 flex-1 sm:block">
           <Kbd>{mod}</Kbd>+<Kbd>↵</Kbd> {ready ? "Next lesson" : "Test"} · <Kbd>{mod}</Kbd>+<Kbd>⇧</Kbd>+<Kbd>↵</Kbd> Run · <Kbd>Tab</Kbd> indent · <Kbd>{mod}</Kbd>+<Kbd>/</Kbd> comment ·{" "}
           <Kbd>Esc</Kbd> then <Kbd>Tab</Kbd> leave editor · <Kbd>Alt</Kbd>+<Kbd>1</Kbd> lesson · <Kbd>Alt</Kbd>+<Kbd>2</Kbd> editor
         </p>
-        <div role="group" aria-label="Editor settings" className="ml-auto flex flex-wrap items-center gap-2">
+        <div role="group" aria-label="Editor settings" className="ml-auto flex shrink-0 flex-wrap items-center gap-2 whitespace-nowrap">
           <span className="flex items-center gap-1">
             Text
             <button type="button" aria-label="Smaller text" disabled={fontSize <= FONT_MIN} onClick={() => writePref(fontKey, String(fontSize - 1))} className="min-h-8 min-w-8 rounded-md border border-border text-xs hover:bg-surface-2 hover:text-text disabled:opacity-50">A−</button>
@@ -548,9 +549,15 @@ export function Workspace({
               {TAB_WIDTHS.map((w) => <option key={w} value={w}>{w}</option>)}
             </select>
           </label>
-          {(fontSize !== FONT_DEFAULT || tabWidth !== TAB_DEFAULT) && (
-            <button type="button" onClick={() => { writePref(fontKey, null); writePref(tabKey, null); }} className="min-h-8 rounded-md px-2 hover:bg-surface-2 hover:text-text">Default view</button>
-          )}
+          {/* Always rendered so the bar keeps its width and doesn't reflow when a setting changes. */}
+          <button
+            type="button"
+            onClick={() => { writePref(fontKey, null); writePref(tabKey, null); }}
+            disabled={fontSize === FONT_DEFAULT && tabWidth === TAB_DEFAULT}
+            tabIndex={fontSize === FONT_DEFAULT && tabWidth === TAB_DEFAULT ? -1 : undefined}
+            aria-hidden={fontSize === FONT_DEFAULT && tabWidth === TAB_DEFAULT ? true : undefined}
+            className="min-h-8 rounded-md px-2 hover:bg-surface-2 hover:text-text disabled:invisible"
+          >Default view</button>
         </div>
       </div>
       <div
@@ -681,6 +688,11 @@ export function Workspace({
         </div>
       </div>
       </div>
+      <HelpSheet
+        hints={hints} hintCount={exercise.hintCount} hintBusy={hintBusy} hintError={hintError} onOpenHint={openHint}
+        signedIn={signedIn} loginHref={loginHref}
+        onAsk={(text) => { askTutor(text); requestAnimationFrame(() => document.getElementById("panel-tutor")?.scrollIntoView({ block: "center", behavior: "smooth" })); }}
+      />
       <AchievementToasts items={toasts} onDismiss={dismissToast} />
       <div role="status" aria-live="polite" className="sr-only">{announcement}</div>
       {celebration && <Celebration returnFocus={celebrationFocus} nextLesson={nextHref ? { href: nextHref, title: nextLabel ?? "Next lesson" } : null} levelUp={celebration.levelUp} trackComplete={celebration.trackComplete} onClose={closeCelebration} />}

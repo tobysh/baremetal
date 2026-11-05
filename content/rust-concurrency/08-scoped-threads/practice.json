@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "Increment every element in parallel without cloning or `Arc`. Fill in the pieces.",
+  "template": "use std::thread;\n\nfn chunk_size(len: usize, parts: usize) -> usize {\n    let parts = parts.max(1);\n    ((len + parts - 1) / parts).max(1)\n}\n\nfn parallel_sum(data: &[u64], parts: usize) -> u64 {\n    let size = chunk_size(data.len(), parts);\n    thread::scope(|s| {\n        let handles: Vec<_> = data\n            .chunks(size)\n            .map(|c| s.spawn(move || c.iter().sum::<u64>()))\n            .collect();\n        handles.into_iter().map(|h| h.join().unwrap()).sum()\n    })\n}\n\nfn increment_all(data: &mut [i32], parts: usize) {\n    let size = chunk_size(data.len(), parts);\n    thread::{{0}}(|s| {\n        for chunk in data.{{1}}(size) {\n            s.spawn(move || {\n                for x in chunk.{{2}}() {\n                    *x += 1;\n                }\n            });\n        }\n    });\n}\n\nfn min_max(data: &[i32]) -> Option<(i32, i32)> {\n    if data.is_empty() {\n        return None;\n    }\n    Some(thread::scope(|s| {\n        let lo = s.spawn(|| *data.iter().min().unwrap());\n        let hi = s.spawn(|| *data.iter().max().unwrap());\n        (lo.join().unwrap(), hi.join().unwrap())\n    }))\n}\n\n// Try it with Run.\nfn main() {\n    let v: Vec<u64> = (1..=100).collect();\n    println!(\"{}\", parallel_sum(&v, 4));\n    let mut w = vec![1, 2, 3];\n    increment_all(&mut w, 2);\n    println!(\"{:?} {:?}\", w, min_max(&w));\n}\n",
+  "tokens": [
+    "scope",
+    "spawn",
+    "chunks_mut",
+    "chunks",
+    "iter_mut",
+    "iter"
+  ],
+  "answers": [
+    "scope",
+    "chunks_mut",
+    "iter_mut"
+  ],
+  "explain": "`thread::scope` lets threads borrow local data safely because they all finish before it returns. `chunks_mut` hands each thread its own disjoint `&mut` slice, and `iter_mut` gives mutable access to its elements."
+}

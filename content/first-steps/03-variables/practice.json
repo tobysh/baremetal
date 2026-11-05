@@ -1,0 +1,15 @@
+{
+  "kind": "parsons",
+  "prompt": "Put the lines in order so the program prints the sum, difference, product and quotient of `a` and `b`, one per line. One line does not belong.",
+  "base": "#include <stdio.h>\n\nint main(void) {\n    int a = 7;\n    int b = 5;\n\n{{code}}\n    return 0;\n}",
+  "lines": [
+    "    printf(\"%d + %d = %d\\n\", a, b, a + b);",
+    "    printf(\"%d - %d = %d\\n\", a, b, a - b);",
+    "    printf(\"%d * %d = %d\\n\", a, b, a * b);",
+    "    printf(\"%d / %d = %d\\n\", a, b, a / b);"
+  ],
+  "distractors": [
+    "    printf(\"%d %% %d = %d\\n\", a, b, a % b);"
+  ],
+  "explain": "`printf` runs top to bottom, so the order of the lines is the order of the output. `%` gives the remainder, which this task does not ask for."
+}

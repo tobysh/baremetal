@@ -1,0 +1,33 @@
+{
+  "kind": "predict",
+  "prompt": "`clamp` is called with `rdi = 15`, `rsi = 0` (lo) and `rdx = 10` (hi). Decide each jump and the final `rax`.",
+  "code": "mov rax, rdi\ncmp rax, rsi\njge .Lcheck_high\nmov rax, rsi\nret\n.Lcheck_high:\ncmp rax, rdx\njle .Ldone\nmov rax, rdx\n.Ldone:\nret",
+  "trace": [
+    {
+      "label": "[jump] is `jge .Lcheck_high` taken? (15 >= 0)",
+      "choices": [
+        "taken",
+        "not taken"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[jump] is `jle .Ldone` taken? (15 <= 10)",
+      "choices": [
+        "taken",
+        "not taken"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[rax] after `mov rax, rdx`",
+      "choices": [
+        "15",
+        "0",
+        "10"
+      ],
+      "answer": 2
+    }
+  ],
+  "explain": "15 is not below `lo`, so the first jump skips the lower clamp. 15 is above `hi`, so `jle` falls through and `mov rax, rdx` replaces it with 10."
+}

@@ -1,0 +1,16 @@
+{
+  "kind": "parsons",
+  "prompt": "Absolute value of the signed 64-bit argument without a branch. One line does not belong.",
+  "base": ".intel_syntax noprefix\n.text\n.globl abs64\nabs64:\n{{code}}\n.section .note.GNU-stack,\"\",@progbits",
+  "lines": [
+    "    mov rax, rdi",
+    "    neg rax",
+    "    cmovl rax, rdi",
+    "    ret"
+  ],
+  "distractors": [
+    "    cmovg rax, rdi"
+  ],
+  "runTests": false,
+  "explain": "`neg` computes -x and sets the flags from that result. When the negation is negative, x was positive, so `cmovl` copies back the original. Otherwise -x (positive) is kept. `cmovg` would pick the wrong side."
+}

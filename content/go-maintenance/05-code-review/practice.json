@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "A reviewer spots a defect: the report line for the same pool is sometimes in a different order from one run to the next. Tap the faulty line.",
+  "code": "func (p *Pool) Report() string {\n\tout := \"\"\n\ti := 0\n\tfor n := range p.bal {\n\t\tif i > 0 {\n\t\t\tout += \",\"\n\t\t}\n\t\tout += fmt.Sprintf(\"%s=%d\", n, p.bal[n])\n\t\ti++\n\t}\n\treturn out\n}",
+  "bugLine": 4,
+  "explain": "Go randomises map iteration order on purpose. Output that must be stable needs the keys collected and sorted first, as the original does with `sort.Strings(names)`."
+}

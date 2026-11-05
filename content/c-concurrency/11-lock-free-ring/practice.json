@@ -1,0 +1,45 @@
+{
+  "kind": "predict",
+  "prompt": "A ring of capacity 4 uses ever-increasing `head` (consumer) and `tail` (producer) counters. The slot index is the counter modulo 4. Both start at 0.",
+  "trace": [
+    {
+      "label": "After 3 pushes and 1 pop, tail - head is",
+      "choices": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After 2 more pushes, tail - head is",
+      "choices": [
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "A further push now",
+      "choices": [
+        "succeeds",
+        "fails because the ring is full"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "The next pop reads slot index (head % 4)",
+      "choices": [
+        "0",
+        "1",
+        "4",
+        "5"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Counters that never wrap make `tail - head` the exact item count, and full is simply `count == capacity`. The slot is the counter modulo capacity, so head 1 reads slot 1."
+}

@@ -1,0 +1,16 @@
+{
+  "kind": "parsons",
+  "prompt": "Rebuild `Save` so a crash can never leave a half-written database: write a temporary file, clean up on failure, and only then swap it into place. One line is a decoy.",
+  "lines": [
+    "\tif err := d.WriteFile(\"db.tmp\", encode(data)); err != nil {",
+    "\t\td.Remove(\"db.tmp\")",
+    "\t\treturn err",
+    "\t}",
+    "\treturn d.Rename(\"db.tmp\", \"db\")"
+  ],
+  "distractors": [
+    "\td.Sync()"
+  ],
+  "base": "package main\n\nimport (\n\t\"encoding/binary\"\n\t\"errors\"\n\t\"fmt\"\n\t\"hash/crc32\"\n)\n\nvar ErrCorrupt = errors.New(\"corrupt file\")\n\ntype Disk interface {\n\tWriteFile(name string, data []byte) error // not atomic: may leave a torn prefix after a crash\n\tRename(oldName, newName string) error     // atomic\n\tRemove(name string) error\n\tReadFile(name string) ([]byte, bool)\n}\n\nfunc encode(data []byte) []byte {\n\tb := make([]byte, 4, 8+len(data))\n\tbinary.BigEndian.PutUint32(b, uint32(len(data)))\n\tb = append(b, data...)\n\treturn binary.BigEndian.AppendUint32(b, crc32.ChecksumIEEE(data))\n}\n\nfunc decode(b []byte) ([]byte, bool) {\n\tif len(b) < 8 {\n\t\treturn nil, false\n\t}\n\tn := binary.BigEndian.Uint32(b)\n\tif uint64(len(b)) != 8+uint64(n) {\n\t\treturn nil, false\n\t}\n\tdata := b[4 : 4+n]\n\tif crc32.ChecksumIEEE(data) != binary.BigEndian.Uint32(b[4+n:]) {\n\t\treturn nil, false\n\t}\n\treturn append([]byte{}, data...), true\n}\n\nfunc Save(d Disk, data []byte) error {\n{{code}}\n}\n\nfunc Load(d Disk) ([]byte, bool, error) {\n\td.Remove(\"db.tmp\")\n\traw, ok := d.ReadFile(\"db\")\n\tif !ok {\n\t\treturn nil, false, nil\n\t}\n\tdata, ok := decode(raw)\n\tif !ok {\n\t\treturn nil, false, ErrCorrupt\n\t}\n\treturn data, true, nil\n}\n\ntype memDisk map[string][]byte\n\nfunc (m memDisk) WriteFile(n string, b []byte) error { m[n] = append([]byte{}, b...); return nil }\nfunc (m memDisk) Rename(o, n string) error           { m[n] = m[o]; delete(m, o); return nil }\nfunc (m memDisk) Remove(n string) error              { delete(m, n); return nil }\nfunc (m memDisk) ReadFile(n string) ([]byte, bool)   { b, ok := m[n]; return b, ok }\n\nfunc main() {\n\td := memDisk{}\n\tSave(d, []byte(\"version one\"))\n\tdata, found, err := Load(d)\n\tfmt.Printf(\"%q %v %v\\n\", data, found, err)\n}\n",
+  "explain": "A plain write can be torn by a crash, but a rename is atomic. Writing to a temp file first means the real file is always either the old or the new version, never a mixture. `Disk` has no `Sync` here."
+}

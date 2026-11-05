@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "A client reports that the `Location` header never shows up on 201 responses. Tap the faulty line.",
+  "code": "\ts.mu.Lock()\n\tt := Todo{ID: len(s.todos) + 1, Title: in.Title}\n\ts.todos = append(s.todos, t)\n\ts.mu.Unlock()\n\twriteJSON(w, http.StatusCreated, t)\n\tw.Header().Set(\"Location\", \"/todos/\"+strconv.Itoa(t.ID))",
+  "bugLine": 6,
+  "explain": "Headers must be set before `WriteHeader` or the first `Write`. `writeJSON` already sent the status line and body, so a header set afterwards is silently ignored."
+}

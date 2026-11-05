@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This follower's `AppendEntries` handler must only truncate its log when an existing entry truly conflicts. Tap the line that can erase good, already-replicated entries.",
+  "code": "func (n *Node) AppendEntries(a Args) bool {\n\tif a.PrevIndex >= len(n.log) || n.log[a.PrevIndex].Term != a.PrevTerm {\n\t\treturn false\n\t}\n\tn.log = n.log[:a.PrevIndex+1]\n\tn.log = append(n.log, a.Entries...)\n\treturn true\n}",
+  "bugLine": 5,
+  "explain": "A delayed or duplicated message can carry an old, shorter list. Cutting the log unconditionally deletes entries that may already be committed. Truncate only at the first index where an existing entry's term differs from the incoming one."
+}

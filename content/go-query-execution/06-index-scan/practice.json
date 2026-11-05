@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`lowerBound` should return the position of the first key that is greater than or equal to `k`. Tap the line with the bug.",
+  "code": "func lowerBound(keys []int, k int) int {\n\tlo, hi := 0, len(keys)\n\tfor lo < hi {\n\t\tmid := (lo + hi) / 2\n\t\tif keys[mid] <= k {\n\t\t\tlo = mid + 1\n\t\t} else {\n\t\t\thi = mid\n\t\t}\n\t}\n\treturn lo\n}",
+  "bugLine": 5,
+  "explain": "With `<=` the search skips past keys equal to `k`, so it finds the first key strictly greater (an upper bound). A range scan that starts here would miss the rows equal to the lower limit. Use `<`."
+}

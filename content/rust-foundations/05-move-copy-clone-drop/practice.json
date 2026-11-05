@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "`Noisy` prints a message when it is dropped. What is the exact output?",
+  "code": "struct Noisy(&'static str);\n\nimpl Drop for Noisy {\n    fn drop(&mut self) {\n        println!(\"drop {}\", self.0);\n    }\n}\n\nfn main() {\n    let _a = Noisy(\"a\");\n    let b = Noisy(\"b\");\n    drop(b);\n    println!(\"end\");\n}",
+  "choices": [
+    "drop b\nend\ndrop a",
+    "end\ndrop b\ndrop a",
+    "end\ndrop a\ndrop b",
+    "drop a\ndrop b\nend"
+  ],
+  "answer": 0,
+  "explain": "`drop(b)` takes ownership and destroys `b` immediately. `_a` lives until the end of `main`, so it is dropped after `end` is printed."
+}

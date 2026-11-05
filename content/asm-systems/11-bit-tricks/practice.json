@@ -1,0 +1,42 @@
+{
+  "kind": "predict",
+  "prompt": "`rdi` holds 0x50, binary 0101 0000. Give each instruction's result.",
+  "trace": [
+    {
+      "label": "`popcnt rax, rdi`",
+      "choices": [
+        "2",
+        "4",
+        "6"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`bsf rax, rdi` (lowest set bit index)",
+      "choices": [
+        "4",
+        "6",
+        "7"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`bsr rax, rdi` (highest set bit index)",
+      "choices": [
+        "4",
+        "6",
+        "7"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`bsf rax, rdx` with rdx = 0 sets ZF to",
+      "choices": [
+        "0",
+        "1"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Bits 4 and 6 are set: two of them, lowest at index 4, highest at 6. With a zero input there is no bit to find, so ZF is set and the destination is not meaningful. Check ZF first."
+}

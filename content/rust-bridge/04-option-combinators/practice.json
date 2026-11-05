@@ -1,0 +1,48 @@
+{
+  "kind": "predict",
+  "prompt": "Follow each `Option` through its combinators.",
+  "code": "let a = Some(4).filter(|n| n % 2 == 1);\nlet b = Some(3).zip(Some('x'));\nlet c = None::<i32>.or(Some(9));\nlet d = Some(\"42\").and_then(|s| s.parse::<u8>().ok()).map(|n| n + 1);",
+  "trace": [
+    {
+      "label": "`a` is",
+      "choices": [
+        "Some(4)",
+        "None",
+        "Some(false)",
+        "Some(1)"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`b` is",
+      "choices": [
+        "Some(3)",
+        "Some('x')",
+        "Some((3, 'x'))",
+        "None"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "`c` is",
+      "choices": [
+        "None",
+        "Some(9)",
+        "Some(0)",
+        "Some(Some(9))"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`d` is",
+      "choices": [
+        "Some(43)",
+        "Some(\"43\")",
+        "Some(42)",
+        "None"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "`filter` turns a failing `Some` into `None`, `zip` needs both sides to be `Some`, `or` supplies the alternative when `self` is `None`, and `and_then` chains a step that can itself fail."
+}

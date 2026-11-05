@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "The parent forks a child and then does other work for a long time. Tap the line that leaves the finished child as a zombie.",
+  "code": "pid_t pid = fork();\nif (pid == 0) {\n    puts(\"child works\");\n    exit(0);\n}\nsleep(100); /* parent keeps doing other work */\nreturn 0;",
+  "bugLine": 6,
+  "explain": "A child that has exited stays in the process table as a zombie, holding its exit status, until the parent reaps it with `wait`. Without a `wait` (or `waitpid`) the zombie lives as long as the parent does; then init adopts and reaps it."
+}

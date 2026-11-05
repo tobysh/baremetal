@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Search in a skip list: start on the top express lane, move right while the next key is still smaller, drop a level, and repeat. Fill the slots.",
+  "template": "x := l.head\nfor i := l.level - 1; i >= 0; i-- {\n\tfor x.next[i] != nil && x.next[i].key {{0}} key {\n\t\tx = x.next[i]\n\t}\n}\nx = x.{{1}}\nif x != nil && x.key {{2}} key {\n\treturn x.value, true\n}",
+  "answers": [
+    "<",
+    "next[0]",
+    "=="
+  ],
+  "tokens": [
+    "<",
+    "next[0]",
+    "==",
+    "<=",
+    ">",
+    "next[l.level]"
+  ],
+  "runTests": false,
+  "explain": "Move right only while the next key is strictly smaller, so you stop just before the target on every lane. After the last drop, the bottom-lane neighbour `next[0]` is the first key that is not smaller; check it for equality."
+}

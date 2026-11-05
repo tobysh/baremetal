@@ -1,0 +1,47 @@
+{
+  "kind": "predict",
+  "prompt": "Memtable (newest): `a=3`, delete `b`. Table 1: `a=2, b=2, c=2`. Table 0 (oldest): `a=1, c=1, d=1`. A read checks sources from newest to oldest and stops at the first hit.",
+  "trace": [
+    {
+      "label": "Get a",
+      "choices": [
+        "1",
+        "2",
+        "3",
+        "missing"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "Get b",
+      "choices": [
+        "2",
+        "missing",
+        "1",
+        "an error"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Get c",
+      "choices": [
+        "1",
+        "2",
+        "3",
+        "missing"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Get d",
+      "choices": [
+        "1",
+        "2",
+        "missing",
+        "0"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "The newest source that mentions a key decides. A delete is a tombstone, and finding one ends the search with 'missing' even though older tables still hold b."
+}

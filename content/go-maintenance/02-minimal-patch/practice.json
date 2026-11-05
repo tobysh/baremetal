@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "This is the lesson's `Truncate`. What does `Truncate(\"héllo wörld\", 8)` return?",
+  "code": "func Truncate(s string, n int) string {\n\tr := []rune(s)\n\tif len(r) <= n {\n\t\treturn s\n\t}\n\tif n <= 3 {\n\t\treturn string(r[:n])\n\t}\n\treturn string(r[:n-3]) + \"...\"\n}",
+  "choices": [
+    "héllo...",
+    "héllo wö",
+    "héllo w...",
+    "héllo wö..."
+  ],
+  "answer": 0,
+  "explain": "The string has 11 runes, more than 8, and `n` is above 3, so it keeps the first `n-3 = 5` runes and adds three dots. It counts characters, not bytes, so accented letters count once."
+}

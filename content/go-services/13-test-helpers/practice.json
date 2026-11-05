@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "Complete the signature and the first lines of a generic assertion helper. It should report failures at the caller's line, not inside the helper.",
+  "template": "package main\n\nimport (\n\t\"errors\"\n\t\"fmt\"\n\t\"os\"\n\t\"path/filepath\"\n\t\"testing\"\n)\n\nfunc AssertEqual[T {{0}}](t testing.TB, got, want T) {\n\tt.{{1}}()\n\tif got {{2}} want {\n\t\tt.Errorf(\"got %v, want %v\", got, want)\n\t}\n}\n\nfunc AssertNoError(t testing.TB, err error) {\n\tt.Helper()\n\tif err != nil {\n\t\tt.Fatalf(\"unexpected error: %v\", err)\n\t}\n}\n\nfunc AssertErrorIs(t testing.TB, err, target error) {\n\tt.Helper()\n\tif !errors.Is(err, target) {\n\t\tt.Errorf(\"got error %v, want %v\", err, target)\n\t}\n}\n\nfunc WithEnv(t testing.TB, key, value string) {\n\tt.Helper()\n\told, had := os.LookupEnv(key)\n\tif err := os.Setenv(key, value); err != nil {\n\t\tt.Fatalf(\"setenv %s: %v\", key, err)\n\t}\n\tt.Cleanup(func() {\n\t\tif had {\n\t\t\tos.Setenv(key, old)\n\t\t} else {\n\t\t\tos.Unsetenv(key)\n\t\t}\n\t})\n}\n\nfunc TempFile(t testing.TB, name, content string) string {\n\tt.Helper()\n\tp := filepath.Join(t.TempDir(), name)\n\tif err := os.WriteFile(p, []byte(content), 0o600); err != nil {\n\t\tt.Fatalf(\"writing %s: %v\", p, err)\n\t}\n\treturn p\n}\n\nfunc main() {\n\tfmt.Println(\"write the helpers, then press Test\")\n}\n",
+  "answers": [
+    "comparable",
+    "Helper",
+    "!="
+  ],
+  "tokens": [
+    "comparable",
+    "any",
+    "Helper",
+    "Fatal",
+    "!=",
+    "=="
+  ],
+  "explain": "`comparable` is the constraint that allows `!=` on a type parameter. `t.Helper()` marks the function as a helper so failure lines point at the test that called it. The error is reported when the values differ."
+}

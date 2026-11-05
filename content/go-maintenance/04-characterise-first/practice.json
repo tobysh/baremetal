@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "Characterisation tests record what legacy code does, not what it should do. For `Normalize(\"415.555.0132 x7\")`, which markers are searched first is part of the behaviour. What is returned? (The code is the lesson's `Normalize`.)",
+  "code": "func Normalize(s string) string {\n\ts = strings.TrimSpace(s)\n\text := \"\"\n\tlow := strings.ToLower(s)\n\tfor _, marker := range []string{\"ext.\", \"ext\", \"x\"} {\n\t\tif i := strings.LastIndex(low, marker); i > 0 {\n\t\t\tdigits := strings.TrimSpace(s[i+len(marker):])\n\t\t\tif digits == \"\" || len(digits) > 5 || !allDigits(digits) {\n\t\t\t\treturn \"\"\n\t\t\t}\n\t\t\text = \";ext=\" + digits\n\t\t\ts = s[:i]\n\t\t\tbreak\n\t\t}\n\t}\n\t// ... separators removed, then:\n\t// 10 digits, first not 0 -> \"+1\" + digits\n\t// 11 digits starting 0   -> \"+44\" + rest\n\t// 11 digits starting 1   -> \"+\" + digits\n\treturn n + ext\n}",
+  "choices": [
+    "+14155550132;ext=7",
+    "+14155550132",
+    "",
+    "+4155550132;ext=7"
+  ],
+  "answer": 0,
+  "explain": "The marker `x` is found, so `7` becomes the extension and the rest, `415.555.0132`, is stripped of dots and spaces. Ten digits not starting with 0 get the `+1` prefix, giving `+14155550132;ext=7`."
+}

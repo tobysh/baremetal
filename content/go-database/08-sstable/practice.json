@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "An SSTable keeps sorted `keys` with matching `offsets`. This lookup returns a wrong answer for some keys. Tap the faulty line.",
+  "code": "func (t *Table) Get(key string) ([]byte, bool) {\n\ti := sort.SearchStrings(t.keys, key)\n\treturn t.readAt(t.offsets[i])\n}",
+  "bugLine": 3,
+  "explain": "`SearchStrings` returns where the key would be inserted. If the key is absent, `i` points at a different key (or past the end and panics). Check `i < len(t.keys) && t.keys[i] == key` before reading."
+}

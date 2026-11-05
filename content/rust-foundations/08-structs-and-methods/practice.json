@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`bump` should increase the counter, but the program does not compile (\"cannot assign to `self.n`\"). Tap the line that has to change.",
+  "code": "struct Counter {\n    n: u32,\n}\n\nimpl Counter {\n    fn bump(&self) {\n        self.n += 1;\n    }\n}\n\nfn main() {\n    let mut c = Counter { n: 0 };\n    c.bump();\n}",
+  "bugLine": 6,
+  "explain": "A method that changes the struct must take `&mut self`. With `&self` the method may only read. The error appears on line 7, but the fix is in the signature."
+}

@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`text` comes from a user and may contain `%` characters. Tap the line that lets the user control the format.",
+  "code": "void show_message(const char *text) {\n    char line[128];\n    snprintf(line, sizeof line, \"msg: %s\", text);\n    printf(line);\n    putchar('\\n');\n}\n",
+  "bugLine": 4,
+  "explain": "`printf(line)` treats the already-built text as a format string, so a `%x` or `%n` typed by the user is interpreted. Data must be an argument: `printf(\"%s\", line)` or `puts(line)`."
+}

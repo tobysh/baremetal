@@ -1,0 +1,34 @@
+{
+  "kind": "predict",
+  "prompt": "Read `Quote` and the rule table in this lesson. A parcel weighs 2000 g, ships to zone 3 (abroad), is Express and the sender is not a member. Predict the result step by step.",
+  "trace": [
+    {
+      "label": "which rule sets the base price",
+      "choices": [
+        "letter",
+        "abroad",
+        "standard"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "base price in cents",
+      "choices": [
+        "900",
+        "1400",
+        "1650"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "final price in cents",
+      "choices": [
+        "1400",
+        "2100",
+        "2800"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Zone 3 matches the `abroad` rule first: 900 + 250 per started kilo (2) = 1400. Express adds half (700) for 2100, which is inside the 100..5000 limits."
+}

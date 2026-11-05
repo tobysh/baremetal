@@ -1,0 +1,34 @@
+{
+  "kind": "predict",
+  "prompt": "Direction flag is clear. `rdi` starts at 0x1000, `rcx` is 4 and `al` is 0x41.",
+  "trace": [
+    {
+      "label": "After `rep stosb`, rdi is",
+      "choices": [
+        "0x1000",
+        "0x1004",
+        "0x0FFC"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After that, rcx is",
+      "choices": [
+        "0",
+        "3",
+        "4"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "The same with `std` first: rdi is",
+      "choices": [
+        "0x1004",
+        "0x0FFC",
+        "0x1000"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Each `stosb` writes al at [rdi] and then moves rdi by 1: up when DF=0, down when DF=1. `rep` counts rcx down to zero. A backward copy is how you copy overlapping memory safely."
+}

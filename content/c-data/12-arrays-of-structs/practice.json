@@ -1,0 +1,16 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the body of `best_index` so it returns the index of the record with the highest score (the first one on a tie). One line does not belong.",
+  "base": "#include <stdio.h>\n\ntypedef struct {\n    int id;\n    int score;\n} Entry;\n\nint best_index(Entry e[], int n) {\n{{code}}\n}\n\nint total_score(Entry e[], int n) {\n    int total = 0;\n    for (int i = 0; i < n; i++) {\n        total += e[i].score;\n    }\n    return total;\n}\n\nint count_passing(Entry e[], int n, int pass_mark) {\n    int count = 0;\n    for (int i = 0; i < n; i++) {\n        if (e[i].score >= pass_mark) count++;\n    }\n    return count;\n}\n\nvoid add_bonus(Entry e[], int n, int bonus) {\n    for (int i = 0; i < n; i++) {\n        e[i].score += bonus;\n    }\n}\n\nvoid sort_by_score(Entry e[], int n) {\n    for (int i = 1; i < n; i++) {\n        Entry current = e[i];\n        int j = i - 1;\n        while (j >= 0 && e[j].score < current.score) {\n            e[j + 1] = e[j];\n            j--;\n        }\n        e[j + 1] = current;\n    }\n}\n\nint main(void) {\n    Entry board[4] = {{1, 70}, {2, 95}, {3, 80}, {4, 95}};\n    printf(\"best index = %d\\n\", best_index(board, 4));\n    printf(\"total = %d\\n\", total_score(board, 4));\n    sort_by_score(board, 4);\n    for (int i = 0; i < 4; i++) printf(\"%d:%d \", board[i].id, board[i].score);\n    printf(\"\\n\");\n    return 0;\n}\n",
+  "lines": [
+    "    int best = 0;",
+    "    for (int i = 1; i < n; i++) {",
+    "        if (e[i].score > e[best].score) best = i;",
+    "    }",
+    "    return best;"
+  ],
+  "distractors": [
+    "    i = best;"
+  ],
+  "explain": "Remember the *index* of the best record so far, scan the rest, and replace it only when a score is strictly higher. That keeps the first of any tied records."
+}

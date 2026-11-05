@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "Calling `Remove` on a `LoggedStore` never returns: the program crashes with a stack overflow. Tap the faulty line.",
+  "code": "func (l *LoggedStore) Remove(sku string, qty int) error {\n\terr := l.Remove(sku, qty)\n\tif err != nil {\n\t\tl.Log = append(l.Log, fmt.Sprintf(\"failed %s: %v\", sku, err))\n\t} else {\n\t\tl.Log = append(l.Log, fmt.Sprintf(\"removed %d %s\", qty, sku))\n\t}\n\treturn err\n}",
+  "bugLine": 2,
+  "explain": "`l.Remove` is the method being defined, so it calls itself forever. To reach the embedded store's version, call it explicitly: `l.Store.Remove(sku, qty)`."
+}

@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "The crash report faults at address 0x8, the offset of `cents` in `item`. Tap the line that dereferences the null pointer.",
+  "code": "int price_of(const item *list, const char *name) {\n    const item *it = find_item(list, name);\n    return it->cents;\n}\n",
+  "bugLine": 3,
+  "explain": "`find_item` returns NULL for an unknown name, and `it->cents` then reads address NULL + 8. The evidence shows where the program died; the fix belongs here, by returning -1 when `it` is NULL."
+}

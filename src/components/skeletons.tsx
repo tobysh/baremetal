@@ -61,9 +61,15 @@ export function TrackSkeleton() {
 export function DashboardSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading your dashboard" className="flex flex-col gap-6">
-      <div className="flex flex-wrap gap-6">
-        <Skeleton className="h-72 min-w-0 flex-[999_1_600px]" />
-        <Skeleton className="h-72 min-w-0 flex-[1_1_320px]" />
+      <div className="flex flex-wrap items-stretch gap-6">
+        <div className="flex min-w-0 flex-[999_1_600px] flex-col gap-6">
+          <Skeleton className="h-72" />
+          <Skeleton className="h-32 lg:flex-1" />
+        </div>
+        <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-6">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-40 lg:flex-1" />
+        </div>
       </div>
       <Skeleton className="h-80" />
     </div>

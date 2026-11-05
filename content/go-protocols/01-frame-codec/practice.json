@@ -1,0 +1,39 @@
+{
+  "kind": "predict",
+  "prompt": "A frame is: a magic byte, a type, a length, the payload, then a CRC32. A decoder either returns a frame, says it needs more bytes (incomplete), or says the data is invalid.",
+  "trace": [
+    {
+      "label": "The buffer holds only 3 bytes and they are a correct start of a frame",
+      "choices": [
+        "incomplete",
+        "invalid"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "The first byte is not the magic value",
+      "choices": [
+        "incomplete",
+        "invalid"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "The header says the payload is 10 bytes but only 5 are here",
+      "choices": [
+        "incomplete",
+        "invalid"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Every byte is present but the CRC does not match",
+      "choices": [
+        "incomplete",
+        "invalid"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Running out of bytes is not an error, it just means wait for more. Anything that is already provably wrong (bad magic, bad checksum) is invalid, and waiting will not fix it."
+}

@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "This `next_id` reads the counter and then writes it back as two separate steps. Two threads call it at the same moment. What can happen?",
+  "code": "static NEXT_ID: AtomicU64 = AtomicU64::new(1);\n\nfn next_id() -> u64 {\n    let id = NEXT_ID.load(Ordering::SeqCst);\n    NEXT_ID.store(id + 1, Ordering::SeqCst);\n    id\n}",
+  "choices": [
+    "Ids are always unique because each atomic operation is indivisible",
+    "Both threads can receive the same id",
+    "It does not compile because a static cannot be changed",
+    "The second caller always gets 2"
+  ],
+  "answer": 1,
+  "explain": "Each operation is atomic on its own, but the pair is not. Both threads can load 1 before either stores 2, so both return 1. `fetch_add` does the read-modify-write as one indivisible step."
+}

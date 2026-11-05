@@ -1,0 +1,26 @@
+[
+  {
+    "kind": "choice",
+    "prompt": "After `int a = 5; int b = a; a = 9;`, which statements are true? Select all that apply.",
+    "choices": [
+      "`a` is 9",
+      "`b` is 5",
+      "`b` is 9",
+      "`a` and `b` share one box in memory"
+    ],
+    "answer": [
+      0,
+      1
+    ],
+    "explain": "`int b = a;` copies the value at that moment. Changing `a` later does not touch `b`."
+  },
+  {
+    "kind": "typed",
+    "prompt": "What does `x` hold after this runs? Type the number.",
+    "code": "int x = 4;\nx = x + 3;\nx = x * 2;",
+    "accepted": [
+      "14"
+    ],
+    "explain": "4 + 3 = 7, then 7 * 2 = 14. Assignment evaluates the right side first, then stores the result."
+  }
+]

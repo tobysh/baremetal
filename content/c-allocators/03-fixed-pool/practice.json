@@ -1,0 +1,16 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the body of `pool_alloc`, which pops the first slot off the free list. The next free slot is stored inside the slot itself. One line does not belong.",
+  "base": "#include <stdio.h>\n#include <stdint.h>\n#include <stddef.h>\n#include <string.h>\n\ntypedef struct {\n    unsigned char *base;\n    size_t slot;\n    size_t count;\n    void *free_head;\n    size_t nfree;\n} Pool;\n\nstatic void *next_of(void *slot) { void *n; memcpy(&n, slot, sizeof n); return n; }\nstatic void set_next(void *slot, void *n) { memcpy(slot, &n, sizeof n); }\n\nint pool_init(Pool *p, void *buf, size_t cap, size_t objsize) {\n    p->base = buf; p->slot = 0; p->count = 0; p->free_head = NULL; p->nfree = 0;\n    if (objsize == 0 || objsize > SIZE_MAX - 8) return 0;\n    size_t slot = objsize < 8 ? 8 : (objsize + 7) & ~(size_t)7;\n    size_t count = cap / slot;\n    if (count == 0) return 0;\n    p->slot = slot; p->count = count; p->nfree = count;\n    for (size_t i = 0; i < count; i++) {\n        set_next(p->base + i * slot, i + 1 < count ? p->base + (i + 1) * slot : NULL);\n    }\n    p->free_head = p->base;\n    return (int)count;\n}\n\nvoid *pool_alloc(Pool *p) {\n{{code}}\n}\n\nint pool_free(Pool *p, void *ptr) {\n    if (!ptr || p->count == 0) return -1;\n    uintptr_t a = (uintptr_t)ptr, lo = (uintptr_t)p->base;\n    if (a < lo || a >= lo + p->count * p->slot || (a - lo) % p->slot != 0) return -1;\n    for (void *f = p->free_head; f; f = next_of(f)) if (f == ptr) return -1;\n    set_next(ptr, p->free_head);\n    p->free_head = ptr;\n    p->nfree++;\n    return 0;\n}\n\nsize_t pool_available(const Pool *p) { return p->nfree; }\n\n// Public example.\nint main(void) {\n    _Alignas(8) unsigned char buf[100];\n    Pool p;\n    int n = pool_init(&p, buf, sizeof buf, 20);   // slots of 24 bytes -> 4 fit\n    printf(\"slots: %d (expected 4)\\n\", n);\n    void *a = pool_alloc(&p), *b = pool_alloc(&p);\n    printf(\"a=+%td b=+%td (expected +0 and +24)\\n\", (unsigned char *)a - buf, (unsigned char *)b - buf);\n    pool_free(&p, a);\n    printf(\"reused: %s\\n\", pool_alloc(&p) == a ? \"yes\" : \"no\");\n    printf(\"double free: %d (expected -1)\\n\", pool_free(&p, b) + pool_free(&p, b));\n    printf(\"available: %zu\\n\", pool_available(&p));\n    return 0;\n}\n",
+  "lines": [
+    "    void *s = p->free_head;",
+    "    if (!s) return NULL;",
+    "    p->free_head = next_of(s);",
+    "    p->nfree--;",
+    "    return s;"
+  ],
+  "distractors": [
+    "    p->nfree++;"
+  ],
+  "explain": "Take the head of the free list, return `NULL` if there is none, make the next free slot (stored in the slot's own bytes) the new head, and reduce the count of free slots. The slot is returned last."
+}

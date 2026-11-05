@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "A peer writes 10 bytes as three separate sends (4, 4, 2) with small pauses. What can this single call return?",
+  "code": "ssize_t n = read(fd, buf, 10);",
+  "choices": [
+    "10 every time",
+    "Anywhere from 1 to 10, perhaps only 4",
+    "Exactly 4, the size of the first send",
+    "0, because the data has not all arrived"
+  ],
+  "answer": 1,
+  "explain": "A stream socket has no message boundaries. `read` returns whatever is available, at least 1 byte if the peer is still connected. 0 means the peer closed. Loop until you have all the bytes you need."
+}

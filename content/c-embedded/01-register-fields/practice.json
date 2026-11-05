@@ -1,0 +1,17 @@
+{
+  "kind": "blanks",
+  "prompt": "Replace the 3-bit `mode` field in bits 4 to 6 of a register without disturbing other bits.",
+  "template": "uint32_t v = REG;\nv &= ~({{0}} << 4);\nv |= (mode & {{1}}) << 4;\nREG = v;",
+  "answers": [
+    "0x7",
+    "0x7"
+  ],
+  "tokens": [
+    "0x7",
+    "0x7",
+    "0xF",
+    "mode"
+  ],
+  "runTests": false,
+  "explain": "Clear first: a 3-bit field needs the mask `0x7` moved up to bit 4. Then insert the new value, masked to 3 bits so a too-large `mode` cannot spill into neighbouring fields. One read and one write of the register."
+}

@@ -1,0 +1,37 @@
+{
+  "kind": "predict",
+  "prompt": "A bit writer packs values MSB first. First write the 3-bit value `0b101`, then the 5-bit value `0b00011`.",
+  "trace": [
+    {
+      "label": "The first byte is (hex)",
+      "choices": [
+        "0xA3",
+        "0xC5",
+        "0x35",
+        "0x05"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Then write one more bit `1` and flush with zero padding. The next byte is",
+      "choices": [
+        "0x01",
+        "0x80",
+        "0xFF",
+        "0x10"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Reading 4 bits from the first byte gives",
+      "choices": [
+        "0b1010",
+        "0b0011",
+        "0b1000",
+        "0b0101"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "101 followed by 00011 is 1010 0011 = 0xA3. A single bit 1 in the top position, padded with zeros, is 1000 0000 = 0x80. The first four bits of 0xA3 are 1010."
+}

@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This function must read exactly `n` bytes from a stream that may deliver them in dribbles. Tap the buggy line.",
+  "code": "func ReadExactly(r io.Reader, n int) ([]byte, error) {\n\tbuf := make([]byte, n)\n\tgot, err := r.Read(buf)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\treturn buf[:got], nil\n}",
+  "bugLine": 3,
+  "explain": "`Read` may return fewer bytes than asked, with no error. The function would hand back a short frame as if it were complete. `io.ReadFull(r, buf)` keeps reading until the buffer is full or the stream fails."
+}

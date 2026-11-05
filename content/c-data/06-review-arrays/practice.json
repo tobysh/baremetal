@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "A peak is an element strictly greater than both neighbours. Fill the blanks: where the loop starts, how the right-hand neighbour is compared, and what happens on a peak.",
+  "template": "int count_peaks(int a[], int n) {\n    int count = 0;\n    for (int i = {{0}}; i + 1 < n; i++) {\n        if (a[i] > a[i - 1] && a[i] {{1}} a[i + 1]) {{2}};\n    }\n    return count;\n}",
+  "answers": [
+    "1",
+    ">",
+    "count++"
+  ],
+  "tokens": [
+    "1",
+    ">",
+    "count++",
+    "0",
+    ">=",
+    "count--"
+  ],
+  "explain": "The first element has no left neighbour, so start at 1. Peaks are *strictly* greater, so use `>`, and each peak adds one to the count.",
+  "runTests": false
+}

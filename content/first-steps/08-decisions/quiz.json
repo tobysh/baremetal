@@ -1,0 +1,18 @@
+[
+  {
+    "kind": "bug",
+    "prompt": "This should print `adult` only when `age` is 18 or more. Which line is wrong?",
+    "code": "int age = 18;\nif (age > 18) {\n    printf(\"adult\\n\");\n}",
+    "bugLine": 2,
+    "explain": "`age > 18` is false for exactly 18. Use `age >= 18`."
+  },
+  {
+    "kind": "typed",
+    "prompt": "Which operator tests whether two values are equal? Type it.",
+    "accepted": [
+      "=="
+    ],
+    "caseSensitive": true,
+    "explain": "`==` compares, `=` assigns. Writing `=` inside an `if` is a classic bug."
+  }
+]

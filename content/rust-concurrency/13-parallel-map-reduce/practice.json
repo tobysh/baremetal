@@ -1,0 +1,34 @@
+{
+  "kind": "predict",
+  "prompt": "`map_reduce` is called on 7 items with `workers = 3`. It splits the items into chunks of size `ceil(len / workers)`, one scoped thread per chunk. Trace the split.",
+  "trace": [
+    {
+      "label": "Chunk size",
+      "choices": [
+        "2",
+        "3",
+        "4"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Number of chunks (threads)",
+      "choices": [
+        "2",
+        "3",
+        "4"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Items in the last chunk",
+      "choices": [
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "ceil(7 / 3) is 3, so the chunks hold 3, 3 and 1 items. The partial results are then folded in chunk order, which is why a non-commutative reduce still gives a stable answer."
+}

@@ -119,6 +119,45 @@ Write harnesses so that:
 
 An optional harder variant, unlocked once the lesson is passed and worth half XP. Add `challenge.md` (the brief) plus `challenge-starter.*`, `challenge-solution.*` and `challenge-tests.*` (or `challenge-cases.json`). The challenge's exercise id is `<lesson id>#challenge`. It must require more reasoning than the lesson: the verifier checks that the challenge solution passes **and that the plain lesson solution does not**.
 
+## Practice (tap and drag)
+
+A lesson may add `practice.json` beside `solution.*`: a short exercise for phones that needs no typing. It pays a quarter of the lesson's XP (minimum 1) once, and never replaces the coding task. Its progress id is `<lesson id>#practice`. The loader validates the file and fails the build on a malformed one.
+
+Common fields: `kind` (`parsons`, `blanks`, `predict` or `bug`), `prompt` (short markdown, at most 600 characters) and optional `explain` (shown only after a correct answer). The browser never receives answers, the canonical order or blank values.
+
+```jsonc
+// parsons: put the lines in order. Lines keep their own indentation.
+{ "kind": "parsons", "prompt": "...", "lines": ["...", "..."], "distractors": ["..."],
+  "base": "int main(void) {\n{{code}}\n}",   // optional: source around the lines, {{code}} once; default is the lines alone
+  "runTests": true }                          // optional, default true; false means only the canonical order counts
+
+// blanks: fill {{0}}..{{n-1}} (each exactly once) from a tray; the template is the whole file
+{ "kind": "blanks", "prompt": "...", "template": "int *p = {{0}}x;", "tokens": ["&", "*", "x"], "answers": ["&"] }
+
+// predict: one question ...
+{ "kind": "predict", "prompt": "...", "code": "...", "choices": ["1", "2"], "answer": 1 }
+// ... or a trace of steps, each its own question
+{ "kind": "predict", "prompt": "...", "trace": [{ "label": "after line 3, x is", "choices": ["1", "2"], "answer": 0 }] }
+
+// bug: tap the faulty line (1-based); `explain` is required
+{ "kind": "bug", "prompt": "...", "code": "...", "bugLine": 7, "explain": "..." }
+{ "kind": "choice", "prompt": "...", "code": "(optional)", "choices": ["...", "..."], "answer": 1 }            // answer: [0, 2] makes it select-all
+{ "kind": "typed", "prompt": "...", "code": "(optional)", "accepted": ["14"], "caseSensitive": false }       // short typed answer; spaces are collapsed
+{ "kind": "match", "prompt": "...", "pairs": [{ "left": "%d", "right": "an int" }, { "left": "%c", "right": "a character" }] }
+```
+
+A trace label may start with the register or stack slot it fills in square brackets, for example ``"[rax] after `add rax, rsi`"``. The learner sees a register panel (a name starting with `stack` or `mem` goes in the stack column, anything else is a register), fills each cell by tapping a value or dragging it onto the highlighted cell, and the latest answer for a name is what the cell shows. A backticked snippet in the label highlights the first `code` line containing it. Labels without a prefix get a "step N" cell. Keep `code` to the few instructions being traced.
+
+Rules: a distractor must not equal a correct line; `answers` must be drawn from `tokens` (one token per slot); `answer` and `bugLine` must be in range. For parsons and blanks the assembled source is also what the lesson's hidden tests run against: `verify:content` requires the canonical answer to pass them, every distractor (inserted after the first line) to fail, and a reversed order to fail. A learner's non-canonical arrangement is accepted if it passes the same tests. Stdout lessons that use `set` variables need the variables to survive in the assembled source. Set `"runTests": false` for a fragment that cannot run on its own.
+
+In the lesson workspace a lesson with `practice.json` gets a "Practice (tap & drag)" tab beside "Code"; the editor stays mounted behind it. `PracticePanel` (`src/components/practice/practice-panel.tsx`) shows the prompt, the practice XP against the full task's XP, the Check button (it posts to `/api/practice`), feedback and the reward. Each kind is a component registered in `src/components/practice/registry.ts` (`practiceKinds`), receiving `KindProps` from `types.ts` and reporting its current submission through `onAnswer`. Parsons: tap a line to add it, drag the grip or press and hold a line to reorder, or use the Move up / Move down / Remove buttons (Alt+Arrow also moves the focused line). Blanks: tap a blank then a piece, tap pieces to fill the next blank, tap a filled blank to clear it, or drag a piece onto a blank. Authors: keep each line short (the board scrolls sideways on phones) and give blanks at most a handful of slots.
+
+### Review questions (`quiz.json`)
+
+Review cards (`/review`) test recall with a real question, not a self-grade. A lesson's deck is its `practice.json` plus an optional `quiz.json`: an array of 1-12 questions in the same shapes as `practice.json`, any kind. `quiz.json` questions pay no XP and appear only on review cards; one is picked each time the lesson comes due. Write questions that need recall of the idea (a value, a keyword, the faulty line, a prediction), not ones that restate the lesson heading, and give each an `explain`. `verify:content` checks that the canonical answer is accepted and that the public view hides answers. Lessons without a deck fall back to a card that opens the coding review.
+
+Lesson types for the `?type=` filter are derived, not authored: `lesson` (or `review` for `kind: review`), plus `challenge` when `challenge.md` exists, plus the practice `kind` (`lessonTypes()` in `src/lib/curriculum/lesson-types.ts`).
+
 ## Drafts
 
 Work in progress can live in the repo without being published:
@@ -154,7 +193,7 @@ npm run check:learning              # prerequisites and recommendations still re
 npm run check:curriculum            # draft isolation and strict loading
 ```
 
-If `qemu-system-x86_64` is missing, `verify:content -- osdev` reports a bare "triple fault" for every lesson. Run it before a pull request, and run `npm run recompute-xp` (site stopped) if you changed a difficulty on a database with real learners.
+If `qemu-system-x86_64` is missing, `verify:content -- osdev` reports a bare "triple fault" for every lesson. Run it before a pull request, and run `npm run recompute-xp` (site stopped) if you changed a difficulty or removed a `practice.json` on a database with real learners.
 
 ## Design guidance
 

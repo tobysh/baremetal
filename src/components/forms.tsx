@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, type ComponentProps, type ReactNode
 import { useFormStatus } from "react-dom";
 import type { FormState } from "@/lib/forms";
 import { PASSWORD_RULES } from "@/lib/password-policy";
+import { sha256AsciiHex } from "@/lib/sha256-js";
 
 export function FormAlert({ state }: { state: FormState }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -192,11 +193,6 @@ export function PasswordField({ name, label, errors, userInputs = [], autoComple
 
 // ---------- Proof-of-work CAPTCHA ----------
 
-async function sha256Hex(s: string) {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
-  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
-}
-
 export function Captcha({ required }: { required: boolean }) {
   const [status, setStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [solution, setSolution] = useState("");
@@ -207,12 +203,19 @@ export function Captcha({ required }: { required: boolean }) {
       const res = await fetch("/api/captcha", { cache: "no-store" });
       if (!res.ok) throw new Error();
       const c = (await res.json()) as { salt: string; challenge: string; max: number; signature: string };
-      for (let n = 0; n <= c.max; n++) {
-        if ((await sha256Hex(`${c.salt}${n}`)) === c.challenge) {
-          setSolution(JSON.stringify({ ...c, number: n }));
-          setStatus("done");
-          return;
-        }
+      // Plain-JS hashing in short slices: works without crypto.subtle (non-HTTPS pages) and keeps the phone responsive.
+      let n = 0;
+      while (n <= c.max) {
+        const sliceEnd = performance.now() + 12;
+        do {
+          if (sha256AsciiHex(`${c.salt}${n}`) === c.challenge) {
+            setSolution(JSON.stringify({ ...c, number: n }));
+            setStatus("done");
+            return;
+          }
+          n++;
+        } while (n <= c.max && ((n & 255) !== 0 || performance.now() < sliceEnd));
+        await new Promise((r) => setTimeout(r, 0));
       }
       throw new Error();
     } catch {
@@ -236,7 +239,7 @@ export function Captcha({ required }: { required: boolean }) {
               type="button"
               onClick={solve}
               disabled={status === "working"}
-              className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 hover:bg-surface-2 disabled:opacity-60"
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 hover:bg-surface-2 disabled:opacity-60"
             >
               {status === "working" ? "Verifying…" : "I'm not a robot"}
             </button>

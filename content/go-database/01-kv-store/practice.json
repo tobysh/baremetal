@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "`Put` must keep its own copy of the caller's bytes, so later changes by the caller cannot alter the store. Fill the slots to make the copy.",
+  "template": "func (s *Store) Put(key string, value []byte) {\n\tc := make([]byte, {{0}})\n\t{{1}}(c, value)\n\ts.data[key] = {{2}}\n}",
+  "answers": [
+    "len(value)",
+    "copy",
+    "c"
+  ],
+  "tokens": [
+    "len(value)",
+    "copy",
+    "c",
+    "cap(s.data)",
+    "append",
+    "value"
+  ],
+  "runTests": false,
+  "explain": "`make` gives a fresh buffer of the right size, `copy` fills it, and the map stores the fresh buffer, not the caller's slice. Storing `value` directly would share memory with the caller."
+}

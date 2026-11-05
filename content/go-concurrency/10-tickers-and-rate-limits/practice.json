@@ -1,0 +1,23 @@
+{
+  "kind": "parsons",
+  "prompt": "Rebuild `Poll`: check on every tick, return true as soon as the check passes, and return false if the context ends first. One line is a decoy.",
+  "lines": [
+    "\tt := time.NewTicker(every)",
+    "\tdefer t.Stop()",
+    "\tfor {",
+    "\t\tselect {",
+    "\t\tcase <-t.C:",
+    "\t\t\tif check() {",
+    "\t\t\t\treturn true",
+    "\t\t\t}",
+    "\t\tcase <-ctx.Done():",
+    "\t\t\treturn false",
+    "\t\t}",
+    "\t}"
+  ],
+  "distractors": [
+    "\tdefer t.Close()"
+  ],
+  "base": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc RateLimited(in <-chan int, every time.Duration) <-chan int {\n\tout := make(chan int)\n\tgo func() {\n\t\tdefer close(out)\n\t\tt := time.NewTicker(every)\n\t\tdefer t.Stop()\n\t\tfor v := range in {\n\t\t\t<-t.C\n\t\t\tout <- v\n\t\t}\n\t}()\n\treturn out\n}\n\nfunc Poll(ctx context.Context, every time.Duration, check func() bool) bool {\n{{code}}\n}\n\nfunc main() {\n\tin := make(chan int, 3)\n\tin <- 1\n\tin <- 2\n\tin <- 3\n\tclose(in)\n\tfor v := range RateLimited(in, 100*time.Millisecond) {\n\t\tfmt.Println(v)\n\t}\n}\n",
+  "explain": "A ticker keeps firing until you stop it, so `defer t.Stop()` is essential. The `select` lets the loop react to either the next tick or cancellation. Tickers have a `Stop` method, not `Close`."
+}

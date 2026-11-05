@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "What happens when this program is compiled and run?",
+  "code": "fn main() {\n    let a = String::from(\"hi\");\n    let b = a;\n    println!(\"{} {}\", a, b);\n}",
+  "choices": [
+    "It prints `hi hi`",
+    "It prints `hi` and then an empty string",
+    "A compile error: `a` was moved into `b`",
+    "A runtime crash when `a` is read"
+  ],
+  "answer": 2,
+  "explain": "`String` owns heap memory, so `let b = a;` moves ownership to `b` and `a` can no longer be used. Rust rejects this at compile time. Use `a.clone()` if you need two owners."
+}

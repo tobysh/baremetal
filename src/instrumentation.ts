@@ -27,7 +27,8 @@ export async function register() {
   assertRunnerConfiguration();
   if (!process.env.RUNNER_SOCKET) {
     const { cleanupStaleWorkdirs } = await import("./lib/runner-engine");
-    await cleanupStaleWorkdirs();
+    const { cleanupStaleCgroups } = await import("./lib/runner-resources");
+    await Promise.all([cleanupStaleWorkdirs(), cleanupStaleCgroups()]);
   }
   console.log(`[boot] TRUSTED_PROXY_HOPS=${process.env.TRUSTED_PROXY_HOPS ?? "(unset, dev)"}`);
 }

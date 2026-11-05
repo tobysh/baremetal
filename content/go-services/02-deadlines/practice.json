@@ -1,0 +1,20 @@
+{
+  "kind": "parsons",
+  "prompt": "Rebuild `Remaining`: report how long is left before the context's deadline, or that there is no deadline. Never report a negative time. One line is a decoy.",
+  "lines": [
+    "\tdl, ok := ctx.Deadline()",
+    "\tif !ok {",
+    "\t\treturn 0, false",
+    "\t}",
+    "\tleft := time.Until(dl)",
+    "\tif left < 0 {",
+    "\t\tleft = 0",
+    "\t}",
+    "\treturn left, true"
+  ],
+  "distractors": [
+    "\tleft := time.Since(dl)"
+  ],
+  "base": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"time\"\n)\n\ntype result struct {\n\ts   string\n\terr error\n}\n\nfunc CallWithTimeout(d time.Duration, f func(ctx context.Context) (string, error)) (string, error) {\n\tctx, cancel := context.WithTimeout(context.Background(), d)\n\tdefer cancel()\n\tch := make(chan result, 1)\n\tgo func() {\n\t\ts, err := f(ctx)\n\t\tch <- result{s, err}\n\t}()\n\tselect {\n\tcase r := <-ch:\n\t\treturn r.s, r.err\n\tcase <-ctx.Done():\n\t\treturn \"\", ctx.Err()\n\t}\n}\n\nfunc Remaining(ctx context.Context) (time.Duration, bool) {\n{{code}}\n}\n\nfunc Half(ctx context.Context) (context.Context, context.CancelFunc) {\n\tleft, ok := Remaining(ctx)\n\tif !ok {\n\t\treturn context.WithCancel(ctx)\n\t}\n\treturn context.WithTimeout(ctx, left/2)\n}\n\nfunc main() {\n\ts, err := CallWithTimeout(50*time.Millisecond, func(ctx context.Context) (string, error) {\n\t\t<-ctx.Done()\n\t\treturn \"\", ctx.Err()\n\t})\n\tfmt.Printf(\"%q %v\\n\", s, err)\n}\n",
+  "explain": "`ctx.Deadline()` says whether a deadline exists at all. `time.Until(dl)` is deadline minus now, which is negative once it has passed, so it is clamped to zero. `time.Since` would give the opposite sign."
+}

@@ -1,0 +1,34 @@
+{
+  "kind": "predict",
+  "prompt": "Toy cost model: a nested-loop join costs `left x right` row comparisons; a hash join costs `left + right`. The planner picks the cheaper plan.",
+  "trace": [
+    {
+      "label": "Left 100 rows, right 10 rows: nested-loop cost",
+      "choices": [
+        "110",
+        "1000",
+        "10",
+        "100"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "The planner picks",
+      "choices": [
+        "nested loop",
+        "hash join"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Left 2 rows, right 2 rows give equal costs of 4. A good planner then",
+      "choices": [
+        "picks at random",
+        "applies a fixed tie-break rule",
+        "refuses to plan"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "100 x 10 = 1000 against 100 + 10 = 110. Ties must be broken by a documented rule (for example the first candidate listed) so the same query always gets the same plan."
+}

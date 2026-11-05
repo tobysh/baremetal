@@ -1,0 +1,17 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines so the program prints a `rows` by `cols` multiplication table, each cell `r * c` in a width of 4, one table row per line. One line does not belong.",
+  "base": "#include <stdio.h>\n\nint main(void) {\n    int rows = 3;\n    int cols = 4;\n\n{{code}}\n    return 0;\n}\n",
+  "lines": [
+    "    for (int r = 1; r <= rows; r++) {",
+    "        for (int c = 1; c <= cols; c++) {",
+    "            printf(\"%4d\", r * c);",
+    "        }",
+    "        printf(\"\\n\");",
+    "    }"
+  ],
+  "distractors": [
+    "        printf(\"%d\\n\", r * c);"
+  ],
+  "explain": "The inner loop prints the cells of one row without a newline; the outer loop ends each row with `\\n`. Printing a newline per cell would put every number on its own line."
+}

@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`MayContain` should say no whenever the key was definitely never added. Tap the line that breaks that promise.",
+  "code": "func (b *Bloom) MayContain(k string) bool {\n\tfor _, h := range b.hashes(k) {\n\t\tif b.bits[h%b.m] {\n\t\t\treturn true\n\t\t}\n\t}\n\treturn false\n}",
+  "bugLine": 3,
+  "explain": "A key was added only if every one of its hash bits is set. Returning true when any single bit is set confuses keys that merely share one bit. The test should be `if !b.bits[...] { return false }`, with `true` at the end."
+}

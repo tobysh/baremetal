@@ -1,0 +1,37 @@
+{
+  "kind": "predict",
+  "prompt": "A log holds these records in order: `put a=1`, `put b=2`, `put a=3`, `delete b`. Replay it, then compact it.",
+  "trace": [
+    {
+      "label": "After replay, the value of a is",
+      "choices": [
+        "1",
+        "3",
+        "4",
+        "missing"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After replay, b is",
+      "choices": [
+        "2",
+        "missing",
+        "empty value",
+        "an error"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "A compacted log would hold how many records?",
+      "choices": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "Replay applies records in order, so the later put wins and the delete removes b. Compaction writes only live keys once each: just `a=3`."
+}

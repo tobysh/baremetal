@@ -28,6 +28,7 @@ export function VerifyEmailForm() {
       <p className="text-sm">Choose your password to finish creating your account.</p>
       <PasswordField name="password" label="Password" errors={state.errors?.password} />
       <Field name="confirm" label="Confirm password" type="password" autoComplete="new-password" required errors={state.errors?.confirm} />
+      <p className="text-xs text-muted">By continuing you accept the <Link href="/terms" className="underline">Terms</Link> and <Link href="/privacy" className="underline">Privacy Notice</Link> and confirm you are 16 or older.</p>
       <SubmitButton pendingText="Verifying…">Verify email and set password</SubmitButton>
     </>}
     {state.ok && <Link href="/login" className="text-accent underline">Sign in</Link>}

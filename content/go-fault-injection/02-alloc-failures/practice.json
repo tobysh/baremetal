@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "Under a fault-injecting allocator the result of `Pack` sometimes contains garbage, even when no allocation fails. Tap the faulty line.",
+  "code": "func Pack(a Allocator, items []string) (*Packed, error) {\n\ttotal := 0\n\tfor _, s := range items {\n\t\ttotal += len(s)\n\t}\n\tdata, err := a.Alloc(total)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\tdefer a.Free(data)\n\tindex, err := a.Alloc(4 * len(items))\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\t// ... fill data and index ...\n\treturn &Packed{data, index, len(items)}, nil\n}",
+  "bugLine": 10,
+  "explain": "`data` is returned inside the result, so freeing it when `Pack` returns leaves the caller holding freed memory. Only free on the failure paths (and free `data` too when the second allocation fails)."
+}

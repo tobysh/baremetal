@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "What does this print?",
+  "code": "package main\n\nimport (\n\t\"errors\"\n\t\"fmt\"\n)\n\nfunc main() {\n\tbase := errors.New(\"disk full\")\n\terr := fmt.Errorf(\"save: %w\", base)\n\tfmt.Println(err, errors.Is(err, base), err == base)\n}",
+  "choices": [
+    "save: disk full true false",
+    "save: disk full true true",
+    "disk full true false",
+    "save: disk full false false"
+  ],
+  "answer": 0,
+  "explain": "`%w` wraps the original error, so `errors.Is` can find it. The wrapper is a different value from `base`, so `==` is false. Printing the wrapper shows the added context followed by the cause."
+}

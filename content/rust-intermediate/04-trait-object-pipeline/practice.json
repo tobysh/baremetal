@@ -1,0 +1,38 @@
+{
+  "kind": "predict",
+  "prompt": "Each stage returns `Option<i64>`, and `and_then` skips a stage once the value is `None`. `NonNeg` returns `None` for negative numbers. Follow the value.",
+  "code": "let stages: Vec<Box<dyn Stage>> = vec![\n    Box::new(AddN(3)),\n    Box::new(NonNeg),\n    Box::new(MulN(2)),\n];\nlet mut x = Some(-10);\nfor s in &stages {\n    x = x.and_then(|v| s.apply(v));\n}",
+  "trace": [
+    {
+      "label": "after `AddN(3)`, `x` is",
+      "choices": [
+        "Some(-7)",
+        "Some(-13)",
+        "Some(3)",
+        "None"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "after `NonNeg`, `x` is",
+      "choices": [
+        "Some(-7)",
+        "Some(7)",
+        "Some(0)",
+        "None"
+      ],
+      "answer": 3
+    },
+    {
+      "label": "after `MulN(2)`, `x` is",
+      "choices": [
+        "None",
+        "Some(-14)",
+        "Some(0)",
+        "a panic"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "`-10 + 3` is `-7`, which `NonNeg` rejects. From then on `and_then` never calls the closure, so `MulN(2)` is not even run."
+}

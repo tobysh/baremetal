@@ -1,0 +1,34 @@
+{
+  "kind": "predict",
+  "prompt": "A decoder checks the 'Kraft sum' of the code lengths, the sum of 2^-length over all symbols. 1 means a complete code, above 1 is impossible, below 1 leaves unused bit patterns.",
+  "trace": [
+    {
+      "label": "Lengths 1, 2, 2",
+      "choices": [
+        "complete (sum 1)",
+        "over-subscribed (sum above 1)",
+        "incomplete (sum below 1)"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Lengths 1, 1, 2",
+      "choices": [
+        "complete (sum 1)",
+        "over-subscribed (sum above 1)",
+        "incomplete (sum below 1)"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Lengths 2, 2, 2",
+      "choices": [
+        "complete (sum 1)",
+        "over-subscribed (sum above 1)",
+        "incomplete (sum below 1)"
+      ],
+      "answer": 2
+    }
+  ],
+  "explain": "1/2 + 1/4 + 1/4 = 1. 1/2 + 1/2 + 1/4 = 5/4, more codes than bit patterns exist. 3 x 1/4 = 3/4, so one pattern of two bits is never assigned."
+}

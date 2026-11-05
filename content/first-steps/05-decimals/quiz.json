@@ -1,0 +1,24 @@
+[
+  {
+    "kind": "predict",
+    "prompt": "What does this print?",
+    "code": "double r = 7 / 2;\nprintf(\"%.1f\", r);",
+    "choices": [
+      "3.0",
+      "3.5",
+      "4.0",
+      "7.0"
+    ],
+    "answer": 0,
+    "explain": "`7 / 2` is integer division and happens before the result is stored in a `double`. Write `7.0 / 2` to keep the fraction."
+  },
+  {
+    "kind": "typed",
+    "prompt": "Which format specifier prints a `double` with two decimal places? Type it, including the `%`.",
+    "accepted": [
+      "%.2f"
+    ],
+    "caseSensitive": true,
+    "explain": "`%f` prints a floating-point number and `.2` fixes two digits after the point."
+  }
+]

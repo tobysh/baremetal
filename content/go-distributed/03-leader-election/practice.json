@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Fill in the vote handler. It must refuse stale terms, forget its vote when it sees a newer term, and only vote for a candidate whose log is at least as up to date.",
+  "template": "if req.Term {{0}} n.term {\n\treturn false\n}\nif req.Term > n.term {\n\tn.term = req.Term\n\tn.votedFor = {{1}}\n\tn.role = Follower\n}\nif (n.votedFor == -1 || n.votedFor == req.Candidate) && {{2}} {\n\tn.votedFor = req.Candidate\n\treturn true\n}\nreturn false",
+  "answers": [
+    "<",
+    "-1",
+    "logUpToDate(req)"
+  ],
+  "tokens": [
+    "<",
+    "-1",
+    "logUpToDate(req)",
+    ">",
+    "req.Candidate",
+    "true"
+  ],
+  "runTests": false,
+  "explain": "A request from an older term is rejected. A newer term resets the vote to 'none' (-1). The vote is then granted only if it is free or already for this candidate, and the candidate's log is not behind."
+}

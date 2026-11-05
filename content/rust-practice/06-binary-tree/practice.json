@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "Searching this tree for small values keeps failing. Tap the line with the bug.",
+  "code": "fn insert_into(slot: &mut Option<Box<Node>>, value: i32) -> bool {\n    match slot {\n        None => {\n            *slot = Some(Box::new(Node { value, left: None, right: None }));\n            true\n        }\n        Some(node) => {\n            if value < node.value {\n                insert_into(&mut node.right, value)\n            } else if value > node.value {\n                insert_into(&mut node.right, value)\n            } else {\n                false\n            }\n        }\n    }\n}",
+  "bugLine": 9,
+  "explain": "Smaller values belong in the left subtree. With both branches going right, the tree becomes a list on the right, and a search that goes left for a small value finds nothing."
+}

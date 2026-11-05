@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "Complete the `match`: children are aged 0 to 12 (an inclusive range), and anyone aged 65 or more is a senior, tested with a guard.",
+  "template": "fn age_group(age: u32) -> &'static str {\n    match age {\n        0..={{0}} => \"child\",\n        13..=19 => \"teen\",\n        n {{1}} n >= 65 => \"senior\",\n        _ => \"adult\",\n    }\n}\n\nfn main() {\n    println!(\"{}\", age_group(70));\n}",
+  "tokens": [
+    "12",
+    "13",
+    "11",
+    "if",
+    "when",
+    "&&"
+  ],
+  "answers": [
+    "12",
+    "if"
+  ],
+  "runTests": false,
+  "explain": "A range pattern `0..=12` includes both ends. A guard is written `pattern if condition`. Arms are tried top to bottom, so `senior` is only reached by ages that no earlier arm took."
+}

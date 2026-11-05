@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "Several goroutines call `Set` at the same time and the program sometimes dies with a concurrent map write. Tap the faulty line.",
+  "code": "func (r *Registry) Set(key string, v int) {\n\tr.mu.RLock()\n\tdefer r.mu.RUnlock()\n\tr.m[key] = v\n}",
+  "bugLine": 2,
+  "explain": "A read lock can be held by many goroutines at once, so two writers could modify the map together. Writes need the exclusive `Lock`; only pure readers may use `RLock`."
+}

@@ -1,0 +1,18 @@
+{
+  "kind": "parsons",
+  "prompt": "Finish the helper that sends a request straight to a handler without a network: build the request, mark JSON bodies, call the handler with a recorder and return the recorder. One line is a decoy.",
+  "lines": [
+    "\treq := httptest.NewRequest(method, target, r)",
+    "\tif body != nil {",
+    "\t\treq.Header.Set(\"Content-Type\", \"application/json\")",
+    "\t}",
+    "\trec := httptest.NewRecorder()",
+    "\th.ServeHTTP(rec, req)",
+    "\treturn rec"
+  ],
+  "distractors": [
+    "\th.ServeHTTP(req, rec)"
+  ],
+  "base": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"io\"\n\t\"net/http\"\n\t\"net/http/httptest\"\n\t\"testing\"\n)\n\nfunc DoJSON(h http.Handler, method, target string, body any) *httptest.ResponseRecorder {\n\tvar r io.Reader\n\tif body != nil {\n\t\tb, err := json.Marshal(body)\n\t\tif err != nil {\n\t\t\tpanic(err)\n\t\t}\n\t\tr = bytes.NewReader(b)\n\t}\n{{code}}\n}\n\nfunc DecodeBody[T any](t testing.TB, rec *httptest.ResponseRecorder) T {\n\tt.Helper()\n\tvar v T\n\tif err := json.Unmarshal(rec.Body.Bytes(), &v); err != nil {\n\t\tt.Fatalf(\"bad JSON body: %v\\nbody: %s\", err, rec.Body.String())\n\t\tvar zero T\n\t\treturn zero\n\t}\n\treturn v\n}\n\nfunc AssertStatus(t testing.TB, rec *httptest.ResponseRecorder, want int) {\n\tt.Helper()\n\tif rec.Code != want {\n\t\tt.Errorf(\"status = %d, want %d; body: %s\", rec.Code, want, rec.Body.String())\n\t}\n}\n\nfunc AssertJSONError(t testing.TB, rec *httptest.ResponseRecorder, status int, msg string) {\n\tt.Helper()\n\tAssertStatus(t, rec, status)\n\tvar e struct {\n\t\tError string `json:\"error\"`\n\t}\n\tif err := json.Unmarshal(rec.Body.Bytes(), &e); err != nil {\n\t\tt.Fatalf(\"bad JSON body: %v\\nbody: %s\", err, rec.Body.String())\n\t\treturn\n\t}\n\tif e.Error != msg {\n\t\tt.Errorf(\"error = %q, want %q\", e.Error, msg)\n\t}\n}\n\nfunc main() {\n\th := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, `{\"ok\":true}`) })\n\trec := DoJSON(h, \"GET\", \"/\", nil)\n\tfmt.Println(rec != nil)\n}\n",
+  "explain": "`httptest.NewRequest` and `NewRecorder` let you call `ServeHTTP` directly. The handler signature is `(w, r)`, so the recorder (the writer) comes first."
+}

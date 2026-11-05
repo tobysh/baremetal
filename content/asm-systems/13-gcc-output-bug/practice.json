@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This is unoptimised compiler output for `int absval(int x) { return x < 0 ? -x : x; }`, but someone planted a bug. Tap the line.",
+  "code": "absval:\n    push rbp\n    mov rbp, rsp\n    mov DWORD PTR [rbp-4], edi\n    cmp DWORD PTR [rbp-4], 0\n    js .L2\n    mov eax, DWORD PTR [rbp-4]\n    neg eax\n    jmp .L3\n.L2:\n    mov eax, DWORD PTR [rbp-4]\n.L3:\n    pop rbp\n    ret",
+  "bugLine": 6,
+  "explain": "`js` jumps when x is negative, skipping the negation, so the code returns -x for positive numbers and x for negative ones. The original is `jns .L2` (skip the negate when x is not negative)."
+}

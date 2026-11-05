@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "A lock-free ring buffer push. The model checker finds a consumer reading garbage. Tap the line that causes it.",
+  "code": "bool push(Ring *r, int v) {\n    int tail = atomic_load(&r->tail);\n    if (tail - atomic_load(&r->head) == CAP) return false;\n    if (!atomic_compare_exchange_strong(&r->tail, &tail, tail + 1)) return false;\n    r->slot[tail % CAP] = v;\n    return true;\n}",
+  "bugLine": 5,
+  "explain": "Moving `tail` publishes the slot, but the value is written afterwards. The consumer can see the new tail and read the slot before `v` arrives. Write the slot, then publish."
+}

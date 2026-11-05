@@ -1,0 +1,43 @@
+{
+  "kind": "predict",
+  "prompt": "A lexer turns text into tokens and remembers each token's starting byte offset. Predict what `lex` returns for each input.",
+  "trace": [
+    {
+      "label": "`lex(\"<=\")`",
+      "choices": [
+        "[Lt, Eq]",
+        "[LtEq]",
+        "Err(UnexpectedChar)"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`lex(\"1 $ 2\")`",
+      "choices": [
+        "Err(UnexpectedChar('$', 2))",
+        "Err(UnexpectedChar('$', 1))",
+        "Ok with two tokens"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`lex(\"# note\\n7\")`",
+      "choices": [
+        "[Num(7) at byte 0]",
+        "[Num(7) at byte 7]",
+        "[]"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`lex(\"99999999999999999999\")`",
+      "choices": [
+        "Ok([Num(..)])",
+        "Err(NumberTooBig(0))",
+        "Err(UnexpectedChar('9', 0))"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Longer operators are tried first, so `<=` is one token. The error reports the byte offset of the unsupported character. A `#` comment runs to the newline, so the `7` after it starts at byte 7. A number that does not fit in `i64` is `NumberTooBig` at its start."
+}

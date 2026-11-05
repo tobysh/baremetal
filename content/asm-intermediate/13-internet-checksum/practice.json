@@ -1,0 +1,17 @@
+{
+  "kind": "blanks",
+  "prompt": "Fold a 64-bit sum of 16-bit words down to 16 bits and invert it.",
+  "template": "    mov rax, rcx\n.Lfold:\n    mov rdx, rax\n    {{0}} rdx, 16\n    test rdx, rdx\n    jz .Ldone\n    movzx eax, ax\n    add rax, rdx\n    jmp .Lfold\n.Ldone:\n    {{1}} eax\n    movzx eax, ax",
+  "answers": [
+    "shr",
+    "not"
+  ],
+  "tokens": [
+    "shr",
+    "shl",
+    "not",
+    "neg"
+  ],
+  "runTests": false,
+  "explain": "Anything above bit 15 is a carry that must be added back in: shift it down, keep the low 16 bits and add. Repeat until nothing is left. The checksum is the one's complement, `not`, kept to 16 bits."
+}

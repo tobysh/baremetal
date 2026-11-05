@@ -1,0 +1,22 @@
+[
+  {
+    "kind": "choice",
+    "prompt": "A signed 32-bit `int` holds 2147483647 and you add 1. What does the C standard say?",
+    "choices": [
+      "It is undefined behaviour",
+      "It always wraps to -2147483648",
+      "It becomes a `long` automatically",
+      "The compiler always rejects it"
+    ],
+    "answer": 0,
+    "explain": "Signed overflow is undefined behaviour. Unsigned arithmetic wraps by definition, signed does not."
+  },
+  {
+    "kind": "typed",
+    "prompt": "What is the largest value an `unsigned char` (8 bits) can hold? Type the number.",
+    "accepted": [
+      "255"
+    ],
+    "explain": "8 bits give 2^8 = 256 values, so 0 to 255."
+  }
+]

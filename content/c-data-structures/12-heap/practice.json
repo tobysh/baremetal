@@ -1,0 +1,43 @@
+{
+  "kind": "predict",
+  "prompt": "This min-heap starts empty and is stored in an array. We push 5, 3, 8 and 1, then pop once. Each push sifts up while the parent is bigger.",
+  "trace": [
+    {
+      "label": "After pushing 3 the array is",
+      "choices": [
+        "5 3",
+        "3 5",
+        "3"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After pushing 8 the array is",
+      "choices": [
+        "3 5 8",
+        "3 8 5",
+        "8 5 3"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "After pushing 1 the array is",
+      "choices": [
+        "1 5 8 3",
+        "1 3 8 5",
+        "3 5 8 1"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After one pop (which returns 1) the array is",
+      "choices": [
+        "3 8 5",
+        "5 3 8",
+        "3 5 8"
+      ],
+      "answer": 2
+    }
+  ],
+  "explain": "Pushing 1 puts it at index 3; its parent (index 1, value 5) is bigger so they swap, then its new parent (index 0, value 3) is bigger so they swap again, leaving `1 3 8 5`. A pop returns 1, moves the last value (5) to the root and sifts it down by swapping with its smaller child 3: `3 5 8`."
+}

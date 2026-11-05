@@ -1,0 +1,17 @@
+{
+  "kind": "blanks",
+  "prompt": "Build a frame with room for a 20-byte buffer, keeping `rsp` 16-byte aligned for the call, then tear it down.",
+  "template": "fmt:\n    push rbp\n    mov rbp, rsp\n    sub rsp, {{0}}\n    lea rdi, [rbp - 20]\n    call helper\n    {{1}}\n    ret",
+  "answers": [
+    "32",
+    "leave"
+  ],
+  "tokens": [
+    "32",
+    "30",
+    "leave",
+    "pop rsp"
+  ],
+  "runTests": false,
+  "explain": "After `push rbp` rsp is a multiple of 16, so the local space must be one too: 32 covers 20 bytes. `leave` does `mov rsp, rbp; pop rbp`, undoing both prologue steps in one instruction."
+}

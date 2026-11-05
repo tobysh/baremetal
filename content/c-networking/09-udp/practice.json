@@ -1,0 +1,12 @@
+{
+  "kind": "predict",
+  "prompt": "A client calls `sendto` twice, with \"ab\" then \"cd\". Both datagrams arrive. The server calls `recvfrom` once with a 100 byte buffer. What does it get?",
+  "choices": [
+    "\"ab\" (2 bytes); the next call gets \"cd\"",
+    "\"abcd\" (4 bytes), since there is room",
+    "\"a\", because UDP is byte oriented",
+    "Whichever datagram is bigger"
+  ],
+  "answer": 0,
+  "explain": "UDP keeps message boundaries: each `recvfrom` returns exactly one datagram. Unlike TCP, two sends are never merged, and a datagram larger than the buffer is truncated."
+}

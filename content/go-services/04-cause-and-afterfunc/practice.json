@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "What does this print?",
+  "code": "ctx, cancel := context.WithCancelCause(context.Background())\ncancel(errors.New(\"disk full\"))\nfmt.Println(ctx.Err(), context.Cause(ctx))",
+  "choices": [
+    "context canceled disk full",
+    "disk full disk full",
+    "context canceled context canceled",
+    "<nil> disk full"
+  ],
+  "answer": 0,
+  "explain": "`ctx.Err()` only ever says `context canceled` (or deadline exceeded). The reason passed to `cancel` is available separately through `context.Cause`."
+}

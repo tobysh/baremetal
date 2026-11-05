@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "What does this print? Remember how Go stores text.",
+  "code": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ts := \"héllo\"\n\tfmt.Println(len(s), len([]rune(s)))\n}",
+  "choices": [
+    "5 5",
+    "6 5",
+    "5 6",
+    "6 6"
+  ],
+  "answer": 1,
+  "explain": "`len` counts bytes. In UTF-8 the letter e with an accent takes two bytes, so the string has 6 bytes but only 5 runes (characters)."
+}

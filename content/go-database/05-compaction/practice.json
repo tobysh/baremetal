@@ -1,0 +1,18 @@
+{
+  "kind": "parsons",
+  "prompt": "Put these lines in order so compaction keeps only the latest value of each key and writes keys in sorted order. One line does not belong.",
+  "lines": [
+    "latest := map[string][]byte{}",
+    "for _, rec := range records {",
+    "\tlatest[rec.Key] = rec.Value",
+    "}",
+    "for _, k := range sortedKeys(latest) {",
+    "\tAppendRecord(out, []byte(k), latest[k])",
+    "}"
+  ],
+  "runTests": false,
+  "distractors": [
+    "\tlatest[rec.Key] = append(latest[rec.Key], rec.Value...)"
+  ],
+  "explain": "Later records overwrite earlier ones, so a plain assignment leaves the newest value. Appending would glue old and new values together. The new log is written only after the map is complete."
+}

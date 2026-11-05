@@ -1,0 +1,18 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines of a function that returns an iterator of powers of two up to `limit`. One line does not belong.",
+  "base": "use std::iter::successors;\n\n{{code}}\n\nfn main() {\n    let v: Vec<u32> = powers_of_two(20).collect();\n    println!(\"{:?}\", v);\n}",
+  "lines": [
+    "fn powers_of_two(limit: u32) -> impl Iterator<Item = u32> {",
+    "    successors(Some(1), move |&n| {",
+    "        let next = n * 2;",
+    "        if next <= limit { Some(next) } else { None }",
+    "    })",
+    "}"
+  ],
+  "distractors": [
+    "        if next <= limit { Some(n) } else { None }"
+  ],
+  "runTests": false,
+  "explain": "`successors` starts from a first value and calls the closure on the previous one to get the next, stopping at `None`. `move` lets the closure keep `limit` after the function returns. Returning `Some(n)` would repeat the same number forever."
+}

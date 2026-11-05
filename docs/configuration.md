@@ -19,7 +19,7 @@ All configuration is through environment variables. In development put them in `
 | `NEXT_PUBLIC_SITE_URL` | Real `https://` origin. Inlined at build time, so set it for `npm run build` too. Used for canonical URLs, the sitemap, og:image and the same-origin check |
 | `TRUSTED_PROXY_HOPS` | How many proxy hops to trust in `X-Forwarded-For` (usually `1`). See "Proxy contract" in the deployment guide |
 | `RUNNER_SOCKET` | Absolute Unix socket path (≤ 100 bytes) of the runner service. Production never executes learner code in the web process |
-| `SMTP_URL`, `EMAIL_FROM` | Outgoing mail for verification and recovery |
+| `SMTP_URL`, `EMAIL_FROM` | Outgoing mail for verification, recovery and admin-sent links. `SMTP_URL` is `smtp://user:pass@host:587` (STARTTLS) or `smtps://user:pass@host:465`, with special characters in the password percent-encoded. `EMAIL_FROM` is `"Baremetal <no-reply@your-domain>"` on a domain the provider has verified (set SPF, DKIM, DMARC). Unset in development, mail is printed to the server console; production refuses to boot without both. The admin overview shows whether SMTP is configured and how deep the retry queue is |
 | `LEGAL_ENTITY_NAME`, `LEGAL_ADDRESS`, `LEGAL_CONTACT_EMAIL` | Shown in the footer and legal pages. Optional: `LEGAL_JURISDICTION` (default "England and Wales") |
 
 ## Tutor

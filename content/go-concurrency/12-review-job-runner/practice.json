@@ -1,0 +1,24 @@
+{
+  "kind": "predict",
+  "prompt": "A semaphore channel with capacity 2 limits running jobs. Two jobs already hold a slot. Predict each non-blocking attempt to take one.",
+  "code": "sem := make(chan struct{}, 2)\nsem <- struct{}{}\nsem <- struct{}{}\n\ntry := func() {\n\tselect {\n\tcase sem <- struct{}{}:\n\t\tfmt.Println(\"ran\")\n\tdefault:\n\t\tfmt.Println(\"full\")\n\t}\n}\n\ntry()\n<-sem\ntry()",
+  "trace": [
+    {
+      "label": "first try, with 2 slots held",
+      "choices": [
+        "ran",
+        "full"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "second try, after one `<-sem`",
+      "choices": [
+        "ran",
+        "full"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "While both slots are held the send cannot proceed, so `default` runs. After one job releases (`<-sem`) there is room again and the send succeeds. This is how `RunJobs` caps concurrency."
+}

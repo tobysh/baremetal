@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "Wait for activity on the listening socket with `poll`. Block until something happens, then check if the listener has a client waiting.",
+  "template": "struct pollfd fds[3];\nfds[0].fd = listener;\nfds[0].events = {{0}};\nint n = poll(fds, 3, {{1}});\nif (fds[0].revents & {{2}}) accept_new();",
+  "answers": [
+    "POLLIN",
+    "-1",
+    "POLLIN"
+  ],
+  "tokens": [
+    "POLLIN",
+    "POLLIN",
+    "POLLOUT",
+    "-1",
+    "0"
+  ],
+  "runTests": false,
+  "explain": "A listening socket becomes readable when a connection is waiting, so ask for and test `POLLIN`. A timeout of -1 waits as long as needed; 0 would return immediately even with nothing ready."
+}

@@ -1,0 +1,19 @@
+{
+  "kind": "parsons",
+  "prompt": "A bump allocator hands out 16-byte aligned memory from one block, or returns NULL when the block is full. One line does not belong.",
+  "lines": [
+    "void *arena_alloc(Arena *a, size_t n) {",
+    "    size_t start = (a->used + 15) & ~(size_t)15;",
+    "    if (start + n > a->cap) {",
+    "        return NULL;",
+    "    }",
+    "    a->used = start + n;",
+    "    return a->base + start;",
+    "}"
+  ],
+  "distractors": [
+    "    a->used += n;"
+  ],
+  "runTests": false,
+  "explain": "Round the cursor up to alignment, check the end against the capacity before moving anything, then advance past the object. Adding `n` to the unaligned `used` would lose the alignment."
+}

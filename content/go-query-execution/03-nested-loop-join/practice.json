@@ -1,0 +1,18 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines of a nested-loop join that skips NULL keys (NULL never equals NULL). One line does not belong.",
+  "lines": [
+    "for _, l := range left {",
+    "\tfor _, r := range right {",
+    "\t\tif l.Key != nil && r.Key != nil && *l.Key == *r.Key {",
+    "\t\t\tout = append(out, join(l, r))",
+    "\t\t}",
+    "\t}",
+    "}"
+  ],
+  "runTests": false,
+  "distractors": [
+    "\t\tif *l.Key == *r.Key {"
+  ],
+  "explain": "The outer loop picks a left row, the inner loop re-scans every right row. Both keys are checked for nil before comparing, which both avoids a crash and makes NULL never match."
+}

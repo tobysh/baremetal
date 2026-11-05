@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This `transpose` should mirror the grid across its main diagonal, but the grid comes out unchanged. Tap the faulty line.",
+  "code": "void transpose(int g[SIZE][SIZE]) {\n    for (int r = 0; r < SIZE; r++) {\n        for (int c = 0; c < SIZE; c++) {\n            int tmp = g[r][c];\n            g[r][c] = g[c][r];\n            g[c][r] = tmp;\n        }\n    }\n}",
+  "bugLine": 3,
+  "explain": "Starting `c` at 0 visits every cell, so each pair (r, c) and (c, r) is swapped twice: once and then back again. Starting at `c = r + 1` visits each pair only once, above the diagonal."
+}

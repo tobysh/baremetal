@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`caesar` is meant to handle any shift, including negative ones. Shifting by -3 sends `d` to the wrong place. Tap the faulty line.",
+  "code": "void caesar(char s[], int shift) {\n    int k = shift % 26;\n    for (int i = 0; s[i] != '\\0'; i++) {\n        if (s[i] >= 'a' && s[i] <= 'z') {\n            s[i] = (char)('a' + (s[i] - 'a' + k) % 26);\n        }\n    }\n}",
+  "bugLine": 2,
+  "explain": "In C, `%` keeps the sign of the left operand, so `-3 % 26` is -3, and the sum under the second `%` can go negative too. Adding 26 before the final `% 26` -- `((shift % 26) + 26) % 26` -- always gives 0 to 25."
+}

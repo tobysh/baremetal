@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "What does this program print?",
+  "code": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfor i := 1; i <= 3; i++ {\n\t\tdefer fmt.Print(i, \" \")\n\t}\n\tfmt.Print(\"go \")\n}",
+  "choices": [
+    "go 3 2 1 ",
+    "go 1 2 3 ",
+    "1 2 3 go ",
+    "3 2 1 go "
+  ],
+  "answer": 0,
+  "explain": "Deferred calls run when the function returns, last in first out. `go ` is printed first, then the deferred prints run as 3, 2, 1. Arguments are evaluated at the `defer` statement."
+}

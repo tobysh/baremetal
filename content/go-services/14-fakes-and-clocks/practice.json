@@ -1,0 +1,24 @@
+{
+  "kind": "predict",
+  "prompt": "A `TTLCache` with a one minute TTL uses a `FakeClock` starting at midnight. An entry `a` is set, then the clock is advanced. Predict each `Get(\"a\")`.",
+  "code": "clock := NewFakeClock(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))\ncache := NewTTLCache(clock, time.Minute)\ncache.Set(\"a\", \"1\")\nclock.Advance(59 * time.Second)\n// first Get(\"a\")\nclock.Advance(time.Second)\n// second Get(\"a\")",
+  "trace": [
+    {
+      "label": "after advancing 59 seconds",
+      "choices": [
+        "\"1\", true",
+        "\"\", false"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "after one more second (60 s in total)",
+      "choices": [
+        "\"1\", true",
+        "\"\", false"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "An entry expires at set time plus TTL, and `expired` uses `!Before`, so exactly at that instant it is already gone. A fake clock makes this boundary testable without sleeping."
+}

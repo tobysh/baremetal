@@ -22,16 +22,17 @@ Current design of XP, levels, seals, challenges, reviews and the Codex. Implemen
 | Hints | Fetched and recorded via `/api/hint` (`progress.hintsUsed`); `hintsUsedAtPass` and `attemptsAtPass` snapshotted on first pass. |
 | Seals | Passed (lesson XP), Unaided (no hints, no tutor before pass, and a failed run or hard+ difficulty; cosmetic), Challenge. |
 | Challenges | Optional harder variants, unlocked after the lesson pass, half XP. Stored as progress docs with id `<lesson id>#challenge`. Files: `challenge.md`, `challenge-starter.*`, `challenge-solution.*`, `challenge-tests.*` or `challenge-cases.json`. `verify:content` checks the solution passes and the plain lesson solution fails. Currently 22; list them with `ls content/*/*/challenge.md`. |
+| Practice | Optional tap-and-drag exercises (parsons, blanks, predict, bug) from a lesson's `practice.json`, a quarter of the lesson's XP with a minimum of 1 (easy 1, medium 2, hard 5, impossible 10; `practiceXpFor`). Stored as progress docs with id `<lesson id>#practice`, ledger source `practice`. Granted once, on first pass, through `recordAttempt` with `practice: true`, so the pace limit, the rolling 24 h cap and the minimum solve time (a flat 4 s for practice) apply like any pass. No seals, no review schedule, no Codex credit. A practice pass counts toward the weekly rhythm. It never blocks the lesson's own full XP. |
 | Codex | 20 achievements, no XP, defined in `src/lib/achievements.ts` (`id`, `name`, `description`, `check`). Adding one needs `npm run backfill-achievements`. |
 | Weekly rhythm | `src/lib/rhythm.ts`, derived from `passedAt` (withheld passes excluded). Goal 1/2/3/5 or none, timezone; only `users.weeklyGoal` and `users.timezone` are stored. Rest weeks banked every 4 met weeks (max 2), no loss messaging. |
-| Reviews | Spaced re-solves at 3/7/21/60 days, no XP. Failed runs never reset the schedule; only "I need a refresher" does. |
+| Reviews | Spaced re-solves at 3/7/21/60 days, no XP. Failed runs never reset the schedule; only "I need a refresher" does. `/review` shows up to 20 due lessons as graded question cards and posts to `/api/review`. Each card asks one question from the lesson's deck (its `practice.json` plus `quiz.json`; the question changes each round) in any practice kind, checked on the server. The first answer settles the schedule: right advances a due review, wrong restarts at 3 days and reveals the answer. A card can be answered once per due date. A lesson with no question gets a "write it again" card linking to its coding review. Cards do not increment the review `count`, so they never count toward Codex review achievements; only a solved review does. |
 | UI | Course map, stats, daily pick, level-up and course-complete dialogs, achievement toasts, profile showcase, `/leaderboard` and `/u/[username]` (noindex, opt-out). |
 
 Collections: `xp_events`, `achievements` (unique `(userId, id)`), `reviews` (unique `(userId, exerciseId)`); progress fields `hintsUsed`, `hintsUsedAtPass`, `attemptsAtPass`; user fields `timezone`, `weeklyGoal`. All are in data export and account deletion and listed in `content/legal/privacy.md`.
 
 ## Maintenance rules
 
-- Changing `LEVEL_FLOORS`, a lesson's difficulty or challenge XP needs `npm run recompute-xp` (rebuilds the ledger and review schedule per user). Run it only with the site stopped.
+- Changing `LEVEL_FLOORS`, a lesson's difficulty, challenge XP or practice XP, or adding or removing a `practice.json` (a removed one stops paying on recompute), needs `npm run recompute-xp` (rebuilds the ledger and review schedule per user). Run it only with the site stopped.
 - On an existing database, run `recompute-xp` then `backfill-achievements` once.
 
 ## Not built (D5, deliberately)

@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "Find the length of a string, then print it with `puts`, and return the length. Tap the line that loses the answer.",
+  "code": "mov rdi, rbx\ncall strlen\nmov r8, rax\nmov rdi, rbx\ncall puts\nmov rax, r8\nret",
+  "bugLine": 3,
+  "explain": "`r8` is caller-saved, so `puts` is free to overwrite it. Keep values that must survive a call in callee-saved registers (rbx, r12-r15) or on the stack."
+}

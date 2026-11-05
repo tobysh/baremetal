@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Make `+` work on `Meters` by completing the trait implementation.",
+  "template": "use std::ops::Add;\n\n#[derive(Debug, Clone, Copy)]\nstruct Meters(f64);\n\nimpl {{0}} for Meters {\n    type {{1}} = Meters;\n    fn {{2}}(self, other: Meters) -> Meters {\n        Meters(self.0 + other.0)\n    }\n}\n\nfn main() {\n    println!(\"{:?}\", Meters(1.5) + Meters(2.0));\n}",
+  "tokens": [
+    "Add",
+    "Output",
+    "add",
+    "Sum",
+    "Item",
+    "plus"
+  ],
+  "answers": [
+    "Add",
+    "Output",
+    "add"
+  ],
+  "runTests": false,
+  "explain": "`a + b` is sugar for `Add::add(a, b)`. The trait names its result type `Output`, and the method is called `add`. `Sum` is for adding up whole iterators."
+}

@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "The producer hands a value to the consumer with a release store and an acquire load. Tap the line that announces the value before it exists.",
+  "code": "int data;\natomic_int ready;\n\nvoid producer(void) {\n    atomic_store_explicit(&ready, 1, memory_order_release);\n    data = 42;\n}\nint consumer(void) {\n    while (!atomic_load_explicit(&ready, memory_order_acquire)) { }\n    return data;\n}",
+  "bugLine": 5,
+  "explain": "A release store only publishes writes made before it. Setting the flag first means the consumer can see `ready == 1` and still read the old `data`. Write the data first, then release."
+}

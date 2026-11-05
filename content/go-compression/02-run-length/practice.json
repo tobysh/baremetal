@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This strict run-length decoder reads `(count, byte)` pairs. Tap the line that lets a damaged input pass unnoticed.",
+  "code": "for i := 0; i+1 < len(src); i += 2 {\n\tn, b := int(src[i]), src[i+1]\n\tfor j := 0; j < n; j++ {\n\t\tout = append(out, b)\n\t}\n}",
+  "bugLine": 1,
+  "explain": "With an odd number of bytes the loop quietly ignores the last byte. A strict decoder must return an error for a truncated pair, for example by checking `len(src)%2 != 0` first."
+}

@@ -58,14 +58,26 @@ export function SealRow({ seals, hasChallenge, size = 18 }: { seals: Seals; hasC
   );
 }
 
+/** Visible key for the three seals. Meanings are plain text in a native disclosure, so no hover is needed. */
 export function SealLegend() {
   return (
-    <ul className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted">
-      {(Object.keys(META) as Kind[]).map((k) => (
-        <li key={k} className="inline-flex items-center gap-1.5">
-          <Seal kind={k} earned size={14} /> {META[k].label}
-        </li>
-      ))}
-    </ul>
+    <details className="text-sm text-muted">
+      <summary className="flex min-h-9 cursor-pointer flex-wrap items-center gap-x-5 gap-y-1">
+        {(Object.keys(META) as Kind[]).map((k) => (
+          <span key={k} className="inline-flex items-center gap-1.5">
+            <Seal kind={k} earned size={16} /> {META[k].label}
+          </span>
+        ))}
+        <span className="text-accent underline underline-offset-2">What do these mean?</span>
+      </summary>
+      <ul className="mt-2 max-w-md space-y-2">
+        {(Object.keys(META) as Kind[]).map((k) => (
+          <li key={k} className="flex items-start gap-2">
+            <span className="mt-0.5"><Seal kind={k} earned size={16} /></span>
+            <span><span className="font-medium text-text">{META[k].label}:</span> {k === "challenge" ? "An optional variant of a lesson. Passing it adds this seal; skipping it costs nothing." : META[k].earned + "."} {k !== "challenge" && <span>Dashed means not yet: {META[k].locked.replace(/^Unaided: /, "").toLowerCase()}.</span>}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }

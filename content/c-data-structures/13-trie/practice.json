@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "A trie stores one letter per level. Fill the blanks: how a letter becomes a child index, how to step down to the child, and which field marks the end of a word.",
+  "template": "int trie_insert(Trie *root, const char *word) {\n    if (word[0] == '\\0' || !valid(word)) return -1;\n    Trie *node = root;\n    for (const char *p = word; *p; p++) {\n        int i = *p - {{0}};\n        if (node->child[i] == NULL) {\n            node->child[i] = trie_new();\n            if (node->child[i] == NULL) return -1;\n        }\n        node = node->{{1}}[i];\n    }\n    node->{{2}} = 1;\n    return 0;\n}",
+  "answers": [
+    "'a'",
+    "child",
+    "end"
+  ],
+  "tokens": [
+    "'a'",
+    "child",
+    "end",
+    "'A'",
+    "next",
+    "0"
+  ],
+  "explain": "`*p - 'a'` maps `a`..`z` to 0..25, the index into the `child` array. After walking all the letters the last node's `end` flag is set, so \"car\" is a word but \"ca\" is not.",
+  "runTests": false
+}

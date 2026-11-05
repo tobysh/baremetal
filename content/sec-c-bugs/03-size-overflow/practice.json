@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This allocates room for `count` records of `size` bytes plus a terminator. An attacker controls `count`. Tap the line where the size can silently wrap.",
+  "code": "char *alloc_records(size_t count, size_t size) {\n    size_t total = count * size + 1;\n    char *p = malloc(total);\n    if (!p) return NULL;\n    memset(p, 0, total);\n    return p;\n}\n",
+  "bugLine": 2,
+  "explain": "`count * size + 1` is unsigned arithmetic and wraps around. A huge `count` gives a tiny `total`, malloc succeeds, and later writes go far past it. Check `count > (SIZE_MAX - 1) / size` before multiplying."
+}

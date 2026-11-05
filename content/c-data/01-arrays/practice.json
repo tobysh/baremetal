@@ -1,0 +1,16 @@
+{
+  "kind": "parsons",
+  "prompt": "Put the lines of the body in order so `array_max` returns the largest element, even when every element is negative. One line does not belong.",
+  "base": "#include <stdio.h>\n\nint array_sum(int a[], int n) {\n    int total = 0;\n    for (int i = 0; i < n; i++) {\n        total += a[i];\n    }\n    return total;\n}\n\nint array_max(int a[], int n) {\n{{code}}\n}\n\nint count_above(int a[], int n, int limit) {\n    int count = 0;\n    for (int i = 0; i < n; i++) {\n        if (a[i] > limit) count++;\n    }\n    return count;\n}\n\nint main(void) {\n    int scores[5] = {70, 85, 90, 60, 100};\n    printf(\"sum = %d\\n\", array_sum(scores, 5));\n    printf(\"max = %d\\n\", array_max(scores, 5));\n    printf(\"above 80 = %d\\n\", count_above(scores, 5, 80));\n    return 0;\n}\n",
+  "lines": [
+    "    int best = a[0];",
+    "    for (int i = 1; i < n; i++) {",
+    "        if (a[i] > best) best = a[i];",
+    "    }",
+    "    return best;"
+  ],
+  "distractors": [
+    "    int best = 0;"
+  ],
+  "explain": "Start `best` at the first element, not at 0, or an all-negative array would wrongly answer 0. The loop can then begin at index 1."
+}

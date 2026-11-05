@@ -1,0 +1,16 @@
+{
+  "kind": "blanks",
+  "prompt": "Make `Inc` safe for many goroutines: take the lock on entry and release it however the function ends.",
+  "template": "package main\n\nimport \"sync\"\n\n// SafeCounter counts keys and is safe for concurrent use.\ntype SafeCounter struct {\n\tmu     sync.Mutex\n\tcounts map[string]int\n}\n\nfunc NewSafeCounter() *SafeCounter {\n\treturn &SafeCounter{counts: make(map[string]int)}\n}\n\n// Inc adds one to the count for key.\nfunc (c *SafeCounter) Inc(key string) {\n\tc.mu.{{0}}()\n\tdefer c.mu.{{1}}()\n\tc.counts[key]++\n}\n\n// Value returns the count for key (0 if unseen).\nfunc (c *SafeCounter) Value(key string) int {\n\tc.mu.Lock()\n\tdefer c.mu.Unlock()\n\treturn c.counts[key]\n}\n\n// ParallelSum sums nums using the given number of goroutines.\nfunc ParallelSum(nums []int, workers int) int {\n\tif workers < 1 {\n\t\tworkers = 1\n\t}\n\tsize := (len(nums) + workers - 1) / workers\n\tpartial := make([]int, workers)\n\tvar wg sync.WaitGroup\n\tfor i := 0; i < workers; i++ {\n\t\tlo := i * size\n\t\tif lo >= len(nums) {\n\t\t\tbreak\n\t\t}\n\t\thi := lo + size\n\t\tif hi > len(nums) {\n\t\t\thi = len(nums)\n\t\t}\n\t\twg.Add(1)\n\t\tgo func() {\n\t\t\tdefer wg.Done()\n\t\t\tfor _, n := range nums[lo:hi] {\n\t\t\t\tpartial[i] += n\n\t\t\t}\n\t\t}()\n\t}\n\twg.Wait()\n\ttotal := 0\n\tfor _, p := range partial {\n\t\ttotal += p\n\t}\n\treturn total\n}\n",
+  "answers": [
+    "Lock",
+    "Unlock"
+  ],
+  "tokens": [
+    "Lock",
+    "Unlock",
+    "RLock",
+    "RUnlock"
+  ],
+  "explain": "`defer` releases the mutex even on an early return or panic. A plain `sync.Mutex` has no `RLock`; that belongs to `RWMutex`."
+}

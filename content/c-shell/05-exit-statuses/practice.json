@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Fill in the macros that decode a raw `waitpid` status: the exit code for a normal exit, the signal number for a killed command, and the test for a stopped one.",
+  "template": "int exit_code(int wstatus) {\n    if (wstatus == -1) return -1;\n    if (WIFEXITED(wstatus)) return {{0}}(wstatus);\n    if (WIFSIGNALED(wstatus)) return 128 + {{1}}(wstatus);\n    if ({{2}}(wstatus)) return 128 + WSTOPSIG(wstatus);\n    return -1;\n}",
+  "answers": [
+    "WEXITSTATUS",
+    "WTERMSIG",
+    "WIFSTOPPED"
+  ],
+  "tokens": [
+    "WEXITSTATUS",
+    "WTERMSIG",
+    "WIFSTOPPED",
+    "WSTOPSIG",
+    "WIFSIGNALED",
+    "WCOREDUMP"
+  ],
+  "explain": "A normal exit has its code in `WEXITSTATUS`. A command killed by a signal reports `128 + WTERMSIG(status)`, the shell convention (so SIGKILL gives 137). `WIFSTOPPED` tells you the command is stopped rather than finished.",
+  "runTests": false
+}

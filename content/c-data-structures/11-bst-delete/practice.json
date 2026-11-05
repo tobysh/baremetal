@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "Deleting a node with two children: find its in-order successor, copy that key into the node, then delete the successor from the right subtree. Fill the three blanks.",
+  "template": "Node *bst_delete(Node *root, int key) {\n    if (root == NULL) return NULL;\n    if (key < root->key) {\n        root->left = bst_delete(root->left, key);\n    } else if (key > root->key) {\n        root->right = bst_delete(root->right, key);\n    } else {\n        if (root->left == NULL) {\n            Node *r = root->right;\n            free(root);\n            return r;\n        }\n        if (root->right == NULL) {\n            Node *l = root->left;\n            free(root);\n            return l;\n        }\n        int succ = bst_min(root->{{0}})->key;\n        root->{{1}} = succ;\n        root->right = bst_delete(root->right, {{2}});\n    }\n    return root;\n}",
+  "answers": [
+    "right",
+    "key",
+    "succ"
+  ],
+  "tokens": [
+    "right",
+    "key",
+    "succ",
+    "left",
+    "NULL"
+  ],
+  "explain": "The in-order successor is the smallest key in the *right* subtree. Copy it into this node's `key`, then remove the original successor node (which has at most one child) from the right subtree.",
+  "runTests": false
+}

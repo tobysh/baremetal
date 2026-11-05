@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "Predict what this prints. A read guard is still alive when the two checks run.",
+  "code": "let lock = RwLock::new(5);\nlet _r1 = lock.read().unwrap();\nlet a = lock.try_read().is_ok();\nlet b = lock.try_write().is_ok();\nprintln!(\"{} {}\", a, b);",
+  "choices": [
+    "true true",
+    "false false",
+    "true false",
+    "false true"
+  ],
+  "answer": 2,
+  "explain": "Many readers may hold a `RwLock` at once, so `try_read` succeeds. A writer needs exclusive access, so `try_write` fails while any reader is alive."
+}

@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "`a` is a `u8` holding 250. Choose the method that gives each result when 10 is added: `w` must be 4, `s` must be 255 and `c` must be `None`.",
+  "template": "fn main() {\n    let a: u8 = 250;\n    let w = a.{{0}}(10);\n    let s = a.{{1}}(10);\n    let c: Option<u8> = a.{{2}}(10);\n    println!(\"{w} {s} {c:?}\");\n}",
+  "tokens": [
+    "wrapping_add",
+    "saturating_add",
+    "checked_add",
+    "overflowing_add",
+    "add"
+  ],
+  "answers": [
+    "wrapping_add",
+    "saturating_add",
+    "checked_add"
+  ],
+  "runTests": false,
+  "explain": "Plain `+` panics on overflow in debug builds. `wrapping_add` goes around (260 - 256 = 4), `saturating_add` stops at the maximum, and `checked_add` reports the overflow as `None`."
+}

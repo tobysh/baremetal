@@ -1,0 +1,20 @@
+{
+  "kind": "parsons",
+  "prompt": "`strlen` in assembly: count bytes until the NUL. One line does not belong.",
+  "lines": [
+    "strlen_:",
+    "    xor eax, eax",
+    ".Lloop:",
+    "    cmp byte ptr [rdi + rax], 0",
+    "    je .Ldone",
+    "    inc rax",
+    "    jmp .Lloop",
+    ".Ldone:",
+    "    ret"
+  ],
+  "distractors": [
+    "    movzx eax, byte ptr [rdi]"
+  ],
+  "runTests": false,
+  "explain": "The count in rax doubles as the index. Compare a single byte with 0 before counting it, so the NUL itself is not included. Loading a byte into eax would overwrite the counter."
+}

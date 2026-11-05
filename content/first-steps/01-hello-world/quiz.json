@@ -1,0 +1,23 @@
+[
+  {
+    "kind": "choice",
+    "prompt": "Which line ends a C statement so the compiler knows where it stops?",
+    "choices": [
+      "A full stop `.`",
+      "A semicolon `;`",
+      "A colon `:`",
+      "A closing brace only"
+    ],
+    "answer": 1,
+    "explain": "Every simple statement ends with a semicolon. A missing one is one of the most common first compile errors."
+  },
+  {
+    "kind": "typed",
+    "prompt": "Which function from `<stdio.h>` prints formatted text to the screen? Type its name.",
+    "accepted": [
+      "printf",
+      "printf()"
+    ],
+    "explain": "`printf` prints exactly what is inside its quotes, plus any values you format into it."
+  }
+]

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode, type TouchEvent } from "react";
 import { jumpEvent, jumpTo, type LessonTarget } from "./lesson-jump";
 import styles from "./lesson-layout.module.css";
 
@@ -51,6 +51,25 @@ export function LessonLayout({ reading, workspace }: { reading: ReactNode; works
     return () => { window.removeEventListener(jumpEvent, onJump); window.removeEventListener("keydown", onKey); };
   }, []);
 
+  // Phones: swipe sideways on the lesson text or the panels to switch between reading and coding. Touches that start in
+  // the editor, a code block or a form field are left alone, since they scroll or select sideways themselves.
+  const swipe = useRef<{ x: number; y: number } | null>(null);
+  function swipeStart(event: TouchEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement;
+    const t = event.touches[0];
+    swipe.current = event.touches.length === 1 && !target.closest(".cm-editor, pre, textarea, input, select, [role=separator], [data-no-swipe]") ? { x: t.clientX, y: t.clientY } : null;
+  }
+  function swipeEnd(event: TouchEvent<HTMLDivElement>) {
+    const start = swipe.current;
+    swipe.current = null;
+    if (!start || window.matchMedia("(min-width: 1024px)").matches) return;
+    const t = event.changedTouches[0];
+    const dx = t.clientX - start.x;
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(t.clientY - start.y) * 2) return;
+    const target = dx < 0 ? "code" : "lesson";
+    if (target !== view) { setView(target); window.scrollTo({ top: 0, behavior: "auto" }); }
+  }
+
   function resize(value: number) {
     setWidth(value);
     try { localStorage.setItem(preferenceKey, String(value)); } catch { /* Layout still works without storage. */ }
@@ -95,7 +114,7 @@ export function LessonLayout({ reading, workspace }: { reading: ReactNode; works
           </button>
         </div>
       </div>
-      <div className={styles.panes} ref={panes}>
+      <div className={styles.panes} ref={panes} onTouchStart={swipeStart} onTouchEnd={swipeEnd}>
         <div id="view-panel-lesson" role="tabpanel" tabIndex={0} aria-labelledby="view-lesson" className={styles.reading}>{reading}</div>
         <div
           role="separator" aria-orientation="vertical" aria-label="Resize the reading pane" aria-valuemin={32} aria-valuemax={60} aria-valuenow={readingWidth} aria-valuetext={`${readingWidth} percent`}

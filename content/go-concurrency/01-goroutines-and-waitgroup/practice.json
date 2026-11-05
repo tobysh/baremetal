@@ -1,0 +1,20 @@
+{
+  "kind": "parsons",
+  "prompt": "Rebuild `RunAll`: start every task in its own goroutine and only return once all of them have finished. One line is a decoy.",
+  "lines": [
+    "\tvar wg sync.WaitGroup",
+    "\tfor _, t := range tasks {",
+    "\t\twg.Add(1)",
+    "\t\tgo func() {",
+    "\t\t\tdefer wg.Done()",
+    "\t\t\tt()",
+    "\t\t}()",
+    "\t}",
+    "\twg.Wait()"
+  ],
+  "distractors": [
+    "\twg.Done()"
+  ],
+  "base": "package main\n\nimport (\n\t\"fmt\"\n\t\"sync\"\n)\n\nfunc RunAll(tasks ...func()) {\n{{code}}\n}\n\nfunc Squares(n int) []int {\n\tif n <= 0 {\n\t\treturn []int{}\n\t}\n\tout := make([]int, n)\n\tvar wg sync.WaitGroup\n\tfor i := range out {\n\t\twg.Add(1)\n\t\tgo func() {\n\t\t\tdefer wg.Done()\n\t\t\tout[i] = i * i\n\t\t}()\n\t}\n\twg.Wait()\n\treturn out\n}\n\nfunc main() {\n\tfmt.Println(Squares(6))\n}\n",
+  "explain": "`Add` happens before the `go` statement so `Wait` can never see a zero counter too early, and `Done` is deferred so it runs however the task ends. Calling `Done` without a matching `Add` panics."
+}

@@ -1,0 +1,19 @@
+{
+  "kind": "parsons",
+  "prompt": "Rebuild `Generate`: it returns a channel straight away while a goroutine feeds the numbers in and closes the channel when finished. One line does not belong.",
+  "lines": [
+    "\tout := make(chan int)",
+    "\tgo func() {",
+    "\t\tdefer close(out)",
+    "\t\tfor _, n := range nums {",
+    "\t\t\tout <- n",
+    "\t\t}",
+    "\t}()",
+    "\treturn out"
+  ],
+  "distractors": [
+    "\tclose(out)"
+  ],
+  "base": "package main\n\n// Generate sends nums on the returned channel, then closes it.\nfunc Generate(nums ...int) <-chan int {\n{{code}}\n}\n\n// Square returns a channel of the squares of the values read from in.\nfunc Square(in <-chan int) <-chan int {\n\tout := make(chan int)\n\tgo func() {\n\t\tdefer close(out)\n\t\tfor v := range in {\n\t\t\tout <- v * v\n\t\t}\n\t}()\n\treturn out\n}\n\n// Collect gathers everything from in until it is closed.\nfunc Collect(in <-chan int) []int {\n\tresult := []int{}\n\tfor v := range in {\n\t\tresult = append(result, v)\n\t}\n\treturn result\n}\n",
+  "explain": "The sender is the one who closes, and `defer` guarantees it happens after the loop. Closing early would make the later sends panic."
+}

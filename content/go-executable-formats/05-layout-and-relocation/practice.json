@@ -1,0 +1,37 @@
+{
+  "kind": "predict",
+  "prompt": "Layout facts: sections start aligned to 4, and the data area starts at the next page boundary after the text. Base is `0x1000`, page size is `0x1000`.",
+  "trace": [
+    {
+      "label": "A section would start at 0x1005. Aligned up to 4 it starts at",
+      "choices": [
+        "0x1004",
+        "0x1005",
+        "0x1008",
+        "0x1010"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "Text is 0x123 bytes long. The data area starts at",
+      "choices": [
+        "0x1123",
+        "0x1200",
+        "0x2000",
+        "0x1000"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "Data is 0x10 bytes and bss 0x30 bytes, bss placed right after. MemSize is",
+      "choices": [
+        "0x30",
+        "0x40",
+        "0x10",
+        "0x20"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Aligning up rounds to the next multiple: 0x1005 -> 0x1008. 0x1000 + 0x123 = 0x1123, rounded up to a page is 0x2000. MemSize runs to the end of bss, 0x10 + 0x30 = 0x40, while only 0x10 bytes are in the file."
+}

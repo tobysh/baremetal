@@ -1,0 +1,16 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines of a send loop that only sends while the receiver has granted enough credit. One line does not belong.",
+  "lines": [
+    "for len(q) > 0 && credit >= len(q[0]) {",
+    "\tf := q[0]",
+    "\tq = q[1:]",
+    "\tcredit -= send(f)",
+    "}"
+  ],
+  "runTests": false,
+  "distractors": [
+    "\tcredit += len(f)"
+  ],
+  "explain": "Each sent byte spends credit; only the receiver can give it back with a new grant. Adding credit locally would let the sender ignore the limit."
+}

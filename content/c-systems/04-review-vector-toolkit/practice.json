@@ -1,0 +1,44 @@
+{
+  "kind": "predict",
+  "prompt": "`vec_filter` keeps elements for which `keep` returns non-zero by copying them down to the `write` position. The data is `5 2 8 3` and `keep` accepts values of at least 4.",
+  "code": "size_t write = 0;\nfor (size_t read = 0; read < 4; read++) {\n    if (keep(data[read])) {\n        data[write++] = data[read];\n    }\n}",
+  "trace": [
+    {
+      "label": "After the pass with read = 1 (value 2), write is",
+      "choices": [
+        "1",
+        "2",
+        "0"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "After the pass with read = 2, data[1] holds",
+      "choices": [
+        "2",
+        "8",
+        "5"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After the loop, write is",
+      "choices": [
+        "2",
+        "3",
+        "4"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "vec_filter returns (how many were removed)",
+      "choices": [
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "`write` counts the kept elements. 5 is kept (write becomes 1), 2 is skipped, 8 is copied to `data[1]` (write becomes 2), 3 is skipped. The vector is now `5 8` and the function returns how many were removed: 4 - 2 = 2."
+}

@@ -1,0 +1,18 @@
+{
+  "kind": "parsons",
+  "prompt": "Rebuild the runner of a table-driven check: try every case, collect a message for each failure and return them all rather than stopping at the first. One line does not belong.",
+  "lines": [
+    "\tvar fails []string",
+    "\tfor _, c := range cases {",
+    "\t\tif got := f(c.X, c.Lo, c.Hi); got != c.Want {",
+    "\t\t\tfails = append(fails, fmt.Sprintf(\"%s: Clamp(%d, %d, %d) = %d; want %d\", c.Name, c.X, c.Lo, c.Hi, got, c.Want))",
+    "\t\t}",
+    "\t}",
+    "\treturn fails"
+  ],
+  "distractors": [
+    "\tt.Parallel()"
+  ],
+  "base": "package main\n\nimport \"fmt\"\n\n// Clamp limits x to the range [lo, hi]. If lo > hi the bounds are swapped first.\nfunc Clamp(x, lo, hi int) int {\n\tif lo > hi {\n\t\tlo, hi = hi, lo\n\t}\n\tif x < lo {\n\t\treturn lo\n\t}\n\tif x > hi {\n\t\treturn hi\n\t}\n\treturn x\n}\n\ntype ClampCase struct {\n\tName      string\n\tX, Lo, Hi int\n\tWant      int\n}\n\nfunc ClampCases() []ClampCase {\n\treturn []ClampCase{\n\t\t{\"inside\", 5, 1, 10, 5},\n\t\t{\"below\", -4, 1, 10, 1},\n\t\t{\"above\", 99, 1, 10, 10},\n\t\t{\"equals lo\", 1, 1, 10, 1},\n\t\t{\"equals hi\", 10, 1, 10, 10},\n\t\t{\"lo equals hi, x above\", 8, 3, 3, 3},\n\t\t{\"lo equals hi, x same\", 3, 3, 3, 3},\n\t\t{\"negative inside\", -3, -10, 10, -3},\n\t\t{\"negative range below\", -20, -10, -5, -10},\n\t\t{\"negative range above\", 0, -10, -5, -5},\n\t\t{\"swapped, inside\", 3, 5, 1, 3},\n\t\t{\"swapped, below\", 0, 5, 1, 1},\n\t\t{\"swapped, above\", 9, 5, 1, 5},\n\t\t{\"zero\", 0, -1, 1, 0},\n\t}\n}\n\nfunc CheckClamp(f func(x, lo, hi int) int, cases []ClampCase) []string {\n{{code}}\n}\n\nfunc main() {\n\tfmt.Println(len(ClampCases()), \"cases;\", CheckClamp(Clamp, ClampCases()))\n}\n",
+  "explain": "A table-driven test loops over named cases and records every mismatch, so one run shows all the problems at once. The case name in the message tells you which row failed."
+}

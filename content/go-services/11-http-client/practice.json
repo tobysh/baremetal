@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "A fake transport answers every request with status 404 and the body `nope`. `FetchJSON` is the helper from this lesson. What does the program print?",
+  "code": "c := NewTestClient(func(r *http.Request) (*http.Response, error) {\n\treturn &http.Response{\n\t\tStatusCode: 404,\n\t\tHeader:     http.Header{},\n\t\tBody:       io.NopCloser(strings.NewReader(\"nope\")),\n\t}, nil\n})\nvar v map[string]int\nerr := FetchJSON(context.Background(), c, \"http://example.test/n\", &v)\nfmt.Println(err)",
+  "choices": [
+    "http 404: nope",
+    "<nil>",
+    "nope",
+    "invalid character 'o' in literal null (expecting 'u')"
+  ],
+  "answer": 0,
+  "explain": "`http.Client` does not treat 404 as a transport error, so the helper has to check the status itself. It reads a little of the body and returns an `*HTTPError`, whose message is `http 404: nope`."
+}

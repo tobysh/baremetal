@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "A shell splits this line into words using quote rules. How many words does the program receive, and what are they?",
+  "code": "echo \"a  b\"'c' d",
+  "choices": [
+    "3 words: echo | a  bc | d",
+    "4 words: echo | a  b | c | d",
+    "5 words: echo | a | b | c | d",
+    "3 words: echo | \"a  b\"'c' | d, quotes kept"
+  ],
+  "answer": 0,
+  "explain": "Quotes only group characters; they are removed afterwards. The double-quoted part and the single-quoted `c` touch with no space between them, so they are one word, `a  bc` (with both spaces kept). Then the space separates `d`."
+}

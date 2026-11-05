@@ -1,0 +1,16 @@
+{
+  "kind": "parsons",
+  "prompt": "Write the callback body that updates a `Stats` through the opaque context pointer and tells the caller to keep going. One line does not belong.",
+  "base": "use std::ffi::c_void;\n\npub type Visit = extern \"C\" fn(ctx: *mut c_void, value: i32) -> i32;\n\n#[derive(Debug, PartialEq)]\npub struct Stats {\n    pub count: usize,\n    pub sum: i64,\n    pub max: Option<i32>,\n}\n\n#[derive(Debug, PartialEq)]\npub struct Search {\n    pub seen: usize,\n    pub found: Option<usize>,\n}\n\nunsafe fn for_each(xs: *const i32, len: usize, cb: Visit, ctx: *mut c_void) -> isize {\n    if len == 0 {\n        return 0;\n    }\n    if xs.is_null() {\n        return -1;\n    }\n    for i in 0..len {\n        let v = *xs.add(i);\n        if cb(ctx, v) != 0 {\n            return (i + 1) as isize;\n        }\n    }\n    len as isize\n}\n\nextern \"C\" fn collect_stats(ctx: *mut c_void, v: i32) -> i32 {\n{{code}}\n}\n\nfn stats_of(xs: &[i32]) -> Stats {\n    let mut s = Stats { count: 0, sum: 0, max: None };\n    unsafe { for_each(xs.as_ptr(), xs.len(), collect_stats, &mut s as *mut Stats as *mut c_void) };\n    s\n}\n\nextern \"C\" fn search_negative(ctx: *mut c_void, v: i32) -> i32 {\n    let s = unsafe { &mut *(ctx as *mut Search) };\n    if v < 0 {\n        s.found = Some(s.seen);\n        1\n    } else {\n        s.seen += 1;\n        0\n    }\n}\n\nfn first_negative(xs: &[i32]) -> Option<usize> {\n    let mut s = Search { seen: 0, found: None };\n    unsafe { for_each(xs.as_ptr(), xs.len(), search_negative, &mut s as *mut Search as *mut c_void) };\n    s.found\n}\n\nfn main() {\n    println!(\"{:?}\", stats_of(&[3, -1, 4]));\n    println!(\"{:?}\", first_negative(&[3, -1, 4]));\n}\n",
+  "lines": [
+    "    let s = unsafe { &mut *(ctx as *mut Stats) };",
+    "    s.count += 1;",
+    "    s.sum += v as i64;",
+    "    s.max = Some(s.max.map_or(v, |m| m.max(v)));",
+    "    0"
+  ],
+  "distractors": [
+    "    s.sum = v as i64;"
+  ],
+  "explain": "The `ctx` pointer is cast back to the type the caller really passed, then each field is updated, and the callback returns 0 to continue iterating. Assigning to `sum` instead of adding would lose the running total."
+}

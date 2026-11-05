@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Fill in a parser that accepts chunks of any size. It keeps a buffer, decodes as many frames as it can, and stops when a frame is incomplete.",
+  "template": "p.buf = append(p.buf, {{0}}...)\nfor {\n\tf, n, err := Decode(p.buf)\n\tif err == {{1}} {\n\t\treturn frames, nil\n\t}\n\tif err != nil {\n\t\treturn frames, err\n\t}\n\tframes = append(frames, f)\n\tp.buf = p.buf[{{2}}:]\n}",
+  "answers": [
+    "chunk",
+    "ErrIncomplete",
+    "n"
+  ],
+  "tokens": [
+    "chunk",
+    "ErrIncomplete",
+    "n",
+    "p.buf",
+    "ErrBadCRC",
+    "len(p.buf)"
+  ],
+  "runTests": false,
+  "explain": "New bytes are appended to what was left over. Incomplete input is not an error, it ends the loop until more bytes arrive. After each frame, drop exactly the `n` bytes it used."
+}

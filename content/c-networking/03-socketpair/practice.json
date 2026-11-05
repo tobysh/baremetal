@@ -1,0 +1,16 @@
+{
+  "kind": "parsons",
+  "prompt": "Make a connected pair of sockets, send a message through one end and read it from the other. One line does not belong.",
+  "base": "#include <stdio.h>\n#include <unistd.h>\n#include <sys/socket.h>\n\nint main(void) {\n    int sv[2];\n    char buf[8];\n{{code}}\n    return 0;\n}",
+  "lines": [
+    "    socketpair(AF_UNIX, SOCK_STREAM, 0, sv);",
+    "    write(sv[0], \"ping\", 4);",
+    "    int n = read(sv[1], buf, sizeof buf);",
+    "    printf(\"%d\\n\", n);"
+  ],
+  "distractors": [
+    "    close(sv[0]);"
+  ],
+  "runTests": false,
+  "explain": "Whatever is written to one end of a socketpair appears at the other end. Closing `sv[0]` before the read would still leave the data readable, but it is not part of the exchange."
+}

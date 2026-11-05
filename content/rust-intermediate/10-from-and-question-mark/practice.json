@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Teach `?` to turn a `ParseIntError` into `AppError`: write the conversion, then use the operator that applies it.",
+  "template": "use std::num::ParseIntError;\n\n#[derive(Debug)]\nenum AppError {\n    BadInt(ParseIntError),\n    Negative(i64),\n}\n\nimpl {{0}}<ParseIntError> for AppError {\n    fn {{1}}(e: ParseIntError) -> AppError {\n        AppError::BadInt(e)\n    }\n}\n\nfn parse(s: &str) -> Result<i64, AppError> {\n    let n: i64 = s.parse(){{2}};\n    if n < 0 {\n        return Err(AppError::Negative(n));\n    }\n    Ok(n)\n}\n\nfn main() {\n    println!(\"{:?}\", parse(\"12\"));\n}",
+  "tokens": [
+    "From",
+    "from",
+    "?",
+    "Into",
+    "into",
+    ".ok()"
+  ],
+  "answers": [
+    "From",
+    "from",
+    "?"
+  ],
+  "runTests": false,
+  "explain": "`?` calls `From::from` on the error to convert it into the function's error type. Implement `From<ParseIntError>`, not `Into`, because `?` looks for `From`. `.ok()` would turn the `Result` into an `Option`."
+}

@@ -1,0 +1,17 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the body of `str_copy` so it copies `src` into `dst`, terminator included. One line does not belong.",
+  "base": "#include <stdio.h>\n\nint str_equal(char a[], char b[]) {\n    int i = 0;\n    while (a[i] != '\\0' && a[i] == b[i]) {\n        i++;\n    }\n    return a[i] == b[i];\n}\n\nint str_compare(char a[], char b[]) {\n    int i = 0;\n    while (a[i] != '\\0' && a[i] == b[i]) {\n        i++;\n    }\n    return (int)(unsigned char)a[i] - (int)(unsigned char)b[i];\n}\n\nvoid str_copy(char dst[], char src[]) {\n{{code}}\n}\n\nvoid str_append(char dst[], char src[]) {\n    int end = 0;\n    while (dst[end] != '\\0') {\n        end++;\n    }\n    int i = 0;\n    while (src[i] != '\\0') {\n        dst[end + i] = src[i];\n        i++;\n    }\n    dst[end + i] = '\\0';\n}\n\nint main(void) {\n    char buf[32];\n    str_copy(buf, \"tea\");\n    str_append(buf, \"spoon\");\n    printf(\"%s\\n\", buf);\n    printf(\"equal = %d\\n\", str_equal(\"cat\", \"car\"));\n    printf(\"compare < 0 : %d\\n\", str_compare(\"cat\", \"car\") < 0);\n    return 0;\n}\n",
+  "lines": [
+    "    int i = 0;",
+    "    while (src[i] != '\\0') {",
+    "        dst[i] = src[i];",
+    "        i++;",
+    "    }",
+    "    dst[i] = '\\0';"
+  ],
+  "distractors": [
+    "    i = 1;"
+  ],
+  "explain": "Copy every character up to the terminator, then write the terminator into `dst` yourself. The loop stops *before* copying `'\\0'`, so the last line is what makes `dst` a valid string."
+}

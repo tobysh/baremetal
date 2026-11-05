@@ -1,0 +1,17 @@
+{
+  "kind": "blanks",
+  "prompt": "Write a 16-bit value into a buffer most significant byte first, whatever the CPU's own byte order is.",
+  "template": "void put16(uint8_t *p, uint16_t v) {\n    p[0] = v {{0}} 8;\n    p[1] = v {{1}} 0xFF;\n}",
+  "answers": [
+    ">>",
+    "&"
+  ],
+  "tokens": [
+    ">>",
+    "<<",
+    "&",
+    "|"
+  ],
+  "runTests": false,
+  "explain": "Big-endian puts the high byte first, so `p[0]` is `v >> 8`. The low byte is masked with `& 0xFF`. Shifts and masks work the same on any CPU, unlike copying the integer's memory."
+}

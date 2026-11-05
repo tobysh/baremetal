@@ -3,7 +3,7 @@ import { ObjectId } from "mongodb";
 
 import { getDb } from "./db";
 import { REVIEW_INTERVALS_DAYS } from "./progress-constants";
-import { challengeXpFor, xpFor, type Difficulty } from "./gamification";
+import { challengeXpFor, practiceXpFor, xpFor, type Difficulty } from "./gamification";
 import type { ProgressDoc, ReviewDoc, TutorThreadDoc, XpEventDoc } from "./models";
 
 const col = async () => (await getDb()).collection<ProgressDoc>("progress");
@@ -41,8 +41,13 @@ type AttemptInput = {
   passed: boolean;
   difficulty: Difficulty;
   /** True for a lesson's optional challenge (half XP, no seals, no review). */
-  challenge: boolean;
+  challenge?: boolean;
+  /** True for a lesson's tap-and-drag practice (a quarter of the XP, no seals, no review, no Codex credit). The exerciseId is the practice id. */
+  practice?: boolean;
 };
+
+/** Practice is quick to read and tap, so its too-fast floor is flat and short. */
+export const PRACTICE_MIN_SOLVE_MS = 4_000;
 
 /** A claimed first pass is recorded before its atomic per-user XP decision.
  * A crash between those writes leaves xpPending for administrative reconciliation. */
@@ -65,7 +70,7 @@ export async function recordAttempt(o: AttemptInput): Promise<AttemptOutcome> {
   const attempts = after?.attempts ?? 1, hintsUsed = after?.hintsUsed ?? 0;
   let unaided = false;
   const db = await getDb();
-  if (!o.challenge) {
+  if (!o.challenge && !o.practice) {
     const thread = await db.collection<TutorThreadDoc>("tutor_threads").findOne({ userId, lessonId: o.exerciseId }, { projection: { messages: 1 } });
     const askedTutor = after?.tutorUsed || (thread?.messages ?? []).some((m) => m.role === "user");
     unaided = hintsUsed === 0 && !askedTutor && (attempts >= 2 || o.difficulty === "hard" || o.difficulty === "impossible");
@@ -83,11 +88,11 @@ export async function recordAttempt(o: AttemptInput): Promise<AttemptOutcome> {
   const history = await c.find({ userId, status: "passed", xpPending: { $ne: true }, passedAt: { $gte: dayStart } }, { projection: { exerciseId: 1, passedAt: 1, xpAwarded: 1 } }).toArray();
   await users.updateOne({ _id: userId, xpQuota: { $exists: false } }, { $set: { xpQuota: history.map((p) => ({ ref: p.exerciseId, at: p.passedAt, xp: p.xpAwarded ?? 0 })) } });
 
-  const xp = o.challenge ? challengeXpFor(o.difficulty) : xpFor(o.difficulty);
+  const xp = o.practice ? practiceXpFor(o.difficulty) : o.challenge ? challengeXpFor(o.difficulty) : xpFor(o.difficulty);
   // A first submission may be the first server contact after solving locally.
   // Only apply the floor when a previous save, hint or attempt establishes a start.
   const knownStart = after?.startedAt && after.startKnown !== false && attemptUpdate.lastErrorObject?.updatedExisting === true;
-  const tooFast = !!knownStart && now.getTime() - after!.startedAt!.getTime() < MIN_SOLVE_MS[o.difficulty];
+  const tooFast = !!knownStart && now.getTime() - after!.startedAt!.getTime() < (o.practice ? PRACTICE_MIN_SOLVE_MS : MIN_SOLVE_MS[o.difficulty]);
   const updated = await users.findOneAndUpdate({ _id: userId }, [
     { $set: { xpQuota: { $filter: { input: { $ifNull: ["$xpQuota", []] }, as: "entry", cond: { $gte: ["$$entry.at", dayStart] } } } } },
     { $set: { xpDecision: { $let: { vars: {
@@ -100,9 +105,9 @@ export async function recordAttempt(o: AttemptInput): Promise<AttemptOutcome> {
   if (!updated) throw new Error("User disappeared while awarding XP; the pending pass needs reconciliation.");
   const flag = updated.xpDecision.flag as XpFlag | null, award = updated.xpDecision.award as number;
   if (award) {
-    await db.collection<XpEventDoc>("xp_events").insertOne({ userId, source: o.challenge ? "challenge" : "lesson", ref: o.exerciseId, xp: award, at: now } as XpEventDoc);
+    await db.collection<XpEventDoc>("xp_events").insertOne({ userId, source: o.practice ? "practice" : o.challenge ? "challenge" : "lesson", ref: o.exerciseId, xp: award, at: now } as XpEventDoc);
   }
-  if (!o.challenge) await scheduleFirstReview(userId, o.exerciseId, now);
+  if (!o.challenge && !o.practice) await scheduleFirstReview(userId, o.exerciseId, now);
   await c.updateOne(filter, { $set: { xpAwarded: award, ...(flag ? { xpWithheld: true, xpFlag: flag } : {}) }, $unset: { xpPending: "" } });
   return { firstPass: true, xpAwarded: award, totalXp: award ? updated.xp ?? award : null, ...(flag ? { paced: true } : {}), unaided };
 }

@@ -1,0 +1,37 @@
+{
+  "kind": "predict",
+  "prompt": "A table has an `age` column with three rows: `30`, `NULL`, `20`. A comparison with NULL is Unknown, and WHERE keeps only rows whose condition is True.",
+  "trace": [
+    {
+      "label": "`age > 25` for the NULL row is",
+      "choices": [
+        "True",
+        "False",
+        "Unknown",
+        "an error"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "Rows returned by WHERE age > 25",
+      "choices": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Rows returned by WHERE NOT (age > 25)",
+      "choices": [
+        "1",
+        "2",
+        "3",
+        "0"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "NOT Unknown is still Unknown, so the NULL row is never kept, not even by the negated filter. That is why `age > 25` and `NOT (age > 25)` together do not cover every row."
+}

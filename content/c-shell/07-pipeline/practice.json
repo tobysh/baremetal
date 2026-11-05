@@ -1,0 +1,12 @@
+{
+  "kind": "predict",
+  "prompt": "A shell runs `cat big.txt | wc -l` but the **parent** forgets to close its own copy of the pipe's write end. `cat` finishes and exits normally. What happens?",
+  "choices": [
+    "It hangs: wc never sees end-of-file",
+    "wc prints 0 straight away",
+    "cat is killed by SIGPIPE",
+    "It works normally"
+  ],
+  "answer": 0,
+  "explain": "A reader sees end-of-file only when *every* copy of the write end is closed. The parent still holds one open, so `wc` keeps waiting for more data and the parent waits for `wc`: the pipeline hangs. Close unused pipe ends in the parent as soon as the children are started."
+}

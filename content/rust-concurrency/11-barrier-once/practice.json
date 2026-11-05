@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "Match each tool with its job: run setup exactly once, build a value once on first use, and make all threads meet at a barrier.",
+  "template": "use std::sync::atomic::{AtomicUsize, Ordering};\nuse std::sync::{Arc, Barrier, Mutex, Once, OnceLock};\nuse std::thread;\n\nfn lockstep(n: usize, rounds: usize) -> Vec<Vec<usize>> {\n    let barrier = Arc::new(Barrier::new(n));\n    let counter = Arc::new(Mutex::new(0usize));\n    let handles: Vec<_> = (0..n)\n        .map(|_| {\n            let barrier = Arc::clone(&barrier);\n            let counter = Arc::clone(&counter);\n            thread::spawn(move || {\n                let mut seen = Vec::new();\n                for _ in 0..rounds {\n                    *counter.lock().unwrap() += 1;\n                    barrier.wait();\n                    seen.push(*counter.lock().unwrap());\n                    barrier.wait();\n                }\n                seen\n            })\n        })\n        .collect();\n    handles.into_iter().map(|h| h.join().unwrap()).collect()\n}\n\nfn leader_count(n: usize, rounds: usize) -> usize {\n    let barrier = Arc::new(Barrier::new(n));\n    let handles: Vec<_> = (0..n)\n        .map(|_| {\n            let barrier = Arc::clone(&barrier);\n            thread::spawn(move || {\n                let mut leaders = 0;\n                for _ in 0..rounds {\n                    if barrier.{{2}}().is_leader() {\n                        leaders += 1;\n                    }\n                }\n                leaders\n            })\n        })\n        .collect();\n    handles.into_iter().map(|h| h.join().unwrap()).sum()\n}\n\nstatic INIT: Once = Once::new();\nstatic INIT_RUNS: AtomicUsize = AtomicUsize::new(0);\n\nfn ensure_init() {\n    INIT.{{0}}(|| {\n        INIT_RUNS.fetch_add(1, Ordering::SeqCst);\n    });\n}\n\nstatic CONFIG: OnceLock<String> = OnceLock::new();\nstatic CONFIG_BUILDS: AtomicUsize = AtomicUsize::new(0);\n\nfn config() -> &'static String {\n    CONFIG.{{1}}(|| {\n        CONFIG_BUILDS.fetch_add(1, Ordering::SeqCst);\n        String::from(\"config-v1\")\n    })\n}\n\n// Try it with Run.\nfn main() {\n    ensure_init();\n    ensure_init();\n    println!(\"{} {}\", INIT_RUNS.load(Ordering::SeqCst), config());\n}\n",
+  "tokens": [
+    "call_once",
+    "get_or_init",
+    "wait",
+    "call",
+    "get",
+    "arrive"
+  ],
+  "answers": [
+    "call_once",
+    "get_or_init",
+    "wait"
+  ],
+  "explain": "`Once::call_once` runs its closure a single time however many threads race. `OnceLock::get_or_init` does the same and stores the value. `Barrier::wait` blocks until all threads arrive, and exactly one of them is told it is the leader."
+}

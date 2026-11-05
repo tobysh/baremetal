@@ -1,0 +1,21 @@
+{
+  "kind": "parsons",
+  "prompt": "01-goroutines-and-waitgroup",
+  "base": [
+    "\twg.Done()"
+  ],
+  "lines": [
+    "\tvar wg sync.WaitGroup",
+    "\tfor _, t := range tasks {",
+    "\t\twg.Add(1)",
+    "\t\tgo func() {",
+    "\t\t\tdefer wg.Done()",
+    "\t\t\tt()",
+    "\t\t}()",
+    "\t}",
+    "\twg.Wait()"
+  ],
+  "distractors": "`Add` happens before the `go` statement so `Wait` can never see a zero counter too early, and `Done` is deferred so it runs however the task ends. Calling `Done` without a matching `Add` panics.",
+  "runTests": false,
+  "explain": "Rebuild `RunAll`: start every task in its own goroutine and only return once all of them have finished. One line is a decoy."
+}

@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Canonical Huffman codes are assigned from code lengths alone. Fill in the standard algorithm (`count[l]` is how many codes have length `l`).",
+  "template": "code := 0\ncount[0] = 0\nfor bits := 1; bits <= maxLen; bits++ {\n\tcode = (code + {{0}}) {{1}}\n\tnext[bits] = code\n}\n// for each symbol of length n, in symbol order:\nc := next[n]\nnext[n]{{2}}",
+  "answers": [
+    "count[bits-1]",
+    "<< 1",
+    "++"
+  ],
+  "tokens": [
+    "count[bits-1]",
+    "<< 1",
+    "++",
+    "count[bits]",
+    ">> 1",
+    "--"
+  ],
+  "runTests": false,
+  "explain": "The first code of each length starts just after the last code of the previous length, shifted left by one bit. Within a length, symbols get consecutive codes in order, so the next-code counter goes up."
+}

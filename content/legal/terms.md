@@ -78,7 +78,7 @@ Baremetal is free to use at the moment. If we introduce paid features, we will g
 - You can stop using Baremetal and delete your account at any time in [Settings](/settings).
 - Your account stays in place until you delete it, unless we end it first.
 - Before you delete your account, you can export your data as JSON in [Settings](/settings) if you want to keep a copy.
-- We may suspend or end your account if you break these terms.
+- We may lock, ban or delete your account if you break these terms. A lock stops you signing in for a time; a ban is permanent. Your data is handled as described in the Privacy Notice.
 - When your account ends, your data is handled as described in our [Privacy Policy](/privacy).
 
 ## Limits on our liability

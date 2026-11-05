@@ -1,0 +1,44 @@
+{
+  "kind": "predict",
+  "prompt": "On a fresh `FaultDisk`, one `Append` of 5 bytes is hit by the first fault listed. Predict each outcome.",
+  "code": "p := []byte(\"hello\") // 5 bytes\n\nFault{At: 0, Kind: Short, Keep: KeepAll}\nFault{At: 0, Kind: Crash, Keep: KeepHalf}\nFault{At: 0, Kind: Lost,  Keep: KeepAll}",
+  "trace": [
+    {
+      "label": "bytes stored: Short fault with KeepAll",
+      "choices": [
+        "5",
+        "4",
+        "0"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "bytes stored: Crash fault with KeepHalf",
+      "choices": [
+        "2",
+        "3",
+        "0"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "bytes stored: Lost fault",
+      "choices": [
+        "0",
+        "5",
+        "2"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "an Append after the Crash, before Restart",
+      "choices": [
+        "5 bytes, nil",
+        "0 bytes, ErrCrash",
+        "0 bytes, ErrIO"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "`Lost` stores nothing. `Short` never stores everything: even with KeepAll it keeps one byte fewer than asked. `Crash` stores the kept part, then the disk is dead until `Restart`, so later appends return `ErrCrash`."
+}

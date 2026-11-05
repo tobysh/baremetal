@@ -1,0 +1,22 @@
+{
+  "kind": "parsons",
+  "prompt": "Rebuild the body of `SumEvensUntil`: add the even numbers of `xs`, but stop completely at the first number bigger than `limit`. One line does not belong.",
+  "lines": [
+    "\ttotal := 0",
+    "\tfor _, v := range xs {",
+    "\t\tif v > limit {",
+    "\t\t\tbreak",
+    "\t\t}",
+    "\t\tif v%2 != 0 {",
+    "\t\t\tcontinue",
+    "\t\t}",
+    "\t\ttotal += v",
+    "\t}",
+    "\treturn total"
+  ],
+  "distractors": [
+    "\tcount := 0"
+  ],
+  "base": "package main\n\n// SumTo returns 1 + 2 + ... + n (0 if n <= 0).\nfunc SumTo(n int) int {\n\ttotal := 0\n\tfor i := 1; i <= n; i++ {\n\t\ttotal += i\n\t}\n\treturn total\n}\n\n// Collatz counts the steps needed to reach 1 from n (n >= 1).\nfunc Collatz(n int) int {\n\tsteps := 0\n\tfor n != 1 {\n\t\tif n%2 == 0 {\n\t\t\tn /= 2\n\t\t} else {\n\t\t\tn = 3*n + 1\n\t\t}\n\t\tsteps++\n\t}\n\treturn steps\n}\n\n// DayKind returns \"weekend\", \"weekday\" or \"unknown\".\nfunc DayKind(day string) string {\n\tswitch day {\n\tcase \"sat\", \"sun\":\n\t\treturn \"weekend\"\n\tcase \"mon\", \"tue\", \"wed\", \"thu\", \"fri\":\n\t\treturn \"weekday\"\n\tdefault:\n\t\treturn \"unknown\"\n\t}\n}\n\n// IndexOf returns the index of the first target in xs, or -1.\nfunc IndexOf(xs []int, target int) int {\n\tfor i, v := range xs {\n\t\tif v == target {\n\t\t\treturn i\n\t\t}\n\t}\n\treturn -1\n}\n\n// SumEvensUntil adds the even numbers of xs, stopping at the first\n// number greater than limit.\nfunc SumEvensUntil(xs []int, limit int) int {\n{{code}}\n}\n",
+  "explain": "`break` leaves the loop for good, `continue` only skips to the next item, so the limit check must come first. Declaring a variable you never use is a compile error in Go."
+}

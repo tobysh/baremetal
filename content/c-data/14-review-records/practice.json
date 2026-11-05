@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "A name starts with a prefix if every prefix character matches. Fill the blanks: the comparison that spots a difference, and the two return values.",
+  "template": "int name_starts_with(Person p, char prefix[]) {\n    for (int i = 0; prefix[i] != '\\0'; i++) {\n        if (p.name[i] {{0}} prefix[i]) return {{1}};\n    }\n    return {{2}};\n}",
+  "answers": [
+    "!=",
+    "0",
+    "1"
+  ],
+  "tokens": [
+    "!=",
+    "0",
+    "1",
+    "==",
+    "-1"
+  ],
+  "explain": "Any mismatch means the answer is 0 right away. Running off the end of the prefix without a mismatch means 1, which is also why an empty prefix matches everything.",
+  "runTests": false
+}

@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "A shell runs this command line, where `/nope` does not exist. Where does the error message from `ls` go?",
+  "code": "ls /nope > out.txt",
+  "choices": [
+    "On the terminal; out.txt is empty",
+    "Into out.txt",
+    "Nowhere: it is discarded",
+    "The shell reports a syntax error"
+  ],
+  "answer": 0,
+  "explain": "`>` redirects only file descriptor 1 (standard output). `ls` writes its error to descriptor 2 (standard error), which was not redirected, so the message still appears on the terminal and `out.txt` ends up empty. To capture it you would add `2>`."
+}

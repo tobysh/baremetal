@@ -1,7 +1,15 @@
 import type { Lesson, Track } from "./curriculum/types";
 
 export type LearningProgress = { exerciseId: string; status: string; updatedAt: Date };
-export type Recommendation = { track: Track; lesson: Lesson };
+export type Recommendation = { track: Track; lesson: Lesson; /** One line on why this was picked. */ reason?: string };
+
+/** Where a learner with no progress yet should begin, from what they said about their experience when they signed up. */
+const EXPERIENCE_START: Record<string, { slug: string; reason: string }> = {
+  none: { slug: "first-steps", reason: "You said you have never written code, so this starts from zero." },
+  some: { slug: "first-steps", reason: "You said you have done a little coding. This fills in the basics C builds on." },
+  other_lang: { slug: "c-data", reason: "You said you know another language, so you can skip the basics and start with C's arrays, strings and structs." },
+  experienced: { slug: "c-memory", reason: "You said you are an experienced developer, so you can start straight at pointers and memory." },
+};
 
 export function unfinishedLesson(track: Track, progress: ReadonlyMap<string, LearningProgress>) {
   return track.lessons.find((lesson) => progress.get(lesson.exercise.id)?.status !== "passed");
@@ -25,7 +33,7 @@ export function nextCourse(tracks: Track[], current: Track, progress: ReadonlyMa
 }
 
 /** An explicit course context is used by catalogue actions and completion banners. */
-export function recommendLearning(tracks: Track[], progress: ReadonlyMap<string, LearningProgress>, context?: { track: Track; afterPass?: string }): Recommendation | null {
+export function recommendLearning(tracks: Track[], progress: ReadonlyMap<string, LearningProgress>, context?: { track: Track; afterPass?: string }, options?: { experience?: string }): Recommendation | null {
   let effective = progress;
   if (context?.afterPass) {
     effective = new Map(progress);
@@ -34,14 +42,19 @@ export function recommendLearning(tracks: Track[], progress: ReadonlyMap<string,
   const lessons = tracks.flatMap((track) => track.lessons.map((lesson) => ({ track, lesson })));
   const recent = lessons.filter(({ lesson }) => effective.has(lesson.exercise.id))
     .sort((a, b) => +effective.get(b.lesson.exercise.id)!.updatedAt - +effective.get(a.lesson.exercise.id)!.updatedAt)[0];
+  if (!context && !recent && options?.experience) {
+    const start = EXPERIENCE_START[options.experience];
+    const track = start && tracks.find((t) => t.slug === start.slug && t.lessons.length);
+    if (track) return { track, lesson: track.lessons[0], reason: start.reason };
+  }
   const current = context?.track ?? recent?.track ?? tracks.find((track) => track.slug === "first-steps") ?? tracks[0];
   if (!current) return null;
-  if (!context && recent && effective.get(recent.lesson.exercise.id)?.status !== "passed") return recent;
+  if (!context && recent && effective.get(recent.lesson.exercise.id)?.status !== "passed") return { ...recent, reason: "You left this one unfinished. Pick up where you stopped." };
   const lesson = unfinishedLesson(current, effective);
-  if (lesson) return { track: current, lesson };
+  if (lesson) return { track: current, lesson, reason: recent ? `Next in ${current.title}, the course you are working through.` : undefined };
   const next = nextCourse(tracks, current, effective);
   const nextLesson = next && unfinishedLesson(next, effective);
-  return next && nextLesson ? { track: next, lesson: nextLesson } : null;
+  return next && nextLesson ? { track: next, lesson: nextLesson, reason: `You finished ${current.title}. This is the next course on the path.` } : null;
 }
 
 export function validateLearningPaths(tracks: Track[]) {

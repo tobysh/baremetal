@@ -1,0 +1,33 @@
+{
+  "kind": "predict",
+  "prompt": "Both threads run LOAD r,x then ADD r,1 then STORE x,r on x = 0. The schedule is A.load, B.load, A.add, A.store, B.add, B.store.",
+  "trace": [
+    {
+      "label": "After A.store, x is",
+      "choices": [
+        "0",
+        "1",
+        "2"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After B.add, B's r is",
+      "choices": [
+        "1",
+        "2"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Final x is",
+      "choices": [
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "B loaded x before A stored, so its register still held 0. Its store of 1 overwrote A's update. Two increments produced 1: that schedule is a counterexample."
+}

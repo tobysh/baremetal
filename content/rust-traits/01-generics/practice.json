@@ -1,0 +1,18 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines of a generic function that returns the first item of a slice, or a fallback when the slice is empty. One line does not belong.",
+  "base": "{{code}}\n\nfn main() {\n    println!(\"{}\", first_or(&[], 7));\n}",
+  "lines": [
+    "fn first_or<T: Clone>(items: &[T], fallback: T) -> T {",
+    "    if items.is_empty() {",
+    "        return fallback;",
+    "    }",
+    "    items[0].clone()",
+    "}"
+  ],
+  "distractors": [
+    "    items[0]"
+  ],
+  "runTests": false,
+  "explain": "The `Clone` bound lets the function hand back an owned copy of the element. Returning `items[0]` directly would try to move a value out of a borrowed slice, which Rust refuses for a general `T`."
+}

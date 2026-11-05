@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "The small-object pools hand out slots from a table of 8 flags. Here two callers sometimes receive the same memory. Tap the faulty line.",
+  "code": "for (int i = 0; i < 8; i++) {\n    if (used[i]) {\n        used[i] = 1;\n        return large ? (void *)large_pool[i] : (void *)small_pool[i];\n    }\n}",
+  "bugLine": 2,
+  "explain": "A slot may only be handed out when it is *free*. Testing `used[i]` picks an already-owned slot, so a second caller shares memory with the first. The test must be `!used[i]`."
+}

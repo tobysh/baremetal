@@ -1,0 +1,37 @@
+{
+  "kind": "predict",
+  "prompt": "A record is `keyLen` (4 bytes, big-endian), `valLen` (4 bytes, big-endian), the key bytes, then the value bytes. Take the record with key `ab` and value `xyz`.",
+  "trace": [
+    {
+      "label": "Total bytes written for this record",
+      "choices": [
+        "5",
+        "8",
+        "13",
+        "15"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "The byte at offset 7 (the last header byte) is",
+      "choices": [
+        "2",
+        "3",
+        "0",
+        "'z'"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "The byte at offset 8 is",
+      "choices": [
+        "'a'",
+        "'x'",
+        "3",
+        "0"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "The header is always 8 bytes, then 2 key bytes and 3 value bytes make 13. Offsets 4 to 7 hold `valLen` = 3 with the low byte last (big-endian), and the key starts right after the header at offset 8."
+}

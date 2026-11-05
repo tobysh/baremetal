@@ -1,0 +1,31 @@
+{
+  "kind": "predict",
+  "prompt": "A loader checks segments before running. Address ranges are half-open, `[start, end)`. W^X means no segment may be both writable and executable.",
+  "trace": [
+    {
+      "label": "A segment with flags R+W+X is",
+      "choices": [
+        "accepted",
+        "rejected"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Segment A is [0x1000, 0x2000) and B is [0x2000, 0x3000). They",
+      "choices": [
+        "overlap",
+        "do not overlap"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "The entry point is 0x1500 but it lies in a read+write, non-executable segment. The file is",
+      "choices": [
+        "accepted",
+        "rejected"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "W^X forbids memory that can be written and then run. Half-open ranges that touch at 0x2000 share no address. An entry point must be inside an executable segment."
+}

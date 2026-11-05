@@ -1,0 +1,16 @@
+{
+  "kind": "blanks",
+  "prompt": "Finish both functions by tapping a piece for each blank. Each `return` hands one value back to the caller.",
+  "template": "#include <stdio.h>\n\nint add(int a, int b) {\n    return {{0}};\n}\n\nint square(int x) {\n    return {{1}};\n}\n\nint main(void) {\n    printf(\"add(2, 3) = %d\\n\", add(2, 3));\n    printf(\"square(4) = %d\\n\", square(4));\n    return 0;\n}\n",
+  "tokens": [
+    "a * b",
+    "x + x",
+    "a + b",
+    "x * x"
+  ],
+  "answers": [
+    "a + b",
+    "x * x"
+  ],
+  "explain": "`add` returns the sum of its two parameters and `square` multiplies its one parameter by itself. `x + x` would double the number instead."
+}

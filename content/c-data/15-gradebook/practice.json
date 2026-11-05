@@ -1,0 +1,20 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines of this insertion sort so students end up from the highest score to the lowest, with ties kept in their input order. One line does not belong.",
+  "base": "#include <stdio.h>\n\ntypedef struct {\n    char name[16];\n    int score;\n} Student;\n\nint main(void) {\n    Student students[20];\n    int n = 0;\n    if (scanf(\"%d\", &n) != 1) n = 0;\n    if (n > 20) n = 20;\n    int count = 0;\n    while (count < n && scanf(\"%15s %d\", students[count].name, &students[count].score) == 2) {\n        count++;\n    }\n    n = count;\n\n{{code}}\n\n    int total = 0;\n    int passed = 0;\n    for (int i = 0; i < n; i++) {\n        printf(\"%d. %s %d\\n\", i + 1, students[i].name, students[i].score);\n        total += students[i].score;\n        if (students[i].score >= 50) passed++;\n    }\n    double average = n > 0 ? (double)total / n : 0.0;\n    printf(\"average: %.2f\\n\", average);\n    printf(\"passed: %d of %d\\n\", passed, n);\n    return 0;\n}\n",
+  "lines": [
+    "    for (int i = 1; i < n; i++) {",
+    "        Student current = students[i];",
+    "        int j = i - 1;",
+    "        while (j >= 0 && students[j].score < current.score) {",
+    "            students[j + 1] = students[j];",
+    "            j--;",
+    "        }",
+    "        students[j + 1] = current;",
+    "    }"
+  ],
+  "distractors": [
+    "            students[j] = students[j + 1];"
+  ],
+  "explain": "Take one student out (`current`), shift every lower-scoring student one place right, then drop `current` into the gap. Shifting only while the score is strictly lower keeps ties in input order."
+}

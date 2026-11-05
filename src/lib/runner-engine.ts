@@ -246,6 +246,7 @@ async function execUnslotted(work: string, cmd: string[], opts: { timeoutMs: num
       const signal = requestContext.getStore()?.signal;
       signal?.throwIfAborted();
       const started = Date.now();
+      let settled = false;
       const args = [...sandboxArgs(work, opts.env, { run: opts.run, tmpMb: opts.tmpMb ?? (opts.run ? 32 : undefined), artifact: opts.artifact, goCache: opts.goCache }), "--", "/usr/bin/prlimit", ...opts.limits, "--",
         ...(opts.artifact ? ["sh", "-c", 'cp -a /input/. /work/ && "$@" && cat "$BM_ARTIFACT" >&4', "build", ...cmd] : cmd)];
       if (opts.artifact) {
@@ -290,9 +291,16 @@ async function execUnslotted(work: string, cmd: string[], opts: { timeoutMs: num
       signal?.addEventListener("abort", abort, { once: true });
       if (signal?.aborted) abort();
       child.on("error", (error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        signal?.removeEventListener("abort", abort);
         stderr += `Sandbox could not start: ${error.message}`;
+        resolve({ stdout, stderr, code: 1, signal: null, timedOut, truncated, ms: Date.now() - started });
       });
       child.on("close", async (code, childSignal) => {
+        if (settled) return;
+        settled = true;
         clearTimeout(timer);
         signal?.removeEventListener("abort", abort);
         if (opts.artifact && code === 0 && binarySize <= 64 * MB) {
@@ -699,7 +707,7 @@ function harnessTampering(code: string, language: Language): string | null {
  * share `//`, `/* *\/`, `"..."`, `'x'` and Go's raw backtick strings). Lifetimes such as `'a`
  * are not char literals, so a quote only opens one when a closing quote follows promptly.
  */
-export function literalMask(code: string): boolean[] {
+function literalMask(code: string): boolean[] {
   const mask = new Array<boolean>(code.length).fill(false);
   const fill = (from: number, to: number) => { for (let k = from; k < Math.min(to, code.length); k++) mask[k] = true; };
   let i = 0;

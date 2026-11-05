@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "The guard bytes around `name` changed after `set_name(&r, \"Bartholomew\")`. Tap the line that writes without checking the size.",
+  "code": "int set_name(record *r, const char *s) {\n    size_t i = 0;\n    for (; s[i] != '\\0'; i++) {\n        r->name[i] = s[i];\n    }\n    r->name[i] = '\\0';\n    return 0;\n}\n",
+  "bugLine": 4,
+  "explain": "The loop ends only at the terminator of `s`, never at the end of `name[8]`. Characters past index 7 land in `guard_hi`, which is why the dump changes. Stop at `sizeof r->name - 1`."
+}

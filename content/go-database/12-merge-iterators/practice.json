@@ -1,0 +1,37 @@
+{
+  "kind": "predict",
+  "prompt": "Source S0 (newest) yields `a=new`, `c=new`. Source S1 (older) yields `a=old`, `b=old`. A merge iterator walks both in key order and the newest version of a key wins.",
+  "trace": [
+    {
+      "label": "The first item yielded is",
+      "choices": [
+        "a=old",
+        "a=new",
+        "b=old",
+        "c=new"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "The second item yielded is",
+      "choices": [
+        "a=old",
+        "b=old",
+        "c=new",
+        "nothing"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "How many items in total?",
+      "choices": [
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Both sources have key a; the merge yields the newest and silently skips the older duplicate. Then b (only in S1), then c (only in S0): three items, in sorted key order."
+}

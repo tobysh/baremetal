@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "Fill in the lookup and removal: `kv_get` must only read the map and report a missing key, while `kv_remove` must actually delete.",
+  "template": "use std::cell::Cell;\nuse std::collections::BTreeMap;\nuse std::ffi::c_void;\n\nthread_local! {\n    pub static LIVE: Cell<isize> = Cell::new(0);\n}\n\npub const OK: i32 = 0;\npub const NULL_ARG: i32 = -1;\npub const BAD_KEY: i32 = -2;\npub const OVERFLOW: i32 = -3;\npub const NOT_FOUND: i32 = -4;\n\npub struct Store {\n    map: BTreeMap<Vec<u8>, i64>,\n}\n\nimpl Store {\n    fn new() -> Store {\n        LIVE.with(|l| l.set(l.get() + 1));\n        Store { map: BTreeMap::new() }\n    }\n}\n\nimpl Drop for Store {\n    fn drop(&mut self) {\n        LIVE.with(|l| l.set(l.get() - 1));\n    }\n}\n\n#[repr(C)]\npub struct Entry {\n    pub key: *const u8,\n    pub key_len: usize,\n    pub value: i64,\n}\n\npub type EntryFn = extern \"C\" fn(ctx: *mut c_void, e: *const Entry) -> i32;\n\nunsafe fn key<'a>(s: *const Store, k: *const u8, n: usize) -> Result<&'a [u8], i32> {\n    if s.is_null() {\n        return Err(NULL_ARG);\n    }\n    if n == 0 {\n        return Err(BAD_KEY);\n    }\n    if k.is_null() {\n        return Err(NULL_ARG);\n    }\n    Ok(std::slice::from_raw_parts(k, n))\n}\n\nfn kv_new() -> *mut Store {\n    Box::into_raw(Box::new(Store::new()))\n}\n\nunsafe fn kv_free(s: *mut Store) {\n    if !s.is_null() {\n        drop(Box::from_raw(s));\n    }\n}\n\nunsafe fn kv_add(s: *mut Store, key_p: *const u8, key_len: usize, delta: i64, out: *mut i64) -> i32 {\n    let k = match key(s, key_p, key_len) {\n        Ok(k) => k,\n        Err(c) => return c,\n    };\n    let store = &mut *s;\n    let cur = store.map.get(k).copied().unwrap_or(0);\n    match cur.checked_add(delta) {\n        None => OVERFLOW,\n        Some(v) => {\n            store.map.insert(k.to_vec(), v);\n            if !out.is_null() {\n                *out = v;\n            }\n            OK\n        }\n    }\n}\n\nunsafe fn kv_get(s: *const Store, key_p: *const u8, key_len: usize, out: *mut i64) -> i32 {\n    let k = match key(s, key_p, key_len) {\n        Ok(k) => k,\n        Err(c) => return c,\n    };\n    match (*s).map.{{0}}(k) {\n        None => {{1}},\n        Some(&v) => {\n            if !out.is_null() {\n                *out = v;\n            }\n            OK\n        }\n    }\n}\n\nunsafe fn kv_remove(s: *mut Store, key_p: *const u8, key_len: usize) -> i32 {\n    let k = match key(s, key_p, key_len) {\n        Ok(k) => k,\n        Err(c) => return c,\n    };\n    if (*s).map.{{2}}(k).is_some() { OK } else { NOT_FOUND }\n}\n\nunsafe fn kv_each(s: *const Store, cb: EntryFn, ctx: *mut c_void) -> isize {\n    if s.is_null() {\n        return -1;\n    }\n    let mut n = 0;\n    for (k, &v) in &(*s).map {\n        let e = Entry { key: k.as_ptr(), key_len: k.len(), value: v };\n        n += 1;\n        if cb(ctx, &e) != 0 {\n            break;\n        }\n    }\n    n\n}\n\nfn main() {\n    let s = kv_new();\n    let mut v = 0;\n    unsafe {\n        kv_add(s, b\"apples\".as_ptr(), 6, 3, &mut v);\n        println!(\"{v}\");\n        kv_free(s);\n    }\n}\n",
+  "tokens": [
+    "get",
+    "remove",
+    "NOT_FOUND",
+    "BAD_KEY",
+    "NULL_ARG",
+    "insert"
+  ],
+  "answers": [
+    "get",
+    "NOT_FOUND",
+    "remove"
+  ],
+  "explain": "`get` only reads, and a missing key is `NOT_FOUND`. `remove` both deletes and tells you whether the key existed, which is why it can be used to decide between `OK` and `NOT_FOUND`."
+}

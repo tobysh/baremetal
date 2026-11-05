@@ -1,0 +1,38 @@
+{
+  "kind": "predict",
+  "prompt": "Work out what these slice adaptors produce for `v = [4, 7, 9, 12, 20]`.",
+  "code": "let v = [4, 7, 9, 12, 20];",
+  "trace": [
+    {
+      "label": "`v.windows(2).count()` is",
+      "choices": [
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "`v.chunks(2).count()` is",
+      "choices": [
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`v.windows(2).map(|w| w[1] - w[0]).collect::<Vec<_>>()` is",
+      "choices": [
+        "[3, 2, 3, 8]",
+        "[11, 16, 21, 32]",
+        "[3, 3, 8]",
+        "[4, 3, 2, 3, 8]"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "`windows(2)` slides over every neighbouring pair (n - 1 of them, overlapping). `chunks(2)` splits into non-overlapping groups, and the last one may be shorter: [4,7], [9,12], [20]."
+}

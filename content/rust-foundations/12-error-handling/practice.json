@@ -1,0 +1,16 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines of a function that parses text like `width = 40` into a name and a number, stopping early with `?` on any error. One line does not belong.",
+  "lines": [
+    "fn parse_kv(s: &str) -> Result<(String, i32), String> {",
+    "    let (k, v) = s.split_once('=').ok_or(\"missing =\")?;",
+    "    let n = v.trim().parse::<i32>().map_err(|e| e.to_string())?;",
+    "    Ok((k.trim().to_string(), n))",
+    "}"
+  ],
+  "distractors": [
+    "    let n = v.trim().parse::<i32>().unwrap();"
+  ],
+  "runTests": false,
+  "explain": "Each `?` returns the error early, so later lines only run with good data. `unwrap()` would panic on bad input instead of returning an `Err`, and it would also declare `n` a second time."
+}

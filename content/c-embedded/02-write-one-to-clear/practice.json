@@ -1,0 +1,27 @@
+{
+  "kind": "predict",
+  "prompt": "STATUS has ERR (bit 0) and DONE (bit 1) set, so it reads 0x3. Writing a 1 to a bit clears it; writing 0 does nothing.",
+  "trace": [
+    {
+      "label": "After `STATUS = 0x1;` it reads",
+      "choices": [
+        "0x1",
+        "0x2",
+        "0x0",
+        "0x3"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Then `STATUS |= 0x1;` runs (read, OR, write back). It reads",
+      "choices": [
+        "0x3",
+        "0x2",
+        "0x0",
+        "0x1"
+      ],
+      "answer": 2
+    }
+  ],
+  "explain": "`STATUS = 0x1` acknowledges only ERR. But `|=` reads the register first, so it writes back every bit that is currently set, clearing DONE too. For W1C bits, write just the bits you mean to clear."
+}

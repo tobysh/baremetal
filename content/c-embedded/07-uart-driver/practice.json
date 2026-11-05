@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Queue a byte for transmission in a ring buffer, then switch on the transmit interrupt so the ISR starts draining it.",
+  "template": "int uart_putc(Uart *u, uint8_t c) {\n    unsigned next = (u->head + 1) % SIZE;\n    if (next {{0}} u->tail) return -1;\n    u->buf[u->head] = c;\n    u->head = {{1}};\n    REG_CTRL {{2}} TXIE;\n    return 0;\n}",
+  "answers": [
+    "==",
+    "next",
+    "|="
+  ],
+  "tokens": [
+    "==",
+    "!=",
+    "next",
+    "u->head",
+    "|=",
+    "&="
+  ],
+  "runTests": false,
+  "explain": "The ring is full when advancing head would meet tail. Publish the byte by moving head to `next`, then set (`|=`) the interrupt-enable bit without disturbing the other control bits."
+}

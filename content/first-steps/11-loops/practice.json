@@ -1,0 +1,16 @@
+{
+  "kind": "parsons",
+  "prompt": "Build the body of `sum_to` so it returns `1 + 2 + ... + n`. One line does not belong.",
+  "base": "int sum_to(int n) {\n{{code}}\n}\n\nlong factorial(int n) {\n    long result = 1;\n    for (int i = 2; i <= n; i++) {\n        result *= i;\n    }\n    return result;\n}\n",
+  "lines": [
+    "    int total = 0;",
+    "    for (int i = 1; i <= n; i++) {",
+    "        total += i;",
+    "    }",
+    "    return total;"
+  ],
+  "distractors": [
+    "        total = i;"
+  ],
+  "explain": "The running total starts at 0 before the loop, each pass adds `i` to it with `+=`, and the function returns it once the loop has finished. Plain `=` would throw the earlier sum away."
+}

@@ -1,0 +1,43 @@
+{
+  "kind": "predict",
+  "prompt": "Cold, large cache, 64 byte lines, 4 byte ints, an aligned array of 256 ints. A loop reads every `stride`-th element. Count the misses.",
+  "trace": [
+    {
+      "label": "stride 1 (256 reads): misses",
+      "choices": [
+        "16",
+        "64",
+        "256"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "stride 4 (64 reads): misses",
+      "choices": [
+        "4",
+        "16",
+        "64"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "stride 16 (16 reads): misses",
+      "choices": [
+        "1",
+        "16",
+        "256"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "stride 32 (8 reads): misses",
+      "choices": [
+        "8",
+        "16",
+        "32"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "Misses equal the number of distinct lines touched. Strides up to 16 ints still touch all 16 lines, so you pay the same misses with fewer reads. Beyond 16, every read lands on a new line and you skip some lines entirely."
+}

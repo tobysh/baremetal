@@ -1,0 +1,16 @@
+{
+  "kind": "blanks",
+  "prompt": "Finish `TryRecv`: receive from `ch` if a value is ready, otherwise return immediately instead of waiting.",
+  "template": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc TrySend(ch chan<- int, v int) bool {\n\tselect {\n\tcase ch <- v:\n\t\treturn true\n\tdefault:\n\t\treturn false\n\t}\n}\n\nfunc TryRecv(ch <-chan int) (int, bool) {\n\tselect {\n\tcase v, ok := {{0}}ch:\n\t\treturn v, ok\n\t{{1}}:\n\t\treturn 0, false\n\t}\n}\n\nfunc RecvTimeout(ch <-chan int, d time.Duration) (int, bool) {\n\tselect {\n\tcase v := <-ch:\n\t\treturn v, true\n\tcase <-time.After(d):\n\t\treturn 0, false\n\t}\n}\n\nfunc FirstOf(a, b <-chan string) string {\n\tselect {\n\tcase s := <-a:\n\t\treturn s\n\tcase s := <-b:\n\t\treturn s\n\t}\n}\n\nfunc main() {\n\tch := make(chan int, 1)\n\tfmt.Println(TrySend(ch, 1), TrySend(ch, 2))\n}\n",
+  "answers": [
+    "<-",
+    "default"
+  ],
+  "tokens": [
+    "<-",
+    "->",
+    "default",
+    "case"
+  ],
+  "explain": "A `select` with a `default` branch never blocks: if no other case is ready, `default` runs at once. The receive operator is `<-ch`."
+}

@@ -1,0 +1,19 @@
+{
+  "kind": "parsons",
+  "prompt": "Child side of a shell redirect `ls > out.txt`: open the file, make it stdout, close the spare descriptor and run the program. One line does not belong.",
+  "lines": [
+    "    pid_t pid = fork();",
+    "    if (pid == 0) {",
+    "        int fd = open(\"out.txt\", O_WRONLY | O_CREAT | O_TRUNC, 0644);",
+    "        dup2(fd, 1);",
+    "        close(fd);",
+    "        execlp(\"ls\", \"ls\", NULL);",
+    "    }",
+    "    wait(NULL);"
+  ],
+  "distractors": [
+    "        dup2(1, fd);"
+  ],
+  "runTests": false,
+  "explain": "`dup2(fd, 1)` makes descriptor 1 refer to the same open file as `fd`; the spare `fd` is then closed, and the redirect survives `exec`. The arguments are `dup2(old, new)`, so `dup2(1, fd)` would do the opposite."
+}

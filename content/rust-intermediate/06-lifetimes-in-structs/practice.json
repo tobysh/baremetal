@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`Tok` borrows its text. This function does not compile (\"cannot return value referencing local variable `s`\"). Tap the line that creates the problem.",
+  "code": "struct Tok<'a> {\n    text: &'a str,\n}\n\nfn make_tok() -> Tok<'static> {\n    let s = String::from(\"hello\");\n    Tok { text: &s }\n}",
+  "bugLine": 7,
+  "explain": "`s` is dropped when `make_tok` returns, so a `Tok` pointing into it would dangle. A struct holding a reference can never outlive the thing it borrows. Return an owned `String` in the struct instead, or borrow from a string passed in."
+}

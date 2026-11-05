@@ -1,0 +1,20 @@
+{
+  "kind": "parsons",
+  "prompt": "Rebuild the pause between retry attempts: wait for the backoff, but stop at once if the context ends. One line is a decoy.",
+  "lines": [
+    "\t\tif backoff > 0 {",
+    "\t\t\tt := time.NewTimer(backoff)",
+    "\t\t\tselect {",
+    "\t\t\tcase <-t.C:",
+    "\t\t\tcase <-ctx.Done():",
+    "\t\t\t\tt.Stop()",
+    "\t\t\t\treturn ctx.Err()",
+    "\t\t\t}",
+    "\t\t}"
+  ],
+  "distractors": [
+    "\t\t\tt.Reset(backoff)"
+  ],
+  "base": "package main\n\nimport (\n\t\"context\"\n\t\"errors\"\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc Retry(ctx context.Context, attempts int, backoff, perAttempt time.Duration, f func(ctx context.Context) error) error {\n\tif attempts < 1 {\n\t\tattempts = 1\n\t}\n\tfor i := 1; i <= attempts; i++ {\n\t\tif err := ctx.Err(); err != nil {\n\t\t\treturn err\n\t\t}\n\t\tactx, cancel := ctx, func() {}\n\t\tif perAttempt > 0 {\n\t\t\tactx, cancel = context.WithTimeout(ctx, perAttempt)\n\t\t}\n\t\terr := f(actx)\n\t\tcancel()\n\t\tif err == nil {\n\t\t\treturn nil\n\t\t}\n\t\tif i == attempts {\n\t\t\treturn fmt.Errorf(\"after %d attempts: %w\", i, err)\n\t\t}\n{{code}}\n\t}\n\treturn nil\n}\n\nfunc main() {\n\tn := 0\n\terr := Retry(context.Background(), 5, time.Millisecond, 0, func(ctx context.Context) error {\n\t\tn++\n\t\tif n < 3 {\n\t\t\treturn errors.New(\"not yet\")\n\t\t}\n\t\treturn nil\n\t})\n\tfmt.Println(n, err)\n}\n",
+  "explain": "A timer inside a `select` makes the wait cancellable, unlike `time.Sleep`. When the context wins, the timer is stopped and the context's error returned so the caller sees why retrying ended."
+}

@@ -6,8 +6,9 @@ import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate
 import { indentLess, indentMore } from "@codemirror/commands";
 import { EditorSelection, EditorState, Prec, StateEffect, StateField, type Extension } from "@codemirror/state";
 import { tags as t } from "@lezer/highlight";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Language } from "@/lib/curriculum/types";
+import { SymbolBar, useCoarsePointer, useHardwareKeyboard } from "./symbol-bar";
 
 // Colours come from the --code-* tokens in globals.css, so the editor follows
 // the site theme (light or dark) and stays readable in both.
@@ -103,6 +104,9 @@ const errorLineField = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
+// Height of the docked symbol bar, read by the editor to keep the caret clear of it. One editor is on screen at a time.
+const barInset = { px: 0 };
+
 const NO_LANGUAGE: Extension = [];
 
 const NO_LINES: number[] = [];
@@ -155,6 +159,12 @@ export default function CodeEditor({
   tabWidth?: number;
 }) {
   const view = useRef<EditorView | null>(null);
+  const [editor, setEditor] = useState<EditorView | null>(null);
+  const [focused, setFocused] = useState(false);
+  const onBarHeight = useCallback((px: number) => { barInset.px = px; }, []);
+  const coarse = useCoarsePointer();
+  const hardwareKeyboard = useHardwareKeyboard();
+  const showBar = coarse && !hardwareKeyboard && focused && !!editor;
   const [grammar, setGrammar] = useState<{ language: Language; ext: Extension } | null>(null);
   useEffect(() => {
     let live = true;
@@ -174,6 +184,10 @@ export default function CodeEditor({
       errorLineField,
       indentUnit.of(" ".repeat(tabWidth)),
       EditorState.tabSize.of(tabWidth),
+      // Keep the caret clear of the docked symbol bar, and stop soft keyboards "fixing" code.
+      EditorView.scrollMargins.of(() => ({ bottom: barInset.px })),
+      EditorView.updateListener.of((u) => { if (u.focusChanged) setFocused(u.view.hasFocus); }),
+      EditorView.contentAttributes.of({ autocapitalize: "off", autocorrect: "off", spellcheck: "false", enterkeyhint: "enter" }),
       EditorView.contentAttributes.of({ "aria-label": `${label}. Tab indents; press Escape then Tab to leave the editor.` }),
       // CodeMirror's built-in escape hatch (Esc, then Tab) keeps keyboard users
       // from getting trapped in the editor.
@@ -191,10 +205,12 @@ export default function CodeEditor({
     view.current?.dispatch({ effects: setErrorLines.of(errorLines) });
   }, [errorLines]);
   return (
+    <>
     <CodeMirror
       value={value}
       onCreateEditor={(v) => {
         view.current = v;
+        setEditor(v);
         v.dispatch({ effects: setErrorLines.of(errorLines) });
       }}
       onChange={onChange}
@@ -205,5 +221,7 @@ export default function CodeEditor({
       basicSetup={{ foldGutter: false, highlightActiveLine: false, autocompletion: false, searchKeymap: true }}
       indentWithTab={false}
     />
+    {showBar && <SymbolBar view={editor} language={language} tabWidth={tabWidth} onHeight={onBarHeight} />}
+    </>
   );
 }

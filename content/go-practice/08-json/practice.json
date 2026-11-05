@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "`Item` is shown below. What does `json.Marshal` produce for `Item{Name: \"pen\", Price: 2, internal: 9}`?",
+  "code": "type Item struct {\n\tName     string   `json:\"name\"`\n\tPrice    float64  `json:\"price\"`\n\tTags     []string `json:\"tags,omitempty\"`\n\tinternal int\n}",
+  "choices": [
+    "{\"name\":\"pen\",\"price\":2}",
+    "{\"name\":\"pen\",\"price\":2,\"tags\":null}",
+    "{\"name\":\"pen\",\"price\":2,\"internal\":9}",
+    "{\"name\":\"pen\",\"price\":2.0}"
+  ],
+  "answer": 0,
+  "explain": "Unexported fields (lowercase) are skipped by `encoding/json`. `omitempty` leaves out the empty `Tags`, and the float 2 is written as `2`."
+}

@@ -2,6 +2,8 @@
 
 import { useCallback, useState } from "react";
 import type { PublicExercise } from "@/lib/curriculum/types";
+import type { PublicPractice } from "@/lib/curriculum/practice";
+import { PracticePanel } from "../practice/practice-panel";
 import { MiniMarkdown } from "./mini-markdown";
 import type { ChatMessage } from "./tutor-chat";
 import { Workspace, type Variant } from "./workspace";
@@ -20,6 +22,8 @@ export function LessonWorkspace(props: {
   initialHints: number;
   challenge: ChallengeInfo | null;
   review: ReviewInfo | null;
+  practice?: PublicPractice | null;
+  practicePassed?: boolean;
   startInReview: boolean;
   signedIn: boolean;
   draftOwner?: string;
@@ -32,6 +36,9 @@ export function LessonWorkspace(props: {
   const [passed, setPassed] = useState(props.lessonPassed);
   const [variant, setVariant] = useState<Variant>(props.startInReview && review && props.lessonPassed ? "review" : "lesson");
   const [refreshed, setRefreshed] = useState(false);
+  // Practice (tap and drag) is a side activity; the editor below stays mounted, hidden, so no code is lost.
+  const [practiceOpen, setPracticeOpen] = useState(false);
+  const practice = props.practice ?? null;
   const onPassed = useCallback(() => setPassed(true), []);
   const showReview = !!review && passed;
   const showChallenge = !!challenge && signedIn;
@@ -53,13 +60,24 @@ export function LessonWorkspace(props: {
 
   return (
     <div className="min-w-0 lg:flex lg:h-full lg:flex-col">
-      {(showChallenge || showReview) && (
+      {(showChallenge || showReview || practice) && (
         <div role="group" aria-label="What to work on" className="mb-2 flex flex-wrap items-center gap-1">
-          {tab("lesson", "Lesson", true)}
-          {showChallenge && tab("challenge", "Challenge", passed, passed ? `+${challenge.xp} XP` : undefined)}
-          {showReview && tab("review", "Review", true, review.due ? "due" : undefined)}
+          <button type="button" aria-pressed={!practiceOpen} onClick={() => setPracticeOpen(false)} className={`min-h-11 rounded-md px-3 text-sm ${!practiceOpen ? "bg-surface-2 font-medium text-text" : "text-muted hover:text-text"}`}>Code</button>
+          {practice && (
+            <button type="button" aria-pressed={practiceOpen} onClick={() => setPracticeOpen(true)} className={`min-h-11 rounded-md px-3 text-sm ${practiceOpen ? "bg-surface-2 font-medium text-text" : "text-muted hover:text-text"}`}>
+              Practice (tap &amp; drag)<span className="ml-1.5 text-xs text-accent">{props.practicePassed ? "done" : `+${practice.xp} XP`}</span>
+            </button>
+          )}
+          {!practiceOpen && <span aria-hidden="true" className="mx-1 h-5 w-px bg-border" />}
+          {!practiceOpen && tab("lesson", "Lesson", true)}
+          {!practiceOpen && showChallenge && tab("challenge", "Challenge", passed, passed ? `+${challenge.xp} XP` : undefined)}
+          {!practiceOpen && showReview && tab("review", "Review", true, review.due ? "due" : undefined)}
         </div>
       )}
+      {practice && practiceOpen && (
+        <PracticePanel key={practice.id} practice={practice} language={lesson.language} passed={!!props.practicePassed} signedIn={signedIn} loginHref={props.loginHref} />
+      )}
+      <div hidden={practiceOpen} className="min-w-0 lg:h-full">
       {variant !== "challenge" && (
         // The task lives in the other view on small screens; keep it one tap away while coding.
         <details className="mb-2 panel text-sm lg:hidden">
@@ -109,6 +127,7 @@ export function LessonWorkspace(props: {
         initialHints={props.initialHints}
         onPassed={onPassed}
       />
+      </div>
     </div>
   );
 }

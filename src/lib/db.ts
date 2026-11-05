@@ -61,6 +61,9 @@ async function ensureIndexes(db: Db) {
     // One document per user/site and UTC day. Kept 60 days; only the current day is read.
     db.collection("tutor_spend").createIndex({ key: 1 }, { unique: true }).catch((e) => console.warn("[db] tutor_spend unique index not created (duplicate keys?):", e?.message)),
     db.collection("tutor_spend").createIndex({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 60 }),
+    // Admin audit trail: one year.
+    db.collection("admin_audit").createIndex({ ts: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 365 }),
+    db.collection("admin_audit").createIndex({ targetId: 1, ts: -1 }),
     db.collection("tutor_usage").createIndex({ ts: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 180 }),
   ]);
   await migrateTutorCache(db);

@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This `Merge` sometimes panics with \"send on closed channel\". Tap the faulty line.",
+  "code": "func Merge(chans ...<-chan int) <-chan int {\n\tout := make(chan int)\n\tvar wg sync.WaitGroup\n\twg.Add(len(chans))\n\tfor _, c := range chans {\n\t\tgo func() {\n\t\t\tdefer wg.Done()\n\t\t\tfor v := range c {\n\t\t\t\tout <- v\n\t\t\t}\n\t\t\tclose(out)\n\t\t}()\n\t}\n\treturn out\n}",
+  "bugLine": 11,
+  "explain": "Every forwarding goroutine closes `out` when its own input ends, so the first one to finish closes it under the others. Close once, after `wg.Wait()`, from a separate goroutine."
+}

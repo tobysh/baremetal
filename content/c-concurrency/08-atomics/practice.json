@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "Single thread, so no race: just follow the atomic operations. What is printed?",
+  "code": "atomic_int n = 5;\nint a = atomic_fetch_add(&n, 3);\nint expected = 5;\nint ok = atomic_compare_exchange_strong(&n, &expected, 100);\nprintf(\"%d %d %d %d\\n\", a, atomic_load(&n), ok, expected);",
+  "choices": [
+    "5 8 0 8",
+    "8 100 1 5",
+    "5 100 1 5",
+    "5 8 0 5"
+  ],
+  "answer": 0,
+  "explain": "`fetch_add` returns the old value (5) and leaves 8. The compare-and-swap expected 5 but found 8, so it fails, returns false and copies the actual value (8) into `expected`."
+}

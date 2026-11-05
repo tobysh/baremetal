@@ -1,0 +1,18 @@
+{
+  "kind": "blanks",
+  "prompt": "Complete `swap` so it exchanges the two integers the pointers point to. A `*` in front of a pointer means the value it points at.",
+  "template": "#include <stdio.h>\n\nvoid swap(int *a, int *b) {\n    int tmp = {{0}};\n    *a = {{1}};\n    *b = {{2}};\n}\n\nint main(void) {\n    int x = 1, y = 2;\n    swap(&x, &y);\n    printf(\"x = %d, y = %d\\n\", x, y);\n    return 0;\n}\n",
+  "tokens": [
+    "*a",
+    "*b",
+    "tmp",
+    "a",
+    "b"
+  ],
+  "answers": [
+    "*a",
+    "*b",
+    "tmp"
+  ],
+  "explain": "Save the value at `a` in `tmp`, copy the value at `b` over it, then put the saved value where `b` points. Writing `a = b` would only change the local pointers, not the integers."
+}

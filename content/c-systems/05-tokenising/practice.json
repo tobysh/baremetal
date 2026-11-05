@@ -1,0 +1,20 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines that turn the digits of a string into a number, rejecting any non-digit and applying the sign at the end. The sign and first digit index are already handled. One line does not belong.",
+  "base": "#include <stdio.h>\n\nint split_words(const char *s, char words[][16], int max_words) {\n    int count = 0;\n    int i = 0;\n    while (count < max_words) {\n        while (s[i] == ' ') {\n            i++;\n        }\n        if (s[i] == '\\0') {\n            break;\n        }\n        int start = i;\n        while (s[i] != '\\0' && s[i] != ' ') {\n            i++;\n        }\n        int length = i - start;\n        if (length > 15) {\n            length = 15;\n        }\n        for (int k = 0; k < length; k++) {\n            words[count][k] = s[start + k];\n        }\n        words[count][length] = '\\0';\n        count++;\n    }\n    return count;\n}\n\nint parse_int(const char *s, int *out) {\n    int i = 0;\n    int negative = 0;\n    if (s[i] == '-' || s[i] == '+') {\n        negative = (s[i] == '-');\n        i++;\n    }\n    if (s[i] == '\\0') {\n        return 0;\n    }\n{{code}}\n}\n\nint main(void) {\n    char words[8][16];\n    int n = split_words(\"  go north  quickly \", words, 8);\n    printf(\"%d words\\n\", n);\n    for (int i = 0; i < n; i++) printf(\"[%s]\\n\", words[i]);\n    int v = 0;\n    if (parse_int(\"-42\", &v)) printf(\"parsed %d\\n\", v);\n    return 0;\n}\n",
+  "lines": [
+    "    int value = 0;",
+    "    for (; s[i] != '\\0'; i++) {",
+    "        if (s[i] < '0' || s[i] > '9') {",
+    "            return 0;",
+    "        }",
+    "        value = value * 10 + (s[i] - '0');",
+    "    }",
+    "    *out = negative ? -value : value;",
+    "    return 1;"
+  ],
+  "distractors": [
+    "    value = value * 10 + s[i];"
+  ],
+  "explain": "Check each character is a digit, then shift the number up a decimal place and add the digit's value (`s[i] - '0'`). The sign is applied once after the loop and the function returns 1 for success."
+}

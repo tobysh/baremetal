@@ -1,0 +1,12 @@
+{
+  "kind": "predict",
+  "prompt": "Workers check different chunks of log lines at the same time and send the number of each bad line over a channel. Lines 5 and 2 are bad, and either worker may report first. `summarize` takes the smallest reported number with `rx.iter().min()`. What does it return?",
+  "choices": [
+    "Err(BadLine(2)) every time",
+    "Err(BadLine(5)) every time",
+    "Either Err(BadLine(2)) or Err(BadLine(5)), depending on timing",
+    "Ok with the counts of the good lines"
+  ],
+  "answer": 0,
+  "explain": "`min()` only looks at the numbers after all senders are done, so the order of arrival no longer matters. Reducing results in a fixed way is how you keep concurrent code deterministic."
+}

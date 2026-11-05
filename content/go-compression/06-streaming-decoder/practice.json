@@ -1,0 +1,47 @@
+{
+  "kind": "predict",
+  "prompt": "Codes: `a = 0`, `b = 10`, `c = 11`. The bits `0 1 0 1 1` arrive one at a time into a streaming decoder, which emits a symbol as soon as a full code is seen.",
+  "trace": [
+    {
+      "label": "After bit 1 (`0`), symbols emitted so far",
+      "choices": [
+        "a",
+        "nothing",
+        "a b",
+        "b"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "After bit 2 (`1`), symbols emitted so far",
+      "choices": [
+        "a",
+        "a b",
+        "nothing at all",
+        "a c"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "After bit 3 (`0`), symbols emitted so far",
+      "choices": [
+        "a",
+        "a b",
+        "a b c",
+        "a a"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After bit 5 (`1`), symbols emitted so far",
+      "choices": [
+        "a b",
+        "a b c",
+        "a b b",
+        "a b a"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "A bit that starts a two-bit code has to wait for its partner, so nothing new comes out. The decoder must remember that pending bit between chunks."
+}

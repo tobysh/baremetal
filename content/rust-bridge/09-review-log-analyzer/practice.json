@@ -1,0 +1,18 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines of a function that splits `WARN disk: almost full` into level, module and message. A line does not belong.",
+  "base": "{{code}}\n\nfn main() {\n    println!(\"{:?}\", parse(\"WARN disk: almost full\"));\n}",
+  "lines": [
+    "fn parse(line: &str) -> Option<(&str, &str, &str)> {",
+    "    let (level, rest) = line.split_once(' ')?;",
+    "    let (module, msg) = rest.split_once(' ')?;",
+    "    let module = module.strip_suffix(':')?;",
+    "    Some((level, module, msg))",
+    "}"
+  ],
+  "distractors": [
+    "    let module = module.strip_prefix(':')?;"
+  ],
+  "runTests": false,
+  "explain": "Each step works on what the previous one left over: the level comes off first, then the module, then the trailing colon is removed. The module ends with `:`, so `strip_suffix` is right; `strip_prefix` would return `None`."
+}

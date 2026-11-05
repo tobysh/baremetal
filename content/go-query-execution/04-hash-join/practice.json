@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Fill in a hash join. NULL keys never match anything, so they must not be put in the table and must not probe it.",
+  "template": "table := map[int][]Row{}\nfor _, b := range build {\n\tif b.Key == nil { {{0}} }\n\ttable[*b.Key] = append(table[*b.Key], b)\n}\nfor _, p := range probe {\n\tif p.Key == nil { {{1}} }\n\tfor _, b := range table[{{2}}] {\n\t\temit(b, p)\n\t}\n}",
+  "answers": [
+    "continue",
+    "continue",
+    "*p.Key"
+  ],
+  "tokens": [
+    "continue",
+    "continue",
+    "*p.Key",
+    "break",
+    "return",
+    "p.Key"
+  ],
+  "runTests": false,
+  "explain": "`continue` skips just that row; `break` or `return` would drop every later row too. The probe looks up the key value `*p.Key` (the pointer itself is an address, not a value)."
+}

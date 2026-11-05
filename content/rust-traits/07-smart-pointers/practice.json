@@ -1,0 +1,38 @@
+{
+  "kind": "predict",
+  "prompt": "`Rc::strong_count` reports how many owners a value has. Follow the count.",
+  "code": "let a = Rc::new(5);\nlet b = Rc::clone(&a);\n{\n    let c = Rc::clone(&a);\n    println!(\"{}\", Rc::strong_count(&a));\n}\nprintln!(\"{}\", Rc::strong_count(&a));\ndrop(b);\nprintln!(\"{}\", Rc::strong_count(&a));",
+  "trace": [
+    {
+      "label": "the first line printed (inside the block) is",
+      "choices": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "the second line printed (after the block) is",
+      "choices": [
+        "1",
+        "2",
+        "3",
+        "0"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "the third line printed (after `drop(b)`) is",
+      "choices": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "`Rc::clone` copies the pointer and adds one to the count, not the data. A clone is released at the end of its scope, and `drop(b)` releases `b`, leaving only `a`."
+}

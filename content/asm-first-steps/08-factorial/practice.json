@@ -1,0 +1,35 @@
+{
+  "kind": "predict",
+  "prompt": "`factorial` is entered with `rdi = 5` while the caller keeps its own value 99 in `rbx`. Follow `rbx` and the top of the stack.",
+  "code": "push rbx\nmov rbx, rdi\nlea rdi, [rdi - 1]\ncall factorial\nimul rax, rbx\npop rbx\nret",
+  "trace": [
+    {
+      "label": "[stack top] after `push rbx`",
+      "choices": [
+        "5",
+        "99",
+        "0"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[rbx] after `mov rbx, rdi`",
+      "choices": [
+        "5",
+        "99",
+        "4"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[rbx] after `pop rbx`",
+      "choices": [
+        "5",
+        "99",
+        "4"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "`rbx` is callee-saved, so the function pushes the caller's 99, uses `rbx` for its own `n`, and pops 99 back before returning. The caller never notices."
+}

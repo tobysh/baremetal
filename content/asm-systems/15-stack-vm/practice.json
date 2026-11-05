@@ -1,0 +1,52 @@
+{
+  "kind": "predict",
+  "prompt": "A tiny stack VM runs: PUSH 2, PUSH 3, ADD, PUSH 4, MUL. Each instruction works on the operand stack.",
+  "trace": [
+    {
+      "label": "After PUSH 3, the stack holds this many values",
+      "choices": [
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After ADD, the top of the stack is",
+      "choices": [
+        "3",
+        "5",
+        "6"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After PUSH 4, the stack depth is",
+      "choices": [
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After MUL, the top of the stack is",
+      "choices": [
+        "9",
+        "20",
+        "24"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "and the depth is",
+      "choices": [
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "ADD pops two and pushes their sum, so depth drops by one: [2,3] becomes [5]. MUL does the same: 5*4 = 20, leaving a single value."
+}

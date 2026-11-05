@@ -117,7 +117,7 @@ Everything a learner sees comes from files under `content/<track>/`. `src/lib/cu
 
 ## Accounts and sessions
 
-`src/lib/auth.ts`: scrypt password hashes; random session tokens stored only as hashes (`sessions`), delivered in an httpOnly, SameSite=Strict `bm_session` cookie; optional TOTP with replay protection and backup codes; atomic attempt reservation and pair-scoped lockouts; a proof-of-work CAPTCHA; HIBP and common-password checks (`data/common-passwords.txt`); mandatory email verification for new accounts through an encrypted, retried queue (`email_queue`, drained by `scripts/deliver-email.mts`). `src/proxy.ts` only redirects signed-out visitors away from `/dashboard`, `/settings` and `/admin` as an optimisation; the real checks (`requireUser`, `requireAdmin`, 2FA for admin) run on the server in every page and route.
+`src/lib/auth.ts`: scrypt password hashes; random session tokens stored only as hashes (`sessions`), delivered in an httpOnly, SameSite=Strict `bm_session` cookie; optional TOTP with replay protection and backup codes; atomic attempt reservation and pair-scoped lockouts; a proof-of-work CAPTCHA; HIBP and common-password checks (`data/common-passwords.txt`); mandatory email verification for new accounts through an encrypted, retried queue (`email_queue`, drained by `scripts/deliver-email.mts`). **Admin panel** (`/admin`): overview with system health and tutor cost, users (search, create, reset-link, resend verification, lock, ban, sign out everywhere, delete), security log, and the stuck report. Queries live in `src/lib/admin.ts`, mutations in `src/app/admin/actions.ts`, which re-check `requireAdmin` on every call, rate limit per admin, refuse to touch admin accounts or the caller's own, and write `admin_audit`. Granting or removing the admin role stays in `scripts/make-admin.mts`. A lock or ban is `users.suspension`; `isSuspended` in `auth.ts` makes `loadUser` return null, so existing sessions stop working at once, and login and the 2FA step refuse. The admin never sees or sets a password: reset sends the owner a link, and admin-created accounts get a verification link where the owner chooses a password and accepts the Terms (`termsVersion: "pending"` until then). Account removal is shared with self-service deletion in `src/lib/account-ops.ts`. `src/proxy.ts` only redirects signed-out visitors away from `/dashboard`, `/settings` and `/admin` as an optimisation; the real checks (`requireUser`, `requireAdmin`, 2FA for admin) run on the server in every page and route.
 
 Client IPs come from `X-Forwarded-For` as written by *your* proxy; `TRUSTED_PROXY_HOPS` says how many hops to trust. See "Proxy contract" in [deployment-hardening.md](deployment-hardening.md).
 
@@ -141,6 +141,7 @@ MongoDB, database `MONGODB_DB` (default `baremetal`). Indexes are created on fir
 | `rate_limits`, `login_failures`, `pending_2fa` | Counters and short-lived auth state | TTL |
 | `email_queue`, `email_verifications`, `password_resets` | Account email flow | TTL (queue: 7 days) |
 | `events`, `auth_events` | Consent-based analytics; auth audit | 180 and 90 days |
+| `admin_audit` | One row per admin-panel action: admin id, action, target account id, optional note | 1 year |
 
 Every collection that holds personal data is covered by account export (`/api/account/export`), account deletion, and `content/legal/privacy.md`. `npm run sweep-orphans` reports rows whose user no longer exists (dry run; `-- --apply` deletes them).
 
@@ -153,6 +154,13 @@ This repo uses Cache Components, partial prerendering and Turbopack, and **Next 
 - Heavy client code (editor, password checker, command palette, terminal) is lazy-loaded.
 - Every page sets its own `title`, `description` and `alternates.canonical`, and renders exactly one `<h1>`.
 - The CSP still allows `script-src 'unsafe-inline'`: nonce CSP is incompatible with partial prerendering, and the one inline script is the static theme bootstrap.
+
+## Phones and the catalogue
+
+- **Lesson layout** (`workspace/lesson-layout.tsx`): below 1024px the lesson text and the code workspace are two tabs ("Read lesson", "Code & feedback"), and a horizontal swipe on the text or panels switches them (touches starting in the editor, code blocks or form fields are ignored). Desktop keeps the resizable split pane.
+- **Symbol bar** (`workspace/symbol-bar.tsx`, `snippets.ts`): on coarse-pointer devices, while the editor is focused and no hardware keyboard has been detected (a modifier chord or navigation key; in memory only, nothing stored), a toolbar is docked above the on-screen keyboard using `visualViewport`. It has snippet chips per language (CodeMirror snippets with tab stops; the Tab key jumps to the next stop), symbols, Tab, undo/redo and a drag pad that moves the caret. The editor also turns off autocapitalise/autocorrect/spellcheck.
+- **Help sheet** (`workspace/help-sheet.tsx`): a phone-only floating "Help" button opens a bottom sheet with the authored hints and one-tap tutor prompts.
+- **Lesson-type filter**: `/learn` and `/learn/[track]` take `?type=` (validated by `parseTypeFilter`). Both pages always render the full catalogue; a small Suspense-wrapped part reads the param and emits CSS that hides non-matching courses or lessons, so the pages stay cacheable and indexable. Types with no lessons get no chip, and canonicals ignore filter params. Each syllabus row shows its types as icon plus text.
 
 ## Theme
 

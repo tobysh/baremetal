@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "A varint stores 7 bits per byte and sets the top bit when more bytes follow. Fill in the encoder.",
+  "template": "for v >= {{0}} {\n\tout = append(out, byte(v)|{{1}})\n\tv >>= {{2}}\n}\nout = append(out, byte(v))",
+  "answers": [
+    "0x80",
+    "0x80",
+    "7"
+  ],
+  "tokens": [
+    "0x80",
+    "0x80",
+    "7",
+    "0x7f",
+    "8",
+    "0xff"
+  ],
+  "runTests": false,
+  "explain": "A value below 0x80 fits in 7 bits and is the last byte. Otherwise emit its low 7 bits with the continuation bit 0x80 set and shift by 7."
+}

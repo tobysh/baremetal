@@ -1,0 +1,16 @@
+{
+  "kind": "parsons",
+  "prompt": "Receive one length-prefixed message: a 4 byte big-endian length, then that many bytes. One line does not belong.",
+  "lines": [
+    "    uint32_t be;",
+    "    read_full(fd, &be, 4);",
+    "    uint32_t len = ntohl(be);",
+    "    read_full(fd, buf, len);",
+    "    buf[len] = '\\0';"
+  ],
+  "distractors": [
+    "    uint32_t len = be;"
+  ],
+  "runTests": false,
+  "explain": "Read the fixed-size prefix, convert it from network order, then read exactly that many payload bytes. Using the raw value as the length would be wrong on a little-endian CPU."
+}

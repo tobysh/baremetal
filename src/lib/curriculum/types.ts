@@ -1,4 +1,5 @@
 import type { Difficulty } from "../gamification";
+import type { Practice } from "./practice";
 
 export type Language = "c" | "rust" | "asm" | "go" | "kernel";
 
@@ -42,6 +43,10 @@ export type Lesson = {
   exercise: Exercise;
   /** Optional harder variant, unlocked once the lesson is passed. Its exercise id is the lesson's plus "#challenge". */
   challenge?: { brief: string; exercise: Exercise };
+  /** Optional tap-and-drag practice from practice.json, with its answers. Server-only: send `toPublicPractice(...)` to the browser. Its id is the lesson's plus "#practice". */
+  practice?: Practice;
+  /** Optional extra recall questions from quiz.json (an array, same shapes as practice.json). They give XP to nobody and appear only on review cards, where one is picked each time the lesson is due. Server-only. */
+  quiz?: Practice[];
 };
 
 export type Track = {

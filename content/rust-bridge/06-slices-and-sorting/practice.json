@@ -1,0 +1,18 @@
+{
+  "kind": "blanks",
+  "prompt": "Sort the vector, then search it with a method that needs sorted data and tells you where the value is or where it would go.",
+  "template": "fn main() {\n    let mut v = vec![40, 10, 30, 20];\n    v.{{0}}();\n    match v.{{1}}(&30) {\n        Ok(i) => println!(\"found at {i}\"),\n        Err(i) => println!(\"insert at {i}\"),\n    }\n}",
+  "tokens": [
+    "sort",
+    "binary_search",
+    "sort_by",
+    "search",
+    "contains"
+  ],
+  "answers": [
+    "sort",
+    "binary_search"
+  ],
+  "runTests": false,
+  "explain": "`binary_search` only works on sorted data and returns `Ok(index)` or `Err(insert_position)`. `contains` returns a plain `bool`, and `sort_by` needs a comparison function."
+}

@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "SIGUSR1 has a handler that increments a counter. Standard signals do not queue. How many times does the handler run?",
+  "code": "sigprocmask(SIG_BLOCK, &usr1, NULL);\nraise(SIGUSR1);\nraise(SIGUSR1);\nsigprocmask(SIG_UNBLOCK, &usr1, NULL);",
+  "choices": [
+    "0",
+    "1",
+    "2",
+    "It depends on the scheduler"
+  ],
+  "answer": 1,
+  "explain": "While blocked, a standard signal is only marked pending, a single bit. A second signal of the same kind just sets the same bit, so they coalesce. After unblocking the handler runs once."
+}

@@ -1,0 +1,43 @@
+{
+  "kind": "predict",
+  "prompt": "`align_up(n, a)` computes `(n + (a - 1)) & ~(a - 1)` for a power-of-two `a`. Work it out for n = 13 and a = 8, where `~7` clears the lowest three bits.",
+  "trace": [
+    {
+      "label": "n + (a - 1) is",
+      "choices": [
+        "13",
+        "20",
+        "21"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "align_up(13, 8) is",
+      "choices": [
+        "8",
+        "16",
+        "24"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "align_up(16, 8) is",
+      "choices": [
+        "16",
+        "24",
+        "8"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "align_down(13, 8) is",
+      "choices": [
+        "8",
+        "16",
+        "12"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "Adding `a - 1` pushes any non-multiple past the next multiple, and the mask rounds down to it. 13 + 7 = 20 (`10100`), clearing the low three bits gives 16. A value that is already aligned, like 16, stays at 16; `align_down` skips the addition, so 13 becomes 8."
+}

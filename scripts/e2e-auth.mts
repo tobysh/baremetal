@@ -19,7 +19,7 @@ const BASE = (process.argv[2] ?? "http://localhost:3100").replace(/\/$/, "");
 const ORIGIN = process.env.E2E_ORIGIN ?? BASE;
 const mongo = await new MongoClient(process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27017").connect();
 const db = mongo.db(process.env.MONGODB_DB ?? "baremetal");
-const users = db.collection<{ _id: ObjectId; email: string; role?: string; twoFactor?: unknown; passwordHash: string; emailVerified?: boolean }>("users");
+const users = db.collection<{ _id: ObjectId; email: string; role?: string; twoFactor?: unknown; passwordHash: string; emailVerified?: boolean; xp?: number }>("users");
 
 let failures = 0;
 function check(name: string, ok: boolean, detail = "") {
@@ -230,6 +230,59 @@ try {
     const rawBefore = await db.collection("events").countDocuments();
     await fetch(BASE + "/api/analytics", { method: "POST", headers: { Origin: ORIGIN, "Content-Type": "application/json", "X-Forwarded-For": u.ip, Cookie: "bm_consent=" + encodeURIComponent(JSON.stringify({ v: 1, analytics: true, at: new Date().toISOString() })) }, body: multi });
     check("analytics body is capped in bytes, not characters", (await db.collection("events").countDocuments()) === rawBefore && Buffer.byteLength(multi) > 4096);
+  }
+
+  // ---------- Tap-and-drag practice ----------
+  console.log("\nPractice exercises");
+  {
+    const PRACTICE_ID = "first-steps/variables#practice";
+    const lessonId = "first-steps/variables";
+    const practiceJson = JSON.parse((await import("node:fs")).readFileSync("content/first-steps/03-variables/practice.json", "utf8")) as { lines: string[]; distractors: string[]; explain: string };
+    const post = (br: Browser, body: unknown, headers: Record<string, string> = {}) => br.fetch("/api/practice", { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) });
+    const anon = new Browser(ip(19));
+    check("signed-out practice answers are rejected (401)", (await post(anon, { exerciseId: PRACTICE_ID, submission: practiceJson.lines })).status === 401);
+    const pb = new Browser(ip(20));
+    await pb.submit("/login", { email, password: PASSWORD });
+    check("cross-site practice POST is blocked (403)", (await post(pb, { exerciseId: PRACTICE_ID, submission: practiceJson.lines }, { Origin: "https://evil.example" })).status === 403);
+    check("unknown practice id is 404", (await post(pb, { exerciseId: "first-steps/hello-world#practice", submission: [] })).status === 404);
+    check("malformed submission is 400", (await post(pb, { exerciseId: PRACTICE_ID, submission: ["not a line of this exercise"] })).status === 400);
+    const owner = (await users.findOne({ email }))!;
+    const progress = db.collection("progress"), events = db.collection("xp_events");
+    const reset = async () => {
+      await Promise.all([progress.deleteMany({ userId: owner._id, exerciseId: PRACTICE_ID }), events.deleteMany({ userId: owner._id, source: "practice" })]);
+      await users.updateOne({ _id: owner._id }, { $set: { xp: 0 }, $unset: { xpQuota: "", xpDecision: "" } });
+    };
+    await reset();
+
+    // Answers never reach the browser: not in the lesson page, not in a wrong-answer response.
+    const page = await pb.get("/learn/first-steps/variables");
+    check("lesson page carries no practice answers", page.status === 200 && !/bugLine|"distractors"|"answers"/.test(page.html) && !page.html.includes(practiceJson.explain.slice(0, 30)));
+    const wrong = await (await post(pb, { exerciseId: PRACTICE_ID, submission: [...practiceJson.lines].reverse() })).json() as { ok: boolean; explain?: unknown; feedback?: string; outcome: { xp: number } };
+    check("a wrong arrangement is not ok and awards nothing", wrong.ok === false && wrong.outcome.xp === 0);
+    check("a wrong answer does not reveal the explanation or the order", wrong.explain === undefined && !JSON.stringify(wrong).includes(practiceJson.lines[0]));
+    await progress.updateOne({ userId: owner._id, exerciseId: PRACTICE_ID }, { $set: { startedAt: new Date(Date.now() - 120_000) } });
+
+    // Pacing and the daily cap apply to practice like any other pass.
+    const quota = (xp: number, ageMs: number, n: number) => users.updateOne({ _id: owner._id }, { $set: { xpQuota: Array.from({ length: n }, (_, i) => ({ ref: `fixture/${i}`, at: new Date(Date.now() - ageMs), xp })) } });
+    await quota(1, 60_000, 6);
+    let res = await (await post(pb, { exerciseId: PRACTICE_ID, submission: practiceJson.lines })).json() as { ok: boolean; explain?: string | null; outcome: { firstPass: boolean; xp: number; paced: boolean } };
+    check("practice pass is correct but earns no XP while paced", res.ok && res.outcome.firstPass && res.outcome.xp === 0 && res.outcome.paced);
+    await reset();
+    await quota(200, 3_600_000, 2);
+    await progress.insertOne({ userId: owner._id, exerciseId: PRACTICE_ID, trackSlug: "first-steps", status: "started", code: "", attempts: 0, startedAt: new Date(Date.now() - 120_000), startKnown: true, updatedAt: new Date() });
+    res = await (await post(pb, { exerciseId: PRACTICE_ID, submission: practiceJson.lines })).json() as typeof res;
+    check("the daily XP cap applies to practice", res.ok && res.outcome.xp === 0 && (await progress.findOne({ userId: owner._id, exerciseId: PRACTICE_ID }))?.xpFlag === "daily-cap");
+
+    // The ordinary path: correct amount, once.
+    await reset();
+    await progress.insertOne({ userId: owner._id, exerciseId: PRACTICE_ID, trackSlug: "first-steps", status: "started", code: "", attempts: 0, startedAt: new Date(Date.now() - 120_000), startKnown: true, updatedAt: new Date() });
+    res = await (await post(pb, { exerciseId: PRACTICE_ID, submission: practiceJson.lines })).json() as typeof res;
+    check("a correct practice pass pays a quarter of the lesson's XP (easy: 1)", res.ok && res.outcome.firstPass && res.outcome.xp === 1 && typeof res.explain === "string", JSON.stringify(res));
+    check("practice XP is logged with source \"practice\"", (await events.countDocuments({ userId: owner._id, source: "practice", ref: PRACTICE_ID, xp: 1 })) === 1 && (await users.findOne({ _id: owner._id }))?.xp === 1);
+    res = await (await post(pb, { exerciseId: PRACTICE_ID, submission: practiceJson.lines })).json() as typeof res;
+    check("passing practice again pays nothing", res.ok && !res.outcome.firstPass && res.outcome.xp === 0 && (await users.findOne({ _id: owner._id }))?.xp === 1);
+    check("practice schedules no review", (await db.collection("reviews").countDocuments({ userId: owner._id, exerciseId: { $in: [PRACTICE_ID, lessonId] } })) === 0);
+    await reset();
   }
 
   // ---------- Two-factor authentication ----------
@@ -447,6 +500,7 @@ try {
     users.deleteMany({ _id: { $in: ids } }),
     db.collection("sessions").deleteMany({ userId: { $in: ids } }),
     db.collection("progress").deleteMany({ userId: { $in: ids } }),
+    db.collection("xp_events").deleteMany({ userId: { $in: ids } }),
     db.collection("password_resets").deleteMany({ userId: { $in: ids } }),
     db.collection("email_verifications").deleteMany({ userId: { $in: ids } }),
     db.collection("email_queue").deleteMany({ recipientHash: hmac("email-queue-recipient", email) }),

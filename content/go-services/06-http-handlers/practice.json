@@ -1,0 +1,17 @@
+{
+  "kind": "blanks",
+  "prompt": "Register a route that only answers GET requests and reads the `{id}` part of the path.",
+  "template": "package main\n\nimport (\n\t\"fmt\"\n\t\"net/http\"\n\t\"net/http/httptest\"\n)\n\nfunc Greet(w http.ResponseWriter, r *http.Request) {\n\tif r.Method != http.MethodGet {\n\t\tw.Header().Set(\"Allow\", \"GET\")\n\t\thttp.Error(w, \"method not allowed\", http.StatusMethodNotAllowed)\n\t\treturn\n\t}\n\tname := r.URL.Query().Get(\"name\")\n\tif name == \"\" {\n\t\tname = \"world\"\n\t}\n\tw.Header().Set(\"Content-Type\", \"text/plain; charset=utf-8\")\n\tfmt.Fprintf(w, \"Hello, %s!\\n\", name)\n}\n\nfunc allDigits(s string) bool {\n\tif s == \"\" {\n\t\treturn false\n\t}\n\tfor i := 0; i < len(s); i++ {\n\t\tif s[i] < '0' || s[i] > '9' {\n\t\t\treturn false\n\t\t}\n\t}\n\treturn true\n}\n\nfunc NewMux() *http.ServeMux {\n\tmux := http.NewServeMux()\n\tmux.HandleFunc(\"GET /greet\", Greet)\n\tmux.HandleFunc(\"GET /health\", func(w http.ResponseWriter, r *http.Request) {\n\t\tfmt.Fprint(w, \"ok\")\n\t})\n\tmux.HandleFunc(\"{{0}} /users/{id}\", func(w http.ResponseWriter, r *http.Request) {\n\t\tid := r.{{1}}(\"id\")\n\t\tif !allDigits(id) {\n\t\t\thttp.Error(w, \"bad id\", http.StatusBadRequest)\n\t\t\treturn\n\t\t}\n\t\tfmt.Fprintf(w, \"user %s\", id)\n\t})\n\treturn mux\n}\n\nfunc main() {\n\trec := httptest.NewRecorder()\n\tNewMux().ServeHTTP(rec, httptest.NewRequest(\"GET\", \"/greet?name=Ada\", nil))\n\tfmt.Print(rec.Code, \" \", rec.Body.String())\n}\n",
+  "answers": [
+    "GET",
+    "PathValue"
+  ],
+  "tokens": [
+    "GET",
+    "POST",
+    "PathValue",
+    "Query",
+    "FormValue"
+  ],
+  "explain": "Go 1.22 patterns start with the method. A `{name}` wildcard in the path is read with `r.PathValue(\"name\")`; `FormValue` looks in query and form data instead."
+}

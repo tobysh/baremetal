@@ -1,0 +1,21 @@
+{
+  "kind": "parsons",
+  "prompt": "Finish `checked_div`'s body after the null check: report bad input, detect overflow, and only write the result on success. One line does not belong.",
+  "base": "pub const OK: i32 = 0;\npub const NULL_ARG: i32 = -1;\npub const BAD_INPUT: i32 = -2;\npub const OVERFLOW: i32 = -3;\npub const PANICKED: i32 = -99;\n\nunsafe fn checked_div(a: i32, b: i32, out: *mut i32) -> i32 {\n    if out.is_null() {\n        return NULL_ARG;\n    }\n{{code}}\n}\n\nunsafe fn parse_u8(s: *const u8, len: usize, out: *mut u8) -> i32 {\n    if out.is_null() || (s.is_null() && len > 0) {\n        return NULL_ARG;\n    }\n    if len == 0 {\n        return BAD_INPUT;\n    }\n    let bytes = std::slice::from_raw_parts(s, len);\n    if !bytes.iter().all(|b| b.is_ascii_digit()) {\n        return BAD_INPUT;\n    }\n    let mut acc: u32 = 0;\n    for &b in bytes {\n        acc = acc * 10 + (b - b'0') as u32;\n        if acc > 255 {\n            return OVERFLOW;\n        }\n    }\n    *out = acc as u8;\n    OK\n}\n\nunsafe fn guarded(f: fn(i32) -> i32, arg: i32, out: *mut i32) -> i32 {\n    if out.is_null() {\n        return NULL_ARG;\n    }\n    match std::panic::catch_unwind(|| f(arg)) {\n        Ok(v) => {\n            *out = v;\n            OK\n        }\n        Err(_) => PANICKED,\n    }\n}\n\nfn status_message(code: i32) -> &'static str {\n    match code {\n        OK => \"ok\",\n        NULL_ARG => \"null argument\",\n        BAD_INPUT => \"bad input\",\n        OVERFLOW => \"overflow\",\n        PANICKED => \"panicked\",\n        _ => \"unknown\",\n    }\n}\n\nfn into_result(code: i32) -> Result<(), i32> {\n    if code == OK { Ok(()) } else { Err(code) }\n}\n\nfn main() {\n    let mut q = 0;\n    let code = unsafe { checked_div(7, 2, &mut q) };\n    println!(\"{} {}\", status_message(code), q);\n}\n",
+  "lines": [
+    "    if b == 0 {",
+    "        return BAD_INPUT;",
+    "    }",
+    "    match a.checked_div(b) {",
+    "        None => OVERFLOW,",
+    "        Some(q) => {",
+    "            *out = q;",
+    "            OK",
+    "        }",
+    "    }"
+  ],
+  "distractors": [
+    "    *out = a / b;"
+  ],
+  "explain": "Errors are returned as codes and `*out` is written only on `OK`. `checked_div` returns `None` for the one overflowing case (`i32::MIN / -1`). Dividing before the zero check would panic, and a panic must not cross the boundary."
+}

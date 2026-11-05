@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`buf` has room for 8 bytes and `copy_label` is told `cap` is 8. Tap the line that lets the loop write past the end.",
+  "code": "void copy_label(char *dst, size_t cap, const char *src) {\n    size_t i;\n    for (i = 0; i <= cap && src[i] != '\\0'; i++) {\n        dst[i] = src[i];\n    }\n    dst[i] = '\\0';\n}\n",
+  "bugLine": 3,
+  "explain": "Valid indices run from 0 to cap - 1, so `i <= cap` lets the loop write dst[cap], one byte past the buffer. Even with `<`, the terminator needs room too: stop at `cap - 1`."
+}

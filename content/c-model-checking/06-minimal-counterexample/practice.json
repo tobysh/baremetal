@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "The search found these failing schedules (A and B are thread names). The checker must return the shortest and, among equals, the lexicographically first. Which one?",
+  "code": "AABBB  ABAB  ABBA  BAAB  BBAAA",
+  "choices": [
+    "AABBB",
+    "ABAB",
+    "ABBA",
+    "BAAB"
+  ],
+  "answer": 1,
+  "explain": "Length 4 beats length 5. Among ABAB, ABBA and BAAB the alphabetical first is ABAB. A breadth-first search that tries threads in a fixed order finds exactly this one."
+}

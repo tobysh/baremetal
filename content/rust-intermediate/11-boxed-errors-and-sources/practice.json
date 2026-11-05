@@ -1,0 +1,12 @@
+{
+  "kind": "predict",
+  "prompt": "`LoadError` displays as `could not load '<name>'` and its `source()` is the `ParseIntError` that caused it, which displays as `invalid digit found in string`. A helper collects the message of the error and then of each source, outermost first. What does it return for `load(\"cfg\", \"x1\")`?",
+  "choices": [
+    "[\"could not load 'cfg'\", \"invalid digit found in string\"]",
+    "[\"invalid digit found in string\", \"could not load 'cfg'\"]",
+    "[\"could not load 'cfg'\"]",
+    "[\"invalid digit found in string\"]"
+  ],
+  "answer": 0,
+  "explain": "A source chain reads from the wrapper inward: the high-level message first, then the low-level cause. Wrapping with a source keeps both messages instead of replacing one with the other."
+}

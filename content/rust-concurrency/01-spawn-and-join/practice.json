@@ -1,0 +1,15 @@
+{
+  "kind": "parsons",
+  "prompt": "Finish `run_guarded`: run `f` on a new thread and turn a panic inside it into an `Err` instead of crashing the caller. One line does not belong.",
+  "base": "use std::thread::{self, ThreadId};\n\nfn sum_chunks(chunks: Vec<Vec<u64>>) -> Vec<u64> {\n    let handles: Vec<_> = chunks\n        .into_iter()\n        .map(|c| thread::spawn(move || c.iter().sum::<u64>()))\n        .collect();\n    handles.into_iter().map(|h| h.join().unwrap()).collect()\n}\n\nfn run_guarded(f: fn() -> i32) -> Result<i32, String> {\n{{code}}\n}\n\nfn on_new_thread(f: fn() -> u64) -> (u64, ThreadId) {\n    thread::spawn(move || (f(), thread::current().id())).join().unwrap()\n}\n\n// Try it with Run.\nfn main() {\n    println!(\"{:?}\", sum_chunks(vec![vec![1, 2, 3], vec![10, 20]]));\n    println!(\"{:?}\", run_guarded(|| 7));\n}\n",
+  "lines": [
+    "    match thread::spawn(f).join() {",
+    "        Ok(v) => Ok(v),",
+    "        Err(_) => Err(String::from(\"worker panicked\")),",
+    "    }"
+  ],
+  "distractors": [
+    "        Err(_) => Ok(0),"
+  ],
+  "explain": "`join` returns a `Result`: `Ok` with the thread's value, or `Err` carrying the panic payload. Matching on it lets the caller survive a panicking worker. The extra arm would swallow the panic and pretend it was a success."
+}

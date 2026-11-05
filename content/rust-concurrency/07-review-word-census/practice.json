@@ -1,0 +1,21 @@
+{
+  "kind": "parsons",
+  "prompt": "Arrange the body of a census worker: count words in its own lines, add to the shared total, then hand its map to the collector. One line does not belong.",
+  "base": "use std::collections::{BTreeMap, HashMap};\nuse std::sync::{mpsc, Arc, Mutex};\nuse std::thread;\n\nfn census(lines: Vec<String>, workers: usize) -> (BTreeMap<String, usize>, usize) {\n    let workers = workers.max(1);\n    let mut buckets: Vec<Vec<String>> = vec![Vec::new(); workers];\n    for (i, line) in lines.into_iter().enumerate() {\n        buckets[i % workers].push(line);\n    }\n\n    let total = Arc::new(Mutex::new(0usize));\n    let (tx, rx) = mpsc::channel::<HashMap<String, usize>>();\n    let mut handles = Vec::new();\n    for bucket in buckets {\n        let tx = tx.clone();\n        let total = Arc::clone(&total);\n        handles.push(thread::spawn(move || {\n{{code}}\n        }));\n    }\n    drop(tx);\n\n    let mut merged = BTreeMap::new();\n    for map in rx {\n        for (w, c) in map {\n            *merged.entry(w).or_insert(0) += c;\n        }\n    }\n    for h in handles {\n        h.join().unwrap();\n    }\n    let t = *total.lock().unwrap();\n    (merged, t)\n}\n\n// Try it with Run.\nfn main() {\n    let lines = vec![\"the cat\".to_string(), \"The dog and the cat\".to_string()];\n    let (counts, total) = census(lines, 2);\n    println!(\"{:?} {}\", counts, total);\n}\n",
+  "lines": [
+    "            let mut local: HashMap<String, usize> = HashMap::new();",
+    "            let mut words = 0;",
+    "            for line in &bucket {",
+    "                for w in line.split_whitespace() {",
+    "                    *local.entry(w.to_lowercase()).or_insert(0) += 1;",
+    "                    words += 1;",
+    "                }",
+    "            }",
+    "            *total.lock().unwrap() += words;",
+    "            tx.send(local).unwrap();"
+  ],
+  "distractors": [
+    "            drop(local);"
+  ],
+  "explain": "Each worker builds a private map with no locking, adds its word count to the shared total once, and sends the map over the channel at the end. After `send`, the map has moved, so anything that gives it away earlier breaks the counting."
+}

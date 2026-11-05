@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "`greet` has a default body, and `B` replaces it. What does `main` print?",
+  "code": "trait Greeter {\n    fn name(&self) -> String;\n    fn greet(&self) -> String {\n        format!(\"Hello, {}\", self.name())\n    }\n}\n\nstruct A;\nstruct B;\n\nimpl Greeter for A {\n    fn name(&self) -> String { \"A\".to_string() }\n}\n\nimpl Greeter for B {\n    fn name(&self) -> String { \"B\".to_string() }\n    fn greet(&self) -> String { \"Yo\".to_string() }\n}\n\nfn main() {\n    println!(\"{}\", A.greet());\n    println!(\"{}\", B.greet());\n}",
+  "choices": [
+    "Hello, A\nYo",
+    "Hello, A\nHello, B",
+    "Hello, A\nYo, B",
+    "It does not compile: `A` must define `greet`"
+  ],
+  "answer": 0,
+  "explain": "A type that does not define a method with a default body inherits the default, which calls `self.name()`. `B` supplies its own `greet`, which replaces the default completely."
+}

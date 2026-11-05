@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "Complete the function-pointer type, the table lookup and the fold. A table row is `(&str, BinOp)`, and the closure receives it by reference.",
+  "template": "pub type BinOp = {{0}} \"C\" fn(i32, i32) -> i32;\n\nextern \"C\" fn add(a: i32, b: i32) -> i32 {\n    a.wrapping_add(b)\n}\n\nextern \"C\" fn mul(a: i32, b: i32) -> i32 {\n    a.wrapping_mul(b)\n}\n\nextern \"C\" fn max(a: i32, b: i32) -> i32 {\n    if a > b { a } else { b }\n}\n\nconst TABLE: [(&str, BinOp); 3] = [(\"add\", add), (\"max\", max), (\"mul\", mul)];\n\nfn lookup(name: &str) -> Option<BinOp> {\n    TABLE.iter().find(|(n, _)| *n == name).map(|(_, f)| {{1}}f)\n}\n\nfn fold_with(op: BinOp, init: i32, xs: &[i32]) -> i32 {\n    xs.iter().fold(init, |acc, &x| {{2}}(acc, x))\n}\n\nfn names() -> Vec<&'static str> {\n    TABLE.iter().map(|(n, _)| *n).collect()\n}\n\nfn main() {\n    println!(\"{:?}\", names());\n    if let Some(op) = lookup(\"add\") {\n        println!(\"{}\", fold_with(op, 0, &[1, 2, 3]));\n    }\n}\n",
+  "tokens": [
+    "extern",
+    "*",
+    "op",
+    "unsafe",
+    "&",
+    "acc"
+  ],
+  "answers": [
+    "extern",
+    "*",
+    "op"
+  ],
+  "explain": "`extern \"C\" fn(...)` is the C-ABI function pointer type. The table is iterated by reference, so `*f` copies the pointer out of the row. Calling `op(acc, x)` then invokes whichever function was passed in."
+}

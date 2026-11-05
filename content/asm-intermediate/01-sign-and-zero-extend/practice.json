@@ -1,0 +1,34 @@
+{
+  "kind": "predict",
+  "prompt": "`al` holds 0xF0. Follow each instruction and give the register it writes.",
+  "trace": [
+    {
+      "label": "`movzx ecx, al` gives ecx",
+      "choices": [
+        "0x000000F0",
+        "0xFFFFFFF0",
+        "0x0000F000"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`movsx edx, al` gives edx",
+      "choices": [
+        "0x000000F0",
+        "0xFFFFFFF0",
+        "0x0000FFF0"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`movsxd rax, edx` then gives rax",
+      "choices": [
+        "0x00000000FFFFFFF0",
+        "0xFFFFFFFFFFFFFFF0",
+        "0x000000000000F0"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "`movzx` pads with zeros (240); `movsx` copies the top bit, so 0xF0 means -16. A 32-bit negative must be widened again with `movsxd` before it joins a 64-bit total."
+}

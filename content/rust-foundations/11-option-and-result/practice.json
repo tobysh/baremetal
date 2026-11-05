@@ -1,0 +1,38 @@
+{
+  "kind": "predict",
+  "prompt": "Follow the `Option` values through this code.",
+  "code": "let v = [10, 20, 30];\nlet a = v.iter().position(|&x| x == 20);\nlet b = v.iter().position(|&x| x == 99);\nlet c = b.map(|i| i * 2).unwrap_or(0);",
+  "trace": [
+    {
+      "label": "`a` is",
+      "choices": [
+        "Some(1)",
+        "Some(20)",
+        "Some(2)",
+        "None"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`b` is",
+      "choices": [
+        "Some(0)",
+        "None",
+        "Some(-1)",
+        "a panic"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`c` is",
+      "choices": [
+        "0",
+        "None",
+        "198",
+        "a panic"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "`position` returns the index wrapped in `Some`, or `None` when nothing matches (no -1 sentinel like in C). `map` skips `None`, and `unwrap_or(0)` supplies the fallback."
+}

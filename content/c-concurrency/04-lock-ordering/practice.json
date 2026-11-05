@@ -1,0 +1,42 @@
+{
+  "kind": "predict",
+  "prompt": "Thread A locks X then Y. Thread B locks Y then X. Follow one unlucky schedule.",
+  "trace": [
+    {
+      "label": "A locks X and B locks Y. Now A calls lock(Y). A",
+      "choices": [
+        "takes Y",
+        "blocks until B releases Y"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "B then calls lock(X). B",
+      "choices": [
+        "takes X because it ran earlier",
+        "blocks until A releases X",
+        "takes X after A is preempted"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "So the program",
+      "choices": [
+        "finishes A first and then B",
+        "waits forever",
+        "lets the OS cancel one lock"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Which rule makes this schedule impossible?",
+      "choices": [
+        "every thread locks X before Y",
+        "every thread unlocks before it locks",
+        "use more threads than locks"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "Each thread holds what the other needs, and neither will release until it gets the second lock. A global lock order breaks the cycle: whoever gets X first also gets Y."
+}

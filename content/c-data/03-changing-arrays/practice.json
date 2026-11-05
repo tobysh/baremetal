@@ -1,0 +1,53 @@
+{
+  "kind": "predict",
+  "prompt": "Follow `remove_value`'s loop by hand. The array starts as `4 7 4 9 2` and we remove every 4.",
+  "code": "int a[] = {4, 7, 4, 9, 2};\nint keep = 0;\nfor (int i = 0; i < 5; i++) {\n    if (a[i] != 4) {\n        a[keep] = a[i];\n        keep++;\n    }\n}",
+  "trace": [
+    {
+      "label": "After the pass with i = 1, keep is",
+      "choices": [
+        "0",
+        "1",
+        "2"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After the pass with i = 2 (the second 4), keep is",
+      "choices": [
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "After the pass with i = 3, a[1] holds",
+      "choices": [
+        "4",
+        "7",
+        "9"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "After the loop, keep is",
+      "choices": [
+        "2",
+        "3",
+        "5"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After the loop, a[2] holds",
+      "choices": [
+        "2",
+        "4",
+        "9"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "`keep` is the next free slot at the front. It moves only when an element is kept, and each kept element is copied down to `a[keep]`. The 4s are skipped, so `7 9 2` end up at the front and `keep` (the new length) is 3."
+}

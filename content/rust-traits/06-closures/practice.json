@@ -1,0 +1,17 @@
+{
+  "kind": "blanks",
+  "prompt": "Return a counter closure that remembers and changes its own state between calls.",
+  "template": "fn make_counter() -> impl {{0}}() -> u32 {\n    let mut count = 0;\n    {{1}} || {\n        count += 1;\n        count\n    }\n}\n\nfn main() {\n    let mut c = make_counter();\n    println!(\"{} {} {}\", c(), c(), c());\n}",
+  "tokens": [
+    "FnMut",
+    "Fn",
+    "move",
+    "box"
+  ],
+  "answers": [
+    "FnMut",
+    "move"
+  ],
+  "runTests": false,
+  "explain": "The closure changes `count`, so it implements `FnMut` (a plain `Fn` cannot mutate). `move` gives the closure its own copy of `count`; without it the closure would borrow a local that is gone when the function returns."
+}

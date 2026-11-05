@@ -1,0 +1,35 @@
+{
+  "kind": "predict",
+  "prompt": "Client supports versions `1, 2, 3` and features `crc`, `zstd`, `x-foo`. Server supports versions `2, 3, 4` and features `crc`, `x-bar`. Both agree on the highest common version, and use only features both support.",
+  "trace": [
+    {
+      "label": "Negotiated version",
+      "choices": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "Agreed features",
+      "choices": [
+        "crc",
+        "crc and zstd",
+        "zstd and x-foo",
+        "everything"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "The client lists feature `tls` as required but the server lacks it. The handshake",
+      "choices": [
+        "succeeds without tls",
+        "is rejected"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Version 3 is the highest in both lists. Unknown optional features are simply ignored, leaving the intersection, `crc`. A required feature that cannot be met must fail the handshake instead of silently downgrading."
+}

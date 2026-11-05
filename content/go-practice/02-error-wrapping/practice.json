@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "A `ValidationError` is wrapped with `%w`. What does this print?",
+  "code": "err := fmt.Errorf(\"signup: %w\", &ValidationError{Field: \"age\", Reason: \"too low\"})\nvar ve *ValidationError\nfmt.Println(errors.As(err, &ve), ve.Field, errors.Is(err, ErrNotFound))",
+  "choices": [
+    "true age false",
+    "false  false",
+    "true age true",
+    "true  false"
+  ],
+  "answer": 0,
+  "explain": "`errors.As` looks through the wrapping chain for a matching type and fills in `ve`. `errors.Is` compares against a specific sentinel value, and `ErrNotFound` is not in this chain."
+}

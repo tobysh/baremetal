@@ -1,0 +1,19 @@
+{
+  "kind": "blanks",
+  "prompt": "Store a request id in a context and read it back. Reading must give `ok == false` when no id was stored.",
+  "template": "package main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n)\n\ntype ctxKey int\n\nconst (\n\trequestIDKey ctxKey = iota\n\tuserKey\n)\n\nfunc WithRequestID(ctx context.Context, id string) context.Context {\n\treturn context.{{0}}(ctx, requestIDKey, id)\n}\n\nfunc RequestID(ctx context.Context) (string, bool) {\n\tid, ok := ctx.{{1}}(requestIDKey).({{2}})\n\treturn id, ok\n}\n\nfunc WithUser(ctx context.Context, name string) context.Context {\n\treturn context.WithValue(ctx, userKey, name)\n}\n\nfunc User(ctx context.Context) string {\n\tif u, ok := ctx.Value(userKey).(string); ok {\n\t\treturn u\n\t}\n\treturn \"anonymous\"\n}\n\nfunc Describe(ctx context.Context) string {\n\tid, ok := RequestID(ctx)\n\tif !ok {\n\t\tid = \"-\"\n\t}\n\treturn fmt.Sprintf(\"req=%s user=%s\", id, User(ctx))\n}\n\nfunc Detach(ctx context.Context) context.Context {\n\treturn context.WithoutCancel(ctx)\n}\n\nfunc main() {\n\tctx := WithUser(WithRequestID(context.Background(), \"r-17\"), \"ada\")\n\tfmt.Println(Describe(ctx))\n}\n",
+  "answers": [
+    "WithValue",
+    "Value",
+    "string"
+  ],
+  "tokens": [
+    "WithValue",
+    "WithCancel",
+    "Value",
+    "Get",
+    "string",
+    "int"
+  ],
+  "explain": "`context.WithValue` returns a new context carrying the pair. `ctx.Value(key)` returns an `any`, so the type assertion `.(string)` both converts it and tells you (via `ok`) whether the right kind of value was there."
+}

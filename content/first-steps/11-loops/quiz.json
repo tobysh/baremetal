@@ -1,0 +1,18 @@
+[
+  {
+    "kind": "typed",
+    "prompt": "How many times does the body run? Type the number.",
+    "code": "for (int i = 0; i < 5; i++) {\n    printf(\"*\");\n}",
+    "accepted": [
+      "5"
+    ],
+    "explain": "`i` takes 0, 1, 2, 3, 4. When it reaches 5 the condition `i < 5` is false."
+  },
+  {
+    "kind": "bug",
+    "prompt": "This loop should print 1 to 3 and stop. Which line makes it run forever?",
+    "code": "int i = 1;\nwhile (i <= 3) {\n    printf(\"%d\\n\", i);\n    i--;\n}",
+    "bugLine": 4,
+    "explain": "`i--` moves `i` away from 3, so `i <= 3` is always true. It should be `i++`."
+  }
+]

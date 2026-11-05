@@ -1,0 +1,43 @@
+{
+  "kind": "predict",
+  "prompt": "Descriptors 0, 1 and 2 are already open. `open` always returns the lowest free number.",
+  "trace": [
+    {
+      "label": "`open(\"a\")` returns",
+      "choices": [
+        "2",
+        "3",
+        "4"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`open(\"b\")` returns",
+      "choices": [
+        "3",
+        "4",
+        "5"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After `close(3)`, `open(\"c\")` returns",
+      "choices": [
+        "3",
+        "5",
+        "2"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Then `open(\"d\")` returns",
+      "choices": [
+        "3",
+        "5",
+        "6"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Lowest-free allocation reuses closed numbers immediately. That is also why closing stdout and opening a file makes the file become fd 1."
+}

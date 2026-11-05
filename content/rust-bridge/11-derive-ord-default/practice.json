@@ -1,0 +1,33 @@
+{
+  "kind": "predict",
+  "prompt": "`Version { major, minor, patch }` derives `Ord`, and `Settings` derives `Default`. Derived comparison looks at the fields in the order they are written, and defaults are the zero values of each field type.",
+  "code": "let a = Version { major: 1, minor: 10, patch: 0 };\nlet b = Version { major: 1, minor: 2, patch: 5 };\nlet s = Settings::default();",
+  "trace": [
+    {
+      "label": "`a > b` is",
+      "choices": [
+        "true",
+        "false"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`s.retries` is",
+      "choices": [
+        "0",
+        "1",
+        "it does not compile"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`s.verbose` is",
+      "choices": [
+        "true",
+        "false"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "The major numbers tie, so the minor numbers decide: 10 is more than 2 (as numbers, not as text). `Default` gives `0`, `false`, empty strings and empty vectors."
+}

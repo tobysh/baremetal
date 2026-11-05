@@ -1,0 +1,18 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines that allocate the lowest free block from a bitmap. One line does not belong.",
+  "lines": [
+    "for i := 0; i < b.n; i++ {",
+    "\tif !b.isSet(i) {",
+    "\t\tb.set(i)",
+    "\t\treturn i, nil",
+    "\t}",
+    "}",
+    "return 0, ErrFull"
+  ],
+  "runTests": false,
+  "distractors": [
+    "\t\tb.clear(i)"
+  ],
+  "explain": "Scanning from 0 finds the lowest free block; setting its bit marks it used before returning it. `ErrFull` is returned only after every bit has been checked."
+}

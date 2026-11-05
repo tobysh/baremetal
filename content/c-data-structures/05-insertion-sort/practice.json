@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Complete insertion sort: where the backwards scan starts, the comparison that decides whether to shift, and the gap the key finally drops into.",
+  "template": "int insertion_sort(int *a, int n) {\n    int shifts = 0;\n    for (int i = 1; i < n; i++) {\n        int key = a[i];\n        int j = {{0}};\n        while (j >= 0 && a[j] {{1}} key) {\n            a[j + 1] = a[j];\n            j--;\n            shifts++;\n        }\n        a[{{2}}] = key;\n    }\n    return shifts;\n}",
+  "answers": [
+    "i - 1",
+    ">",
+    "j + 1"
+  ],
+  "tokens": [
+    "i - 1",
+    ">",
+    "j + 1",
+    "i + 1",
+    "<",
+    "j"
+  ],
+  "explain": "The scan starts at the element just left of `key`. It shifts elements that are *greater* than the key one place right. When it stops, `j` is one place left of the gap, so the key goes into `a[j + 1]`.",
+  "runTests": false
+}

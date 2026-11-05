@@ -1,0 +1,16 @@
+{
+  "kind": "parsons",
+  "prompt": "Dispatch every enabled pending line. Clear a line's pending bit before running its handler, so an event that arrives during the handler is not lost. One line does not belong.",
+  "lines": [
+    "    while ((pending & enabled) != 0) {",
+    "        int line = __builtin_ctz(pending & enabled);",
+    "        pending &= ~(1u << line);",
+    "        handlers[line]();",
+    "    }"
+  ],
+  "distractors": [
+    "        pending = 0;"
+  ],
+  "runTests": false,
+  "explain": "Clearing before the call means a new event for the same line sets the bit again and runs on the next loop pass. Clearing everything afterwards would silently erase it."
+}

@@ -41,6 +41,7 @@ We rely on one of three legal reasons, called lawful bases, for each kind of dat
 | AI tutor conversations | To answer your questions | Contract | Until you clear them or delete your account |
 | Code you run | To compile and run your code | Contract | Deleted straight after the run (only code saved as progress is kept) |
 | Security logs | To spot and stop attacks on accounts | Legitimate interest | 90 days |
+| Administrator action log | To keep a record of who locked, banned, deleted or helped an account | Legitimate interest in security and accountability | 1 year |
 | Rate limiting counters | To slow down abuse | Legitimate interest | Up to 24 hours, plus the database expiry cleanup delay |
 | Password breach check | To check new passwords against known data breaches | Legitimate interest | See the password section below |
 | Email verification tokens | To confirm ownership of your email address | Contract; legitimate interest in security | 24 hours or until used |
@@ -79,6 +80,10 @@ If you choose a username, Baremetal shows your username, level, XP, completed le
 Security logs record failed sign-in attempts, lockouts, password resets, and two-factor events. Each entry includes your IP address, the email address entered, your browser's user agent, and the time. We use these logs to protect accounts from attacks.
 
 Rate limits count requests by IP address or account for periods up to 24 hours. Rate-limit counter keys (runs, hints, tutor, analytics, sign-in, CAPTCHA and password-reset requests) use a keyed hash of the IP address; authentication security logs still retain IP addresses for 90 days. Console warnings use keyed hashes of emails and IPs. This slows down people who try to abuse the site.
+
+### Administrator actions
+
+Administrators can find your account, send you a password reset or verification email, sign you out of every device, lock your account for a period, ban it, or delete it. Each of these is recorded with the administrator, the time, your account's internal ID and an optional short note, and kept for one year; the record is not linked to your name or email address once the account is deleted. When an account is locked or banned we keep that status, and any note, with the account until it is lifted or the account is deleted. Administrators cannot see your password. Accounts created by an administrator are not usable until the person confirms their email, chooses a password and accepts the Terms.
 
 ### Analytics (only with consent)
 

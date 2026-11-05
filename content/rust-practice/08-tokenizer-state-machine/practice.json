@@ -1,0 +1,47 @@
+{
+  "kind": "predict",
+  "prompt": "A tokenizer reads `ab 7` one character at a time. The state is `Start`, `Ident(text)` or `Number(text)`. A letter starts or extends an identifier, a digit starts or extends a number, and a space ends the current token (which is emitted) and goes back to `Start`.",
+  "trace": [
+    {
+      "label": "after reading `a` (from Start), the state is",
+      "choices": [
+        "Ident(\"a\")",
+        "Number(\"a\")",
+        "Start",
+        "Ident(\"\")"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "after reading `b`, the state is",
+      "choices": [
+        "Ident(\"b\")",
+        "Ident(\"ab\")",
+        "Start",
+        "Number(\"ab\")"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "after reading the space, the tokens emitted so far are",
+      "choices": [
+        "none",
+        "Ident(\"ab\")",
+        "Ident(\"a\"), Ident(\"b\")",
+        "Ident(\"ab\"), Number(\"7\")"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "after reading `7`, the state is",
+      "choices": [
+        "Number(\"7\")",
+        "Start",
+        "Ident(\"7\")",
+        "Number(\"ab7\")"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "Each character moves the machine to a new state and may emit a token. The whitespace closes `ab` and resets to `Start`, so the `7` begins a new number instead of joining the identifier."
+}

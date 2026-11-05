@@ -1,0 +1,31 @@
+{
+  "kind": "predict",
+  "prompt": "`/tmp` is owned by root with the sticky bit (mode 1777). alice owns the file `/tmp/f` (mode 0666). Can the user remove it?",
+  "trace": [
+    {
+      "label": "bob runs `rm /tmp/f`",
+      "choices": [
+        "Allowed",
+        "Denied"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "alice runs `rm /tmp/f`",
+      "choices": [
+        "Allowed",
+        "Denied"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "root runs `rm /tmp/f`",
+      "choices": [
+        "Allowed",
+        "Denied"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "Removing a file needs write permission on the directory. The sticky bit narrows that to the file's owner, the directory's owner or root. The file's own mode (0666) does not matter for deleting."
+}

@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "After a bad frame, the scanner should resynchronise by looking for the next frame start. Tap the line that makes it lose good frames after the damage.",
+  "code": "for len(buf) > 0 {\n\tf, n, err := Decode(buf)\n\tif err == nil {\n\t\tout = append(out, f)\n\t\tbuf = buf[n:]\n\t} else if err == ErrIncomplete {\n\t\tbreak\n\t} else {\n\t\tbuf = buf[len(buf):]\n\t}\n}",
+  "bugLine": 9,
+  "explain": "Dropping the whole buffer on one error discards valid frames that follow. A better move is to skip a single byte and try again, so the scanner finds the next real magic byte."
+}

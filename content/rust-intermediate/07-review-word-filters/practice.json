@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "`select_all` keeps a word only when every matcher accepts it. Here the matchers are `MinLen(3)` and a closure testing whether the word ends with `t`. What does it return?",
+  "code": "let text = \"the cat sat on a mat near the cart\";\nlet ms: [&dyn Matcher; 2] = [&MinLen(3), &|w: &str| w.ends_with('t')];\nprintln!(\"{:?}\", select_all(text, &ms));",
+  "choices": [
+    "[\"cat\", \"sat\", \"mat\", \"cart\"]",
+    "[\"the\", \"cat\", \"sat\", \"mat\", \"near\", \"the\", \"cart\"]",
+    "[\"cat\", \"sat\", \"mat\"]",
+    "[\"on\", \"a\"]"
+  ],
+  "answer": 0,
+  "explain": "`all` needs both tests to pass. Words like `the` and `near` are long enough but do not end in `t`; `a` and `on` fail the length test. A filter that used `any` would keep seven words."
+}

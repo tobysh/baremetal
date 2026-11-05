@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This program does not compile (\"field `balance` is private\"). Tap the line that breaks the privacy rule.",
+  "code": "mod bank {\n    pub struct Account {\n        balance: u32,\n    }\n\n    impl Account {\n        pub fn new() -> Account {\n            Account { balance: 10 }\n        }\n    }\n}\n\nfn main() {\n    let a = bank::Account::new();\n    println!(\"{}\", a.balance);\n}",
+  "bugLine": 15,
+  "explain": "Items are private to their module by default, and `pub struct` does not make the fields public. Outside code should use a `pub fn balance(&self)` method. That keeps the module in control of how the number is changed."
+}

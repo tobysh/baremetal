@@ -1,0 +1,33 @@
+{
+  "kind": "predict",
+  "prompt": "An update is three atomic block writes in this order: W1 writes the new data block, W2 points the inode at it, W3 marks it used in the bitmap. A crash can happen after any prefix of the writes.",
+  "trace": [
+    {
+      "label": "How many different crash states (including none and all)?",
+      "choices": [
+        "3",
+        "4",
+        "6",
+        "8"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Crash after W1 only. The disk is",
+      "choices": [
+        "consistent (the new block is simply unused)",
+        "inconsistent"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Crash after W1 and W2. The disk is",
+      "choices": [
+        "consistent",
+        "inconsistent (the inode uses a block the bitmap calls free)"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "A prefix of three writes can have length 0, 1, 2 or 3: four states. Pointing at a block that is not marked used risks it being handed out again, which is why write order matters."
+}

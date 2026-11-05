@@ -1,0 +1,33 @@
+{
+  "kind": "predict",
+  "prompt": "Blocks are 4 bytes. An inode lists the blocks of a file.",
+  "trace": [
+    {
+      "label": "A file of 10 bytes needs how many blocks?",
+      "choices": [
+        "2",
+        "3",
+        "4",
+        "10"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "An empty file (0 bytes) needs how many blocks?",
+      "choices": [
+        "0",
+        "1"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Writing allocated 2 of the 3 blocks, then the disk ran full. The right cleanup is to",
+      "choices": [
+        "keep the 2 blocks for next time",
+        "free those 2 blocks again"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Block count is the size divided by block size, rounded up: 10 / 4 -> 3. A failed write must not leak blocks, so it hands back what it already took."
+}

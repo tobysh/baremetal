@@ -1,0 +1,12 @@
+{
+  "kind": "predict",
+  "prompt": "`calc_lines` runs a calculator over the lines below. Blank lines are skipped, and every other line yields one output string labelled with its original line number.\n\nLine 1: `2 * 3`\nLine 2: (blank)\nLine 3: `1 +`\nLine 4: `10 - 4`\n\nWhat does it return?",
+  "choices": [
+    "Three results, the last labelled `4:`",
+    "Three results, the last labelled `3:`",
+    "Two results, stopping at the parse error",
+    "Four results, one of them blank"
+  ],
+  "answer": 0,
+  "explain": "The bad line produces its own error string but does not stop later lines, and line numbers come from the source, not from the output position. So there are three results, labelled 1, 3 and 4."
+}

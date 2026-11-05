@@ -1,0 +1,35 @@
+{
+  "kind": "predict",
+  "prompt": "The emitter writes a 12-byte header, a segment table, then text bytes, then data bytes. Segment 0 is text (flags R+X = 5). Segment 1 (flags R+W = 6) exists only when the memory size of the data area is above zero.",
+  "trace": [
+    {
+      "label": "An image with text only and no data or bss has how many segments?",
+      "choices": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "The text segment's flags value is",
+      "choices": [
+        "4",
+        "5",
+        "6",
+        "7"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "The entry address lies in the data segment. Emit should",
+      "choices": [
+        "accept it",
+        "fail with an entry error"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "No data and no bss means MemSize is 0, so only the text segment is written. R+X is 4 + 1 = 5 and R+W is 4 + 2 = 6. Executing from a writable data segment would break W^X, so the entry must be inside text."
+}

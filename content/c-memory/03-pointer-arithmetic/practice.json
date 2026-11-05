@@ -1,0 +1,22 @@
+{
+  "kind": "blanks",
+  "prompt": "Fill in the pointer arithmetic: walk the range from `begin` up to (not including) `end`, and compute how many elements lie between `a` and `b`.",
+  "template": "#include <stdio.h>\n#include <stddef.h>\n\nint sum_between(const int *begin, const int *end) {\n    int total = 0;\n    for (const int *p = {{0}}; p != {{1}}; {{2}}) {\n        total += *p;\n    }\n    return total;\n}\n\nconst int *find_max(const int *arr, size_t n) {\n    if (n == 0) {\n        return NULL;\n    }\n    const int *best = arr;\n    for (const int *p = arr + 1; p < arr + n; p++) {\n        if (*p > *best) {\n            best = p;\n        }\n    }\n    return best;\n}\n\nptrdiff_t gap(const int *a, const int *b) {\n    return {{3}} - {{4}};\n}\n\nint main(void) {\n    int a[] = {4, 9, 2, 7, 5};\n    printf(\"sum_between(a, a + 5) = %d\\n\", sum_between(a, a + 5));\n    const int *m = find_max(a, 5);\n    printf(\"find_max index = %d\\n\", m ? (int)(m - a) : -1);\n    printf(\"gap(a, a + 3) = %td\\n\", gap(a, a + 3));\n    return 0;\n}\n",
+  "tokens": [
+    "begin",
+    "end",
+    "p++",
+    "b",
+    "a",
+    "p--",
+    "*p"
+  ],
+  "answers": [
+    "begin",
+    "end",
+    "p++",
+    "b",
+    "a"
+  ],
+  "explain": "The loop starts at `begin` and stops when `p` reaches `end`, which is why `end` is excluded. Subtracting two pointers gives the number of elements between them, so `b - a` is positive when `b` is later in the array."
+}

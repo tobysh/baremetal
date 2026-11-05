@@ -1,0 +1,19 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines of a function that averages numbers given as text and gives up on the first bad one. One line does not belong.",
+  "base": "use std::num::ParseIntError;\n\n{{code}}\n\nfn main() {\n    println!(\"{:?}\", average(&[\"4\", \"6\"]));\n}",
+  "lines": [
+    "fn average(items: &[&str]) -> Result<i32, ParseIntError> {",
+    "    let mut total = 0;",
+    "    for s in items {",
+    "        total += s.trim().parse::<i32>()?;",
+    "    }",
+    "    Ok(total / items.len() as i32)",
+    "}"
+  ],
+  "distractors": [
+    "        total += s.trim().parse::<i32>();"
+  ],
+  "runTests": false,
+  "explain": "`?` unwraps an `Ok` or returns the `Err` from the whole function. Without it, `parse` gives a `Result` that cannot be added to an integer."
+}

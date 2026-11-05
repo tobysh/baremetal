@@ -1,0 +1,17 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the comparison used to rank words: most frequent first, ties broken alphabetically. One line is a decoy.",
+  "lines": [
+    "\tsort.Slice(items, func(i, j int) bool {",
+    "\t\tif items[i].Count != items[j].Count {",
+    "\t\t\treturn items[i].Count > items[j].Count",
+    "\t\t}",
+    "\t\treturn items[i].Word < items[j].Word",
+    "\t})"
+  ],
+  "distractors": [
+    "\t\treturn items[i].Count < items[j].Count"
+  ],
+  "base": "package main\n\nimport (\n\t\"bufio\"\n\t\"io\"\n\t\"sort\"\n\t\"strings\"\n\t\"unicode\"\n)\n\ntype WordCount struct {\n\tWord  string\n\tCount int\n}\n\n// TopWords returns the n most frequent words in r.\nfunc TopWords(r io.Reader, n int) []WordCount {\n\tcounts := make(map[string]int)\n\tsc := bufio.NewScanner(r)\n\tfor sc.Scan() {\n\t\twords := strings.FieldsFunc(strings.ToLower(sc.Text()), func(r rune) bool {\n\t\t\treturn !unicode.IsLetter(r) && r != '\\''\n\t\t})\n\t\tfor _, w := range words {\n\t\t\tcounts[w]++\n\t\t}\n\t}\n\n\titems := make([]WordCount, 0, len(counts))\n\tfor w, c := range counts {\n\t\titems = append(items, WordCount{Word: w, Count: c})\n\t}\n{{code}}\n\n\tif n < 0 {\n\t\tn = 0\n\t}\n\tif n > len(items) {\n\t\tn = len(items)\n\t}\n\treturn items[:n]\n}\n",
+  "explain": "The comparator answers \"should item i come before item j?\". Compare counts first (higher wins), and only when counts are equal fall back to the word, so results are deterministic."
+}

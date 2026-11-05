@@ -1,0 +1,20 @@
+{
+  "kind": "parsons",
+  "prompt": "Commit a transaction as one checksummed frame: encode every operation into a buffer, wrap it, write it once, and only then update memory. One line does not belong.",
+  "lines": [
+    "var buf bytes.Buffer",
+    "for _, op := range tx.ops {",
+    "\tencodeOp(&buf, op)",
+    "}",
+    "frame := addCRC(buf.Bytes())",
+    "w.Write(frame)",
+    "for _, op := range tx.ops {",
+    "\tmem.apply(op)",
+    "}"
+  ],
+  "runTests": false,
+  "distractors": [
+    "\tw.Write(encodeOp(op))"
+  ],
+  "explain": "One frame with one checksum is all or nothing: after a crash it is either complete and valid or discarded. Writing each operation separately would let a crash keep only some of them."
+}

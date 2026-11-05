@@ -15,7 +15,8 @@ import { LessonLayout } from "@/components/workspace/lesson-layout";
 import { getCurrentUser } from "@/lib/auth";
 import { getLesson, getTracks, lessonPath } from "@/lib/curriculum";
 import { toPublicExercise } from "@/lib/curriculum/types";
-import { challengeIdOf, challengeXpFor } from "@/lib/gamification";
+import { toPublicPractice } from "@/lib/curriculum/practice";
+import { challengeIdOf, challengeXpFor, practiceIdOf } from "@/lib/gamification";
 import { sealsFor } from "@/lib/rewards-context";
 import { recommendLearning } from "@/lib/learning";
 import { getProgress, getProgressMap, getReviewFor, getTutorThread } from "@/lib/progress";
@@ -183,14 +184,15 @@ async function WorkspaceLoader({ exerciseId, path, trackSlug, lessonSlug, search
   const { lesson } = getLesson(trackSlug, lessonSlug)!;
   const user = await getCurrentUser();
   const wantReview = (await searchParams).review === "1";
-  const [progress, thread, challengeProgress, review] = user
+  const [progress, thread, challengeProgress, review, practiceProgress] = user
     ? await Promise.all([
         getProgress(user.id, exerciseId),
         getTutorThread(user.id, exerciseId),
         lesson.challenge ? getProgress(user.id, challengeIdOf(exerciseId)) : null,
         getReviewFor(user.id, exerciseId),
+        lesson.practice ? getProgress(user.id, practiceIdOf(exerciseId)) : null,
       ])
-    : [null, null, null, null];
+    : [null, null, null, null, null];
   const tracks = getTracks();
   const track = tracks.find((t) => t.slug === trackSlug)!;
   // Anonymous continuation follows the authored sequence, without claiming saved progress.
@@ -207,6 +209,8 @@ async function WorkspaceLoader({ exerciseId, path, trackSlug, lessonSlug, search
       initialHints={progress?.hintsUsed ?? 0}
       challenge={lesson.challenge ? { exercise: toPublicExercise(lesson.challenge.exercise), code: challengeProgress?.code ?? null, passed: challengeProgress?.status === "passed", xp: challengeXpFor(lesson.difficulty) } : null}
       review={review ? { due: review.dueAt <= new Date(), dueOn: review.dueAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) } : null}
+      practice={lesson.practice ? toPublicPractice(lesson.practice, exerciseId, lesson.difficulty) : null}
+      practicePassed={practiceProgress?.status === "passed"}
       startInReview={wantReview}
       signedIn={!!user}
       draftOwner={user?.id}

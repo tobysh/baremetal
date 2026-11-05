@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Give `E` a readable message and make it a proper error type. Choose what goes in each gap.",
+  "template": "use std::fmt;\n\n#[derive(Debug)]\nenum E {\n    Missing(usize),\n    Bad(String),\n}\n\nimpl {{0}} for E {\n    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::{{1}} {\n        match self {\n            E::Missing(n) => write!(f, \"line {n}: missing\"),\n            E::Bad(s) => write!(f, \"bad '{s}'\"),\n        }\n    }\n}\n\nimpl std::error::{{2}} for E {}\n\nfn main() {\n    println!(\"{}\", E::Missing(3));\n}",
+  "tokens": [
+    "fmt::Display",
+    "fmt::Debug",
+    "Result",
+    "Option",
+    "Error",
+    "Display"
+  ],
+  "answers": [
+    "fmt::Display",
+    "Result",
+    "Error"
+  ],
+  "runTests": false,
+  "explain": "`Display` is what `{}` uses, and `fmt` returns `fmt::Result`. The empty `impl std::error::Error for E {}` works because `Error` only needs `Debug` and `Display`. `Debug` is already derived, so implementing it again would conflict."
+}

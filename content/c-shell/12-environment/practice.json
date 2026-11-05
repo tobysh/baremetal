@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "`FOO` is set to `bar` and `NOPE` is not set. The last command's status was 3. What does `expand_word` turn this word into?",
+  "code": "$FOO-$NOPE|${FOO}x|$?|$",
+  "choices": [
+    "bar-|barx|3|$",
+    "bar-$NOPE|barx|3|$",
+    "bar-|${FOO}x|3|",
+    "bar|barx|3|$"
+  ],
+  "answer": 0,
+  "explain": "`$FOO` and `${FOO}` become `bar`; the unset `$NOPE` becomes an empty string, and `$?` becomes the last status. The name stops at the first character that is not a letter, digit or underscore, so `$FOO-` is `bar-`. A lone `$` at the end is not followed by a name, so it is copied as it is."
+}

@@ -1,0 +1,23 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the worker loop of a pool: wait for a task or shutdown, exit cleanly when stopped and empty, and run the task outside the lock. One line does not belong.",
+  "lines": [
+    "    for (;;) {",
+    "        pthread_mutex_lock(&p->lock);",
+    "        while (p->count == 0 && !p->stop)",
+    "            pthread_cond_wait(&p->cv, &p->lock);",
+    "        if (p->count == 0 && p->stop) {",
+    "            pthread_mutex_unlock(&p->lock);",
+    "            return NULL;",
+    "        }",
+    "        Task t = p->q[--p->count];",
+    "        pthread_mutex_unlock(&p->lock);",
+    "        t.fn(t.arg);",
+    "    }"
+  ],
+  "distractors": [
+    "        p->stop = 1;"
+  ],
+  "runTests": false,
+  "explain": "Workers drain remaining tasks before honouring `stop`, always release the lock before returning, and call the task with the lock released so other workers can keep taking work."
+}

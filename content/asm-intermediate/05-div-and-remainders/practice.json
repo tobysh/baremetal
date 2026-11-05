@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This signed division should return `rdi / rsi`. Tap the line that breaks it for negative numbers.",
+  "code": "mov rax, rdi\nmov rcx, rsi\nxor edx, edx\nidiv rcx\nret",
+  "bugLine": 3,
+  "explain": "`idiv` divides rdx:rax. For a negative dividend, rdx must be all ones. `cqo` sign-extends rax into rdx; zeroing it turns -7 into a huge positive 128-bit number."
+}

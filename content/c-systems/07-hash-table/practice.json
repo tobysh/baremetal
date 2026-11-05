@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`ht_free` is supposed to free every entry, but it reads memory that has already been freed. Tap the faulty line.",
+  "code": "void ht_free(HashTable *t) {\n    for (int i = 0; i < BUCKETS; i++) {\n        Entry *e = t->buckets[i];\n        while (e != NULL) {\n            free(e->key);\n            free(e);\n            e = e->next;\n        }\n        t->buckets[i] = NULL;\n    }\n}",
+  "bugLine": 7,
+  "explain": "After `free(e)` the entry's memory is gone, so `e->next` is a use-after-free. Save `e->next` in a local variable *before* freeing, then move to it."
+}

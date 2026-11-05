@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This function should return double the input, but it does not compile (the compiler says it expected `i32` and found `()`). Tap the line that has to change.",
+  "code": "fn double(n: i32) -> i32 {\n    n * 2;\n}\n\nfn main() {\n    println!(\"{}\", double(21));\n}",
+  "bugLine": 2,
+  "explain": "A semicolon turns the last expression into a statement, so the block produces `()` instead of a number. Remove the `;` and `n * 2` becomes the return value."
+}

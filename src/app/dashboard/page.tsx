@@ -3,13 +3,12 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { DashboardSkeleton } from "@/components/skeletons";
 import { courseState } from "@/components/course-progress";
-import { ButtonLink, Container } from "@/components/ui";
+import { ButtonLink, Container, ProgressBar } from "@/components/ui";
 import { UsernameNotice } from "@/components/username-notice";
 import { requireUser } from "@/lib/auth";
 import { getTracks, lessonPath } from "@/lib/curriculum";
 import { LANGUAGE_LABEL, type Language, type Track } from "@/lib/curriculum/types";
 import { levelFor } from "@/lib/gamification";
-import type { ProgressDoc } from "@/lib/models";
 import { getProgressMap, getReviews } from "@/lib/progress";
 import { CodexPanel, ContinueCard, type ContinueTarget, CourseMap, PickCard, ReviewCard, RhythmCard, StatsPanel, type DueReview, type MonthXp } from "@/components/dashboard-sections";
 import { TimezoneSync } from "@/components/timezone-sync";
@@ -32,7 +31,7 @@ export const metadata: Metadata = {
 const TAG: Record<Language, string> = { c: "C", rust: "Rust", go: "Go", asm: "asm", kernel: "C" };
 
 export default function DashboardPage() {
-  return <Container className="py-10 sm:py-12"><Suspense fallback={<DashboardSkeleton />}><DashboardBody /></Suspense></Container>;
+  return <Container width="wide" className="py-10 sm:py-12"><Suspense fallback={<DashboardSkeleton />}><DashboardBody /></Suspense></Container>;
 }
 
 type CourseEntry = { track: Track } & ReturnType<typeof courseState>;
@@ -70,6 +69,7 @@ async function DashboardBody() {
   const prerequisite = (course: CourseEntry) => (course.track.prerequisite ? bySlug.get(course.track.prerequisite) : undefined);
 
   const nextUp = recommendLearning(tracks, progress);
+  const nextUpDone = nextUp ? courseState(nextUp.track, progress).done : 0;
 
   // Other courses already under way, so a second course in progress is still reachable from here.
   const alsoActive = courses.filter((course) => course.started && !course.complete && course.track.slug !== nextUp?.track.slug);
@@ -84,6 +84,7 @@ async function DashboardBody() {
   const continueTarget: ContinueTarget | null = lastTouched
     ? { href: lessonPath(lessonOf.get(lastTouched.exerciseId)!.t.slug, lessonOf.get(lastTouched.exerciseId)!.l.slug), title: lessonOf.get(lastTouched.exerciseId)!.l.title, trackTitle: lessonOf.get(lastTouched.exerciseId)!.t.title, updatedAt: lastTouched.updatedAt }
     : null;
+  const hasCards = Boolean(continueTarget || dueReviews.length > 0 || pick);
   const level = levelFor(user.xp);
   const xpFill = level.next === null ? 1 : user.xp / level.next;
 
@@ -93,7 +94,7 @@ async function DashboardBody() {
       <div className="flex flex-wrap items-stretch gap-6">
         <div className="flex min-w-0 flex-[999_1_600px] flex-col gap-6">
         {nextUp ? (
-          <section aria-label="Resume course" className="panel flex min-w-0 flex-col justify-between gap-8 p-6 sm:p-8">
+          <section aria-label="Resume course" className={`panel flex min-w-0 flex-col justify-between gap-8 p-6 sm:p-8 ${hasCards ? "" : "lg:flex-1"}`}>
             <div className="flex flex-col">
               <p className="text-sm text-muted">
                 {nextUp.track.title} <span className="text-line-strong">/</span> Lesson {nextUp.track.lessons.indexOf(nextUp.lesson) + 1} of {nextUp.track.lessons.length} <span className="text-line-strong">/</span> {LANGUAGE_LABEL[nextUp.track.language]}, {nextUp.track.level}
@@ -102,17 +103,17 @@ async function DashboardBody() {
               <p className="mt-3 max-w-[560px] text-base leading-relaxed text-text-2">{nextUp.lesson.summary}</p>
             </div>
             <div className="flex flex-wrap items-center gap-x-10 gap-y-6">
-              <LessonPath track={nextUp.track} progress={progress} currentSlug={nextUp.lesson.slug} />
-              <Link
-                href={lessonPath(nextUp.track.slug, nextUp.lesson.slug)}
-                className="inline-flex min-h-12 flex-none items-center gap-3 rounded-lg bg-accent px-5 text-[15px] font-semibold text-accent-ink hover:brightness-110 active:translate-y-px"
-              >
-                {progress.size ? "Open lesson" : "Start first lesson"} <span className="font-medium opacity-70">{nextUp.lesson.minutes} min</span>
-              </Link>
+              <div className="flex min-w-0 flex-[1_1_280px] flex-col gap-2.5">
+                <p className="text-sm text-text-2"><span className="font-semibold text-text">{nextUpDone}</span> of {nextUp.track.lessons.length} lessons completed</p>
+                <ProgressBar value={nextUpDone / nextUp.track.lessons.length} label={`${nextUp.track.title} progress`} />
+              </div>
+              <ButtonLink href={lessonPath(nextUp.track.slug, nextUp.lesson.slug)} size="lg" className="flex-none">
+                {progress.size === 0 ? "Start first lesson" : progress.get(nextUp.lesson.exercise.id)?.status === "started" ? "Continue lesson" : "Start lesson"} <span className="text-sm font-normal">{nextUp.lesson.minutes} min</span>
+              </ButtonLink>
             </div>
           </section>
         ) : (
-          <section aria-label="All lessons passed" className="panel flex min-w-0 flex-col justify-between gap-8 p-6 sm:p-8">
+          <section aria-label="All lessons passed" className={`panel flex min-w-0 flex-col justify-between gap-8 p-6 sm:p-8 ${hasCards ? "" : "lg:flex-1"}`}>
             <div>
               <h1 className="display text-3xl font-bold leading-[1.1] sm:text-[34px]">Every lesson passed.</h1>
               <p className="mt-3 max-w-[560px] text-base leading-relaxed text-text-2">Revisit a course, try a different solution, or build something of your own.</p>
@@ -120,8 +121,8 @@ async function DashboardBody() {
             <div><ButtonLink href="/learn" size="lg">Review courses</ButtonLink></div>
           </section>
         )}
-      {(continueTarget || dueReviews.length > 0 || pick) && (
-        <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))]">
+      {hasCards && (
+        <div className="grid gap-6 lg:flex-1 [grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))]">
           {continueTarget && <ContinueCard target={continueTarget} />}
           <ReviewCard due={dueReviews} />
           {pick && !(pick.kind === "review" && dueReviews.length > 0) && <PickCard pick={pick} />}
@@ -131,7 +132,7 @@ async function DashboardBody() {
         </div>
 
         <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-6">
-        <aside aria-label="Your progress" className="panel flex min-w-0 flex-1 flex-col gap-0 p-6 sm:p-8">
+        <aside aria-label="Your progress" className="panel flex min-w-0 flex-none flex-col gap-0 p-6 sm:p-8">
           <span className="text-sm font-semibold text-accent">Level {level.level}</span>
           <span className="display mt-1.5 text-[38px] font-bold leading-[1.05]">{level.title}</span>
           <span className="mt-2 text-sm text-muted">{titleBlurb(level.level)}</span>
@@ -142,10 +143,10 @@ async function DashboardBody() {
             <span className="font-medium">{user.xp}{level.next !== null && ` / ${level.next}`} XP</span>
             <span className="text-muted">{level.next === null ? "Top level. Challenges still earn XP." : `${level.next - user.xp} XP to level ${level.level + 1}`}</span>
           </div>
-          <dl className="mt-auto flex flex-col pt-10">
+          <dl className="mt-8 flex flex-col">
             <div className="flex items-baseline justify-between border-t border-line py-4">
               <dt className="text-muted">Lessons passed</dt>
-              <dd><span className="display text-2xl font-bold text-accent">{passedCount}</span> <span className="text-muted">of {allLessons.length}</span></dd>
+              <dd><span className="display text-2xl font-bold">{passedCount}</span> <span className="text-muted">of {allLessons.length}</span></dd>
             </div>
             <div className="flex items-baseline justify-between border-t border-line pt-4">
               <dt className="text-muted">Courses completed</dt>
@@ -153,11 +154,11 @@ async function DashboardBody() {
             </div>
           </dl>
         </aside>
-        <RhythmCard rhythm={ctx.rhythm} />
+        <div className="flex min-w-0 flex-col lg:flex-1 [&>*]:flex-1"><RhythmCard rhythm={ctx.rhythm} /></div>
         </div>
       </div>
 
-      <CourseMap tracks={tracks} progress={progress} recommendedSlug={nextUp?.track.slug} />
+      <CourseMap tracks={tracks} progress={progress} recommendedSlug={nextUp?.track.slug} upNextLessonSlug={nextUp?.lesson.slug} />
 
       {alsoActive.length > 0 && (
         <CoursePanel id="also-active" title="In progress" count={alsoActive.length}>
@@ -205,41 +206,6 @@ async function DashboardBody() {
   );
 }
 
-/** The course as a row of numbered steps: done, the one up next, and what's still to come. */
-function LessonPath({ track, progress, currentSlug }: { track: Track; progress: Map<string, ProgressDoc>; currentSlug: string }) {
-  const passed = track.lessons.map((lesson) => progress.get(lesson.exercise.id)?.status === "passed");
-  const current = track.lessons.findIndex((lesson) => lesson.slug === currentSlug);
-  // Long courses get small unnumbered dots so the path still fits beside the button.
-  const dense = track.lessons.length > 8;
-  // From sm up the path never shrinks below its dots plus the shortest connectors, so a long
-  // course wraps the button onto its own row instead of running into it.
-  const n = track.lessons.length;
-  const minWidth = dense ? n * 18 + (n - 1) * 10 : n * 32 + (n - 1) * 20;
-  return (
-    <ol aria-label={`Lessons in this course, ${passed.filter(Boolean).length} of ${track.lessons.length} complete`} style={{ "--path-min": `${minWidth}px` } as React.CSSProperties} className="m-0 flex min-w-0 flex-[1_1_280px] list-none items-center p-0 sm:min-w-[min(100%,var(--path-min))]">
-      {track.lessons.map((lesson, i) => {
-        const done = passed[i];
-        const isCurrent = i === current;
-        const last = i === track.lessons.length - 1;
-        const label = `Lesson ${i + 1}, ${done ? "complete" : isCurrent ? "up next" : "not started"}`;
-        const tone = done ? "border-accent bg-accent text-accent-ink" : isCurrent ? "border-accent text-accent" : "border-line-strong text-muted";
-        return (
-          <li key={lesson.slug} aria-label={label} aria-current={isCurrent ? "step" : undefined} className={`flex items-center ${last ? "flex-none" : "flex-[1_1_0]"}`}>
-            <span className={`box-border flex flex-none items-center justify-center rounded-full border-2 text-[13px] font-semibold ${dense ? "size-4 sm:size-[18px]" : "size-7 sm:size-8"} ${tone}`}>
-              {done ? (
-                <svg width={dense ? 10 : 14} height={dense ? 10 : 14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="4 12.5 9.5 18 20 6.5" /></svg>
-              ) : (
-                !dense && i + 1
-              )}
-            </span>
-            {!last && <span aria-hidden="true" className={`h-0.5 min-w-0 flex-1 rounded-[1px] sm:min-w-2 ${dense ? "mx-0.5 sm:mx-1" : "mx-1 sm:mx-1.5"} ${done && (passed[i + 1] || i + 1 === current) ? "bg-accent" : "bg-line-strong"}`} />}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
 function CoursePanel({ id, title, count, more, children }: { id: string; title: string; count: number; more?: boolean; children: React.ReactNode }) {
   return (
     <section aria-labelledby={id} className="panel flex flex-col p-3">
@@ -254,21 +220,27 @@ function CoursePanel({ id, title, count, more, children }: { id: string; title: 
 
 function CourseLink({ track, href, note, recommended, action }: { track: Track; href: string; note: string; recommended?: boolean; action: string }) {
   const minutes = track.lessons.reduce((sum, lesson) => sum + lesson.minutes, 0);
+  // Phones: badge beside the title, then one meta line under it (the whole row is the link, so the button is hidden). From sm up the parts
+  // become the columns of a single row (the meta wrapper uses display: contents).
   return (
-    <Link href={href} className="group flex flex-wrap items-center gap-x-5 gap-y-3 rounded-[10px] px-5 py-4 hover:bg-panel-2">
+    <Link href={href} className="group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 rounded-[10px] px-4 py-4 hover:bg-panel-2 sm:flex sm:flex-wrap sm:gap-x-5 sm:gap-y-3 sm:px-5">
       <span
         className={`flex h-11 w-12 flex-none items-center justify-center rounded-md border font-mono text-[13px] font-medium group-hover:border-accent ${recommended ? "border-accent bg-accent text-accent-ink" : "border-line-strong"}`}
       >
         {TAG[track.language]}
       </span>
-      <span className="flex min-w-0 flex-[1_1_260px] flex-col gap-0.5">
+      <span className="col-span-2 flex min-w-0 flex-col gap-0.5 sm:flex-[1_1_260px]">
         <span className="display-sm text-[17px] font-semibold">{track.title}</span>
         <span className={`text-sm ${recommended ? "text-accent" : "text-muted"}`}>{note}</span>
       </span>
-      <span className="flex-[0_0_104px] text-sm text-text-2">{track.level}</span>
-      <span className="flex-[0_0_88px] text-sm text-text-2">{track.lessons.length} lessons</span>
-      <span className="flex-[0_0_40px] text-sm text-text-2">{Math.max(1, Math.round(minutes / 60))} h</span>
-      <span className="inline-flex min-h-9 items-center justify-center rounded-md border border-line-strong px-4 text-sm font-medium text-text-2 group-hover:border-accent group-hover:text-accent">{action}</span>
+      <span className="col-span-2 col-start-2 flex items-center gap-x-2 whitespace-nowrap text-sm text-text-2 sm:contents">
+        <span className="sm:flex-[0_0_104px]">{track.level}</span>
+        <span aria-hidden="true" className="text-line-strong sm:hidden">·</span>
+        <span className="sm:flex-[0_0_88px]">{track.lessons.length} lessons</span>
+        <span aria-hidden="true" className="text-line-strong sm:hidden">·</span>
+        <span className="sm:flex-[0_0_40px]">{Math.max(1, Math.round(minutes / 60))} h</span>
+      </span>
+      <span className="hidden min-h-9 items-center justify-center rounded-md border border-line-strong px-4 text-sm font-medium text-text-2 group-hover:border-accent group-hover:text-accent sm:inline-flex">{action}</span>
     </Link>
   );
 }

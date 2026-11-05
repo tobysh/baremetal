@@ -1,0 +1,18 @@
+{
+  "kind": "blanks",
+  "prompt": "Connect the trait, the type and the generic function. Pick the right trait for each gap.",
+  "template": "trait Shape {\n    fn area(&self) -> u32;\n}\n\nstruct Square(u32);\n\nimpl {{0}} for Square {\n    fn area(&self) -> u32 {\n        self.0 * self.0\n    }\n}\n\nfn total<T: {{1}}>(items: &[T]) -> u32 {\n    items.iter().map(|s| s.area()).sum()\n}\n\nfn main() {\n    println!(\"{}\", total(&[Square(2), Square(3)]));\n}",
+  "tokens": [
+    "Shape",
+    "Shape",
+    "Copy",
+    "Clone",
+    "Sized"
+  ],
+  "answers": [
+    "Shape",
+    "Shape"
+  ],
+  "runTests": false,
+  "explain": "`impl Shape for Square` promises the methods, and the bound `T: Shape` is what lets `total` call `area` on any `T`. `Copy` or `Clone` say nothing about having an `area` method."
+}

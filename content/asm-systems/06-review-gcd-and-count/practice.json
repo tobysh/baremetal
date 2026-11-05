@@ -1,0 +1,43 @@
+{
+  "kind": "predict",
+  "prompt": "`gcd(a, b)` recursion: if b is 0 return a, otherwise `gcd(b, a % b)`. Trace `gcd(48, 18)`.",
+  "trace": [
+    {
+      "label": "48 mod 18 =",
+      "choices": [
+        "6",
+        "12",
+        "30"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "18 mod 12 =",
+      "choices": [
+        "6",
+        "12",
+        "18"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "12 mod 6 =",
+      "choices": [
+        "0",
+        "6",
+        "12"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "The value returned is",
+      "choices": [
+        "0",
+        "6",
+        "12"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "The pairs are (48,18), (18,12), (12,6), (6,0). The second argument reaches 0 and the first is the answer. A tail call like this can be a loop."
+}

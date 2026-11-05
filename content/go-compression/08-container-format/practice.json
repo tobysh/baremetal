@@ -1,0 +1,20 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines that read one chunk from a container. The declared length must be checked before any allocation, and the payload verified against its checksum. One line does not belong.",
+  "lines": [
+    "length, err := readUvarint(r)",
+    "if length > MaxChunk {",
+    "\treturn ErrTooLarge",
+    "}",
+    "payload := make([]byte, length)",
+    "_, err = io.ReadFull(r, payload)",
+    "if crc32.ChecksumIEEE(payload) != want {",
+    "\treturn ErrChecksum",
+    "}"
+  ],
+  "runTests": false,
+  "distractors": [
+    "want := crc32.ChecksumIEEE(payload)"
+  ],
+  "explain": "Length first, then a sanity limit, then allocate and read. The expected checksum comes from the file; computing it from the payload itself would always match and prove nothing."
+}
