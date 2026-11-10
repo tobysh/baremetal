@@ -85,7 +85,7 @@ Everything a learner sees comes from files under `content/<track>/`. `src/lib/cu
 
 ### Request path (`POST /api/run`)
 
-1. `sameOrigin` rejects cross-site requests. In production only the host of `NEXT_PUBLIC_SITE_URL` is accepted; `X-Forwarded-Host` is never read.
+1. `sameOrigin` rejects cross-site requests. In production only the complete origin (scheme, hostname and port) of `NEXT_PUBLIC_SITE_URL` is accepted; `X-Forwarded-Host` is never read.
 2. The user is resolved from the `__Host-bm_session` cookie (or the visitor is anonymous) and a rate limit is applied *before* the body is parsed: 120 per 10 min per account, `RUN_LIMIT_ANON_IP` (default 30) per hashed IP for anonymous visitors.
 3. `readJson` reads a bounded body; code is capped at 64 KB. `findExercise` resolves the id (including `#challenge` ids). Challenges require the base lesson to be passed first.
 4. `executeRun` / `executeTest` in `runner-client.ts` send a versioned, size-capped request over the runner's Unix socket. Admission keys (`user:<id>` for signed-in learners, `ip:<ip>` for anonymous) identify the caller for in-flight limits.
