@@ -1,5 +1,6 @@
 import type { Difficulty } from "../gamification";
 import type { Practice } from "./practice";
+import type { LessonLearning } from "./learning-metadata";
 
 export type Language = "c" | "rust" | "asm" | "go" | "kernel";
 
@@ -42,6 +43,8 @@ export type Lesson = {
   kind: "lesson" | "review";
   /** Lowercase kebab-case topic tags, from `tags:` in the frontmatter (comma-separated). */
   tags: string[];
+  /** Optional authored objectives, prior knowledge and concept mappings; not learner mastery. */
+  learning?: LessonLearning;
   /** Lesson body (markdown). */
   body: string;
   exercise: Exercise;

@@ -5,6 +5,7 @@ import path from "node:path";
 import { challengeIdOf, isChallengeId, isDifficulty, isPracticeId, practiceIdOf } from "../gamification";
 import { compareTracks } from "./paths";
 import { parsePractice } from "./practice";
+import { parseLearningMetadata } from "./learning-metadata";
 import type { Exercise, Lesson, Track } from "./types";
 
 const CONTENT_DIR = path.join(process.cwd(), "content");
@@ -43,6 +44,14 @@ function loadLesson(trackDir: string, dirName: string, language: Track["language
   // Explicit drafts may be incomplete. Published lessons still fail closed on
   // missing files, so an accidental content regression cannot disappear silently.
   if (meta.draft === "true") return null;
+  const learningFile = path.join(dir, "learning.json");
+  let learning: Lesson["learning"];
+  if (existsSync(learningFile)) {
+    let raw: unknown;
+    try { raw = JSON.parse(read(learningFile)); }
+    catch (error) { throw new Error(`${dirName}/learning.json is not valid JSON: ${(error as Error).message}`); }
+    learning = parseLearningMetadata(raw, `${dirName}/learning.json`);
+  }
   const mode = meta.mode === "stdout" ? "stdout" : "harness";
   const revision = meta.revision === undefined ? 1 : Number(meta.revision);
   if (!Number.isInteger(revision) || revision < 1) throw new Error(`Lesson ${dir}: revision must be a whole number from 1`);
@@ -115,6 +124,7 @@ function loadLesson(trackDir: string, dirName: string, language: Track["language
     difficulty: meta.difficulty,
     kind: meta.kind === "review" ? "review" : "lesson",
     tags,
+    ...(learning ? { learning } : {}),
     body: body.trim(),
     exercise,
     challenge,

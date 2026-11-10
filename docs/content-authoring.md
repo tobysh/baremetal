@@ -10,6 +10,7 @@ content/
     track.json              course metadata
     <NN>-<slug>/            lesson folders, ordered by the NN prefix
       lesson.md             frontmatter + the lesson body (markdown)
+      learning.json         optional authored objectives, prior knowledge and concept IDs
       task.md               what the learner must write
       hints.md              progressive hints, separated by lines containing only ===
       starter.<ext>         what the editor starts with
@@ -65,6 +66,55 @@ Lesson body in markdown…
 - `id` is `<track>/<slug>` by convention, where the slug is the folder name without its `NN-` prefix. It is the progress key, so treat it as permanent.
 - A **review** lesson consolidates earlier material: no new concepts, familiar ideas combined with small twists, usually `easy` or `medium`, titled `Review: …`.
 - Teach before you test: the body explains the idea with small examples before the task asks for anything. Use second person, short paragraphs, and runnable snippets.
+
+## Optional `learning.json`
+
+A lesson may add `learning.json` beside `lesson.md` to make its teaching intent
+explicit without changing its exercise or saved-code format:
+
+```json
+{
+  "objectives": ["Trace the value reached through a pointer after an assignment."],
+  "prerequisites": ["Declare an integer variable and call a function."],
+  "concepts": ["c.pointer-addresses", "c.pointer-dereference"]
+}
+```
+
+Each field is optional, but the file must contain at least one. Present fields
+must be non-empty arrays of non-blank, distinct strings. Surrounding whitespace
+is trimmed; unknown fields, malformed JSON and invalid concept IDs fail loading
+for published lessons. Draft lessons and courses remain excluded before their
+metadata is loaded. Existing lessons need no sidecar and retain their current
+shape. No lesson IDs, difficulty, XP or progress records change.
+
+- **Objectives** describe observable things the learner should be able to do.
+  Prefer "trace", "predict", "debug" or "implement" over "understand". A coding
+  pass does not establish an explanation objective unless that explanation is
+  assessed separately.
+- **Prerequisites** name prior knowledge in plain language. They are authoring
+  guidance, not access restrictions or assumptions that a learner has mastered
+  an earlier lesson.
+- **Concepts** map the lesson to stable, lowercase namespaced IDs. Use periods
+  between namespace segments and hyphens within words, for example
+  `c.pointer-addresses`; a single tag such as `pointers` is not a concept ID.
+  Reuse an existing concept's ID rather than inventing a synonym. Do not rename
+  an ID when changing a lesson title. These mappings are not persisted mastery
+  scores or evidence that a learner has retained or transferred a skill.
+
+The first mappings define `c.pointer-addresses` (pointer values as addresses),
+`c.pointer-dereference` (reading or writing through a pointer), `c.pass-by-value`
+(copied arguments), `c.array-indexing` (locating contiguous elements),
+`c.array-decay` (array expressions becoming element pointers), and
+`c.array-bounds` (keeping accesses within the available elements).
+
+When authoring or revising a lesson, review objectives and prerequisites alongside
+the explanation, real-world relevance, worked example, guided and independent
+practice, common misconceptions, retrieval question and optional transfer task.
+Use the parts that help teach this lesson; there are no mandatory word counts
+or requirements to repeat sections a short lesson does not need. Prioritise
+advanced lessons that assume unexplained knowledge before adding more content.
+Review the resulting teaching with learners; metadata alone does not validate
+educational quality or learning outcomes.
 
 ## `task.md` and `hints.md`
 

@@ -1,0 +1,12 @@
+{
+  "objectives": [
+    "Distinguish a pointer's address value from the value reached by dereferencing it.",
+    "Explain why passing a variable by value cannot change the caller's variable.",
+    "Use pointer parameters to exchange two caller-owned integer values."
+  ],
+  "prerequisites": [
+    "Declare and assign integer variables.",
+    "Call a function and identify its parameters and local variables."
+  ],
+  "concepts": ["c.pointer-addresses", "c.pointer-dereference", "c.pass-by-value"]
+}
