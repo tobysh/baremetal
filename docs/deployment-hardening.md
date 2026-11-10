@@ -280,6 +280,33 @@ for `runner_busy`/`runner_failure`, request duration, active/queued jobs and
 cancellations. Logs intentionally omit code, secrets and admission identities.
 
 
+## Accounting health and recovery alerts
+
+Run `npm run check:accounting` under the web environment to inspect aggregate
+accounting health. This command uses a direct database connection without index
+initialization or repair writes. It emits counts only, with no account IDs,
+emails, code or reservation keys, and exits with status 1 when attention is
+needed. Schedule it in your existing monitoring system and alert on a nonzero
+exit; a successful command does not prove that earlier history was complete.
+
+Live work is counted without triggering an alert. Attention is needed for review
+events or pending XP older than ten minutes, unfinished tutor calls older than
+one hour, settlements older than ten minutes, malformed recovery timestamps or
+states, personal spend documents whose owner no longer exists, or spend
+documents at least 8 MiB in size. Counts are observed across separate reads and
+may change during a concurrent request or account deletion; recheck before a
+manual intervention. Each database operation has a 30-second server deadline.
+
+For queued review events, fix database connectivity/permissions and allow the
+startup or periodic recovery worker to replay them; do not clear `pendingEvent`
+to hide an error. For tutor reservations, preserve the journal and markers so
+settlement remains idempotent. Unknown abandoned active calls retain their
+maximum hold conservatively; do not refund them unless upstream accounting
+establishes the actual charge. For orphaned personal balances, verify the owner
+was deleted and take a backup before targeted cleanup; retain anonymous global
+totals. Investigate document growth before raising request quotas further.
+Pending XP uses the existing `flagged-accounts` and reconciliation procedure.
+
 ## Scaling beyond one runner host (design note, not implemented)
 
 The runner is one process on one host. Its admission counts (`inFlight` per account/IP) and its queues are in-memory and local to that process, so two runner processes would each enforce their own limits and queue. Options when one host is not enough:
