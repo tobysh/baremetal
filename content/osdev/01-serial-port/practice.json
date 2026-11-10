@@ -1,0 +1,57 @@
+{
+  "kind": "predict",
+  "prompt": "You want COM1 at 300 baud. The UART divides a 115200 Hz base clock by the divisor. Work out what the driver writes and reads.",
+  "trace": [
+    {
+      "label": "[divisor] for 300 baud",
+      "choices": [
+        "384",
+        "3840",
+        "300",
+        "12"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Byte written to port `0x3F8` (base + 0) while DLAB = 1",
+      "choices": [
+        "0x01",
+        "0x80",
+        "0x00",
+        "0x18"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Byte written to port `0x3F9` (base + 1) while DLAB = 1",
+      "choices": [
+        "0x80",
+        "0x01",
+        "0x00",
+        "0x03"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[port] you poll for the line status register",
+      "choices": [
+        "0x3F8",
+        "0x3FB",
+        "0x3FD",
+        "0x3FC"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "The status register reads `0x41`. What does the transmit loop do?",
+      "choices": [
+        "Sends the byte now",
+        "Keeps waiting, because bit 5 is clear",
+        "Keeps waiting, because bit 0 is set",
+        "Resets the UART"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "115200 / 300 = 384 = 0x0180, so the low byte 0x80 goes to base + 0 and the high byte 0x01 to base + 1. Both writes only reach the divisor because DLAB (bit 7 of base + 3) is 1; with DLAB = 0 they would hit the data and interrupt-enable registers. The line status register is base + 5 = 0x3FD. 0x41 is 0100 0001: bit 0 means a received byte is waiting, which has nothing to do with sending, and bit 5 (0x20, holding register empty) is clear, so the transmitter is still busy and you must keep polling."
+}

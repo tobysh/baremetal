@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`digit_sum` should add up the digits of `n` (12 gives 3) but it never finishes. Which line is wrong?",
+  "code": "int digit_sum(int n) {\n    int total = 0;\n    while (n > 0) {\n        total += n % 10;\n        n = n % 10;\n    }\n    return total;\n}",
+  "bugLine": 5,
+  "explain": "To drop the last digit you divide: `n /= 10`. Using `% 10` keeps only the last digit, so for 12 the number becomes 2 and stays 2, the loop never ends."
+}

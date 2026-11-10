@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "What does this print?",
+  "code": "int a = 7, b = 8;\ndouble avg = (a + b) / 2.0;\nprintf(\"%.2f\\n\", avg);",
+  "choices": [
+    "7.50",
+    "7.00",
+    "7",
+    "8.00"
+  ],
+  "answer": 0,
+  "explain": "Because one side is `2.0`, C divides as decimals: 15 / 2.0 = 7.5, and `%.2f` shows two places. With a plain `2` it would be integer division, 7, printed as `7.00`."
+}

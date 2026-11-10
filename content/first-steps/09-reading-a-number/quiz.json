@@ -1,0 +1,21 @@
+[
+  {
+    "kind": "bug",
+    "prompt": "This should read a number, but `number` stays unset. Which line is wrong?",
+    "code": "int number;\nif (scanf(\"%d\", number) != 1) {\n    return 1;\n}",
+    "bugLine": 2,
+    "explain": "`scanf` needs to know where the variable lives, so you pass its address: `&number`. Passing `number` gives it the (unset) value instead, and the read goes wrong."
+  },
+  {
+    "kind": "choice",
+    "prompt": "The user types `abc` where a number was expected. What does `scanf(\"%d\", &n)` return?",
+    "choices": [
+      "0, because no number was read",
+      "1, because it read something",
+      "The code of the letter `a`",
+      "It always returns the number of characters typed"
+    ],
+    "answer": 0,
+    "explain": "`scanf` returns how many values it managed to read. `abc` is not a number, so that is 0, which is why we check the result before using `n`."
+  }
+]

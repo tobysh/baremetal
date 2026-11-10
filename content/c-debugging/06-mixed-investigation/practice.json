@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "The cart holds 4 lines, but call 5 changed `used` from 4 to 8, and 7 was that call's quantity. Tap the line that writes the corrupting value.",
+  "code": "int add_item(cart *c, int qty, int price) {\n    c->qty[c->used] = qty;\n    c->used++;\n    c->total += price;\n    return 0;\n}",
+  "bugLine": 2,
+  "explain": "With `used == 4` this stores to `qty[4]`, one past the array. The struct puts `used` right after `qty[3]`, so the write sets `used` to 7 and the increment makes 8. The wrong total (adding `price` instead of `qty * price`) is a separate fault: it cannot make `used` jump to a quantity."
+}

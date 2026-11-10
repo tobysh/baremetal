@@ -1,0 +1,57 @@
+{
+  "kind": "predict",
+  "prompt": "`task_stack_init(top = 0x20000, entry)` builds the fake frame described in the lesson (guard address at the top, then `entry`, then six zeroed registers). Then the first `ctx_switch` runs on that stack.",
+  "trace": [
+    {
+      "label": "[return value] of `task_stack_init`",
+      "choices": [
+        "0x1FFC0",
+        "0x1FFE0",
+        "0x1FFF0",
+        "0x1FFA0"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[address] of the slot holding `entry`",
+      "choices": [
+        "0x1FFF8",
+        "0x1FFF0",
+        "0x1FFE8",
+        "0x1FFC0"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`rsp` after the six `pop` instructions",
+      "choices": [
+        "0x1FFF0",
+        "0x1FFF8",
+        "0x20000",
+        "0x1FFE8"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`rsp` at the first instruction of `entry`, after `ret`",
+      "choices": [
+        "0x1FFF0",
+        "0x1FFF8",
+        "0x20000",
+        "0x1FFC0"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Which register must `ctx_switch` save and restore?",
+      "choices": [
+        "rax",
+        "rdi",
+        "rbx",
+        "r10"
+      ],
+      "answer": 2
+    }
+  ],
+  "explain": "Eight 8-byte slots are built: task_finished at top-8, entry at top-16, then six zeros, so the lowest slot and the returned pointer are top - 64 = 0x1FFC0 and entry sits at 0x1FFF0. Six pops add 48 to rsp, giving 0x1FFF0, which is where `ret` finds entry; after it rsp = 0x1FFF8 = top - 8. That is exactly what a call leaves (rsp + 8 is 16-byte aligned) and task_finished sits there as its return address. Only the callee-saved registers (rbx, rbp, r12-r15) need saving; rax, rdi and r10 are caller-saved, so the compiler already assumes any call may destroy them."
+}

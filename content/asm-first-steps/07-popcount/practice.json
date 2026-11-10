@@ -1,0 +1,44 @@
+{
+  "kind": "predict",
+  "prompt": "`popcount64` runs with `rdi = 44` (binary 101100). Each round clears the lowest set bit.",
+  "code": "xor eax, eax\n.Lloop:\ntest rdi, rdi\njz .Ldone\nlea rcx, [rdi - 1]\nand rdi, rcx\ninc eax\njmp .Lloop\n.Ldone:\nret",
+  "trace": [
+    {
+      "label": "[rcx] after the first `lea rcx, [rdi - 1]`",
+      "choices": [
+        "43",
+        "42",
+        "22"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[rdi] after the first `and rdi, rcx`",
+      "choices": [
+        "40",
+        "43",
+        "32"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[rdi] after the second `and rdi, rcx`",
+      "choices": [
+        "32",
+        "36",
+        "0"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[eax] when `ret` runs",
+      "choices": [
+        "3",
+        "4",
+        "6"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "`x - 1` flips the lowest set bit and all the zeros below it, so `x & (x - 1)` removes exactly one set bit: 44 -> 40 -> 32 -> 0. The loop runs once per set bit, three times, so `eax` is 3. `lea` does the subtraction without touching the flags `test` just set."
+}

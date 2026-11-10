@@ -1,0 +1,43 @@
+{
+  "kind": "predict",
+  "prompt": "`binary_search` looks for `key = 12` in `{2, 4, 6, 8, 10, 12, 14}` (`n = 7`). `rcx` is `lo`, `r8` is `hi` (exclusive).",
+  "code": "xor ecx, ecx\nmov r8, rsi\n.Lloop:\ncmp rcx, r8\njae .Lnot_found\nmov rax, r8\nsub rax, rcx\nshr rax, 1\nadd rax, rcx\nmov r9, [rdi + rax*8]\ncmp r9, rdx\nje .Lfound\njl .Lgo_right\nmov r8, rax\njmp .Lloop\n.Lgo_right:\nlea rcx, [rax + 1]\njmp .Lloop\n.Lfound:\nret",
+  "trace": [
+    {
+      "label": "[rax] mid in the first round (lo = 0, hi = 7)",
+      "choices": [
+        "3",
+        "4",
+        "7"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[jump] `jl .Lgo_right` after comparing a[3] = 8 with 12",
+      "choices": [
+        "taken",
+        "not taken"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[rcx] after `lea rcx, [rax + 1]`",
+      "choices": [
+        "3",
+        "4",
+        "5"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[rax] mid in the second round (lo = 4, hi = 7)",
+      "choices": [
+        "4",
+        "5",
+        "6"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "mid = lo + (hi - lo) / 2 = 3. `cmp r9, rdx` compares a[mid] with the key as signed numbers: 8 < 12, so the key can only be to the right and `lo` becomes mid + 1 = 4. Round two: 4 + (7 - 4) / 2 = 5, and a[5] is 12, so `je .Lfound` returns 5."
+}

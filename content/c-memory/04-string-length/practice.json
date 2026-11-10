@@ -1,0 +1,35 @@
+{
+  "kind": "predict",
+  "prompt": "A string lives in a bigger array. Follow what `strlen` and `sizeof` each measure.",
+  "code": "char buf[8] = \"cat\";\nbuf[1] = '\\0';",
+  "trace": [
+    {
+      "label": "`strlen(buf)` returns",
+      "choices": [
+        "1",
+        "3",
+        "8"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`sizeof buf` is",
+      "choices": [
+        "1",
+        "3",
+        "8"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "`buf[2]` still holds",
+      "choices": [
+        "'t'",
+        "'\\0'",
+        "garbage"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "`strlen` walks until the first `'\\0'`, which is now at index 1, so it reports 1. `sizeof buf` is the size of the whole array, 8, and says nothing about the text. Nothing erased `'t'`: the bytes after the terminator are still there, they are just no longer part of the string."
+}

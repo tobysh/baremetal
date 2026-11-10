@@ -74,3 +74,24 @@ fn copy_handles_overlap_both_ways() {
         assert_eq!(v, want, "from {from} to {to} len {len}");
     }
 }
+
+#[test]
+fn fill_and_reverse_with_zero_length_are_noops() {
+    let mut v = vec![1, 2, 3];
+    unsafe {
+        fill_raw(v.as_mut_ptr(), 0, 9);
+        reverse_raw(v.as_mut_ptr(), 0);
+        reverse_raw(v.as_mut_ptr(), 1);
+    }
+    assert_eq!(v, [1, 2, 3], "len 0 and len 1 must not change anything");
+}
+
+#[test]
+fn copy_forward_overlap_needs_backward_loop() {
+    let mut v = vec![1, 2, 3, 4, 5, 0];
+    unsafe {
+        let b = v.as_mut_ptr();
+        copy_raw(b.add(1), b as *const i32, 5);
+    }
+    assert_eq!(v, [1, 1, 2, 3, 4, 5], "dst after src with overlap: copy must not smear the first value");
+}

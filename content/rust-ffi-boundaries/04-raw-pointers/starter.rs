@@ -1,3 +1,7 @@
+// No scaffolding here beyond the signatures: every function body is yours.
+// A null pointer means "empty". Put a `// SAFETY:` comment above each unsafe
+// block that dereferences or builds a slice from a pointer.
+
 unsafe fn sum_raw(p: *const i32, len: usize) -> i64 {
     0
 }

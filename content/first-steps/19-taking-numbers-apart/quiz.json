@@ -1,0 +1,15 @@
+[
+  {
+    "kind": "predict",
+    "prompt": "What does this print for `n = 120`?",
+    "code": "int n = 120, rev = 0;\nwhile (n > 0) {\n    rev = rev * 10 + n % 10;\n    n /= 10;\n}\nprintf(\"%d\\n\", rev);",
+    "choices": [
+      "21",
+      "021",
+      "12",
+      "0"
+    ],
+    "answer": 0,
+    "explain": "The digits come out as 0, 2, 1, so `rev` goes 0, 2, 21. The leading zero of `021` is just the value 0 at the start of a number, which a plain `int` does not keep."
+  }
+]

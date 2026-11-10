@@ -1,0 +1,47 @@
+{
+  "kind": "predict",
+  "prompt": "Decode the error codes the CPU pushes. Page-fault bits: 0 P (set = protection violation, clear = not present), 1 W (write), 2 U (user mode), 4 I (instruction fetch). Selector error codes: bit 0 external, bits 1-2 table (0 GDT, 1 IDT, 2 LDT), bits 3-15 index.",
+  "trace": [
+    {
+      "label": "#PF with error `0x5`",
+      "choices": [
+        "User-mode read of a page that is present but protected",
+        "Kernel-mode write to a missing page",
+        "User-mode write to a missing page",
+        "Kernel-mode read of a missing page"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "#PF with error `0x2`",
+      "choices": [
+        "Kernel-mode write to a missing page",
+        "User-mode write to a present page",
+        "Kernel-mode read of a protected page",
+        "Instruction fetch fault"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "#PF with error `0x15`",
+      "choices": [
+        "User-mode instruction fetch from a present page (for example NX)",
+        "User-mode write to a missing page",
+        "Kernel-mode instruction fetch from a missing page",
+        "Reserved bit set in a page table"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "#GP with error `0x1B` (binary 11011)",
+      "choices": [
+        "IDT, index 3, external event",
+        "GDT, index 3, internal",
+        "IDT, index 27, internal",
+        "LDT, index 1, external"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "0x5 = 101: P and U set, W clear, so a user read hit a present page it may not access. 0x2 = 010: not present, write, kernel: the classic null-pointer store. 0x15 = 10101: P, U and I set, a user instruction fetch on a present page, which is what NX produces. For the #GP code 0x1B = 11011, bit 0 says the event was external, bits 1-2 (01) say the IDT, and the index is 0x1B >> 3 = 3. A common mistake is to read the whole value as the index; the low three bits are flags."
+}

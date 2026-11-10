@@ -1,0 +1,47 @@
+{
+  "kind": "predict",
+  "prompt": "A fresh `KbdState`. Feed these set-1 bytes one after another, keeping the state between steps: `0x3A` (Caps Lock), `0x1E` (A key), `0x2A` (left Shift down), `0x1E`, `0x9E`, `0x02` (the 1 key). What does `kbd_feed` return for each marked byte?",
+  "trace": [
+    {
+      "label": "[return] of the first `0x1E` (caps on, shift up)",
+      "choices": [
+        "'A'",
+        "'a'",
+        "0 (no character)",
+        "'1'"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[return] of the second `0x1E` (caps on, shift down)",
+      "choices": [
+        "'A'",
+        "'a'",
+        "0 (no character)",
+        "'!'"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[return] of `0x9E` (the break code of A)",
+      "choices": [
+        "'A'",
+        "'a'",
+        "0 (no character)",
+        "0x1E"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "[return] of `0x02` (caps on, shift still down)",
+      "choices": [
+        "'1'",
+        "'!'",
+        "0 (no character)",
+        "'2'"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Caps Lock toggles on its make code (0x3A) and ignores the release. For letters the result is upper case when shift XOR caps: caps alone gives 'A', caps plus shift cancels out and gives 'a'. 0x9E is 0x1E with bit 7 set, a break code, which produces no character. Caps Lock affects only letters, so for the digit key the decision uses shift alone: shift is still held, so you get '!' and not '1'."
+}

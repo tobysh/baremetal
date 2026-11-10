@@ -1,0 +1,47 @@
+{
+  "kind": "predict",
+  "prompt": "On an AMD machine, `cpuid` leaf 0 returns `ebx = 0x68747541`, `edx = 0x69746E65`, `ecx = 0x444D4163`. Then you read EFER with `rdmsr` and get `edx = 0x1`, `eax = 0x500`. Work out what the kernel sees.",
+  "trace": [
+    {
+      "label": "[vendor string] after `memcpy`ing ebx, edx, ecx in that order",
+      "choices": [
+        "AuthenticAMD",
+        "AuthcAMDenti",
+        "AMDAuthentic",
+        "DMAhtuAecnetic"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[mask] to test long-mode support in `edx` of leaf `0x80000001` (bit 29)",
+      "choices": [
+        "0x20000000",
+        "0x00100000",
+        "0x40000000",
+        "0x00000029"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[64-bit MSR value] from `((uint64_t)edx << 32) | eax`",
+      "choices": [
+        "0x100000500",
+        "0x500000001",
+        "0x501",
+        "0x1500"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "EFER = 0x500 has bits 8 and 10 set. What does that say about long mode?",
+      "choices": [
+        "Enabled (LME) and active (LMA)",
+        "Enabled but not yet active",
+        "Supported but not enabled",
+        "Not supported"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "Each register holds four ASCII bytes in little-endian order, so 0x68747541 is 41 75 74 68 = \"Auth\". The three registers spell the vendor in the order ebx, edx, ecx. Long mode support is edx bit 29 of leaf 0x80000001 (1 << 29 = 0x20000000); bit 20 is NX. `rdmsr` splits the value over edx:eax, so you shift edx up by 32 and OR in eax; without the cast the shift would overflow 32 bits. In EFER, bit 8 (LME) is set by the kernel and bit 10 (LMA) is set by the CPU once paging is also on, so 0x500 means both."
+}

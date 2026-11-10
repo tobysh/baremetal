@@ -1,0 +1,57 @@
+{
+  "kind": "predict",
+  "prompt": "A fresh heap has one free block of payload 480 bytes. `sizeof(Block)` is 32, sizes round up to 16, and a block is split only if `size >= want + 32 + 16`. Run `a = kmalloc(50); b = kmalloc(300); c = kmalloc(40);`, then `kfree(a); kfree(b);`.",
+  "trace": [
+    {
+      "label": "[payload size] of the free block after `kmalloc(50)`",
+      "choices": [
+        "384",
+        "416",
+        "430",
+        "448"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[payload size] of the free block after `kmalloc(300)`",
+      "choices": [
+        "48",
+        "80",
+        "76",
+        "16"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`kmalloc(40)` wants 48 and the free block has 48: payload size handed out",
+      "choices": [
+        "48",
+        "16",
+        "80",
+        "It returns NULL"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`heap_free_bytes()` right after `kmalloc(40)`",
+      "choices": [
+        "0",
+        "16",
+        "48",
+        "32"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "After the two frees, the merged free block's payload size",
+      "choices": [
+        "368",
+        "400",
+        "64",
+        "432"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "kmalloc(50) rounds to 64; 480 >= 64 + 48, so the block splits and the leftover has 480 - 64 - 32 = 384 (the new header eats 32). kmalloc(300) rounds to 304 and leaves 384 - 304 - 32 = 48. kmalloc(40) wants 48 and the block has exactly 48, which is below 48 + 48, so no split: the whole block is used and no free bytes remain. Freeing a and b (adjacent) merges them: the second header becomes payload, so 64 + 32 + 304 = 400. Block c stays used and blocks any merge beyond it."
+}

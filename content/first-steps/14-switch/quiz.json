@@ -1,0 +1,10 @@
+[
+  {
+    "kind": "typed",
+    "prompt": "Which keyword in a `switch` handles every value that no `case` matched? Type it.",
+    "accepted": [
+      "default"
+    ],
+    "explain": "`default:` runs when no `case` matches, like the final `else` of an if chain. It is how the day lesson prints `invalid day`."
+  }
+]

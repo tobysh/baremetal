@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This installs the kernel GDT, but the CPU runs garbage right after `cs` is reloaded. Which line is wrong?",
+  "code": "void gdt_install(void) {\n    gdt[0] = gdt_entry(0, 0, 0, 0);\n    gdt[1] = gdt_entry(0, 0xFFFFF, 0x9A, 0xC);   // kernel code, 0x08\n    gdt[2] = gdt_entry(0, 0xFFFFF, 0x92, 0xC);   // kernel data, 0x10\n    gdtr = descriptor_pointer(gdt, sizeof(gdt));\n    load_gdt();\n}",
+  "bugLine": 3,
+  "explain": "Flags 0xC set the granularity and D bits, which describe a 32-bit segment. On a code segment, D = 1 with L = 0 puts the CPU in compatibility mode, a 32-bit sub-mode of long mode, so the next 64-bit instruction decodes as nonsense. The 64-bit code segment needs flags 0xA (granularity plus the L bit). Data segments keep 0xC, so line 4 is fine; the access byte, the null entry and `sizeof - 1` inside `descriptor_pointer` are all correct."
+}

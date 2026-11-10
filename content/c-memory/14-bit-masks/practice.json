@@ -1,0 +1,43 @@
+{
+  "kind": "predict",
+  "prompt": "A `uint8_t` flag byte starts as `0x0C` (binary 0000 1100). Apply each operation in turn.",
+  "code": "uint8_t f = 0x0C;\nf |= 1 << 0;\nf &= ~(1 << 2);\nf ^= 0x0F;\nint on = (f & (1 << 1)) != 0;",
+  "trace": [
+    {
+      "label": "After `f |= 1 << 0` (set bit 0), `f` is",
+      "choices": [
+        "0x0D",
+        "0x0E",
+        "0x1C"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "After `f &= ~(1 << 2)` (clear bit 2), `f` is",
+      "choices": [
+        "0x09",
+        "0x0D",
+        "0x01"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "After `f ^= 0x0F` (toggle the low four bits), `f` is",
+      "choices": [
+        "0x06",
+        "0x09",
+        "0x0F"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`on` is",
+      "choices": [
+        "0",
+        "1"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "OR with a one-bit mask sets that bit, AND with the inverted mask clears it, XOR flips every bit the mask covers (0x09 is 1001, flipped it is 0110 = 0x06), and AND with the mask then comparing to zero tests it: bit 1 of 0x06 is on."
+}

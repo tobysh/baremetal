@@ -1,0 +1,14 @@
+[
+  {
+    "kind": "choice",
+    "prompt": "Which condition is true only when `x` is from 1 to 10, including both ends?",
+    "choices": [
+      "`x >= 1 && x <= 10`",
+      "`x >= 1 || x <= 10`",
+      "`1 <= x <= 10`",
+      "`x > 1 && x < 10`"
+    ],
+    "answer": 0,
+    "explain": "Both parts must hold, so use `&&`. With `||` every number passes. `1 <= x <= 10` looks right but C works it out left to right: `1 <= x` gives 0 or 1, and that is always at most 10. And `>` and `<` leave out 1 and 10."
+  }
+]

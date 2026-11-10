@@ -1,0 +1,57 @@
+{
+  "kind": "predict",
+  "prompt": "The PICs are remapped to master offset 32 and slave offset 40, and the PIT is clocked at 1,193,182 Hz. You want a 250 Hz tick.",
+  "trace": [
+    {
+      "label": "[divisor] `1193182 / 250` with integer division",
+      "choices": [
+        "4772",
+        "4773",
+        "4771",
+        "4096"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[byte] written to port `0x40` first (low byte)",
+      "choices": [
+        "0x12",
+        "0xA4",
+        "0x36",
+        "0x24"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[vector] delivered for IRQ 11 (slave line 3)",
+      "choices": [
+        "11",
+        "43",
+        "40",
+        "35"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Where must the EOI (`0x20`) be written after handling IRQ 11?",
+      "choices": [
+        "Master command port only",
+        "Slave command port only",
+        "Slave command port, then master command port",
+        "Both data ports"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "Without any EOI, what happens to timer interrupts?",
+      "choices": [
+        "Ticks keep arriving at half speed",
+        "One tick arrives, then IRQ 0 is blocked",
+        "Nothing changes, the PIT re-raises the line",
+        "The CPU triple-faults"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "1193182 / 250 = 4772.7, truncated to 4772 = 0x12A4, so the low byte 0xA4 goes to port 0x40 first and 0x12 second (after command 0x36 on port 0x43). The PIC adds the IRQ number to its offset: slave IRQ 11 is line 3 of the slave, 40 + 3 = 43. An IRQ from the slave must be acknowledged on the slave and then the master, since the master also has IRQ 2 (the cascade) in service. Until EOI, the PIC keeps that line in service and blocks it and everything of lower priority, so a missing EOI gives exactly one tick."
+}

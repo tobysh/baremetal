@@ -1,0 +1,57 @@
+{
+  "kind": "predict",
+  "prompt": "A yellow (14) `Z` (`0x5A`) on a red (4) background is written at row 5, column 20 of the 80 by 25 text screen at `0xB8000`.",
+  "trace": [
+    {
+      "label": "[attribute] byte, `fg | (bg << 4)`",
+      "choices": [
+        "0xE4",
+        "0x4E",
+        "0x5E",
+        "0x0E"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[cell] as a 16-bit value",
+      "choices": [
+        "0x5A4E",
+        "0x4E5A",
+        "0x0E5A",
+        "0xE45A"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[address] of the first byte of the cell",
+      "choices": [
+        "0xB8348",
+        "0xB81A4",
+        "0xB8690",
+        "0xB8014"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[value] written to port `0x3D5` after selecting index `0x0E` (cursor high byte), cursor at that cell",
+      "choices": [
+        "0xA4",
+        "0x00",
+        "0x01",
+        "0x14"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "[column] after `\\t` when the cursor is at column 13",
+      "choices": [
+        "16",
+        "21",
+        "14",
+        "20"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "The character is the low byte and the attribute the high byte of the 16-bit cell, so yellow on red is 14 | (4 << 4) = 0x4E and the cell is 0x4E5A. Cell index = 5 * 80 + 20 = 420, and each cell is 2 bytes, so the byte offset is 840 = 0x348, giving 0xB8348. The cursor position is the cell index 420 = 0x01A4: the high byte 0x01 goes to 0x3D5 after index 0x0E, the low byte 0xA4 after index 0x0F. A tab rounds up to the next multiple of 8: (13 + 8) & ~7 = 16."
+}

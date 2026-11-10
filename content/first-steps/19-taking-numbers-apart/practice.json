@@ -1,0 +1,44 @@
+{
+  "kind": "predict",
+  "prompt": "Follow the digit loop for `n = 305`.",
+  "code": "int n = 305, sum = 0;\nwhile (n > 0) {\n    sum += n % 10;\n    n /= 10;\n}",
+  "trace": [
+    {
+      "label": "On the first pass `n % 10` adds",
+      "choices": [
+        "5",
+        "30",
+        "3"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "After the first pass `n` is",
+      "choices": [
+        "30",
+        "35",
+        "5"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "On the second pass `n % 10` adds",
+      "choices": [
+        "0",
+        "3",
+        "30"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "When the loop ends, `sum` is",
+      "choices": [
+        "8",
+        "35",
+        "5"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "`n % 10` is the last digit and `n /= 10` drops it, so 305 gives 5, then 0, then 3. The sum is 5 + 0 + 3 = 8. The loop ends when `n` reaches 0."
+}

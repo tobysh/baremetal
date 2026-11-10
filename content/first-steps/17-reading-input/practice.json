@@ -1,0 +1,20 @@
+{
+  "kind": "blanks",
+  "prompt": "Fill the blanks so the program reads two integers and prints their sum.",
+  "template": "#include <stdio.h>\n\nint main(void) {\n    int a, b;\n    if (scanf(\"{{0}} {{1}}\", {{2}}, {{3}}) != 2) return 1;\n    printf(\"sum: %d\\n\", a + b);\n    if (a > b) printf(\"larger: %d\\n\", a);\n    else if (b > a) printf(\"larger: %d\\n\", b);\n    else printf(\"larger: equal\\n\");\n    return 0;\n}\n",
+  "tokens": [
+    "%d",
+    "%d",
+    "&a",
+    "&b",
+    "a",
+    "%c"
+  ],
+  "answers": [
+    "%d",
+    "%d",
+    "&a",
+    "&b"
+  ],
+  "explain": "One `%d` per number, then the addresses in the same order: the first number goes to `&a`, the second to `&b`. The `!= 2` check makes sure both were read."
+}

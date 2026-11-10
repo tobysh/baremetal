@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "What does this print?",
+  "code": "char c = 'a';\nc = c + 2;\nprintf(\"%c %d\\n\", c, c);",
+  "choices": [
+    "c 99",
+    "a 97",
+    "c 2",
+    "99 c"
+  ],
+  "answer": 0,
+  "explain": "A `char` is a small number: `'a'` is 97. Adding 2 gives 99, which is the letter `c`. `%c` shows the character, `%d` shows the same number."
+}

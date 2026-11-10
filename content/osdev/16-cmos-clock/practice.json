@@ -1,0 +1,57 @@
+{
+  "kind": "predict",
+  "prompt": "The CMOS clock is in BCD, 12-hour mode (status B bit 1 clear, bit 2 clear). In 12-hour mode bit 7 of the hour register means PM. Decode these raw register values as the driver should.",
+  "trace": [
+    {
+      "label": "[minutes] for raw register `0x59`",
+      "choices": [
+        "59",
+        "89",
+        "5",
+        "9"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[minutes] if a broken driver forgets BCD and treats `0x59` as plain binary",
+      "choices": [
+        "59",
+        "89",
+        "5",
+        "9"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[hour, 24-hour clock] for raw hour `0x91`",
+      "choices": [
+        "23",
+        "11",
+        "91",
+        "13"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[hour, 24-hour clock] for raw hour `0x12` (bit 7 clear)",
+      "choices": [
+        "0",
+        "12",
+        "18",
+        "24"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[hour, 24-hour clock] for raw hour `0x92`",
+      "choices": [
+        "0",
+        "12",
+        "24",
+        "92"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "BCD stores one decimal digit per nibble, so 0x59 is 5*10 + 9 = 59, whereas the same byte read as binary is 89. For the hour, test bit 7 first and clear it: 0x91 becomes PM with 0x11 = 11, and 11 PM is 23. Decoding 0x91 as BCD without stripping would give 91. Hour 12 is special: 12 AM is midnight (0), and 12 PM is noon, so after mapping 12 to 0 you add 12 only for PM: 0x12 gives 0 and 0x92 gives 12."
+}

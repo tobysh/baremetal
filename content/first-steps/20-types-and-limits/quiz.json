@@ -18,5 +18,18 @@
       "255"
     ],
     "explain": "8 bits give 2^8 = 256 values, so 0 to 255."
+  },
+  {
+    "kind": "predict",
+    "prompt": "What does this print?",
+    "code": "unsigned char c = 255;\nc = c + 1;\nprintf(\"%d\", c);",
+    "choices": [
+      "0",
+      "256",
+      "-1",
+      "255"
+    ],
+    "answer": 0,
+    "explain": "An `unsigned char` holds 0 to 255. Adding 1 to 255 does not fit, and unsigned values wrap around to 0, like an odometer rolling over."
   }
 ]

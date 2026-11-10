@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "What does this code print for `i = 15`?",
+  "code": "if (i % 3 == 0) printf(\"Fizz\\n\");\nelse if (i % 5 == 0) printf(\"Buzz\\n\");\nelse if (i % 15 == 0) printf(\"FizzBuzz\\n\");\nelse printf(\"%d\\n\", i);",
+  "choices": [
+    "Fizz",
+    "Buzz",
+    "FizzBuzz",
+    "15"
+  ],
+  "answer": 0,
+  "explain": "An if/else chain stops at the first true test. 15 is divisible by 3, so `Fizz` prints and the `i % 15` test is never reached. Put the most specific test first."
+}

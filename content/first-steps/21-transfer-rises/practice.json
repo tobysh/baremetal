@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "A rise is a number bigger than the one before it. For input `5 4` this prints `rises: 1`, but it should be 0. Which line is wrong?",
+  "code": "int x, previous = 0, rises = 0;\nwhile (scanf(\"%d\", &x) == 1) {\n    if (x > previous) rises++;\n    previous = x;\n}",
+  "bugLine": 3,
+  "explain": "The first number has nothing before it, but `previous` starts at 0, so 5 looks like a rise. You need to remember whether a previous number exists (a flag such as `have_previous`) before comparing."
+}

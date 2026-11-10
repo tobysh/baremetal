@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This `reverse` turns `\"hello\"` into an empty string. Tap the line with the off-by-one.",
+  "code": "void reverse(char *s) {\n    size_t len = strlen(s);\n    size_t left = 0, right = len;\n    while (left < right) {\n        char tmp = s[left];\n        s[left] = s[right];\n        s[right] = tmp;\n        left++;\n        right--;\n    }\n}",
+  "bugLine": 3,
+  "explain": "The last character is at index `len - 1`. Index `len` is the terminator, so the first swap moves `'\\0'` to the front and the string now ends before it starts."
+}

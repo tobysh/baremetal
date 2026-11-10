@@ -30,5 +30,12 @@
       }
     ],
     "explain": "The specifier has to match the type of the value, or the output is garbage."
+  },
+  {
+    "kind": "bug",
+    "prompt": "This should store the letter h. Which line is the mistake?",
+    "code": "char first = \"h\";\nprintf(\"%c\\n\", first);",
+    "bugLine": 1,
+    "explain": "Single quotes make one character (`'h'`). Double quotes make a string, which is a whole piece of text, not a single `char`."
   }
 ]

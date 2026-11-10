@@ -1,0 +1,57 @@
+{
+  "kind": "predict",
+  "prompt": "Interrupts start enabled (IF = 1). The code takes `outer = irq_save()`, then `inner = irq_save()`, then calls `irq_restore(inner)` and finally `irq_restore(outer)`. `irq_restore` runs `sti` only if IF was set in the saved flags. What is IF after each step?",
+  "trace": [
+    {
+      "label": "[IF] after `outer = irq_save()` (outer holds the old flags)",
+      "choices": [
+        "0",
+        "1"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[IF bit in `inner`] the flags captured by the second `irq_save()`",
+      "choices": [
+        "0",
+        "1"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[IF] after `irq_restore(inner)`",
+      "choices": [
+        "0",
+        "1"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[IF] after `irq_restore(outer)`",
+      "choices": [
+        "0",
+        "1"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[IF] after a naive version where each section is `cli(); ...; sti();` and the inner `sti` has run",
+      "choices": [
+        "0",
+        "1"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[return value] of `atomic_add(p, 5)` with `*p == 10` (using `lock xadd`)",
+      "choices": [
+        "10",
+        "15",
+        "5",
+        "0"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "irq_save reads RFLAGS (IF is bit 9, 0x200) and then clears IF. The outer call captures IF = 1; the inner call captures IF = 0 because interrupts are already off, so restoring it does not run `sti` and the outer critical section stays protected. Only the outer restore turns interrupts back on. The naive cli/sti pair re-enables interrupts too early when the inner section ends, leaving the rest of the outer section exposed to the handler. `lock xadd` leaves the old value in the register, so atomic_add returns 10 and memory becomes 15."
+}

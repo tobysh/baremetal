@@ -1,0 +1,15 @@
+[
+  {
+    "kind": "predict",
+    "prompt": "A `count_divisible(lo, hi, d)` loop is written with `x < hi` instead of `x <= hi`. What does `count_divisible(3, 9, 3)` return?",
+    "code": "int count = 0;\nfor (int x = lo; x < hi; x++) {\n    if (x % d == 0) count++;\n}\nreturn count;",
+    "choices": [
+      "2",
+      "3",
+      "4",
+      "0"
+    ],
+    "answer": 0,
+    "explain": "The loop checks 3 and 6 but stops before 9, so it counts 2. The task says both ends count, so the right answer is 3. Whether the last value is included is the classic off-by-one choice."
+  }
+]

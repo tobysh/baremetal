@@ -1,3 +1,5 @@
+// Supplied scaffolding: Counter, its Drop impl and the LIVE counter that the
+// tests use to detect leaks. Do not change them.
 use std::cell::Cell;
 
 thread_local! {
@@ -22,6 +24,8 @@ impl Drop for Counter {
     }
 }
 
+// Your part: the five handle functions. Each unsafe block needs a
+// `// SAFETY:` comment naming the promise it relies on.
 fn counter_new(step: u32) -> *mut Counter {
     std::ptr::null_mut()
 }

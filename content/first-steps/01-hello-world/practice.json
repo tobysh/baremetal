@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "What does this program print?",
+  "code": "printf(\"Hello\");\nprintf(\" there\\n\");\nprintf(\"Bye\\n\");",
+  "choices": [
+    "Two lines: `Hello there`, then `Bye`",
+    "Three lines: `Hello`, ` there`, `Bye`",
+    "One line: `Hello there Bye`",
+    "Only `Bye`"
+  ],
+  "answer": 0,
+  "explain": "`printf` prints exactly what is between the quotes and nothing more. The first call has no `\\n`, so the cursor stays on the same line and ` there` continues it. Only the `\\n` in the second call moves to a new line."
+}

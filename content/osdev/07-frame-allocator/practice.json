@@ -1,0 +1,57 @@
+{
+  "kind": "predict",
+  "prompt": "A toy machine has 16 frames (bitmap byte 0 covers frames 0-7), all marked used at start. The memory map has one usable region: base `0x2800`, length `0x5000`, so bytes `0x2800` up to `0x7800`.",
+  "trace": [
+    {
+      "label": "[first frame] fully inside the region",
+      "choices": [
+        "2",
+        "3",
+        "4",
+        "0x2800"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[frames freed] by `pmm_add_region`",
+      "choices": [
+        "5",
+        "4",
+        "6",
+        "3"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Bitmap byte 0 after the region is added",
+      "choices": [
+        "0x78",
+        "0x87",
+        "0x7F",
+        "0xF8"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Then `0x4800` to `0x5800` is reserved. Bitmap byte 0 now",
+      "choices": [
+        "0xB7",
+        "0xA7",
+        "0x97",
+        "0xBF"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[address] returned by the next `pmm_alloc()`",
+      "choices": [
+        "0x3000",
+        "0x2000",
+        "0x6000",
+        "0x4000"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "Adding a usable region rounds inward: the start 0x2800 rounds up to frame 3 (0x3000) and the end 0x7800 rounds down to 0x7000, so frames 3, 4, 5 and 6 are freed (frame 2 and frame 7 are only partly inside). Clearing bits 3-6 of 0xFF leaves 1000 0111 = 0x87. Reserving rounds outward: 0x4800 to 0x5800 touches frames 4 and 5, so both are set again, leaving only bits 3 and 6 clear: 1011 0111 = 0xB7. pmm_alloc takes the lowest zero bit, frame 3, address 3 * 4096 = 0x3000."
+}

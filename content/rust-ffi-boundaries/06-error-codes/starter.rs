@@ -1,3 +1,4 @@
+// Supplied scaffolding: the status codes. Your part: everything below them.
 pub const OK: i32 = 0;
 pub const NULL_ARG: i32 = -1;
 pub const BAD_INPUT: i32 = -2;

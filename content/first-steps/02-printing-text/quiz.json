@@ -34,5 +34,13 @@
     ],
     "answer": 0,
     "explain": "No `\\n` after `Hello, `, so the next `printf` carries on on the same line."
+  },
+  {
+    "kind": "typed",
+    "prompt": "Which two characters do you type inside a string to print one double quote `\"`? Type them.",
+    "accepted": [
+      "\\\""
+    ],
+    "explain": "A plain `\"` would end the string early, so you escape it with a backslash: `\\\"`."
   }
 ]

@@ -1,0 +1,57 @@
+{
+  "kind": "predict",
+  "prompt": "The boot tables: `PML4[0]` and `PDPT[0]` exist, `PD[0]` points to a PT for the first 2 MiB, and nothing above 1 GiB is present. You call `map_page(cr3, 0x40201000, frame, PTE_WRITABLE)`, then `map_page(cr3, 0x40202000, frame2, PTE_WRITABLE)`.",
+  "trace": [
+    {
+      "label": "[PDPT index] of `0x40201000`",
+      "choices": [
+        "0",
+        "1",
+        "2",
+        "0x201"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[PD index] of `0x40201000`",
+      "choices": [
+        "0",
+        "1",
+        "0x201",
+        "2"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Frames taken from `alloc_frame` by the first call",
+      "choices": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "Frames taken by the second call",
+      "choices": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Error code when ring 3 writes to a page with no mapping at all",
+      "choices": [
+        "0b001 (1)",
+        "0b010 (2)",
+        "0b110 (6)",
+        "0b100 (4)"
+      ],
+      "answer": 2
+    }
+  ],
+  "explain": "0x40201000 = 1 GiB + 2 MiB + 4 KiB, so the indices are PML4 0, PDPT 1, PD 1, PT 1. PDPT[1] is absent, so a new PD is allocated, and PD[1] in that new table is absent, so a new PT is allocated: two frames. The second address shares PML4/PDPT/PD entries with the first (only the PT index changes to 2), so it just fills PT[2] with no allocation. The page-fault error code has P = 0 (not present), W = 1 (write) and U = 1 (user mode): 0b110 = 6. Bit 0 would be set only for a protection violation on a present page."
+}

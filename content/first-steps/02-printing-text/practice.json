@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This should print the Windows path `C:\\temp` on its own line, but the output is wrong. Which line is the problem?",
+  "code": "#include <stdio.h>\n\nint main(void) {\n    printf(\"Line one\\n\");\n    printf(\"C:\\temp\\n\");\n    printf(\"Done\\n\");\n    return 0;\n}",
+  "bugLine": 5,
+  "explain": "Inside a string, `\\t` means a tab, so `C:\\temp` prints as `C:` + a tab + `emp`. To print a real backslash you write two of them: `\"C:\\\\temp\\n\"`."
+}

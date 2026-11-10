@@ -1,0 +1,17 @@
+[
+  {
+    "kind": "choice",
+    "prompt": "Which tests are true exactly for the numbers divisible by both 3 and 5? Select all that apply.",
+    "choices": [
+      "`i % 15 == 0`",
+      "`i % 3 == 0 && i % 5 == 0`",
+      "`i % 3 == 0 || i % 5 == 0`",
+      "`i % 3 == 5`"
+    ],
+    "answer": [
+      0,
+      1
+    ],
+    "explain": "Both 3 and 5 must divide `i`: either `&&` of the two tests or one test with 15. `||` is true for numbers divisible by just one of them, such as 3 or 10. A remainder after dividing by 3 can never be 5."
+  }
+]

@@ -77,3 +77,33 @@ fn first_negative_matches_position() {
         assert_eq!(first_negative(&xs), xs.iter().position(|&x| x < 0), "{xs:?}");
     }
 }
+
+extern "C" fn t_count_only(ctx: *mut c_void, _v: i32) -> i32 {
+    let n = unsafe { &mut *(ctx as *mut usize) };
+    *n += 1;
+    0
+}
+
+#[test]
+fn single_element_and_stop_on_last() {
+    let xs = [42];
+    let mut r = Rec { seen: vec![], stop_after: 1 };
+    let n = unsafe { for_each(xs.as_ptr(), 1, t_record, &mut r as *mut Rec as *mut c_void) };
+    assert_eq!(n, 1, "a stop on the only element still counts one call");
+    assert_eq!(r.seen, [42]);
+}
+
+#[test]
+fn context_is_passed_through_unchanged() {
+    let xs = [1, 2, 3, 4];
+    let mut calls = 0usize;
+    let n = unsafe { for_each(xs.as_ptr(), xs.len(), t_count_only, &mut calls as *mut usize as *mut c_void) };
+    assert_eq!(n, 4);
+    assert_eq!(calls, 4, "the same ctx pointer must reach every callback call");
+}
+
+#[test]
+fn search_reports_index_not_value() {
+    assert_eq!(first_negative(&[0, 0, 0, -9]), Some(3));
+    assert_eq!(first_negative(&[5, i32::MIN, -1]), Some(1), "stops at the first negative");
+}

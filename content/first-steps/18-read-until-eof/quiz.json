@@ -1,0 +1,15 @@
+[
+  {
+    "kind": "predict",
+    "prompt": "The input is `-5 -2`. What does this print?",
+    "code": "int x, max = 0;\nwhile (scanf(\"%d\", &x) == 1) {\n    if (x > max) max = x;\n}\nprintf(\"max: %d\\n\", max);",
+    "choices": [
+      "max: 0",
+      "max: -2",
+      "max: -5",
+      "max: none"
+    ],
+    "answer": 0,
+    "explain": "`max` started at 0, and no negative number is bigger than 0, so it never changes. Starting from a made-up value gives a wrong answer: take the first real number as the starting max instead."
+  }
+]

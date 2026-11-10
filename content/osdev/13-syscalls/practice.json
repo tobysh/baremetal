@@ -1,0 +1,47 @@
+{
+  "kind": "predict",
+  "prompt": "`USER_TOP` is `0x7FFFFFFFFFFFFFFF`. A buggy kernel checks `ptr + len <= USER_TOP`; yours checks `ptr <= USER_TOP && len - 1 <= USER_TOP - ptr` (for `len > 0`) and tests the descriptor before the buffer. Trace the attacker's calls.",
+  "trace": [
+    {
+      "label": "buggy sum `ptr + len` for ptr = `0xFFFFFFFFFFFFFFF0`, len = `0x20` (64-bit wrap)",
+      "choices": [
+        "0x10",
+        "0x110",
+        "0x20",
+        "0x1000000000000010"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[USER_TOP - ptr] for ptr = `0x7FFFFFFFFFFFFFF0` (a valid user address)",
+      "choices": [
+        "0x0F",
+        "0x10",
+        "0x7FFFFFFFFFFFFFF0",
+        "0x1F"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[return value] of `write(1, 0x7FFFFFFFFFFFFFF0, 0x20)`: the range needs 0x1F bytes past ptr but only 0x0F remain",
+      "choices": [
+        "-14",
+        "-9",
+        "-22",
+        "32"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[return value] of `write(7, buf_in_user_space, 4)` with a perfectly good buffer",
+      "choices": [
+        "-14",
+        "-9",
+        "-22",
+        "4"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "The buggy sum wraps past 2^64 to 0x10, which looks small, so a kernel pointer slips through. The subtraction form never overflows: USER_TOP - ptr is 0x0F, while len - 1 is 0x1F, so the range is rejected with -EFAULT (-14). A bad descriptor is reported first as -EBADF (-9) because you check fd before the buffer. -EINVAL (-22) is for bad argument values, and -ENOSYS (-38) is only for unknown syscall numbers."
+}

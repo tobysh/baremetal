@@ -1,3 +1,6 @@
+// No scaffolding: all three functions are yours. Remember the NUL counts
+// inside `cap`, and dup_bytes / free_bytes must agree on the allocation.
+
 unsafe fn write_decimal(buf: *mut u8, cap: usize, n: i64) -> isize {
     0
 }

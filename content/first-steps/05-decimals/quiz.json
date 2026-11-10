@@ -20,5 +20,21 @@
     ],
     "caseSensitive": true,
     "explain": "`%f` prints a floating-point number and `.2` fixes two digits after the point."
+  },
+  {
+    "kind": "choice",
+    "prompt": "Which expressions give 3.5 for 7 divided by 2? Select all that apply.",
+    "choices": [
+      "`7 / 2.0`",
+      "`7.0 / 2`",
+      "`7 / 2`",
+      "`(double)7 / 2`"
+    ],
+    "answer": [
+      0,
+      1,
+      3
+    ],
+    "explain": "If at least one side is a `double`, C divides as decimals. `7 / 2` has two ints, so it cuts off the fraction and gives 3. The cast `(double)7` turns the 7 into a decimal before dividing."
   }
 ]

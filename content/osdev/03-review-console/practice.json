@@ -1,0 +1,57 @@
+{
+  "kind": "predict",
+  "prompt": "`console_putc` mirrors every character to the serial port and the screen, and adds a `\\r` on the serial side before each `\\n`. Predict what `console_puts(\"a\\nb\")` and the number printers do.",
+  "trace": [
+    {
+      "label": "Bytes sent to the serial port",
+      "choices": [
+        "3",
+        "4",
+        "5",
+        "6"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Characters passed to `term_putc`",
+      "choices": [
+        "3",
+        "4",
+        "5",
+        "2"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Output of the hex printer for 2575 (decimal)",
+      "choices": [
+        "0xa0f",
+        "0xA0F",
+        "a0f",
+        "0x0a0f"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "A decimal printer written as `while (n != 0) { ... }` with no `do`, called with 0, prints",
+      "choices": [
+        "0",
+        "Nothing at all",
+        "0x0",
+        "A crash"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Largest `uint64_t` in decimal needs a buffer of at least this many digits",
+      "choices": [
+        "16",
+        "19",
+        "20",
+        "10"
+      ],
+      "answer": 2
+    }
+  ],
+  "explain": "Serial gets a, \\r, \\n, b: four bytes, because a terminal needs the carriage return. The screen already treats \\n as 'column 0 of the next row', so it gets only a, \\n, b; sending it an extra \\r would be harmless to the cursor but wrong in principle, and the lesson forbids it. 2575 = 0xA0F, printed lowercase with a 0x prefix and no leading zeros. A plain while loop never runs for 0, which is why the digit loop is a do/while. 18446744073709551615 has 20 digits, and a smaller buffer overwrites your own stack with no warning."
+}

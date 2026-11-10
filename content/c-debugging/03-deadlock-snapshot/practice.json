@@ -1,0 +1,15 @@
+{
+  "kind": "choice",
+  "prompt": "Snapshot: T1 holds A, waits B. T2 holds B, waits C. T3 holds C, waits B. T4 holds D, waits A. Which threads form the cycle that causes the deadlock?",
+  "choices": [
+    "Thread 1",
+    "Thread 2",
+    "Thread 3",
+    "Thread 4"
+  ],
+  "answer": [
+    1,
+    2
+  ],
+  "explain": "Follow the arrows: T2 waits for C (held by T3), T3 waits for B (held by T2). That is the cycle. T1 waits for B, so it is stuck behind T2, and T4 waits for A, so it is stuck behind T1. Both are deadlocked but are victims, not the cause: fixing the lock order of T2 and T3 frees everybody."
+}

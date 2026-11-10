@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "What does this print?",
+  "code": "int x = 5;\nif (x > 3) printf(\"A\");\nif (x > 4) printf(\"B\");\nelse printf(\"C\");",
+  "choices": [
+    "AB",
+    "A",
+    "ABC",
+    "AC"
+  ],
+  "answer": 0,
+  "explain": "The first `if` stands alone and is true, so `A` prints. The second `if` starts a new decision: 5 > 4 is true, so `B` prints and the `else` is skipped."
+}

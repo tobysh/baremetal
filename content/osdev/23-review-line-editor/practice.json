@@ -1,0 +1,57 @@
+{
+  "kind": "predict",
+  "prompt": "Feed these decoded characters to the line editor in order: `a`, `b`, `c`, Backspace, Ctrl+U, Backspace, `x`, Ctrl+C, Enter. Echo rules: printable = 1 byte, backspace = `\"\\b \\b\"` (3 bytes) only if there is something to delete, Ctrl+U = 3 bytes per removed character, Ctrl+C = `\"^C\\r\\n\"`, Enter = `\"\\r\\n\"`. How many echo bytes in total have been written after each marked step?",
+  "trace": [
+    {
+      "label": "[total echo bytes] after `a`, `b`, `c`, Backspace",
+      "choices": [
+        "6",
+        "4",
+        "5",
+        "3"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[total echo bytes] after Ctrl+U (the line was `ab`)",
+      "choices": [
+        "12",
+        "8",
+        "9",
+        "10"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[total echo bytes] after the Backspace on the now empty line",
+      "choices": [
+        "12",
+        "15",
+        "9",
+        "13"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[total echo bytes] after `x` and Ctrl+C",
+      "choices": [
+        "17",
+        "16",
+        "15",
+        "13"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[total echo bytes] after Enter",
+      "choices": [
+        "19",
+        "18",
+        "20",
+        "17"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "a, b, c echo 3 bytes and the Backspace adds `\\b \\b` = 3, so 6 (buffer `ab`). Ctrl+U removes two characters, one `\\b \\b` each = 6 more, 12. Backspace on an empty line echoes nothing, otherwise the cursor would eat the prompt: still 12. `x` is 1 byte and Ctrl+C prints `^C\\r\\n` = 4 bytes, so 17. Enter adds `\\r\\n` = 2 for 19. The echo must always mirror the buffer, which is why ignored input is not echoed."
+}

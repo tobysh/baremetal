@@ -1,0 +1,35 @@
+{
+  "kind": "predict",
+  "prompt": "An out-parameter must be written through, not replaced. Follow this call.",
+  "code": "void fill(int *out) {\n    out = malloc(sizeof *out);\n    *out = 5;\n}\n\nint x = 1;\nfill(&x);",
+  "trace": [
+    {
+      "label": "After `fill(&x)`, `x` is",
+      "choices": [
+        "1",
+        "5",
+        "undefined"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "The int that `malloc` returned is",
+      "choices": [
+        "stored in x",
+        "leaked: nobody holds its address",
+        "freed when fill returns"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "To make `x` become 5, `fill` should",
+      "choices": [
+        "write `*out = 5;` and not reassign `out`",
+        "write `**out = 5;`",
+        "call `free(out)` first"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "`out` is a local copy of the address. `out = malloc(...)` points the copy somewhere new and `*out = 5` writes to that new block; `x` is untouched and the block leaks. Writing `*out = 5` straight away follows the copy to `x` itself."
+}

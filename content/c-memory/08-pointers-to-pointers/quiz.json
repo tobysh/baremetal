@@ -1,0 +1,28 @@
+[
+  {
+    "kind": "choice",
+    "prompt": "A function must make the caller's `name` point at a different string. Which call and parameter type do that?",
+    "code": "const char *name = \"Bob\";\n/* want: name now points at \"Ada\" */",
+    "choices": [
+      "`rename_it(name)` with parameter `const char *p`",
+      "`rename_it(&name)` with parameter `const char **pp`",
+      "`rename_it(*name)` with parameter `char c`",
+      "`rename_it(&name)` with parameter `const char *p`"
+    ],
+    "answer": 1,
+    "explain": "To change a pointer variable you pass its address, so the parameter is a pointer to a pointer: `*pp = \"Ada\";`. Passing `name` itself only hands over a copy of the pointer, and assigning to that copy changes nothing outside."
+  },
+  {
+    "kind": "predict",
+    "prompt": "What does this print?",
+    "code": "void swap_ptrs(int *a, int *b) {\n    int *t = a;\n    a = b;\n    b = t;\n}\n\nint x = 1, y = 2;\nint *p = &x, *q = &y;\nswap_ptrs(p, q);\nprintf(\"%d %d\", *p, *q);",
+    "choices": [
+      "2 1",
+      "1 2",
+      "1 1",
+      "2 2"
+    ],
+    "answer": 1,
+    "explain": "`a` and `b` are copies of `p` and `q`. Swapping the copies leaves the originals pointing where they did. Swapping `x` and `y` needs `*a`/`*b`; swapping `p` and `q` needs `int **`."
+  }
+]

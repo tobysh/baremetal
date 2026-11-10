@@ -1,0 +1,36 @@
+{
+  "kind": "predict",
+  "prompt": "`reverse_prefix(b, 4)` runs the two-index swap loop on the first four characters. Follow it.",
+  "code": "char b[] = \"abcdef\";\nsize_t left = 0, right = 3;\nwhile (left < right) {\n    char tmp = b[left];\n    b[left] = b[right];\n    b[right] = tmp;\n    left++;\n    right--;\n}",
+  "trace": [
+    {
+      "label": "After the first swap, `b[0]` is",
+      "choices": [
+        "'a'",
+        "'d'",
+        "'c'"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "The loop swaps this many pairs in total",
+      "choices": [
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`b` ends as",
+      "choices": [
+        "\"fedcba\"",
+        "\"dcbaef\"",
+        "\"dbcaef\"",
+        "\"abcdef\""
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "The pairs are (0,3) and (1,2). After that left is 2 and right is 1, so `left < right` fails. Only the first four characters move: `ef` stays where it was, which is what separates a prefix reverse from a full reverse."
+}

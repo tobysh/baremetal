@@ -1,3 +1,6 @@
+// Supplied scaffolding: the Visit type and the Stats and Search structs.
+// Your part: for_each, collect_stats, stats_of, search_negative and first_negative (the stubs below).
+
 use std::ffi::c_void;
 
 pub type Visit = extern "C" fn(ctx: *mut c_void, value: i32) -> i32;
@@ -17,10 +20,13 @@ pub struct Search {
 
 /// Calls cb(ctx, x) for each element until cb returns non-zero.
 /// Returns the number of calls, or -1 for a null `xs` with len > 0.
+// Your part. Document the contract with a `# Safety` section and put a
+// `// SAFETY:` comment above each unsafe block you write.
 unsafe fn for_each(xs: *const i32, len: usize, cb: Visit, ctx: *mut c_void) -> isize {
     0
 }
 
+// Your part: cast ctx back to *mut Stats, update it, return 0.
 extern "C" fn collect_stats(ctx: *mut c_void, v: i32) -> i32 {
     0
 }
@@ -29,6 +35,7 @@ fn stats_of(xs: &[i32]) -> Stats {
     Stats { count: 0, sum: 0, max: None }
 }
 
+// Your part: cast ctx back to *mut Search; return 1 to stop at a negative.
 extern "C" fn search_negative(ctx: *mut c_void, v: i32) -> i32 {
     0
 }

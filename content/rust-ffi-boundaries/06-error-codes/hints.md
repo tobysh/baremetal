@@ -1,5 +1,7 @@
-`checked_div`: `a.checked_div(b)` returns `None` for both zero divisor and overflow, so test `b == 0` first, then use `None` as `OVERFLOW`.
+Every function follows the same rhythm: check pointers, check the input, do the work, and write `*out` only at the very end on success.
 ===
-`parse_u8`: first check every byte with `is_ascii_digit()` (any non-digit is `BAD_INPUT`, even after a large prefix), then accumulate in a `u32` and return `OVERFLOW` as soon as it exceeds 255 so it never grows large.
+`checked_div`: `i32::checked_div` returns `None` for both a zero divisor and `MIN / -1`, so it cannot tell you which code to return on its own. Test the divisor yourself, then let `None` mean overflow.
 ===
-`guarded`: `match std::panic::catch_unwind(|| f(arg)) { Ok(v) => { *out = v; OK } Err(_) => PANICKED }`.
+`parse_u8`: first look at every byte (any non-digit is `BAD_INPUT`, even after a huge prefix), then accumulate in a wider integer and report `OVERFLOW` as soon as the value passes 255, so a 30-digit string never overflows the accumulator. Leading zeros are fine.
+===
+`guarded`: look at `std::panic::catch_unwind` and what it returns when the closure panics. Remember `out` must stay untouched in that case, and the null check comes before `f` is called at all.

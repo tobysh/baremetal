@@ -1,0 +1,47 @@
+{
+  "kind": "predict",
+  "prompt": "Regions (end exclusive): A = `[0x80000000, 0x80004000)` writable, B = `[0x90000000, 0x90002000)` read-only. Page-fault error bits: 0 present, 1 write, 4 instruction fetch. Predict the handler's decision.",
+  "trace": [
+    {
+      "label": "[page address] passed to `map_page` for a fault at `0x80003008`, error `0x2` (write, not present)",
+      "choices": [
+        "0x80003000",
+        "0x80000000",
+        "0x80003008",
+        "0x80004000"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "fault at `0x90000010`, error `0x0` (read of a missing page in region B)",
+      "choices": [
+        "Accept: map read-only",
+        "Accept: map writable",
+        "Refuse: region is read-only",
+        "Refuse: not present"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "fault at `0x90000010` again, error `0x3` (write, page present)",
+      "choices": [
+        "Accept: map writable",
+        "Accept: remap it",
+        "Refuse: protection violation",
+        "Refuse: out of memory"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "fault at `0x80004000`, error `0x2` (first address after region A)",
+      "choices": [
+        "Refuse: outside every region",
+        "Accept: map the page",
+        "Accept: last page of A",
+        "Refuse: out of memory"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "The handler maps the faulting address rounded down to a page boundary (0x80003008 & ~0xFFF = 0x80003000), not the region start, or the next page would fault forever. A read in a read-only region is fine and gets a page with the writable bit clear. The later write faults with bit 0 set, meaning the page is already present: allocating anything cannot fix a protection fault, so it is refused. Regions are half-open, so 0x80004000 is the first address outside A. Every accepted frame must be zeroed first so old data does not leak."
+}

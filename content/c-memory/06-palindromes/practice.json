@@ -1,0 +1,12 @@
+{
+  "kind": "choice",
+  "prompt": "Why does the lesson cast to `unsigned char` in `tolower((unsigned char)s[i])`?",
+  "choices": [
+    "A plain `char` can be negative for bytes above 127, and `tolower` only accepts values in the `unsigned char` range or EOF",
+    "It makes `tolower` return an unsigned result",
+    "`tolower` refuses to work on a `char` that is already uppercase",
+    "It makes the comparison faster by avoiding a sign check"
+  ],
+  "answer": 0,
+  "explain": "The `<ctype.h>` functions take an `int` that must be representable as `unsigned char` (or be EOF). On many platforms `char` is signed, so a byte such as 0xE9 becomes a negative `int`, which is undefined behaviour. The cast is about the argument, not the result or the speed."
+}

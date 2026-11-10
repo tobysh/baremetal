@@ -1,0 +1,43 @@
+{
+  "kind": "predict",
+  "prompt": "`reverse_array` runs with `rdi = 0x1000` and `rsi = 4` (four 8-byte longs). Follow the two pointers.",
+  "code": "lea rsi, [rdi + rsi*8 - 8]\n.Lloop:\ncmp rdi, rsi\njae .Ldone\nmov rax, [rdi]\nmov rcx, [rsi]\nmov [rdi], rcx\nmov [rsi], rax\nadd rdi, 8\nsub rsi, 8\njmp .Lloop\n.Ldone:\nret",
+  "trace": [
+    {
+      "label": "[rsi] after `lea rsi, [rdi + rsi*8 - 8]`",
+      "choices": [
+        "0x1018",
+        "0x1020",
+        "0x1008"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[rdi] after the first `add rdi, 8`",
+      "choices": [
+        "0x1001",
+        "0x1008",
+        "0x1010"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[rsi] after the second `sub rsi, 8`",
+      "choices": [
+        "0x1008",
+        "0x1010",
+        "0x1000"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[jump] second `jae .Ldone` (rdi = 0x1010, rsi = 0x1008)",
+      "choices": [
+        "taken",
+        "not taken"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "`lea` only computes an address: 0x1000 + 4*8 - 8 = 0x1018, the address of `a[3]`; it reads no memory. Each round swaps the two ends and moves the pointers 8 bytes inward. After two swaps rdi has passed rsi, so `jae` ends the loop without swapping the middle again."
+}

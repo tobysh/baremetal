@@ -1,0 +1,47 @@
+{
+  "kind": "predict",
+  "prompt": "A ring buffer with `RING_SIZE = 16`, `uint32_t head` and `tail` that count forever. `ring_push` drops the byte and returns 0 when `head - tail == RING_SIZE`. Work through the wrap-around.",
+  "trace": [
+    {
+      "label": "[bytes in the ring] for `head = 3` and `tail = 0xFFFFFFFE` (head wrapped past 2^32, tail not yet)",
+      "choices": [
+        "5",
+        "3",
+        "0xFFFFFFFB",
+        "16"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[array slot] used by a push when `head = 0xFFFFFFFF` (`head & 15`)",
+      "choices": [
+        "15",
+        "0",
+        "16",
+        "31"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[array slot] used by the next push, when `head` has wrapped to 0",
+      "choices": [
+        "0",
+        "15",
+        "16",
+        "1"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[bytes in the ring] after 4 push attempts starting from `head = 0xFFFFFFFE`, `tail = 0xFFFFFFF0` (14 stored)",
+      "choices": [
+        "16",
+        "18",
+        "14",
+        "2"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "Unsigned subtraction is modular, so 3 - 0xFFFFFFFE = 5 mod 2^32 and the count is still right after the counters wrap. Because 16 divides 2^32, the slot index (head & 15) goes 15, then 0 smoothly across the wrap; with a size that was not a power of two the sequence would jump. Starting with 14 bytes stored, two pushes fit (count 16) and the other two are dropped without moving head, so the ring holds 16, never 18: a full ring must refuse bytes instead of overwriting the oldest keystrokes."
+}

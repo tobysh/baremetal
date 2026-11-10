@@ -67,5 +67,12 @@
       }
     ],
     "explain": "The call copies 5 into bump's parameter. bump changes its own copy to 6, then its frame is discarded. main's n was never touched, so it prints 5."
+  },
+  {
+    "kind": "bug",
+    "prompt": "`cube` should return x times x times x. Which line is wrong?",
+    "code": "int cube(int x) {\n    x * x * x;\n}",
+    "bugLine": 2,
+    "explain": "The calculation happens but its result is thrown away. The function needs `return x * x * x;` to hand the value back to the caller."
   }
 ]

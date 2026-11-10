@@ -1,0 +1,57 @@
+{
+  "kind": "predict",
+  "prompt": "Build the flat 32-bit data segment with base `0x11223344`, limit `0x12345`, access `0x92`, flags `0xC`. Then split an IDT handler address and size the tables.",
+  "trace": [
+    {
+      "label": "[byte 6] of the 8-byte GDT entry (`flags << 4 | limit bits 19:16`)",
+      "choices": [
+        "0xC1",
+        "0x1C",
+        "0x12",
+        "0xC2"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[byte 4] (base bits 23:16)",
+      "choices": [
+        "0x11",
+        "0x22",
+        "0x33",
+        "0x44"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[byte 7] (base bits 31:24)",
+      "choices": [
+        "0x11",
+        "0x44",
+        "0x22",
+        "0x01"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Handler `0xFFFFFFFF8040ABCD`: the value stored in IDT gate bytes 6-7",
+      "choices": [
+        "0xABCD",
+        "0x8040",
+        "0xFFFF",
+        "0x4080"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`idt_pointer.size` for 256 gates of 16 bytes",
+      "choices": [
+        "4096",
+        "4095",
+        "256",
+        "255"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Byte 6 packs the flags nibble above the top four limit bits: 0xC << 4 | 0x1 = 0xC1 (limit 0x12345 has 0x1 above its low 16 bits). Base 0x11223344 is scattered: bits 7:0 = 0x44 in byte 2, 15:8 = 0x33 in byte 3, 23:16 = 0x22 in byte 4, 31:24 = 0x11 in byte 7. An IDT gate splits the handler into 0xABCD (bytes 0-1), 0x8040 (bytes 6-7) and 0xFFFFFFFF (bytes 8-11). The pointer's size field is the offset of the last valid byte, 256 * 16 - 1 = 4095; giving 4096 lets the CPU read one byte past the table."
+}

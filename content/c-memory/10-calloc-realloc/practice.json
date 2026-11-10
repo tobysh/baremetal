@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "`vec_push` must leave the vector valid when `realloc` fails. Tap the line that loses the old block.",
+  "code": "int vec_push(IntVec *v, int value) {\n    if (v->len == v->cap) {\n        size_t new_cap = v->cap == 0 ? 4 : v->cap * 2;\n        v->data = realloc(v->data, new_cap * sizeof *v->data);\n        v->cap = new_cap;\n    }\n    v->data[v->len++] = value;\n    return 0;\n}",
+  "bugLine": 4,
+  "explain": "When `realloc` fails it returns NULL and leaves the old block alive. Assigning that straight back into `v->data` overwrites the only pointer to the old block, so it leaks, and the vector now claims a capacity it does not have. Store the result in a temporary, check it, and only then update `data` and `cap`."
+}

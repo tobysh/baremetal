@@ -1,0 +1,37 @@
+[
+  {
+    "kind": "choice",
+    "prompt": "Which statements about a block returned by `malloc` are true?",
+    "choices": [
+      "It stays allocated after the function that called `malloc` returns",
+      "Its bytes are zero",
+      "After `free(p)`, `p` still holds the old address",
+      "It is freed automatically when the pointer variable goes out of scope"
+    ],
+    "answer": [
+      0,
+      2
+    ],
+    "explain": "The heap is not tied to stack frames, so the block lives until `free`. `malloc` does not clear memory (that is `calloc`). `free` takes the address by value, so `p` keeps its now-dangling value; leaving scope frees nothing, it just loses the pointer (a leak)."
+  },
+  {
+    "kind": "bug",
+    "prompt": "This function returns a greeting. Tap the line that hands back memory that is about to die.",
+    "code": "char *make_greeting(void) {\n    char buf[16];\n    strcpy(buf, \"hello\");\n    return buf;\n}",
+    "bugLine": 4,
+    "explain": "`buf` lives in the stack frame of `make_greeting`. Once the function returns, that memory is reused, so the caller receives a dangling pointer. Use `malloc` (and let the caller free it), or have the caller pass in a buffer."
+  },
+  {
+    "kind": "predict",
+    "prompt": "On a 64-bit machine, what does `sizeof p` give here?",
+    "code": "int *p = malloc(3 * sizeof *p);\nprintf(\"%zu\", sizeof p);",
+    "choices": [
+      "12",
+      "8",
+      "4",
+      "3"
+    ],
+    "answer": 1,
+    "explain": "`sizeof p` is the size of the pointer variable itself, 8 bytes, not of the block it points to. The block holds 3 * `sizeof *p` = 12 bytes, but C does not remember that size for you: keep it in a variable."
+  }
+]

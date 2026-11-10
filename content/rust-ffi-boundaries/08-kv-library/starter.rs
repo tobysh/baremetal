@@ -1,3 +1,5 @@
+// Supplied scaffolding: Store (with its Drop leak counter), Entry, EntryFn and
+// the status codes. Do not change them.
 use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::ffi::c_void;
@@ -38,6 +40,8 @@ pub struct Entry {
 
 pub type EntryFn = extern "C" fn(ctx: *mut c_void, e: *const Entry) -> i32;
 
+// Your part: the six functions below, plus any private helper you like (for
+// example one shared argument check). Add `// SAFETY:` comments.
 fn kv_new() -> *mut Store {
     std::ptr::null_mut()
 }

@@ -1,0 +1,44 @@
+{
+  "kind": "predict",
+  "prompt": "`sum_array` runs with `rdi` pointing at `{10, 20, 30}` and `rsi = 3`. Follow the loop.",
+  "code": "xor eax, eax\nxor ecx, ecx\n.Lloop:\ncmp rcx, rsi\njae .Ldone\nadd rax, [rdi + rcx*8]\ninc rcx\njmp .Lloop\n.Ldone:\nret",
+  "trace": [
+    {
+      "label": "[rax] after the first `add rax, [rdi + rcx*8]`",
+      "choices": [
+        "0",
+        "10",
+        "30"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[rcx] after the first `inc rcx`",
+      "choices": [
+        "0",
+        "1",
+        "8"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "[offset] bytes from `rdi` read by the third `add` (rcx = 2)",
+      "choices": [
+        "2",
+        "8",
+        "16"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "[rax] when `ret` runs",
+      "choices": [
+        "30",
+        "50",
+        "60"
+      ],
+      "answer": 2
+    }
+  ],
+  "explain": "The `*8` scales the index by the element size, so element 2 is 16 bytes past `rdi`. The loop stops when `rcx` reaches `rsi` (unsigned compare), which also makes `n = 0` skip the body without touching memory. 10 + 20 + 30 = 60."
+}

@@ -1,0 +1,47 @@
+{
+  "kind": "predict",
+  "prompt": "Work through the numbers a loader handles. The ELF header has `e_phoff = 0x40` and `e_phnum = 2` (each program header is 56 bytes); the data segment has `p_filesz = 8` and `p_memsz = 0x20`. All fields are little endian.",
+  "trace": [
+    {
+      "label": "[end of the program header table] as a file offset (decimal): `e_phoff + e_phnum * 56`",
+      "choices": [
+        "176",
+        "112",
+        "120",
+        "128"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[bytes zeroed] after copying a data segment with filesz 8 and memsz 0x20 (decimal)",
+      "choices": [
+        "24",
+        "8",
+        "32",
+        "40"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[e_machine] read from the header bytes `3e 00` at offset 18 (decimal)",
+      "choices": [
+        "62",
+        "15872",
+        "2",
+        "0"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[memsz - filesz] as `uint64_t` for a hostile segment with filesz `0x30` and memsz `0x20`",
+      "choices": [
+        "0xFFFFFFFFFFFFFFF0",
+        "0x10",
+        "0",
+        "-0x10 (an error is raised)"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "The table ends at 0x40 + 2*56 = 176 bytes into the file, so a file shorter than that must be rejected (using subtraction, since phoff is attacker controlled). The zero tail is memsz - filesz = 0x18 = 24 bytes, the bss that is not stored in the file. Little endian means `3e 00` is 0x003E = 62, not 0x3E00. Unsigned subtraction never fails: it wraps to a huge count, so the loader would zero almost all of memory. That is why filesz <= memsz is checked for every segment before anything is copied."
+}

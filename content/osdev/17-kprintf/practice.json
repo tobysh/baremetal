@@ -1,0 +1,47 @@
+{
+  "kind": "predict",
+  "prompt": "Predict what `ksnprintf` does for `ksnprintf(buf, 8, \"%05d|%x\", -42, 255)` and related calls. The contract follows C's `snprintf`.",
+  "trace": [
+    {
+      "label": "[text] produced by `%05d` with -42 (width counts the sign)",
+      "choices": [
+        "-0042",
+        "00-42",
+        "-00042",
+        "0-042"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[text] produced by `%5d` with 42",
+      "choices": [
+        "\"   42\"",
+        "\"00042\"",
+        "\"42   \"",
+        "\"42\""
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[return value] of the call above (full output is `-0042|ff`)",
+      "choices": [
+        "8",
+        "7",
+        "9",
+        "0"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[strlen(buf)] afterwards (size 8 leaves room for the NUL)",
+      "choices": [
+        "7",
+        "8",
+        "9",
+        "6"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "Zero padding goes after the sign, so -42 with width 5 is `-0042`. `%5d` pads with spaces on the left. The full output `-0042|ff` is 8 characters, and snprintf always returns the length the output would have had, so the return value is 8 even though the buffer holds only size - 1 = 7 characters plus the NUL (`-0042|f`). Callers compare the return value with `size` to detect truncation, so it must keep counting after the buffer is full."
+}

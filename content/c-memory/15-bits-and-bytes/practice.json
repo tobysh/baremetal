@@ -1,0 +1,35 @@
+{
+  "kind": "predict",
+  "prompt": "Shifts on signed and unsigned values behave differently. Work out each result (32-bit `int`, gcc on x86-64).",
+  "code": "int x = -8;\nunsigned u = 0xFFFFFFF8u;\nint a = x >> 1;\nunsigned b = u >> 1;\nunsigned c = (0x12345678u >> 8) & 0xFF;",
+  "trace": [
+    {
+      "label": "`a` is",
+      "choices": [
+        "-4",
+        "2147483644",
+        "-8"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`b` is",
+      "choices": [
+        "-4",
+        "2147483644",
+        "4"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`c` is",
+      "choices": [
+        "0x12",
+        "0x56",
+        "0x78"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Right-shifting a negative signed value copies the sign bit on gcc (arithmetic shift, implementation-defined by the standard), so -8 becomes -4. The same bits as an unsigned number shift in a zero and give 0x7FFFFFFC. For `c`, shifting right by 8 drops the lowest byte, so 0x56 ends up in the low byte and the mask keeps just it."
+}

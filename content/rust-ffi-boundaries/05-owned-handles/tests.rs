@@ -82,3 +82,16 @@ fn every_handle_is_freed_exactly_once() {
     }
     assert_eq!(live(), 0, "leaked or over-freed handles");
 }
+
+#[test]
+fn into_inner_returns_total_and_frees() {
+    assert_eq!(live(), 0);
+    unsafe {
+        let c = counter_new(4);
+        counter_bump(c);
+        counter_bump(c);
+        assert_eq!(live(), 1);
+        assert_eq!(counter_into_inner(c), 8);
+    }
+    assert_eq!(live(), 0, "into_inner must free the handle");
+}

@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "The input is `4 7 x 9`. How many numbers does this loop count?",
+  "code": "int x, count = 0;\nwhile (scanf(\"%d\", &x) == 1) {\n    count++;\n}\nprintf(\"%d\\n\", count);",
+  "choices": [
+    "2",
+    "3",
+    "4",
+    "1"
+  ],
+  "answer": 0,
+  "explain": "`scanf` reads 4 and 7, then meets `x`, which is not a number, and returns 0. The loop condition is false and the loop ends, so 9 is never reached. The same happens at the end of input."
+}

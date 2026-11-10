@@ -1,0 +1,40 @@
+{
+  "kind": "predict",
+  "prompt": "Follow the leap year test for `year = 1900`.",
+  "code": "(year % 4 == 0 && year % 100 != 0) || year % 400 == 0",
+  "trace": [
+    {
+      "label": "`year % 4 == 0` is",
+      "choices": [
+        "true",
+        "false"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "`year % 100 != 0` is",
+      "choices": [
+        "true",
+        "false"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`year % 400 == 0` is",
+      "choices": [
+        "true",
+        "false"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "So the whole test is",
+      "choices": [
+        "true",
+        "false"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "1900 is divisible by 4 and by 100, so `year % 100 != 0` is false and the `&&` side fails. It is not divisible by 400 either, so 1900 is not a leap year. `&&` needs both sides true, `||` needs just one."
+}

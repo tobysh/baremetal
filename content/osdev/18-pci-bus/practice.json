@@ -1,0 +1,47 @@
+{
+  "kind": "predict",
+  "prompt": "Address PCI configuration space with the layout `enable(31) | bus(23..16) | device(15..11) | function(10..8) | register(7..2)`.",
+  "trace": [
+    {
+      "label": "[value written to 0xCF8] to read offset `0x0E` of bus 0, device 3, function 1",
+      "choices": [
+        "0x8000190C",
+        "0x8000190E",
+        "0x80000B0C",
+        "0x0000190C"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[shift] applied to the dword to extract the 16-bit field at offset `0x0E`",
+      "choices": [
+        "16",
+        "0",
+        "8",
+        "24"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[class code] from the dword at offset `0x08` equal to `0x03000002` (class is the top byte)",
+      "choices": [
+        "0x03",
+        "0x02",
+        "0x00",
+        "0x0300"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "[BAR size] of a memory BAR whose all-ones write reads back `0xFFFF0008` (`~(mask & ~0xF) + 1`)",
+      "choices": [
+        "64 KiB",
+        "16 MiB",
+        "4 KiB",
+        "0x8"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "The address is 0x80000000 | (3 << 11) | (1 << 8) | (0x0E & 0xFC) = 0x8000190C: the enable bit, device 3 in bits 11 to 15, function 1 in bits 8 to 10, and the register with its low two bits cleared, because reads are whole aligned dwords. The 16-bit field at offset 2 within that dword is shifted by (0x0E & 2) * 8 = 16. In the dword at 0x08 the layout is revision (byte 0), prog-if, subclass, class (byte 3), so 0x03 is a display controller. For the BAR, the bits the device does not implement read as 0: masking off the four flag bits gives 0xFFFF0000, the complement plus one is 0x10000, which is 64 KiB."
+}

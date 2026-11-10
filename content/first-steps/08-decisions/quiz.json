@@ -14,5 +14,31 @@
     ],
     "caseSensitive": true,
     "explain": "`==` compares, `=` assigns. Writing `=` inside an `if` is a classic bug."
+  },
+  {
+    "kind": "predict",
+    "prompt": "What does this print?",
+    "code": "int n = 3;\nif (n = 5) printf(\"five\");\nelse printf(\"other\");",
+    "choices": [
+      "five",
+      "other",
+      "Nothing, it will not compile",
+      "Nothing prints"
+    ],
+    "answer": 0,
+    "explain": "A single `=` assigns: it puts 5 into `n`, and the value of that assignment (5) counts as true. To compare you need `==`. Most compilers warn about this mistake, so read warnings."
+  },
+  {
+    "kind": "predict",
+    "prompt": "What does this print?",
+    "code": "int n = 8;\nprintf(\"%d\", n % 2 == 0);",
+    "choices": [
+      "1",
+      "0",
+      "true",
+      "8"
+    ],
+    "answer": 0,
+    "explain": "C has no separate true/false printing here: a comparison gives the number 1 when it is true and 0 when it is false. 8 % 2 is 0, so `0 == 0` is true and prints 1. That is why `return n % 2 == 0;` works for `is_even`."
   }
 ]

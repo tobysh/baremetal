@@ -14,5 +14,18 @@
     "code": "int i = 1;\nwhile (i <= 3) {\n    printf(\"%d\\n\", i);\n    i--;\n}",
     "bugLine": 4,
     "explain": "`i--` moves `i` away from 3, so `i <= 3` is always true. It should be `i++`."
+  },
+  {
+    "kind": "predict",
+    "prompt": "What does this print?",
+    "code": "int i = 0;\nwhile (i < 3) {\n    printf(\"%d \", i);\n    i = i + 1;\n}",
+    "choices": [
+      "0 1 2",
+      "1 2 3",
+      "0 1 2 3",
+      "1 2"
+    ],
+    "answer": 0,
+    "explain": "`i` starts at 0, and the loop runs while `i < 3`. It prints 0, 1 and 2; when `i` becomes 3 the test is false and the loop ends before printing 3."
   }
 ]

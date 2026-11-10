@@ -1,0 +1,21 @@
+[
+  {
+    "kind": "choice",
+    "prompt": "What is the difference between `break` and `continue` in a loop?",
+    "choices": [
+      "`break` leaves the loop; `continue` skips to the next pass",
+      "`break` skips to the next pass; `continue` leaves the loop",
+      "Both stop the program",
+      "They are the same; only the spelling differs"
+    ],
+    "answer": 0,
+    "explain": "`break` ends the loop completely. `continue` ends only the current pass and goes on to the next one."
+  },
+  {
+    "kind": "bug",
+    "prompt": "This loop should stop after `i` reaches 5, but it never ends. Which line causes it?",
+    "code": "int i = 0;\nwhile (i < 5) {\n    if (i == 2) continue;\n    i++;\n}",
+    "bugLine": 3,
+    "explain": "When `i` is 2, `continue` jumps back to the top before `i++` runs, so `i` stays 2 forever. In a `while` loop, make sure the counter changes before you `continue`."
+  }
+]

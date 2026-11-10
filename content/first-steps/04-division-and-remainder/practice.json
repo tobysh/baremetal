@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This should print 3 minutes 20 seconds for 200 seconds in total. Which line is wrong?",
+  "code": "int total_seconds = 200;\nint minutes = total_seconds / 60;\nint seconds = total_seconds / 60;\nprintf(\"%d min %d sec\\n\", minutes, seconds);",
+  "bugLine": 3,
+  "explain": "`/` gives how many whole 60s fit (3). The seconds left over are the remainder, so the line should use `%`: `total_seconds % 60` is 20. With `/` it would print `3 min 3 sec`."
+}

@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "What does this print?",
+  "code": "int n = 2;\nswitch (n) {\n    case 1: printf(\"one\");\n    case 2: printf(\"two\");\n    case 3: printf(\"three\"); break;\n    default: printf(\"other\");\n}",
+  "choices": [
+    "twothree",
+    "two",
+    "twothreeother",
+    "three"
+  ],
+  "answer": 0,
+  "explain": "A `switch` jumps to the matching `case` and keeps running downwards until a `break`. There is no `break` after `two`, so it falls through into `three`, where `break` stops it."
+}

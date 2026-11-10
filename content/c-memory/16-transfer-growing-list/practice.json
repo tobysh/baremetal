@@ -1,0 +1,12 @@
+{
+  "kind": "choice",
+  "prompt": "The solution counts values above the average with `(long long)x * count > sum`. Why not `x > sum / count`?",
+  "choices": [
+    "Integer division truncates: with an average of 2.5, `sum / count` is 2 and a value of 2 would wrongly count as above average",
+    "Division by `count` is undefined for any non-zero count",
+    "`x > sum / count` would compare a pointer with an int",
+    "Multiplying is required by `scanf`"
+  ],
+  "answer": 0,
+  "explain": "The task asks for the exact average. Multiplying both sides by `count` keeps everything in whole numbers and avoids the rounding, and `long long` stops the product overflowing an `int`."
+}

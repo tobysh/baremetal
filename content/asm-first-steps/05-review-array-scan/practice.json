@@ -1,0 +1,12 @@
+{
+  "kind": "choice",
+  "prompt": "`count_negative` runs `cmp qword ptr [rdi + rcx*8], 0` for each element. Which conditional jump should skip the element when it is not negative?",
+  "choices": [
+    "`jge .Lskip` (signed greater or equal)",
+    "`jae .Lskip` (unsigned above or equal)",
+    "`jg .Lskip` (signed greater)",
+    "`je .Lskip` (equal)"
+  ],
+  "answer": 0,
+  "explain": "The elements are signed `long`s, so use the signed condition: `jge` skips 0 and positives and lets negatives fall through to `inc rax`. `jae` compares unsigned: every value is above or equal to 0, so everything would be skipped and the count is always 0. `jg` would wrongly count zeros, and `je` would only skip zeros. Signed conditions test SF/OF, unsigned ones test CF."
+}

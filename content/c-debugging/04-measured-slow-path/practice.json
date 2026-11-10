@@ -1,0 +1,12 @@
+{
+  "kind": "choice",
+  "prompt": "Profile of a word counter on 2000 words: tokenize 2000 allocs, 9 KB copied; count 362 069 compares; render 2 680 bytes copied. What should you do first?",
+  "choices": [
+    "Replace the 2000 `malloc` calls with a pool, because allocation is slow",
+    "Reduce the work in `count`, where the counters are two orders of magnitude higher",
+    "Run each stage under a stopwatch once and pick the slowest",
+    "Change nothing until a timing test fails"
+  ],
+  "answer": 1,
+  "explain": "Rank stages by their counters before touching code. 362 069 comparisons dwarf 2000 allocations, so rewriting tokenize could not move the total. Counters count a defined event and are identical on every run, which makes them better evidence than a single timing that depends on the machine."
+}

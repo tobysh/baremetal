@@ -1,0 +1,57 @@
+{
+  "kind": "predict",
+  "prompt": "Tasks A, B and C are added to slots 0, 1 and 2 and idle is running. `sched_pick_next()` runs A. A calls `sched_sleep(2)` (clock is 0). Then the following happens, each pick starting at the slot after the current task.",
+  "trace": [
+    {
+      "label": "`pick_next` right after A sleeps",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "idle"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "`sched_tick()` (clock 1), then `pick_next`",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "idle"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "`sched_tick()` (clock 2), then `pick_next`",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "idle"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "A now calls `sched_block()`, then `pick_next`",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "idle"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Five more ticks pass and nobody unblocks A. A's state",
+      "choices": [
+        "READY",
+        "SLEEPING",
+        "BLOCKED",
+        "DEAD"
+      ],
+      "answer": 2
+    }
+  ],
+  "explain": "A's wake_tick is 0 + 2 = 2. The pick after the sleep starts at slot 1 and finds B, and after one tick the search from slot 1 finds C. At clock 2 the check is wake_tick <= now, so A becomes READY; the search from C's slot (2) wraps around to slot 0 and finds A, even though B has been READY longer, because round robin follows slot order, not waiting time. After A blocks, the search from slot 0 gives B. Ticks only move SLEEPING tasks to READY: a BLOCKED task waits for an explicit sched_unblock, so it stays BLOCKED no matter how long the clock runs."
+}

@@ -1,0 +1,15 @@
+[
+  {
+    "kind": "predict",
+    "prompt": "What does this print?",
+    "code": "for (int i = 1; i <= 3; i++) {\n    for (int j = 1; j <= i; j++) {\n        printf(\"%d\", j);\n    }\n    printf(\"\\n\");\n}",
+    "choices": [
+      "`1`, then `12`, then `123` on three lines",
+      "`1`, `2`, `3` on three lines",
+      "`111`, `222`, `333` on three lines",
+      "`123` three times"
+    ],
+    "answer": 0,
+    "explain": "The inner loop counts from 1 up to `i`, so each row is one number longer than the last. The `printf(\"\\n\")` sits in the outer loop, after the inner one, so it ends each row."
+  }
+]

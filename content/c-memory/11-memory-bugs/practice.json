@@ -1,0 +1,23 @@
+{
+  "kind": "match",
+  "prompt": "Match each code fragment to the memory bug it shows.",
+  "pairs": [
+    {
+      "left": "`free(p);  free(p);`",
+      "right": "Double free"
+    },
+    {
+      "left": "`free(p);  p->count++;`",
+      "right": "Use after free"
+    },
+    {
+      "left": "`p = malloc(8);  p = malloc(16);`",
+      "right": "Memory leak"
+    },
+    {
+      "left": "`s = malloc(strlen(t));  strcpy(s, t);`",
+      "right": "Heap overflow by one byte"
+    }
+  ],
+  "explain": "Freed twice is a double free; touched after being freed is use after free; overwriting the only pointer to a live block loses it (leak). `strlen` does not count the terminator, so `strcpy` writes one byte past the block: allocate `strlen(t) + 1`."
+}

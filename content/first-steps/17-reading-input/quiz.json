@@ -1,0 +1,14 @@
+[
+  {
+    "kind": "choice",
+    "prompt": "The user types only `5`. What does `scanf(\"%d %d\", &a, &b)` return?",
+    "choices": [
+      "1, because only one number was read",
+      "2, because there are two `%d`",
+      "0, because it failed",
+      "5, the number typed"
+    ],
+    "answer": 0,
+    "explain": "`scanf` returns how many values it stored, not how many it was asked for. Comparing with `!= 2` is how you notice a missing number before you use `b`."
+  }
+]

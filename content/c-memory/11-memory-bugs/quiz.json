@@ -1,0 +1,21 @@
+[
+  {
+    "kind": "bug",
+    "prompt": "Tap the line that leaks memory on an error path.",
+    "code": "int load(const char *path) {\n    char *buf = malloc(4096);\n    FILE *f = fopen(path, \"r\");\n    if (f == NULL) {\n        return -1;\n    }\n    fread(buf, 1, 4096, f);\n    fclose(f);\n    free(buf);\n    return 0;\n}",
+    "bugLine": 5,
+    "explain": "When `fopen` fails the function returns before reaching `free(buf)`, so the 4096-byte block is lost. Free `buf` before this return (or open the file before allocating)."
+  },
+  {
+    "kind": "choice",
+    "prompt": "After `free(p);`, which of these is safe?",
+    "choices": [
+      "`printf(\"%d\", *p);`",
+      "`free(p);`",
+      "`p = NULL;`",
+      "`p[0] = 1;`"
+    ],
+    "answer": 2,
+    "explain": "Reading, writing or freeing through the old address is use after free or a double free. Assigning to the pointer variable itself touches no heap memory, and a NULL pointer makes a later `free(p)` harmless and a later dereference crash loudly instead of corrupting data."
+  }
+]
