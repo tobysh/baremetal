@@ -109,6 +109,8 @@ export type ReviewDoc = {
   _id: ObjectId; userId: ObjectId; exerciseId: string; dueAt: Date; interval: number; lastAt: Date; count: number;
   /** Highest hint number opened during the current coding review (reset when the review settles). */
   hintsInReview?: number;
+  /** Durable event outbox written atomically with a schedule change; removed after history persistence. */
+  pendingEvent?: ReviewEventDoc;
 };
 
 export type ReviewRating = "again" | "hard" | "good" | "easy";
