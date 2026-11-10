@@ -35,7 +35,7 @@ try {
     if (problems.length) {
       console.error("VERIFY FAILED:\n  " + problems.join("\n  "));
       process.exitCode = 1;
-    } else console.log("Verify OK: throwaway restore matches the backup counts (throwaway database dropped).");
+    } else console.log("Verify OK: throwaway restore matches backup counts and BSON content digests (throwaway database dropped). This does not establish snapshot consistency; pause all writers for an authoritative standalone backup.");
   }
   if (!process.exitCode) {
     const removed = await prune(name, keep);
