@@ -23,5 +23,45 @@
     "name": "W=120 N=10",
     "stdin": "120 10\n1001 10.0.0.2\n1004 10.0.0.2\n1008 10.0.0.2\n1011 10.0.0.2\n1031 10.0.0.1\n1056 10.0.0.3\n1070 10.0.0.2\n1084 10.0.0.3\n1086 10.0.0.2\n1094 10.0.0.1\n1097 10.0.0.3\n1119 10.0.0.1\n1121 10.0.0.2\n1128 10.0.0.2\n1132 10.0.0.2\n1133 10.0.0.1\n1152 10.0.0.1\n1161 10.0.0.1\n1170 10.0.0.2\n1173 10.0.0.1\n1176 10.0.0.2\n1190 10.0.0.1\n1193 10.0.0.1\n1202 10.0.0.1\n1207 10.0.0.3\n1213 10.0.0.3\n1218 10.0.0.1\n1227 10.0.0.1\n1248 10.0.0.3\n1257 10.0.0.2\n1260 10.0.0.3\n1269 10.0.0.3\n1273 10.0.0.1\n1274 10.0.0.2\n1285 10.0.0.2\n1289 10.0.0.1\n1293 10.0.0.2\n1297 10.0.0.3\n1302 10.0.0.1\n1310 10.0.0.3\n1310 10.0.0.2\n1314 10.0.0.1\n1319 10.0.0.3\n1332 10.0.0.2\n1333 10.0.0.2\n1333 10.0.0.1\n1346 10.0.0.1\n1347 10.0.0.1\n1354 10.0.0.1\n1357 10.0.0.3\n1360 10.0.0.1\n1360 10.0.0.3\n1363 10.0.0.3\n1372 10.0.0.3\n1374 10.0.0.2\n1375 10.0.0.2\n1378 10.0.0.1\n1384 10.0.0.2\n1385 10.0.0.3\n1393 10.0.0.2\n",
     "expected": "1227 10.0.0.1 count=10\n1378 10.0.0.1 count=10\n1393 10.0.0.2 count=10\n"
+  },
+  {
+    "name": "exactly W apart is outside",
+    "stdin": "10 2\n100 a\n110 a\n120 a\n",
+    "expected": "no alerts\n"
+  },
+  {
+    "name": "one second inside the window",
+    "stdin": "10 2\n100 a\n109 a\n",
+    "expected": "109 a count=2\n"
+  },
+  {
+    "name": "suppression ends exactly at t+W",
+    "stdin": "5 2\n50 k\n51 k\n52 k\n55 k\n56 k\n57 k\n61 k\n",
+    "expected": "51 k count=2\n56 k count=3\n61 k count=2\n"
+  },
+  {
+    "name": "N=1 alerts each event after suppression",
+    "stdin": "3 1\n10 x\n11 x\n12 x\n13 x\n14 y\n16 x\n",
+    "expected": "10 x count=1\n13 x count=3\n14 y count=1\n16 x count=1\n"
+  },
+  {
+    "name": "keys are independent",
+    "stdin": "20 2\n1 a\n2 b\n3 a\n4 b\n5 c\n30 c\n31 c\n",
+    "expected": "3 a count=2\n4 b count=2\n31 c count=2\n"
+  },
+  {
+    "name": "many in the same second",
+    "stdin": "60 4\n500 h\n500 h\n500 h\n500 h\n500 h\n560 h\n",
+    "expected": "500 h count=4\n"
+  },
+  {
+    "name": "no alerts below threshold",
+    "stdin": "30 5\n1 a\n2 a\n3 a\n4 a\n40 a\n41 a\n42 a\n43 a\n",
+    "expected": "no alerts\n"
+  },
+  {
+    "name": "suppressed events still count later",
+    "stdin": "4 3\n10 z\n11 z\n12 z\n13 z\n14 z\n15 z\n16 z\n",
+    "expected": "12 z count=3\n16 z count=4\n"
   }
 ]

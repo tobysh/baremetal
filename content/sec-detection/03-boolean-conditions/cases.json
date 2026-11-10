@@ -23,5 +23,40 @@
     "name": "condition: ( ( d or b ) and not a or not e ) and a and c",
     "stdin": "SEL a image endswith /nc\nSEL b user eq root\nSEL c cmd contains -e\nSEL d parent eq java\nSEL e host eq web1\nCOND ( ( d or b ) and not a or not e ) and a and c\n\nhost=web1 user=root image=/bin/ls cmd=\"ls -la\" parent=java\nhost=db2 user=root image=/bin/ls cmd=\"x -e sh\" parent=java\nhost=web1 user=alice image=/usr/bin/nc cmd=\"x -e sh\" parent=java\nhost=db2 user=root image=/bin/ls cmd=\"ls -la\" parent=sshd\nhost=web1 user=root image=/usr/bin/nc cmd=\"ls -la\" parent=java\nhost=web1 user=root image=/bin/ls cmd=\"x -e sh\" parent=sshd\nhost=db2 user=root image=/usr/bin/nc cmd=\"ls -la\" parent=java\nhost=web1 user=root image=/bin/ls cmd=\"ls -la\" parent=sshd\nhost=web1 user=alice image=/usr/bin/nc cmd=\"x -e sh\" parent=java\nhost=web1 user=root image=/usr/bin/nc cmd=\"x -e sh\" parent=java\nhost=db2 user=root image=/usr/bin/nc cmd=\"x -e sh\" parent=java\nhost=db2 user=root image=/usr/bin/nc cmd=\"ls -la\" parent=java\n",
     "expected": "event 1: no match\nevent 2: no match\nevent 3: no match\nevent 4: no match\nevent 5: no match\nevent 6: no match\nevent 7: no match\nevent 8: no match\nevent 9: no match\nevent 10: no match\nevent 11: match\nevent 12: no match\n"
+  },
+  {
+    "name": "not binds tighter than and",
+    "stdin": "SEL a user eq root\nSEL b host eq web1\nCOND not a and b\n\nuser=root host=web1\nuser=bob host=web1\nuser=bob host=db1\nuser=root host=db1\n",
+    "expected": "event 1: no match\nevent 2: match\nevent 3: no match\nevent 4: no match\n"
+  },
+  {
+    "name": "negated group",
+    "stdin": "SEL a user eq root\nSEL b host eq web1\nCOND not ( a and b )\n\nuser=root host=web1\nuser=bob host=web1\nuser=bob host=db1\nuser=root host=db1\n",
+    "expected": "event 1: no match\nevent 2: match\nevent 3: match\nevent 4: match\n"
+  },
+  {
+    "name": "double not and missing field",
+    "stdin": "SEL a image endswith /nc\nSEL b user eq root\nCOND not not a or not b\n\nimage=/usr/bin/nc user=root\nimage=/bin/ls user=root\nimage=/bin/ls\nuser=root\nhost=x\n",
+    "expected": "event 1: match\nevent 2: no match\nevent 3: match\nevent 4: no match\nevent 5: match\n"
+  },
+  {
+    "name": "deep nesting",
+    "stdin": "SEL a cmd contains alpha\nSEL b cmd contains beta\nSEL c user eq svc\nSEL d host startswith db\nCOND ( a or ( b and not ( c or d ) ) ) and not ( a and b )\n\ncmd=alpha user=svc host=db1\ncmd=\"alpha beta\" user=x host=y\ncmd=beta user=x host=web\ncmd=beta user=svc host=web\ncmd=beta user=x host=db2\ncmd=gamma user=x host=y\n",
+    "expected": "event 1: match\nevent 2: no match\nevent 3: match\nevent 4: no match\nevent 5: no match\nevent 6: no match\n"
+  },
+  {
+    "name": "or chains and no match at all",
+    "stdin": "SEL a port eq 22\nSEL b port eq 23\nSEL c port eq 3389\nCOND a or b or c\n\nport=22\nport=23\nport=3389\nport=80\nport=2222\nhost=nohost\n",
+    "expected": "event 1: match\nevent 2: match\nevent 3: match\nevent 4: no match\nevent 5: no match\nevent 6: no match\n"
+  },
+  {
+    "name": "and chain with one failing link",
+    "stdin": "SEL a u eq x\nSEL b v eq y\nSEL c w eq z\nCOND a and b and c\n\nu=x v=y w=z\nu=x v=y w=q\nu=x v=y\nw=z v=y u=x\n",
+    "expected": "event 1: match\nevent 2: no match\nevent 3: no match\nevent 4: match\n"
+  },
+  {
+    "name": "single selection in parentheses",
+    "stdin": "SEL a k contains ab\nCOND ( ( a ) )\n\nk=cabd\nk=acb\nk=ab\n",
+    "expected": "event 1: match\nevent 2: no match\nevent 3: match\n"
   }
 ]

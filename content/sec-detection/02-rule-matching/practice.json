@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This `endswith` check should be true only when `field` ends with `val`. Tap the faulty line.",
+  "code": "size_t fl = strlen(field);\nsize_t vl = strlen(val);\nint match = 0;\nif (found) {\n    match = strcmp(field + fl - vl, val) == 0;\n}",
+  "bugLine": 5,
+  "explain": "When the value is longer than the field, `fl - vl` underflows and `field + fl - vl` points before the string. Check `fl >= vl` first."
+}

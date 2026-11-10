@@ -22,6 +22,8 @@ func OnCancel(ctx context.Context, f func()) (stop func() bool) {
 	return func() bool { return false }
 }
 
+// Scaffolding supplied for you: main below only demonstrates your code.
+// Your part is the stubbed declarations above; replace their bodies.
 // Try it with Run.
 func main() {
 	ctx, abort := NewAbortable(context.Background())

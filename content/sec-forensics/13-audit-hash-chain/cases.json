@@ -53,5 +53,110 @@
     "name": "a pipe smuggled into a field",
     "stdin": "1|dave|login failed|5211dc901f41beea\n2|alice|login|2721f353fcec6be4\n3|alice|logout|x|3b207945fcfb2cf7\n4|bob|logout|9dbcb5d9dba9a5cd\n5|dave|login failed|67ea1c2e43f275af\n6|alice|login|0965599da0789bc8\n",
     "expected": "BROKEN at line 3: malformed\n"
+  },
+  {
+    "name": "a single entry",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n",
+    "expected": "chain ok: 1 entries head=c41643cfb47e9aec\n"
+  },
+  {
+    "name": "a long intact chain",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n2|dave|login failed|0ff91684c4b74bef\n3|alice|create report-7|8f9f2732423d1f53\n4|carol|grant admin to dave|fd5f509e58ecc7d1\n5|bob|export users|9d6d3409ac91af8f\n6|eve|rotate key k2|da467a7796cc8974\n7|alice|logout|76c8fe2192e05aa8\n8|dave|delete report-3|ac2d6aad51961fcf\n9|bob|login|62c23bfaf883f871\n10|carol|logout|09dab8b9fa4e9aef\n11|bob|login|3cf604e3080954bf\n12|dave|login failed|d69307d4b8702bc0\n13|alice|create report-7|58db40aafaf662d2\n14|carol|grant admin to dave|aa969af445742cd9\n15|bob|export users|bb92752db71e8e6d\n16|eve|rotate key k2|382c0464c6315a80\n17|alice|logout|185295923f4968a6\n18|dave|delete report-3|8038e7ce782e99c3\n19|bob|login|8d483ecae0cb8104\n20|carol|logout|bfe42633ac7e8d55\n21|bob|login|9d1622869c7ac8eb\n22|dave|login failed|55690478def83e23\n23|alice|create report-7|89e98cda66f30f94\n24|carol|grant admin to dave|93a751b1527b94a5\n25|bob|export users|f12ddf8013bcbdc7\n26|eve|rotate key k2|b155b08575b4bb66\n27|alice|logout|9b9e972a4cea7e2e\n28|dave|delete report-3|e4f77f5b23dd32c0\n29|bob|login|ad662ed7db61cbef\n30|carol|logout|e88909a6667eea19\n31|bob|login|fa4911a846d0db2f\n32|dave|login failed|f0f2a6722ba00399\n33|alice|create report-7|a1a61220bdafd34d\n34|carol|grant admin to dave|d71bbd2ccd65c159\n35|bob|export users|f4f6328a420c4f99\n36|eve|rotate key k2|261ea402453da5d0\n37|alice|logout|5c2c31337b2fc246\n38|dave|delete report-3|cc6606895d68b392\n39|bob|login|fb04b296ca803fe1\n40|carol|logout|445dcefa0d0bbd80\n",
+    "expected": "chain ok: 40 entries head=445dcefa0d0bbd80\n"
+  },
+  {
+    "name": "the first entry's actor was edited",
+    "stdin": "1|rob|login|c41643cfb47e9aec\n2|dave|login failed|0ff91684c4b74bef\n3|alice|create report-7|8f9f2732423d1f53\n4|carol|grant admin to dave|fd5f509e58ecc7d1\n5|bob|export users|9d6d3409ac91af8f\n6|eve|rotate key k2|da467a7796cc8974\n",
+    "expected": "BROKEN at line 1: hash mismatch\n"
+  },
+  {
+    "name": "an edit in the middle is reported at the edited line, not later",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n2|dave|login failed|0ff91684c4b74bef\n3|alice|create report-7|8f9f2732423d1f53\n4|carol|grant admin to eve|fd5f509e58ecc7d1\n5|bob|export users|9d6d3409ac91af8f\n6|eve|rotate key k2|da467a7796cc8974\n",
+    "expected": "BROKEN at line 4: hash mismatch\n"
+  },
+  {
+    "name": "the last digit of a stored hash was changed",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n2|dave|login failed|0ff91684c4b74bef\n3|alice|create report-7|8f9f2732423d1f50\n4|carol|grant admin to dave|fd5f509e58ecc7d1\n5|bob|export users|9d6d3409ac91af8f\n6|eve|rotate key k2|da467a7796cc8974\n",
+    "expected": "BROKEN at line 3: hash mismatch\n"
+  },
+  {
+    "name": "the first entry was deleted",
+    "stdin": "2|dave|login failed|0ff91684c4b74bef\n3|alice|create report-7|8f9f2732423d1f53\n4|carol|grant admin to dave|fd5f509e58ecc7d1\n5|bob|export users|9d6d3409ac91af8f\n6|eve|rotate key k2|da467a7796cc8974\n",
+    "expected": "BROKEN at line 1: sequence (expected 1, found 2)\n"
+  },
+  {
+    "name": "two adjacent entries swapped",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n2|dave|login failed|0ff91684c4b74bef\n4|carol|grant admin to dave|fd5f509e58ecc7d1\n3|alice|create report-7|8f9f2732423d1f53\n5|bob|export users|9d6d3409ac91af8f\n6|eve|rotate key k2|da467a7796cc8974\n",
+    "expected": "BROKEN at line 3: sequence (expected 3, found 4)\n"
+  },
+  {
+    "name": "a duplicated entry repeats a sequence number",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n2|dave|login failed|0ff91684c4b74bef\n3|alice|create report-7|8f9f2732423d1f53\n3|alice|create report-7|8f9f2732423d1f53\n4|carol|grant admin to dave|fd5f509e58ecc7d1\n5|bob|export users|9d6d3409ac91af8f\n",
+    "expected": "BROKEN at line 4: sequence (expected 4, found 3)\n"
+  },
+  {
+    "name": "a wrong sequence is reported before a wrong hash",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n2|mallory|login failed|0ff91684c4b74bef\n9|alice|create report-7|8f9f2732423d1f53\n4|carol|grant admin to dave|fd5f509e58ecc7d1\n",
+    "expected": "BROKEN at line 2: hash mismatch\n"
+  },
+  {
+    "name": "a bad hash field is malformed, not a mismatch",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n2|dave|login failed|XYZ\n3|alice|create report-7|8f9f2732423d1f53\n4|carol|grant admin to dave|fd5f509e58ecc7d1\n",
+    "expected": "BROKEN at line 2: malformed\n"
+  },
+  {
+    "name": "uppercase hex digits are malformed",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n2|dave|login failed|0ff91684c4b74bef\n3|alice|create report-7|8F9F2732423D1F53\n4|carol|grant admin to dave|fd5f509e58ecc7d1\n",
+    "expected": "BROKEN at line 3: malformed\n"
+  },
+  {
+    "name": "a 15-digit hash is malformed",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n2|dave|login failed|0ff91684c4b74be\n3|alice|create report-7|8f9f2732423d1f53\n4|carol|grant admin to dave|fd5f509e58ecc7d1\n",
+    "expected": "BROKEN at line 2: malformed\n"
+  },
+  {
+    "name": "hash digits zeroed out is only a mismatch",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n2|dave|login failed|0ff91684c4b70000\n3|alice|create report-7|8f9f2732423d1f53\n4|carol|grant admin to dave|fd5f509e58ecc7d1\n",
+    "expected": "BROKEN at line 2: hash mismatch\n"
+  },
+  {
+    "name": "sequence zero is malformed",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n2|dave|login failed|0ff91684c4b74bef\n0|alice|create report-7|8f9f2732423d1f53\n4|carol|grant admin to dave|fd5f509e58ecc7d1\n",
+    "expected": "BROKEN at line 3: malformed\n"
+  },
+  {
+    "name": "a sequence with a letter is malformed",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n2|dave|login failed|0ff91684c4b74bef\n3a|alice|create report-7|8f9f2732423d1f53\n4|carol|grant admin to dave|fd5f509e58ecc7d1\n",
+    "expected": "BROKEN at line 3: malformed\n"
+  },
+  {
+    "name": "an empty actor is malformed",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n2||login failed|0ff91684c4b74bef\n3|alice|create report-7|8f9f2732423d1f53\n4|carol|grant admin to dave|fd5f509e58ecc7d1\n",
+    "expected": "BROKEN at line 2: malformed\n"
+  },
+  {
+    "name": "an empty action is malformed",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n2|dave||0ff91684c4b74bef\n3|alice|create report-7|8f9f2732423d1f53\n4|carol|grant admin to dave|fd5f509e58ecc7d1\n",
+    "expected": "BROKEN at line 2: malformed\n"
+  },
+  {
+    "name": "a blank line is malformed",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n2|dave|login failed|0ff91684c4b74bef\n\n3|alice|create report-7|8f9f2732423d1f53\n4|carol|grant admin to dave|fd5f509e58ecc7d1\n",
+    "expected": "BROKEN at line 3: malformed\n"
+  },
+  {
+    "name": "a fifth field is malformed",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n2|dave|login failed|0ff91684c4b74bef\n3|alice|create report-7|8f9f2732423d1f53\n4|carol|grant admin to dave|fd5f509e58ecc7d1|extra\n",
+    "expected": "BROKEN at line 4: malformed\n"
+  },
+  {
+    "name": "the last line without a newline is still checked",
+    "stdin": "1|bob|login|c41643cfb47e9aec\n2|dave|login failed|0ff91684c4b74bef\n3|alice|create report-7|8f9f2732423d1f53",
+    "expected": "chain ok: 3 entries head=8f9f2732423d1f53\n"
+  },
+  {
+    "name": "a bad first sequence number",
+    "stdin": "7|bob|login|c41643cfb47e9aec\n2|dave|login failed|0ff91684c4b74bef\n3|alice|create report-7|8f9f2732423d1f53\n4|carol|grant admin to dave|fd5f509e58ecc7d1\n5|bob|export users|9d6d3409ac91af8f\n",
+    "expected": "BROKEN at line 1: sequence (expected 1, found 7)\n"
   }
 ]

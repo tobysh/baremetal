@@ -38,3 +38,34 @@ func RequireToken(token string) Middleware {
 
 - `subtle.ConstantTimeCompare` compares secrets without leaking, through timing, how many leading bytes matched.
 - `http.MaxBytesReader(w, r.Body, n)` makes reads fail once the client sends more than `n` bytes. The failure is a `*http.MaxBytesError`.
+
+## A worked trace
+
+With `Chain(final, Log, Auth)` the request passes through `Log`, then `Auth`, then `final`, and the response comes back out the same way:
+
+```text
+GET /admin  (no token)
+  Log  in
+    Auth in   -> token missing: writes 401, does NOT call next
+  Log  out    -> sees status 401
+final never runs
+
+GET /admin  Authorization: Bearer s3
+  Log  in
+    Auth in   -> ok, calls next
+      final   -> writes 200 "secret"
+    Auth out
+  Log  out    -> sees status 200
+```
+
+## Pitfalls
+
+- **Forgetting `return`** after writing a 401. The handler then falls through to `next.ServeHTTP` and the protected code runs anyway.
+- **Header ordering.** A middleware that sets a header must do it before `next` writes the body. Setting it afterwards is too late, because the headers have already been sent.
+- Building the chain per request instead of once at start-up wastes allocations and hides bugs. Compose once, serve many times.
+- Order is behaviour: a rate limiter placed after authentication cannot protect the login path. Put logging and panic recovery outermost so they see everything.
+- Comparing tokens with `==` leaks timing; use `subtle.ConstantTimeCompare`.
+
+## When to use it
+
+Use middleware for cross-cutting concerns that every route shares: authentication, request limits, common headers, logging, metrics. Logic that belongs to a single route stays in that route's handler.

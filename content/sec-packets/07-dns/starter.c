@@ -5,6 +5,22 @@
 #include <string.h>
 #include <limits.h>
 #include <time.h>
-typedef struct {uint16_t id,type,qclass;char name[254];} Question;
-int dns_question(const uint8_t *p,size_t n,Question *out){(void)p;(void)n;(void)out;return -1;}
-int main(void){return 0;}
+
+typedef struct {
+    uint16_t id, type, qclass;
+    char name[254];          /* dotted display name, NUL-terminated; "." for the root */
+} Question;
+
+/* Decode the single question of a DNS message. Return 0 or -1. */
+int dns_question(const uint8_t *p, size_t n, Question *out)
+{
+    (void)p;
+    (void)n;
+    (void)out;
+    return -1;
+}
+
+int main(void)
+{
+    return 0;
+}

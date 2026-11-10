@@ -1,0 +1,11 @@
+{
+  "kind": "choice",
+  "prompt": "For one address the sshd log shows, in order: 4 failed passwords, `Accepted password for alice`, then 2 more failed passwords. What does the report print for that address?",
+  "choices": [
+    "It is not reported: only 4 failures",
+    "failures=6 with ACCEPTED as alice",
+    "failures=6 without ACCEPTED"
+  ],
+  "answer": 2,
+  "explain": "The address reaches 6 failures in total, so it is a candidate. The acceptance came when it had only 4 failures, before the fifth, so it is not attached."
+}

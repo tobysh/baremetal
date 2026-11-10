@@ -34,6 +34,8 @@ func Recover(report func(v any)) Middleware {
 	return func(next http.Handler) http.Handler { return next }
 }
 
+// Scaffolding supplied for you: main below only demonstrates your code.
+// Your part is the stubbed declarations above; replace their bodies.
 // Try it with Run.
 func main() {
 	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

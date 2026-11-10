@@ -1,0 +1,23 @@
+{
+  "kind": "match",
+  "prompt": "Match each directory byte to what a FAT short-name reader should do with it.",
+  "pairs": [
+    {
+      "left": "first byte 0x00",
+      "right": "end of directory: stop reading"
+    },
+    {
+      "left": "first byte 0xe5",
+      "right": "deleted entry: keep it, first letter becomes _"
+    },
+    {
+      "left": "attribute 0x0f",
+      "right": "long-name piece: skip"
+    },
+    {
+      "left": "attribute bit 0x10",
+      "right": "the entry is a directory"
+    }
+  ],
+  "explain": "A zero first byte means no later records are in use. 0xe5 marks a deletion that destroyed only the first character of the name. 0x0f is a long-file-name fragment, not a file, and bit 0x10 flags a directory."
+}

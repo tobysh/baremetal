@@ -5,4 +5,10 @@
 #include <string.h>
 #include <limits.h>
 #include <time.h>
-int main(void){puts("0 events over 0h 00m");return 0;}
+
+/* Read "UnixSeconds source message" lines from stdin, sort stably and print the timeline. */
+int main(void) {
+    /* TODO: parse with fgets + sscanf("%lld %63s %n"), stable sort, gmtime/strftime, quiet gaps. */
+    puts("0 events over 0h 00m");
+    return 0;
+}

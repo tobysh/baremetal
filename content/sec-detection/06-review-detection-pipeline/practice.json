@@ -1,0 +1,19 @@
+{
+  "kind": "parsons",
+  "prompt": "Order the lines of the follow-up search: for an alert at event index `e`, print the time of the first later `ok` from the same source, or `none`.",
+  "lines": [
+    "char fo[24] = \"none\";",
+    "for (int j = e; j < n; j++) {",
+    "    if (!strcmp(res[j], \"ok\") && !strcmp(src[j], src[e])) {",
+    "        snprintf(fo, sizeof fo, \"%ld\", ts[j]);",
+    "        break;",
+    "    }",
+    "}",
+    "printf(\"first-ok=%s\\n\", fo);"
+  ],
+  "distractors": [
+    "for (int j = 0; j < e; j++) {"
+  ],
+  "runTests": false,
+  "explain": "Set the default first, scan forward from the alert for the same source and an `ok`, stop at the first hit, and print after the loop. Scanning from 0 would find successes that happened before the alert."
+}

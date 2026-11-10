@@ -132,5 +132,61 @@ int main(void) {
         int n = read_dir(D[0].p, D[0].n, two, 2);
         CHECK("respects the max argument", n == 2, "returned %d with max 2", n);
     }
+
+    /* Extra cases: directories are assembled at run time record by record. */
+    {
+        uint8_t d[32 * 12];
+        DirEntry got[16];
+        size_t len = 0;
+        int cnt;
+#define REC(name11, attr, hi, lo, sz) do { uint8_t *r_ = d + len; memset(r_, 0, 32); memcpy(r_, (name11), 11); r_[11] = (attr); \
+    r_[20] = (uint8_t)((hi) & 255); r_[21] = (uint8_t)((hi) >> 8); r_[26] = (uint8_t)((lo) & 255); r_[27] = (uint8_t)((lo) >> 8); \
+    for (int b_ = 0; b_ < 4; b_++) { r_[28 + b_] = (uint8_t)((uint32_t)(sz) >> (8 * b_)); } len += 32; } while (0)
+#define RESET() (len = 0)
+
+        RESET(); REC("README     ", 0x20, 0, 5, 10u); REC("A       TXT", 0x20, 0, 6, 11u); REC("NOTES   C  ", 0x20, 0, 7, 12u); REC("ABCDEFGHTXT", 0x20, 0, 8, 13u);
+        memset(got, 0, sizeof got);
+        cnt = read_dir(d, len, got, 16);
+        CHECK("trailing spaces are trimmed and the dot is added only for an extension",
+              cnt == 4 && strcmp(got[0].name, "README") == 0 && strcmp(got[1].name, "A.TXT") == 0 && strcmp(got[2].name, "NOTES.C") == 0 && strcmp(got[3].name, "ABCDEFGH.TXT") == 0,
+              "expected README, A.TXT, NOTES.C, ABCDEFGH.TXT; got %d entries: \"%s\", \"%s\", \"%s\", \"%s\"", cnt, got[0].name, got[1].name, got[2].name, got[3].name);
+
+        RESET(); REC("KEEP    TXT", 0x20, 0, 2, 1u); d[len] = 0; REC("STALE   TXT", 0x20, 0, 3, 1u); REC("LATER   TXT", 0x20, 0, 4, 1u);
+        d[32] = 0; /* the second record starts with 00: end of directory */
+        cnt = read_dir(d, len, got, 16);
+        CHECK("a 0x00 first byte ends the directory", cnt == 1 && strcmp(got[0].name, "KEEP.TXT") == 0, "records after the 00 terminator must be ignored; got %d entries", cnt);
+
+        RESET(); REC("OLD     DOC", 0x20, 0, 9, 99u); d[0] = 0xe5; REC("DIR        ", 0x10, 0, 3, 0u); REC("X          ", 0x20, 0, 1, 1u); d[64] = 0xe5;
+        cnt = read_dir(d, len, got, 16);
+        CHECK("deleted entries stay, the first character becomes an underscore", cnt == 3 && got[0].deleted == 1 && strcmp(got[0].name, "_LD.DOC") == 0 && got[0].size == 99 && got[1].deleted == 0 && strcmp(got[2].name, "_") == 0 && got[2].deleted == 1,
+              "expected _LD.DOC (deleted), DIR, _ (deleted); got %d entries, first \"%s\" deleted=%d", cnt, got[0].name, got[0].deleted);
+
+        RESET(); REC("SECRETS    ", 0x10, 0, 3, 0u); REC("PLAIN   TXT", 0x20, 0, 4, 1u); REC("HIDDEN  SYS", 0x06, 0, 5, 1u); REC("ARCHDIR    ", 0x30, 0, 6, 0u); REC("GONEDIR    ", 0x10, 0, 7, 0u); d[128] = 0xe5;
+        cnt = read_dir(d, len, got, 16);
+        CHECK("bit 0x10 marks a directory, other attribute bits do not", cnt == 5 && got[0].is_dir == 1 && got[1].is_dir == 0 && got[2].is_dir == 0 && got[3].is_dir == 1 && got[4].is_dir == 1 && got[4].deleted == 1,
+              "is_dir flags should be 1,0,0,1,1; got %d,%d,%d,%d,%d", got[0].is_dir, got[1].is_dir, got[2].is_dir, got[3].is_dir, got[4].is_dir);
+
+        RESET(); REC("LABEL      ", 0x08, 0, 0, 0u); REC("\x41\x42\x43\x44\x45\x46\x47\x48\x49\x4a\x4b", 0x0f, 0, 0, 0u); REC("FILE    TXT", 0x20, 0, 12, 5u); REC("\xe5" "ONGLONG   ", 0x0f, 0, 0, 0u); REC("REAL       ", 0x20, 0, 13, 6u);
+        cnt = read_dir(d, len, got, 16);
+        CHECK("volume labels and long-name pieces are skipped", cnt == 2 && strcmp(got[0].name, "FILE.TXT") == 0 && strcmp(got[1].name, "REAL") == 0, "expected FILE.TXT and REAL only; got %d entries (first \"%s\")", cnt, got[0].name);
+
+        RESET(); REC("BIG     BIN", 0x20, 0xffff, 0xffff, 0xfffffff0u); REC("MID     BIN", 0x20, 0x0001, 0x0002, 0x80000000u); REC("LOW     BIN", 0x20, 0x0000, 0xabcd, 1u);
+        cnt = read_dir(d, len, got, 16);
+        CHECK("cluster words and size are little-endian and combined without sign problems", cnt == 3 && got[0].cluster == 0xffffffffu && got[0].size == 0xfffffff0u && got[1].cluster == 65538u && got[1].size == 2147483648u && got[2].cluster == 0xabcdu,
+              "cluster/size: %u/%u, %u/%u, %u/%u", got[0].cluster, got[0].size, got[1].cluster, got[1].size, got[2].cluster, got[2].size);
+
+        RESET(); REC("ONE     TXT", 0x20, 0, 2, 1u); REC("TWO     TXT", 0x20, 0, 3, 1u); REC("THREE   TXT", 0x20, 0, 4, 1u);
+        for (int i = 0; i < 16; i++) memset(&got[i], 0x7e, sizeof got[i]);
+        cnt = read_dir(d, len, got, 2);
+        CHECK("max stops the scan and nothing is written past it", cnt == 2 && got[2].size == 0x7e7e7e7eu, "with max 2 returned %d (and out[2] must be untouched)", cnt);
+        cnt = read_dir(d, len, got, 0);
+        CHECK("max zero stores nothing", cnt == 0, "max 0 returned %d", cnt);
+
+        RESET(); REC("FULL    TXT", 0x20, 0, 2, 1u); REC("PART    TXT", 0x20, 0, 3, 1u);
+        cnt = read_dir(d, 63, got, 16);
+        CHECK("a trailing partial record is ignored", cnt == 1 && strcmp(got[0].name, "FULL.TXT") == 0, "63 bytes hold one complete record; got %d entries", cnt);
+        CHECK("fewer than 32 bytes holds nothing", read_dir(d, 31, got, 16) == 0 && read_dir(d, 0, got, 16) == 0, "n = 31 and n = 0 must both return 0");
+    }
+
     return 0;
 }

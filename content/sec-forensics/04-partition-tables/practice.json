@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "A slot stores its 32-bit start LBA little-endian. Predict the value `le32` returns for these four bytes, with each byte cast to `uint32_t` before shifting.",
+  "code": "uint8_t b[4] = {0x00, 0x10, 0x00, 0x00};\nuint32_t v = b[0] | (uint32_t)b[1] << 8\n           | (uint32_t)b[2] << 16 | (uint32_t)b[3] << 24;",
+  "choices": [
+    "16",
+    "4096",
+    "1048576",
+    "268435456"
+  ],
+  "answer": 1,
+  "explain": "Little-endian means the first byte is least significant. Only b[1] is nonzero and it is shifted left by 8 bits: 0x10 << 8 = 0x1000 = 4096."
+}

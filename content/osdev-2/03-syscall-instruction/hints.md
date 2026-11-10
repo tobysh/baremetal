@@ -1,9 +1,7 @@
-`wrmsr(MSR_STAR, (0x10ULL << 48) | (0x08ULL << 32));`. For EFER, read first: `wrmsr(MSR_EFER, rdmsr(MSR_EFER) | 1);`. If you write only the 1, long mode switches off and the machine dies on the next instruction.
+`syscall` is a fast ring change that does almost nothing for you: it puts the return address in `rcx` and rflags in `r11`, loads cs/ss from STAR, jumps to LSTAR, and leaves `rsp` as the user's. The kernel stub must switch stacks and save state itself, and `sysretq` reverses it.
 ===
-`syscall_init` needs the stub's address in C: declare `void syscall_entry(void);` before the asm block, then `wrmsr(MSR_LSTAR, (uint64_t)(uintptr_t)syscall_entry);`. The asm label needs `.globl syscall_entry`.
+Work in three places: `syscall_init` (EFER, STAR, LSTAR, SFMASK via `wrmsr`), the asm stub `syscall_entry`, and the C `syscall_handler` switch. The lesson's tables give the bit layout of STAR. Declare `syscall_entry` in C and make the label global so C can take its address.
 ===
-Order inside the stub: first `mov [rip + user_rsp], rsp`, then `mov rsp, [rip + syscall_kernel_sp]`, then pushes. Anything pushed before the stack switch lands in user memory (or faults if the user pointed `rsp` at garbage). Save `rcx` and `r11` before you reuse `rcx` as the third C argument.
+Typical mistakes: overwriting EFER instead of or-ing in the SCE bit (long mode then switches off and the machine dies), pushing before the stack switch so data lands in user memory, clobbering `rcx` or `r11` when setting up the C call arguments, pops that are not an exact mirror of the pushes, plain `sysret` instead of `sysretq`, and a handler case that falls through after a call that never returns.
 ===
-Pops must be the exact mirror of the pushes. After the last pop of `rcx`, restore `rsp` from `user_rsp` and execute `sysretq` (with the `q`; plain `sysret` returns to 32-bit mode).
-===
-`SYS_EXIT`: `in_user = 0; leave_user(a1);` and add `for (;;) {}` after it so the compiler knows the function does not fall through.
+Read-modify-write on a different register: `wrmsr(SOME_MSR, rdmsr(SOME_MSR) | (1ULL << 3));` changes one bit and keeps the rest.

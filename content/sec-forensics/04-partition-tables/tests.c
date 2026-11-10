@@ -235,5 +235,62 @@ int main(void) {
         const char *got = type_name(N[i].type);
         CHECK(name, got && strcmp(got, N[i].name) == 0, "expected \"%s\", got \"%s\"", N[i].name, got ? got : "(null)");
     }
+
+    /* Extra cases: sectors are assembled at run time slot by slot. */
+    {
+        uint8_t s[512];
+        Partition got[4];
+#define NEWMBR() do { for (int q_ = 0; q_ < 446; q_++) s[q_] = (uint8_t)(q_ * 31 + 7); memset(s + 446, 0, 64); s[510] = 0x55; s[511] = 0xaa; } while (0)
+#define SLOT(i, boot, type, lba, cnt) do { uint8_t *e_ = s + 446 + 16 * (i); e_[0] = (boot); e_[4] = (type); \
+    for (int b_ = 0; b_ < 4; b_++) { e_[8 + b_] = (uint8_t)((uint32_t)(lba) >> (8 * b_)); e_[12 + b_] = (uint8_t)((uint32_t)(cnt) >> (8 * b_)); } } while (0)
+        int n;
+
+        NEWMBR(); SLOT(0, 0x80, 0x83, 2048u, 1000u);
+        s[510] = 0xaa; s[511] = 0x55;
+        CHECK("swapped signature aa 55 is rejected", parse_mbr(s, got) == -1, "bytes 510..511 are aa 55, expected -1");
+        NEWMBR(); SLOT(0, 0x80, 0x83, 2048u, 1000u); s[511] = 0x00;
+        CHECK("bad second signature byte is rejected", parse_mbr(s, got) == -1, "byte 511 is 00, expected -1");
+        NEWMBR(); SLOT(0, 0x80, 0x83, 2048u, 1000u); s[510] = 0x54;
+        CHECK("bad first signature byte is rejected", parse_mbr(s, got) == -1, "byte 510 is 54, expected -1");
+
+        NEWMBR(); SLOT(1, 0x00, 0x0c, 63u, 500u); SLOT(3, 0x80, 0x83, 9999u, 77u);
+        memset(got, 0xEE, sizeof got);
+        n = parse_mbr(s, got);
+        CHECK("gaps between used slots are compacted", n == 2 && got[0].type == 0x0c && got[0].start_lba == 63 && got[1].type == 0x83 && got[1].start_lba == 9999 && got[1].bootable == 1,
+              "slots 1 and 3 are used: expected 2 entries (0x0c@63, 0x83@9999 bootable) in order, got %d (first type 0x%02x)", n, got[0].type);
+
+        NEWMBR(); SLOT(0, 0x80, 0x00, 2048u, 1000u); SLOT(1, 0x80, 0x83, 4096u, 0u); SLOT(2, 0x00, 0x07, 8192u, 5u);
+        n = parse_mbr(s, got);
+        CHECK("zero type or zero sector count empties a slot", n == 1 && got[0].type == 0x07 && got[0].start_lba == 8192, "only slot 2 is a real partition; got %d entries", n);
+
+        NEWMBR(); SLOT(0, 0x80, 0x83, 1u, 1u); SLOT(1, 0x00, 0x83, 1u, 1u); SLOT(2, 0x01, 0x83, 1u, 1u); SLOT(3, 0xff, 0x83, 1u, 1u);
+        n = parse_mbr(s, got);
+        CHECK("only 0x80 marks a partition bootable", n == 4 && got[0].bootable == 1 && got[1].bootable == 0 && got[2].bootable == 0 && got[3].bootable == 0,
+              "boot flags 80,00,01,ff should give 1,0,0,0; got %d,%d,%d,%d", got[0].bootable, got[1].bootable, got[2].bootable, got[3].bootable);
+
+        NEWMBR(); SLOT(0, 0, 0x83, 0x01020304u, 0x80000001u); SLOT(1, 0, 0x83, 0xfffffffeu, 0xffffffffu); SLOT(2, 0, 0x83, 0x80000000u, 0x0000ff00u);
+        n = parse_mbr(s, got);
+        CHECK("little-endian values, including the high bit", n == 3 && got[0].start_lba == 16909060u && got[0].sectors == 2147483649u && got[1].start_lba == 4294967294u && got[1].sectors == 4294967295u && got[2].start_lba == 2147483648u && got[2].sectors == 65280u,
+              "start/sectors decoded as %u/%u, %u/%u, %u/%u", got[0].start_lba, got[0].sectors, got[1].start_lba, got[1].sectors, got[2].start_lba, got[2].sectors);
+
+        NEWMBR(); SLOT(0, 0x80, 0x07, 2048u, 100u);
+        memset(s, 0xff, 446);
+        n = parse_mbr(s, got);
+        CHECK("boot code has no effect", n == 1 && got[0].start_lba == 2048, "bytes 0..445 are boot code; got %d entries", n);
+
+        NEWMBR();
+        CHECK("an MBR with no partitions returns 0", parse_mbr(s, got) == 0, "all four slots are empty, expected 0");
+
+        int unknown_ok = 1, named_ok = 1;
+        for (int t = 0; t < 256; t++) {
+            const char *nm = type_name((uint8_t)t);
+            int listed = t == 0x07 || t == 0x0b || t == 0x0c || t == 0x82 || t == 0x83 || t == 0x05 || t == 0xee || t == 0xef;
+            if (!nm) { named_ok = 0; continue; }
+            if (listed && strcmp(nm, "Unknown") == 0) named_ok = 0;
+            if (!listed && strcmp(nm, "Unknown") != 0) unknown_ok = 0;
+        }
+        CHECK("only the eight listed type bytes have names", unknown_ok && named_ok, "a type outside the list returned a name (or a listed type returned Unknown)");
+    }
+
     return 0;
 }

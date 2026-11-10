@@ -23,5 +23,35 @@
     "name": "ruleset 5",
     "stdin": "RULE NC image endswith nc\nRULE a cmd contains a b\nRULE nothing host eq web\n\nhost=db2 user=bob image=/usr/bin/nc cmd=\"nc -l 4444\" parent=systemd\nhost=app3 user=deploy image=/opt/app/run cmd=\"bash -i\" parent=sshd\nhost=app3 user=dave image=/opt/app/run cmd=\"python3 app.py\" parent=cron\nhost=db2 user=bob image=/tmp/x/dropper cmd=\"cmd /c whoami\" parent=java\nhost=app3 user=root image=/usr/bin/bash cmd=\"bash -i\" parent=sshd\nhost=web1 user=\"j. smith\" image=/tmp/x/dropper cmd=cron parent=sshd\nhost=db2 user=alice image=/usr/bin/nc cmd=sshd parent=cron\n",
     "expected": "event 1: NC\nevent 2: -\nevent 3: -\nevent 4: -\nevent 5: -\nevent 6: -\nevent 7: NC\n"
+  },
+  {
+    "name": "endswith longer than field",
+    "stdin": "RULE long image endswith /usr/bin/python3\nRULE short image endswith 3\n\nimage=python3\nimage=/usr/bin/python3\nimage=/usr/bin/python3.1\nimage=3\n",
+    "expected": "event 1: short\nevent 2: long,short\nevent 3: -\nevent 4: short\n"
+  },
+  {
+    "name": "value with spaces and case",
+    "stdin": "RULE listen cmd contains nc -l\nRULE upper user eq Root\nRULE lower user eq root\n\ncmd=\"nc -l 4444\" user=root\ncmd=\"nc  -l\" user=Root\ncmd=\"NC -l\" user=ROOT\n",
+    "expected": "event 1: listen,lower\nevent 2: upper\nevent 3: -\n"
+  },
+  {
+    "name": "rule order is definition order",
+    "stdin": "RULE z user eq a\nRULE m user startswith a\nRULE a user endswith a\nRULE b user contains a\n\nuser=a\nuser=ab\nuser=ba\nuser=xyz\n",
+    "expected": "event 1: z,m,a,b\nevent 2: m,b\nevent 3: a,b\nevent 4: -\n"
+  },
+  {
+    "name": "first occurrence of field decides",
+    "stdin": "RULE adm user eq admin\nRULE nme username eq mallory\n\nuser=guest user=admin username=mallory\nusername=mallory user=admin\nmsg=\"user=admin\"\n",
+    "expected": "event 1: nme\nevent 2: adm,nme\nevent 3: -\n"
+  },
+  {
+    "name": "startswith exact and longer",
+    "stdin": "RULE tmp path startswith /tmp/\nRULE tmpx path startswith /tmp/x\n\npath=/tmp/\npath=/tmp\npath=/tmp/x/y\npath=/var/tmp/x\n",
+    "expected": "event 1: tmp\nevent 2: -\nevent 3: tmp,tmpx\nevent 4: -\n"
+  },
+  {
+    "name": "missing field never matches",
+    "stdin": "RULE no-img image startswith /\nRULE has-user user startswith a\nRULE any-cmd cmd contains e\n\nuser=alice\ncmd=exec\nuser=bob cmd=\"x e y\"\nimage= cmd=exec\n",
+    "expected": "event 1: has-user\nevent 2: any-cmd\nevent 3: any-cmd\nevent 4: any-cmd\n"
   }
 ]

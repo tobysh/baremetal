@@ -1,0 +1,12 @@
+{
+  "kind": "choice",
+  "prompt": "In a big-endian file (`MM`), a SHORT tag with count 1 and the value 640 (0x0280) is stored inline in the 4-byte value field. Which four bytes does the field hold?",
+  "choices": [
+    "02 80 00 00",
+    "80 02 00 00",
+    "00 00 02 80",
+    "00 00 80 02"
+  ],
+  "answer": 0,
+  "explain": "A SHORT value is left-justified in the value field, so it occupies the first two bytes. In big-endian order the high byte comes first: 02 80, followed by two unused zero bytes."
+}

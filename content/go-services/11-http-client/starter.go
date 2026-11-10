@@ -31,6 +31,8 @@ func PostJSON(ctx context.Context, c *http.Client, url string, in, out any) erro
 	return nil
 }
 
+// Scaffolding supplied for you: main below only demonstrates your code.
+// Your part is the stubbed declarations above; replace their bodies.
 // Try it with Run.
 func main() {
 	c := NewTestClient(func(r *http.Request) (*http.Response, error) {

@@ -1,0 +1,35 @@
+{
+  "kind": "predict",
+  "prompt": "The manifest lists `a.bin` and `b.bin` with correct digests of their data, and `c.bin` with a digest of different data. Predict each status from `audit` (0 match, 1 changed, 2 unlisted) for these supplied items.",
+  "code": "items: a.bin (original bytes)\n       c.bin (original bytes)\n       a.bin.bak (original bytes)",
+  "trace": [
+    {
+      "label": "status of `a.bin`",
+      "choices": [
+        "0",
+        "1",
+        "2"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "status of `c.bin`",
+      "choices": [
+        "0",
+        "1",
+        "2"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "status of `a.bin.bak`",
+      "choices": [
+        "0",
+        "1",
+        "2"
+      ],
+      "answer": 2
+    }
+  ],
+  "explain": "a.bin is listed and its digest matches. c.bin is listed but the data hashes to something else. a.bin.bak is not an exact name in the manifest, so it is unlisted even though it starts with a listed name."
+}

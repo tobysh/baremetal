@@ -29,6 +29,8 @@ func Lookup(find func(ctx context.Context, key string) (string, error)) http.Han
 	return http.NotFoundHandler()
 }
 
+// Scaffolding supplied for you: main below only demonstrates your code.
+// Your part is the stubbed declarations above; replace their bodies.
 // Try it with Run.
 func main() {
 	h := Lookup(func(ctx context.Context, key string) (string, error) {

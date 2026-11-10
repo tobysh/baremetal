@@ -1,22 +1,94 @@
-static const uint8_t u0[]={156,65,0,53,0,8,0,0};
-static const uint8_t u1[]={0,53,195,80,0,11,0,0,97,98,99};
-static const uint8_t u2[]={0,123,255,255,0,40,0,0,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31};
-static const uint8_t u3[]={156,65,0,53,0,10,0,0,97,98,116,97,105,108};
-static const uint8_t u4[]={156,65,0,53,0,0,0,0};
-static const uint8_t u5[]={156,65,0,53,0,7,0,0};
-static const uint8_t u6[]={156,65,0,53,255,255,0,0};
-static const uint8_t u7[]={0};
-static const uint8_t u8[]={156,65,0,53,0,8,0};
-static const struct {const uint8_t *p;size_t n;struct {int rc;unsigned src,dst;size_t payload;} want;} V[]={
-{u0,8,{0,40001,53,0}},
-{u1,11,{0,53,50000,3}},
-{u2,40,{0,123,65535,32}},
-{u3,14,{0,40001,53,2}},
-{u4,8,{-1,0,0,0}},
-{u5,8,{-1,0,0,0}},
-{u6,8,{-1,0,0,0}},
-{u7,0,{-1,0,0,0}},
-{u8,7,{-1,0,0,0}}
-};
+static uint32_t st = 123;
+static uint32_t rnd(void) { st = st * 1664525u + 1013904223u; return st >> 8; }
 
-int main(void){for(size_t i=0;i<sizeof V/sizeof V[0];i++){UDP u={0};int rc=parse_udp(V[i].p,V[i].n,&u);CHECK("UDP declared length",rc==V[i].want.rc && (rc || (u.src==V[i].want.src&&u.dst==V[i].want.dst&&u.payload==V[i].want.payload)),"datagram %zu",i);}return 0;}
+static void w16(uint8_t *p, unsigned v) { p[0] = (uint8_t)(v >> 8); p[1] = (uint8_t)v; }
+
+/* `n` bytes with the given ports and declared length; the rest is random. */
+static void dgram(uint8_t *b, size_t n, unsigned sport, unsigned dport, unsigned len)
+{
+    for (size_t i = 0; i < n; i++)
+        b[i] = (uint8_t)rnd();
+    w16(b, sport); w16(b + 2, dport); w16(b + 4, len);
+}
+
+int main(void)
+{
+    static uint8_t b[70000];
+    UDP u;
+    UDP sentinel;
+    memset(&sentinel, 0x5a, sizeof sentinel);
+
+    {
+        dgram(b, 8, 40001, 53, 8);
+        memset(&u, 0, sizeof u);
+        int rc = parse_udp(b, 8, &u);
+        CHECK("empty datagram", rc == 0 && u.src == 40001 && u.dst == 53 && u.payload == 0, "length 8: rc %d src %u dst %u payload %zu", rc, u.src, u.dst, u.payload);
+    }
+
+    {
+        unsigned extra = 1 + rnd() % 40;
+        dgram(b, 8 + extra, 53, 50000, 8 + extra);
+        memset(&u, 0, sizeof u);
+        int rc = parse_udp(b, 8 + extra, &u);
+        CHECK("payload is length minus 8", rc == 0 && u.src == 53 && u.dst == 50000 && u.payload == extra, "length %u: payload %zu, want %u", 8 + extra, u.payload, extra);
+    }
+
+    {
+        unsigned extra = 3 + rnd() % 20, pad = 1 + rnd() % 20;
+        dgram(b, 8 + extra + pad, 123, 65535, 8 + extra);
+        memset(&u, 0, sizeof u);
+        int rc = parse_udp(b, 8 + extra + pad, &u);
+        CHECK("trailing bytes are not payload", rc == 0 && u.payload == extra, "length says %u payload bytes but %zu were reported (use the declared length, not n - 8)", extra, u.payload);
+    }
+
+    {
+        dgram(b, 8, 1, 2, 7);
+        int r7 = parse_udp(b, 8, &u);
+        dgram(b, 8, 1, 2, 0);
+        int r0 = parse_udp(b, 8, &u);
+        dgram(b, 20, 1, 2, 1);
+        int r1 = parse_udp(b, 20, &u);
+        CHECK("length below the header size", r7 == -1 && r0 == -1 && r1 == -1, "lengths 7, 0 and 1 cannot cover an 8-byte header, got %d %d %d", r7, r0, r1);
+    }
+
+    {
+        dgram(b, 20, 1, 2, 21);
+        int over = parse_udp(b, 20, &u);
+        dgram(b, 20, 1, 2, 20);
+        int exact = parse_udp(b, 20, &u);
+        CHECK("length beyond the captured bytes", over == -1 && exact == 0 && u.payload == 12, "length 21 in 20 bytes: %d (want -1); length 20: %d (want 0)", over, exact);
+    }
+
+    {
+        dgram(b, 8, 1, 2, 0xffff);
+        int tiny = parse_udp(b, 8, &u);
+        dgram(b, 65535, 7, 9, 65535);
+        memset(&u, 0, sizeof u);
+        int full = parse_udp(b, 65535, &u);
+        CHECK("maximum length", tiny == -1 && full == 0 && u.payload == 65527, "65535 in 8 bytes: %d (want -1); 65535 in 65535 bytes: %d payload %zu (want 65527)", tiny, full, u.payload);
+    }
+
+    {
+        dgram(b, 12, 0x0102, 0x0304, 12);
+        memset(&u, 0, sizeof u);
+        parse_udp(b, 12, &u);
+        CHECK("ports and length are big-endian", u.src == 0x0102 && u.dst == 0x0304 && u.payload == 4, "src 0x%04x dst 0x%04x payload %zu", u.src, u.dst, u.payload);
+    }
+
+    {
+        dgram(b, 8, 1, 2, 8);
+        CHECK("fewer than 8 bytes", parse_udp(b, 7, &u) == -1 && parse_udp(b, 0, &u) == -1, "a 7-byte span has no length field");
+    }
+
+    {
+        u = sentinel;
+        dgram(b, 8, 1, 2, 99);
+        parse_udp(b, 8, &u);
+        int same = !memcmp(&u, &sentinel, sizeof u);
+        parse_udp(b, 3, &u);
+        CHECK("failure leaves out unchanged", same && !memcmp(&u, &sentinel, sizeof u), "a failed call wrote to *out");
+    }
+
+    CHECK("NULL arguments", parse_udp(NULL, 8, &u) == -1 && parse_udp(b, 8, NULL) == -1, "NULL pointers must return -1");
+    return 0;
+}

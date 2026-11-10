@@ -23,5 +23,40 @@
     "name": "ruleset 5",
     "stdin": "deny tcp 0.0.0.0/0 0.0.0.0/0 any\nallow tcp 10.1.0.0/16 172.16.0.0/12 8000-8100\nallow any 172.16.0.0/12 0.0.0.0/0 80-90\nallow any 10.0.0.0/8 10.0.0.0/8 any\nallow udp 203.0.113.7/32 10.1.2.3 8000-8100\nallow any 203.0.113.7/32 172.16.0.0/12 any\nallow udp 10.1.0.0/16 198.51.100.0/24 any\ndeny any 192.0.2.128/25 10.1.0.0/16 1024-65535\n\nudp 203.0.113.7 10.1.2.3 8078\ntcp 168.196.103.90 239.80.87.107 32620\nudp 203.0.113.7 10.1.2.3 8100\nicmp 198.51.100.3 8.8.8.8 4464\ntcp 10.2.1.4 192.0.2.1 1024\ntcp 10.1.237.246 172.24.251.199 8047\nudp 10.1.245.46 198.51.100.97 22711\ntcp 10.1.201.118 172.30.151.8 8100\ntcp 192.0.2.200 8.8.8.8 9999\nicmp 192.0.2.130 8.8.8.8 9999\nicmp 198.51.100.3 8.8.8.8 1024\ntcp 203.0.113.7 172.22.100.46 56147\ntcp 198.51.100.6 10.2.1.4 80\nudp 10.1.252.44 198.51.100.144 13602\nicmp 10.220.176.84 10.128.163.124 47889\n",
     "expected": "packet 1: allow (rule 5)\npacket 2: deny (rule 1)\npacket 3: allow (rule 5)\npacket 4: deny (default)\npacket 5: deny (rule 1)\npacket 6: deny (rule 1)\npacket 7: allow (rule 7)\npacket 8: deny (rule 1)\npacket 9: deny (rule 1)\npacket 10: deny (default)\npacket 11: deny (default)\npacket 12: deny (rule 1)\npacket 13: deny (rule 1)\npacket 14: allow (rule 7)\npacket 15: allow (rule 4)\n"
+  },
+  {
+    "name": "default deny with no rules",
+    "stdin": "\ntcp 10.0.0.1 10.0.0.2 22\nudp 192.0.2.1 192.0.2.2 53\nicmp 192.0.2.1 192.0.2.2 0\n",
+    "expected": "packet 1: deny (default)\npacket 2: deny (default)\npacket 3: deny (default)\n"
+  },
+  {
+    "name": "slash 0 and slash 32 extremes",
+    "stdin": "allow tcp 0.0.0.0/0 192.0.2.77/32 443\ndeny tcp 203.0.113.5/32 any any\nallow any 10.0.0.0/0 any 53\n\ntcp 1.2.3.4 192.0.2.77 443\ntcp 1.2.3.4 192.0.2.78 443\ntcp 203.0.113.5 8.8.8.8 80\ntcp 203.0.113.6 8.8.8.8 80\nudp 255.255.255.255 0.0.0.0 53\nudp 255.255.255.255 0.0.0.0 54\n",
+    "expected": "packet 1: allow (rule 1)\npacket 2: deny (default)\npacket 3: deny (rule 2)\npacket 4: deny (default)\npacket 5: allow (rule 3)\npacket 6: deny (default)\n"
+  },
+  {
+    "name": "port range bounds are inclusive",
+    "stdin": "allow tcp any any 1000-2000\ndeny tcp any any 22\n\ntcp 1.1.1.1 2.2.2.2 999\ntcp 1.1.1.1 2.2.2.2 1000\ntcp 1.1.1.1 2.2.2.2 2000\ntcp 1.1.1.1 2.2.2.2 2001\ntcp 1.1.1.1 2.2.2.2 22\ntcp 1.1.1.1 2.2.2.2 0\ntcp 1.1.1.1 2.2.2.2 65535\n",
+    "expected": "packet 1: deny (default)\npacket 2: allow (rule 1)\npacket 3: allow (rule 1)\npacket 4: deny (default)\npacket 5: deny (rule 2)\npacket 6: deny (default)\npacket 7: deny (default)\n"
+  },
+  {
+    "name": "non-normalised networks",
+    "stdin": "allow tcp 10.1.2.3/8 any 80\nallow tcp 192.168.77.200/24 192.168.77.1/32 any\n\ntcp 10.200.0.1 9.9.9.9 80\ntcp 11.0.0.1 9.9.9.9 80\ntcp 192.168.77.5 192.168.77.1 1\ntcp 192.168.78.5 192.168.77.1 1\ntcp 192.168.77.5 192.168.77.2 1\n",
+    "expected": "packet 1: allow (rule 1)\npacket 2: deny (default)\npacket 3: allow (rule 2)\npacket 4: deny (default)\npacket 5: deny (default)\n"
+  },
+  {
+    "name": "icmp matches only any-protocol rules",
+    "stdin": "allow tcp any any any\nallow udp any any any\ndeny any 192.0.2.0/24 any any\nallow any any any any\n\nicmp 192.0.2.5 198.51.100.1 0\nicmp 192.0.2.5 192.0.2.9 0\ntcp 192.0.2.5 192.0.2.9 0\n",
+    "expected": "packet 1: deny (rule 3)\npacket 2: deny (rule 3)\npacket 3: allow (rule 1)\n"
+  },
+  {
+    "name": "order is policy",
+    "stdin": "deny tcp 203.0.113.0/24 any 22\nallow tcp any any 22\nallow tcp 203.0.113.0/24 any any\n\ntcp 203.0.113.9 10.0.0.1 22\ntcp 198.51.100.9 10.0.0.1 22\ntcp 203.0.113.9 10.0.0.1 80\nudp 203.0.113.9 10.0.0.1 22\n",
+    "expected": "packet 1: deny (rule 1)\npacket 2: allow (rule 2)\npacket 3: allow (rule 3)\npacket 4: deny (default)\n"
+  },
+  {
+    "name": "prefix lengths around octet boundaries",
+    "stdin": "allow udp 172.16.0.0/12 any 53\nallow udp 172.32.0.0/11 any 123\ndeny udp 172.16.0.0/15 any any\nallow tcp 100.64.0.0/10 any 8080\n\nudp 172.31.255.255 1.1.1.1 53\nudp 172.32.0.0 1.1.1.1 53\nudp 172.32.0.0 1.1.1.1 123\nudp 172.15.255.255 1.1.1.1 53\ntcp 100.127.255.255 1.1.1.1 8080\ntcp 100.128.0.0 1.1.1.1 8080\n",
+    "expected": "packet 1: allow (rule 1)\npacket 2: deny (default)\npacket 3: allow (rule 2)\npacket 4: deny (default)\npacket 5: allow (rule 4)\npacket 6: deny (default)\n"
   }
 ]

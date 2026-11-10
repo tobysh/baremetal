@@ -1,0 +1,8 @@
+{
+  "kind": "typed",
+  "prompt": "Two events are 7199 seconds apart. Type the exact quiet-period line the timeline prints between them, or `none` if it prints nothing.",
+  "accepted": [
+    "-- quiet for 1h 59m --"
+  ],
+  "explain": "7199 / 3600 = 1 whole hour and 7199 % 3600 = 3599 seconds, which is 59 whole minutes, so the line is `-- quiet for 1h 59m --`. A gap below 3600 seconds would print nothing."
+}

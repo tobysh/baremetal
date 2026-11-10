@@ -18,5 +18,60 @@
     "name": "a quiet night then activity",
     "stdin": "1770435606 mtime modified /etc/cron.d/backup\n1770403282 auth sudo by dana: cat /etc/shadow\n1770414579 auth logout user=dana\n1770389099 mtime modified /etc/cron.d/backup\n1770412794 auth logout user=dana\n1770414031 auth sudo by dana: cat /etc/shadow\n1770441016 auth login ok user=dana from 192.0.2.10\n1770442136 web POST /upload.php 200\n1770403282 web GET /robots.txt 200\n",
     "expected": "2026-02-06T14:44:59Z [mtime] modified /etc/cron.d/backup\n-- quiet for 3h 56m --\n2026-02-06T18:41:22Z [auth] sudo by dana: cat /etc/shadow\n2026-02-06T18:41:22Z [web] GET /robots.txt 200\n-- quiet for 2h 38m --\n2026-02-06T21:19:54Z [auth] logout user=dana\n2026-02-06T21:40:31Z [auth] sudo by dana: cat /etc/shadow\n2026-02-06T21:49:39Z [auth] logout user=dana\n-- quiet for 5h 50m --\n2026-02-07T03:40:06Z [mtime] modified /etc/cron.d/backup\n-- quiet for 1h 30m --\n2026-02-07T05:10:16Z [auth] login ok user=dana from 192.0.2.10\n2026-02-07T05:28:56Z [web] POST /upload.php 200\n9 events over 14h 43m\n"
+  },
+  {
+    "name": "ties keep input order, even when sources are not alphabetical",
+    "stdin": "1700000100 web GET /b 200\n1700000100 auth login ok user=zed\n1700000050 mtime modified /tmp/a\n1700000100 mtime modified /tmp/c\n1700000100 auth logout user=amy\n",
+    "expected": "2023-11-14T22:14:10Z [mtime] modified /tmp/a\n2023-11-14T22:15:00Z [web] GET /b 200\n2023-11-14T22:15:00Z [auth] login ok user=zed\n2023-11-14T22:15:00Z [mtime] modified /tmp/c\n2023-11-14T22:15:00Z [auth] logout user=amy\n5 events over 0h 00m\n"
+  },
+  {
+    "name": "a gap of exactly 3600 seconds is reported, 3599 is not",
+    "stdin": "1700000000 web GET /a 200\n1700003599 web GET /b 200\n1700007199 web GET /c 200\n1700010799 web GET /d 200\n1700014399 auth login ok user=amy\n",
+    "expected": "2023-11-14T22:13:20Z [web] GET /a 200\n2023-11-14T23:13:19Z [web] GET /b 200\n-- quiet for 1h 00m --\n2023-11-15T00:13:19Z [web] GET /c 200\n-- quiet for 1h 00m --\n2023-11-15T01:13:19Z [web] GET /d 200\n-- quiet for 1h 00m --\n2023-11-15T02:13:19Z [auth] login ok user=amy\n5 events over 3h 59m\n"
+  },
+  {
+    "name": "gap remainders: 1h 59m and 2h 00m",
+    "stdin": "1700000000 web GET / 200\n1700007199 web GET /x 200\n1700014399 web GET /y 200\n1700021599 mtime modified /etc/hosts\n",
+    "expected": "2023-11-14T22:13:20Z [web] GET / 200\n-- quiet for 1h 59m --\n2023-11-15T00:13:19Z [web] GET /x 200\n-- quiet for 2h 00m --\n2023-11-15T02:13:19Z [web] GET /y 200\n-- quiet for 2h 00m --\n2023-11-15T04:13:19Z [mtime] modified /etc/hosts\n4 events over 5h 59m\n"
+  },
+  {
+    "name": "unix epoch and the first second of 1970",
+    "stdin": "0 auth login ok user=root\n1 auth logout user=root\n",
+    "expected": "1970-01-01T00:00:00Z [auth] login ok user=root\n1970-01-01T00:00:01Z [auth] logout user=root\n2 events over 0h 00m\n"
+  },
+  {
+    "name": "timestamps past 2038 and a leap day",
+    "stdin": "4102444800 mtime modified /var/log/x\n1709164800 web GET /leap 200\n1709164799 web GET /before 200\n2147483648 auth sudo by dana: id\n",
+    "expected": "2024-02-28T23:59:59Z [web] GET /before 200\n2024-02-29T00:00:00Z [web] GET /leap 200\n-- quiet for 121755h 14m --\n2038-01-19T03:14:08Z [auth] sudo by dana: id\n-- quiet for 543044h 45m --\n2100-01-01T00:00:00Z [mtime] modified /var/log/x\n4 events over 664800h 00m\n"
+  },
+  {
+    "name": "a span of more than 99 hours keeps hours unpadded",
+    "stdin": "1700000000 auth login ok user=amy\n1700360700 auth logout user=amy\n1700180000 web GET /mid 200\n",
+    "expected": "2023-11-14T22:13:20Z [auth] login ok user=amy\n-- quiet for 50h 00m --\n2023-11-17T00:13:20Z [web] GET /mid 200\n-- quiet for 50h 11m --\n2023-11-19T02:25:00Z [auth] logout user=amy\n3 events over 100h 11m\n"
+  },
+  {
+    "name": "input in reverse order",
+    "stdin": "1700000900 web GET /e 200\n1700000700 web GET /d 200\n1700000500 web GET /c 200\n1700000300 web GET /b 200\n1700000100 web GET /a 200\n",
+    "expected": "2023-11-14T22:15:00Z [web] GET /a 200\n2023-11-14T22:18:20Z [web] GET /b 200\n2023-11-14T22:21:40Z [web] GET /c 200\n2023-11-14T22:25:00Z [web] GET /d 200\n2023-11-14T22:28:20Z [web] GET /e 200\n5 events over 0h 13m\n"
+  },
+  {
+    "name": "messages with repeated spaces and punctuation are preserved",
+    "stdin": "1700000010 auth sudo by dana:   cat   /etc/shadow\n1700000005 web GET /a b  c 200\n1700000020 mtime modified /home/dana/my  file.txt\n",
+    "expected": "2023-11-14T22:13:25Z [web] GET /a b  c 200\n2023-11-14T22:13:30Z [auth] sudo by dana:   cat   /etc/shadow\n2023-11-14T22:13:40Z [mtime] modified /home/dana/my  file.txt\n3 events over 0h 00m\n"
+  },
+  {
+    "name": "last line without a trailing newline",
+    "stdin": "1700000100 web GET /a 200\n1700000000 web GET /b 200",
+    "expected": "2023-11-14T22:13:20Z [web] GET /b 200\n2023-11-14T22:15:00Z [web] GET /a 200\n2 events over 0h 01m\n"
+  },
+  {
+    "name": "two events on the same second form the only content",
+    "stdin": "1700000000 web GET /b 200\n1700000000 auth login ok user=amy\n",
+    "expected": "2023-11-14T22:13:20Z [web] GET /b 200\n2023-11-14T22:13:20Z [auth] login ok user=amy\n2 events over 0h 00m\n"
+  },
+  {
+    "name": "midnight and day boundary in UTC",
+    "stdin": "1699999999 web GET /before 200\n1700000000 web GET /exact 200\n1699920000 mtime modified /tmp/start\n1700006399 auth logout user=amy\n",
+    "expected": "2023-11-14T00:00:00Z [mtime] modified /tmp/start\n-- quiet for 22h 13m --\n2023-11-14T22:13:19Z [web] GET /before 200\n2023-11-14T22:13:20Z [web] GET /exact 200\n-- quiet for 1h 46m --\n2023-11-14T23:59:59Z [auth] logout user=amy\n4 events over 23h 59m\n"
   }
 ]

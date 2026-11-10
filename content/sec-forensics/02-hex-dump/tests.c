@@ -68,5 +68,67 @@ int main(void) {
         CHECK(name, terminated && len == strlen(H[i].want) && strcmp(out, H[i].want) == 0,
               "expected:\n%s(length %zu)\ngot (returned %zu):\n%.600s", H[i].want, strlen(H[i].want), len, terminated ? out : "(not terminated)");
     }
+
+    /* Extra cases: properties checked against an independent reference built inside the test. */
+    {
+        uint8_t data[300];
+        for (int i = 0; i < 300; i++) data[i] = (uint8_t)(i * 7 + 3);
+        static char ref[40000], got[40000];
+
+        /* full-row and short-row lengths: 68 per full row, 10 + 39 + 2 + m + 1 for a short one */
+        int len_ok = 1;
+        size_t bad_n = 0;
+        for (size_t n = 1; n <= 80 && len_ok; n++) {
+            size_t want = (n / 16) * 68 + (n % 16 ? 10 + 39 + 2 + n % 16 + 1 : 0);
+            if (hexdump(data, n, got, sizeof got) != want || strlen(got) != want) { len_ok = 0; bad_n = n; }
+        }
+        CHECK("row width is fixed for every length 1..80", len_ok, "n = %zu: wrong length; a full row is 68 characters and a short row keeps the 39-character hex field", bad_n);
+
+        /* the printable column starts at character 51 of every row and holds the right character */
+        int col_ok = 1;
+        size_t bad_b = 0;
+        for (int b = 0; b < 256 && col_ok; b++) {
+            uint8_t one = (uint8_t)b;
+            hexdump(&one, 1, got, sizeof got);
+            char want = (b >= 0x20 && b <= 0x7e) ? (char)b : '.';
+            if (got[51] != want || got[52] != '\n' || got[10] != "0123456789abcdef"[b >> 4] || got[11] != "0123456789abcdef"[b & 15]) { col_ok = 0; bad_b = (size_t)b; }
+        }
+        CHECK("every byte value 0x00..0xff in the printable and hex columns", col_ok, "byte 0x%02zx: expected lowercase hex at columns 10-11 and the printable view at column 51", bad_b);
+
+        /* offsets run 00000000, 00000010, ... and a long input needs five hex digits */
+        static uint8_t big[4097];
+        for (size_t i = 0; i < sizeof big; i++) big[i] = (uint8_t)i;
+        size_t need = hexdump(big, sizeof big, got, sizeof got);
+        CHECK("offset grows by 16 per row", need == 256 * 68 + 10 + 39 + 2 + 1 + 1 && strstr(got, "\n00001000: 00") != NULL,
+              "4097 bytes should be 256 full rows and one 1-byte row at offset 00001000; length was %zu", need);
+        CHECK("middle rows carry the right offset", need > 68 * 3 && strncmp(got + 68 * 2, "00000020: ", 10) == 0 && strncmp(got + 68 * 255, "00000ff0: ", 10) == 0,
+              "row 3 should start 00000020: and row 256 should start 00000ff0:");
+
+        /* capacity sweep: prefix property, terminator, guard bytes, return value */
+        size_t full = hexdump(data, 20, ref, sizeof ref);
+        int sweep_ok = 1;
+        size_t bad_cap = 0;
+        for (size_t cap = 0; cap <= full + 3 && sweep_ok; cap++) {
+            uint8_t raw[8 + 200 + 8];
+            memset(raw, 0xA5, sizeof raw);
+            size_t rc = hexdump(data, 20, (char *)raw + 8, cap);
+            size_t stored = cap == 0 ? 0 : (cap - 1 < full ? cap - 1 : full);
+            int guards = 1;
+            for (int g = 0; g < 8; g++) if (raw[g] != 0xA5 || raw[8 + (cap ? cap : 0) + g] != 0xA5) guards = 0;
+            int body = cap == 0 ? raw[8] == 0xA5 : (memcmp(raw + 8, ref, stored) == 0 && raw[8 + stored] == 0);
+            if (rc != full || !guards || !body) { sweep_ok = 0; bad_cap = cap; }
+        }
+        CHECK("capacity sweep keeps the prefix, terminator and guards", sweep_ok, "cap %zu: return must be %zu, output must be the prefix of the full dump, zero terminated, nothing written outside cap", bad_cap, full);
+
+        CHECK("cap zero with a NULL buffer only measures", hexdump(data, 17, NULL, 0) == 68 + 10 + 39 + 2 + 1 + 1, "hexdump(data, 17, NULL, 0) must return 83 without writing");
+
+        /* 16 and 32 bytes: no empty trailing row */
+        size_t l16 = hexdump(data, 16, got, sizeof got), l32 = hexdump(data, 32, got, sizeof got);
+        CHECK("exact multiples of 16 end after the last full row", l16 == 68 && l32 == 136 && got[l32 - 1] == '\n' && got[l32 - 2] != '\n',
+              "16 bytes should need 68 characters and 32 bytes 136; got %zu and %zu", l16, l32);
+
+        CHECK("empty evidence gives an empty string", hexdump(data, 0, got, sizeof got) == 0 && got[0] == 0, "n = 0 must return 0 and leave an empty string");
+    }
+
     return 0;
 }

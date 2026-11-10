@@ -1,0 +1,35 @@
+{
+  "kind": "predict",
+  "prompt": "Sources A, B and C have these flows (port, flags). Only SYN with ACK clear counts, and each port counts once per source.",
+  "code": "A: (80, 0x02) (80, 0x02) (443, 0x12)\nB: (22, 0x02) (23, 0x42) (24, 0x10)\nC: (1, 0x02) (2, 0x02) (3, 0x04)",
+  "trace": [
+    {
+      "label": "Distinct qualifying ports for A",
+      "choices": [
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Distinct qualifying ports for B",
+      "choices": [
+        "2",
+        "3",
+        "1"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Sources returned at threshold 2",
+      "choices": [
+        "A, B and C",
+        "B and C",
+        "B only"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "A repeats port 80 and 0x12 is SYN-ACK. B counts 22 and 23 (0x42 has SYN set, ACK clear), not the ACK. C counts ports 1 and 2; RST is excluded. B and C reach two."
+}

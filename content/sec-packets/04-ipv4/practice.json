@@ -1,0 +1,40 @@
+{
+  "kind": "predict",
+  "prompt": "Predict what an IPv4 parser should report for these header fields. Use the rules from the lesson: DF alone is not a fragment, and total length must fit in the bytes supplied.",
+  "trace": [
+    {
+      "label": "First byte `46`: header length in bytes",
+      "choices": [
+        "20",
+        "24",
+        "46"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Flags/fragment word `40 00` (DF only): fragmented is",
+      "choices": [
+        "0",
+        "1"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Flags/fragment word `20 b9` (MF set, offset 185): fragmented is",
+      "choices": [
+        "0",
+        "1"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Total length `00 54` (84) in a 60-byte span: result",
+      "choices": [
+        "accepted",
+        "rejected"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "IHL 6 is six four-byte words, 24 bytes. The mask 0x3fff keeps More Fragments and the offset but not Don't Fragment. A total length of 84 claims bytes that were not supplied."
+}

@@ -1,9 +1,7 @@
-`irq_save`: `unsigned long f; __asm__ volatile("pushfq\n\tpopq %0\n\tcli" : "=r"(f) : : "memory"); return f;`. `irq_restore`: `if (flags & 0x200) __asm__ volatile("sti" : : : "memory");`. Never write `sti` unconditionally.
+Preemption means the timer interrupt can switch tasks at any instruction, so shared scheduler state must only be touched with interrupts off, and the code that disables them must put back the state it found, not always enable. Round-robin means picking the next ready task after the current one, wrapping around.
 ===
-`pick_next`: `int cur = current - tasks; for (int i = 1; i <= MAX_TASKS; i++) { Task *t = &tasks[(cur + i) % MAX_TASKS]; if (t->state == T_READY) return t; } return &tasks[0];`. The `<=` makes the last step land on the current slot itself.
+Look at each function's contract in the task: `irq_save` and `irq_restore` use the saved rflags, `pick_next` only reads, `schedule` does the state changes and calls `ctx_switch`, and `timer_tick` and `task_exit` are thin callers of `schedule`. The `ctx_switch` signature in the starter shows what it expects to be saved and loaded.
 ===
-In `schedule`, remember `prev = current` before changing anything, and move the old task out of `T_RUNNING` *before* calling `pick_next`: otherwise the current task is not eligible and a lone task could never be picked again.
+Typical mistakes: unconditional `sti` in `irq_restore` (nested sections re-enable too early), forgetting to mark the old task ready before picking (a lone task is never chosen again), losing the previous task pointer after updating `current`, sending the EOI after `schedule()` (the PIC stays blocked while another task runs), and a `task_exit` that returns or is not marked dead before switching away.
 ===
-In `timer_tick` the order is: count the tick, send the EOI, only then maybe `schedule()`. If your test sees `ticks` stuck at 1 or 2 after the first switch, the EOI was sent too late (or never).
-===
-If new tasks run once and then the machine locks up, check `task_exit`: it must mark the task `T_DEAD` *before* scheduling away, and it must not return. A trailing `for (;;) {}` keeps the compiler honest.
+Wrap-around scan on a different table: `for (int i = 1; i <= N; i++) if (ok(&t[(start + i) % N])) return i;` visits every slot once, starting after `start`.

@@ -24,6 +24,8 @@ func MaxBody(n int64) Middleware {
 	return func(next http.Handler) http.Handler { return next }
 }
 
+// Scaffolding supplied for you: main below only demonstrates your code.
+// Your part is the stubbed declarations above; replace their bodies.
 // Try it with Run.
 func main() {
 	h := Chain(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

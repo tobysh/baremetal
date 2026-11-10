@@ -1,9 +1,7 @@
-`aspace_create`: `uint64_t pml4 = frame_alloc(); if (!pml4) return 0; ((uint64_t *)pml4)[0] = ((uint64_t *)kernel_pml4)[0]; return pml4;`. The frame comes back zeroed, so entries 1 to 511 are already empty.
+Each address space is its own PML4, and the CPU walks whichever one is in `cr3`. The kernel lives in PML4 entry 0 (low memory, identity-mapped), so every new space must share that entry or the CPU cannot fetch its next instruction after a switch. User pages must carry the U bit at the leaf. Every table below entry 0 belongs to this space alone.
 ===
-`aspace_alloc_page`: check the address first (`virt & 0xFFF`, `virt < USER_BASE`, `virt >= USER_END`), then `frame_alloc()`, then `map_page(as, virt, frame, PTE_U | (writable ? PTE_W : 0))`. If `map_page` fails, call `frame_free(frame)` and return 0.
+Five functions, and the starter's helpers do the hard walking: `map_page` builds missing tables, `leaf_pte` finds an entry. Check the lesson's notes on which flags go where. `aspace_destroy` is the only one that needs a walk of its own, one level of the tree at a time.
 ===
-`aspace_copy_to`: first reject `virt < USER_BASE || len > USER_END - virt`. Then loop over every page the range touches (`for (a = virt & ~0xFFFULL; a < virt + len; a += 4096)`) calling `leaf_pte`, and fail if any entry is missing or not present. Only then do a second loop that copies chunk by chunk: `chunk = min(len, 4096 - (virt & 4095))`, destination `(pte & ADDR_MASK) + (virt & 4095)`.
+Typical mistakes: validating alignment or range after allocating (leaking a frame on the error path), not freeing the frame when `map_page` fails, `virt + len` overflowing so a huge `len` passes the range check, writing part of the data before discovering a later page is unmapped, copying through user addresses instead of through each frame's physical address (the target space may not be current), and freeing frames reachable via entry 0, which shows up as `bad_frees`.
 ===
-`aspace_destroy` is a recursive helper: `free_tree(table, level)`. At level 0 the entries point to data frames: free those. At other levels recurse with `level - 1`. Then free the table itself. Call it for each present PML4 entry from 1 up, with the PDPT as level 2 (PDPT, PD, PT, data), and count every `frame_free`.
-===
-If the machine triple-faults after `aspace_switch`, the new PML4's entry 0 is wrong: the CPU cannot even fetch the next instruction. If `bad_frees` is not zero, you freed something that did not come from `frame_alloc`, probably the kernel's own tables through PML4 entry 0.
+Small example on a different task: to check a range for overflow safely, compare against the remaining room, `len > LIMIT - start`, rather than computing `start + len`.

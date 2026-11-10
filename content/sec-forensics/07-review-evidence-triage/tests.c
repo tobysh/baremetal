@@ -44,6 +44,12 @@ static const struct { const char *name; const uint8_t *p; size_t n; uint64_t exp
     {"empty.bin", e8, 0, 0xcbf29ce484222325ULL, "empty.bin: unknown, first bytes -, hash cbf29ce484222325, OK\n"},
 };
 
+static uint64_t ref_fnv(const uint8_t *p, size_t n) {
+    uint64_t h = 14695981039346656037ULL;
+    while (n--) { h ^= *p++; h *= 1099511628211ULL; }
+    return h;
+}
+
 int main(void) {
     for (size_t i = 0; i < sizeof R / sizeof R[0]; i++) {
         char name[64], out[256];
@@ -53,5 +59,67 @@ int main(void) {
         int terminated = memchr(out, '\0', sizeof out) != NULL;
         CHECK(name, terminated && strcmp(out, R[i].want) == 0, "expected: %sgot: %s", R[i].want, terminated ? out : "(not terminated)\n");
     }
+
+    /* Extra cases: expected lines are built from an independent reference inside the test. */
+    {
+        static const struct { const char *label, *type; uint8_t b[12]; size_t n; } T[] = {
+            {"png", "PNG", {0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4}, 12},
+            {"jpeg", "JPEG", {0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 'J', 'F', 'I', 'F', 0, 1}, 12},
+            {"pdf", "PDF", {'%', 'P', 'D', 'F', '-', '1', '.', '7', 0x0a, 0, 0, 0}, 9},
+            {"zip", "ZIP", {'P', 'K', 3, 4, 0x14, 0, 0, 0}, 8},
+            {"gif", "unknown", {'G', 'I', 'F', '8', '9', 'a', 1, 0}, 8},
+            {"elf", "unknown", {0x7f, 'E', 'L', 'F', 2, 1, 1, 0}, 8},
+            {"truncated png", "unknown", {0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a}, 7},
+            {"truncated zip", "unknown", {'P', 'K', 3}, 3},
+        };
+        char out[512], want[512];
+        for (size_t i = 0; i < sizeof T / sizeof T[0]; i++) {
+            char hex[40] = "";
+            size_t k = 0;
+            for (size_t j = 0; j < T[i].n && j < 8; j++) k += (size_t)snprintf(hex + k, sizeof hex - k, "%s%02x", j ? " " : "", T[i].b[j]);
+            uint64_t h = ref_fnv(T[i].b, T[i].n);
+            snprintf(want, sizeof want, "%s.bin: %s, first bytes %s, hash %016llx, OK\n", T[i].label, T[i].type, hex, (unsigned long long)h);
+            char nm[64];
+            snprintf(nm, sizeof nm, "%s evidence reports type %s", T[i].label, T[i].type);
+            memset(out, 'Z', sizeof out);
+            char name[40];
+            snprintf(name, sizeof name, "%s.bin", T[i].label);
+            report(name, T[i].b, T[i].n, h, out, sizeof out);
+            CHECK(nm, strcmp(out, want) == 0, "expected: %sgot: %s", want, out);
+        }
+
+        uint8_t nine[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9}, eight[8] = {0xab, 0xcd, 0xef, 0, 1, 2, 3, 0xff};
+        report("nine", nine, 9, ref_fnv(nine, 9), out, sizeof out);
+        CHECK("nine bytes show only the first eight", strstr(out, "first bytes 01 02 03 04 05 06 07 08, hash") != NULL, "got: %s", out);
+        report("eight", eight, 8, ref_fnv(eight, 8), out, sizeof out);
+        CHECK("eight bytes have no trailing space and use lowercase hex", strstr(out, "first bytes ab cd ef 00 01 02 03 ff, hash") != NULL, "got: %s", out);
+
+        report("flip", nine, 9, ref_fnv(nine, 9) ^ 0x8000000000000000ULL, out, sizeof out);
+        snprintf(want, sizeof want, "flip: unknown, first bytes 01 02 03 04 05 06 07 08, hash %016llx, CHANGED\n", (unsigned long long)ref_fnv(nine, 9));
+        CHECK("a changed digest reports the computed value and CHANGED", strcmp(out, want) == 0, "expected: %sgot: %s", want, out);
+
+        report("empty", nine, 0, ref_fnv(nine, 0), out, sizeof out);
+        CHECK("empty evidence uses a dash and the initial state", strcmp(out, "empty: unknown, first bytes -, hash cbf29ce484222325, OK\n") == 0, "got: %s", out);
+
+        /* capacity sweep: truncation keeps a prefix, terminates, and never writes outside cap */
+        report("sweep.bin", eight, 8, 0, want, sizeof want);
+        size_t full = strlen(want);
+        int sweep_ok = 1;
+        size_t bad_cap = 0;
+        for (size_t cap = 0; cap <= full + 2 && sweep_ok; cap++) {
+            uint8_t raw[8 + 200 + 8];
+            memset(raw, 0xA5, sizeof raw);
+            report("sweep.bin", eight, 8, 0, (char *)raw + 8, cap);
+            size_t stored = cap == 0 ? 0 : (cap - 1 < full ? cap - 1 : full);
+            int guards = 1;
+            for (int g = 0; g < 8; g++) if (raw[g] != 0xA5 || raw[8 + cap + g] != 0xA5) guards = 0;
+            int body = cap == 0 ? raw[8] == 0xA5 : (memcmp(raw + 8, want, stored) == 0 && raw[8 + stored] == 0);
+            if (!guards || !body) { sweep_ok = 0; bad_cap = cap; }
+        }
+        CHECK("capacity sweep keeps the prefix, terminator and guards", sweep_ok, "cap %zu: output must be a zero-terminated prefix of the full line and nothing may be written outside cap", bad_cap);
+        report("x", eight, 8, 0, NULL, 0);
+        CHECK("cap zero with a NULL buffer writes nothing", 1, "");
+    }
+
     return 0;
 }

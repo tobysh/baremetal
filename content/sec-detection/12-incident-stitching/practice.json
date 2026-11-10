@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This loop splits one user's sorted events into bursts. A gap of exactly `G` seconds must stay in the same burst. Tap the faulty line.",
+  "code": "for (int i = 0; i < n; i++) {\n    Burst *b = current_for(ev[i].user);\n    if (b == NULL || ev[i].t - b->first > G) {\n        b = start_burst(ev[i]);\n    }\n    b->last = ev[i].t;\n    b->count++;\n}",
+  "bugLine": 3,
+  "explain": "The gap must be measured from the user's previous event, `b->last`, not from the start of the burst. Comparing with `b->first` cuts a long, steady burst into pieces as soon as it lasts more than G seconds."
+}

@@ -28,5 +28,65 @@
     "name": "one hit is not enough",
     "stdin": "192.0.2.10 - - [03/Mar/2026:02:00:00 +0000] \"GET /a/../b HTTP/1.1\" 200 5\n",
     "expected": "2xx=1 3xx=0 4xx=0 5xx=0 malformed=0\n"
+  },
+  {
+    "name": "status boundaries: 99 and 600 are malformed, 100 and 599 are valid",
+    "stdin": "192.0.2.1 - - [03/Mar/2026:02:00:00 +0000] \"GET /a HTTP/1.1\" 99 -\n192.0.2.1 - - [03/Mar/2026:02:00:00 +0000] \"GET /b HTTP/1.1\" 100 -\n192.0.2.1 - - [03/Mar/2026:02:00:00 +0000] \"GET /c HTTP/1.1\" 599 -\n192.0.2.1 - - [03/Mar/2026:02:00:00 +0000] \"GET /d HTTP/1.1\" 600 -\n192.0.2.1 - - [03/Mar/2026:02:00:00 +0000] \"GET /e HTTP/1.1\" 199 -\n192.0.2.1 - - [03/Mar/2026:02:00:00 +0000] \"GET /f HTTP/1.1\" 200 -\n192.0.2.1 - - [03/Mar/2026:02:00:00 +0000] \"GET /g HTTP/1.1\" 300 -\n192.0.2.1 - - [03/Mar/2026:02:00:00 +0000] \"GET /h HTTP/1.1\" 404 -\n192.0.2.1 - - [03/Mar/2026:02:00:00 +0000] \"GET /i HTTP/1.1\" 500 -\n",
+    "expected": "2xx=1 3xx=1 4xx=1 5xx=2 malformed=2\n"
+  },
+  {
+    "name": "size must be a dash or digits",
+    "stdin": "192.0.2.2 - - [03/Mar/2026:02:00:00 +0000] \"GET /a HTTP/1.1\" 200 -\n192.0.2.2 - - [03/Mar/2026:02:00:00 +0000] \"GET /b HTTP/1.1\" 200 0\n192.0.2.2 - - [03/Mar/2026:02:00:00 +0000] \"GET /c HTTP/1.1\" 200 12a\n192.0.2.2 - - [03/Mar/2026:02:00:00 +0000] \"GET /d HTTP/1.1\" 200 --\n192.0.2.2 - - [03/Mar/2026:02:00:00 +0000] \"GET /e HTTP/1.1\" 200 -5\n192.0.2.2 - - [03/Mar/2026:02:00:00 +0000] \"GET /f HTTP/1.1\" 200 123456789\n",
+    "expected": "2xx=3 3xx=0 4xx=0 5xx=0 malformed=3\n"
+  },
+  {
+    "name": "the quoted request needs exactly three words",
+    "stdin": "192.0.2.3 - - [x] \"GET /a\" 200 5\n192.0.2.3 - - [x] \"GET /a b HTTP/1.1\" 200 5\n192.0.2.3 - - [x] \"GET\" 200 5\n192.0.2.3 - - [x] \"\" 200 5\n192.0.2.3 - - [03/Mar/2026:02:00:00 +0000] \"GET /ok HTTP/1.1\" 200 -\n",
+    "expected": "2xx=1 3xx=0 4xx=0 5xx=0 malformed=4\n"
+  },
+  {
+    "name": "missing quotes, an unclosed quote and an extra token after the size",
+    "stdin": "192.0.2.4 - - [x] GET /a HTTP/1.1 200 5\n192.0.2.4 - - [x] \"GET /a HTTP/1.1 200 5\n192.0.2.4 - - [x] \"GET /a HTTP/1.1\" 200 5 extra\n192.0.2.4 - - [x] \"GET /a HTTP/1.1\" 200\n192.0.2.4 - - [03/Mar/2026:02:00:00 +0000] \"GET /ok HTTP/1.1\" 200 -\n",
+    "expected": "2xx=1 3xx=0 4xx=0 5xx=0 malformed=4\n"
+  },
+  {
+    "name": "empty and blank lines are malformed",
+    "stdin": "192.0.2.5 - - [03/Mar/2026:02:00:00 +0000] \"GET /a HTTP/1.1\" 200 -\n\n\n   \n192.0.2.5 - - [03/Mar/2026:02:00:00 +0000] \"GET /b HTTP/1.1\" 200 -\n",
+    "expected": "2xx=2 3xx=0 4xx=0 5xx=0 malformed=3\n"
+  },
+  {
+    "name": "every encoding of the pattern, in any case, and /etc/passwd",
+    "stdin": "198.51.100.1 - - [03/Mar/2026:02:00:00 +0000] \"GET /a/%2E%2E/b HTTP/1.1\" 200 -\n198.51.100.1 - - [03/Mar/2026:02:00:00 +0000] \"GET /a/%2e%2E/b HTTP/1.1\" 200 -\n198.51.100.1 - - [03/Mar/2026:02:00:00 +0000] \"GET /x/..%2f HTTP/1.1\" 200 -\n198.51.100.1 - - [03/Mar/2026:02:00:00 +0000] \"GET /../up HTTP/1.1\" 200 -\n198.51.100.1 - - [03/Mar/2026:02:00:00 +0000] \"GET /ETC/PASSWD HTTP/1.1\" 200 -\n198.51.100.1 - - [03/Mar/2026:02:00:00 +0000] \"GET /q?f=/etc/passwd HTTP/1.1\" 200 -\n198.51.100.1 - - [03/Mar/2026:02:00:00 +0000] \"GET /.. HTTP/1.1\" 200 -\n198.51.100.1 - - [03/Mar/2026:02:00:00 +0000] \"GET /safe.txt HTTP/1.1\" 200 -\n",
+    "expected": "2xx=8 3xx=0 4xx=0 5xx=0 malformed=0\nSUSPECT 198.51.100.1 hits=5\n"
+  },
+  {
+    "name": "a path with several patterns is still one hit",
+    "stdin": "198.51.100.2 - - [03/Mar/2026:02:00:00 +0000] \"GET /../../etc/passwd HTTP/1.1\" 200 -\n198.51.100.2 - - [03/Mar/2026:02:00:00 +0000] \"GET /%2e%2e/../etc/passwd HTTP/1.1\" 200 -\n",
+    "expected": "2xx=2 3xx=0 4xx=0 5xx=0 malformed=0\nSUSPECT 198.51.100.2 hits=2\n"
+  },
+  {
+    "name": "a single hit is not flagged, two are",
+    "stdin": "198.51.100.3 - - [03/Mar/2026:02:00:00 +0000] \"GET /../a HTTP/1.1\" 200 -\n198.51.100.4 - - [03/Mar/2026:02:00:00 +0000] \"GET /../a HTTP/1.1\" 200 -\n198.51.100.4 - - [03/Mar/2026:02:00:00 +0000] \"GET /%2e%2e/b HTTP/1.1\" 200 -\n198.51.100.3 - - [03/Mar/2026:02:00:00 +0000] \"GET /fine HTTP/1.1\" 200 -\n",
+    "expected": "2xx=4 3xx=0 4xx=0 5xx=0 malformed=0\nSUSPECT 198.51.100.4 hits=2\n"
+  },
+  {
+    "name": "malformed lines never count as hits",
+    "stdin": "198.51.100.5 - - [x] GET /../a 200 5\n198.51.100.5 - - [x] \"GET /../a HTTP/1.1\" 99 5\n198.51.100.5 - - [03/Mar/2026:02:00:00 +0000] \"GET /../ok HTTP/1.1\" 200 -\n",
+    "expected": "2xx=1 3xx=0 4xx=0 5xx=0 malformed=2\n"
+  },
+  {
+    "name": "ties in hits are ordered by address text",
+    "stdin": "198.51.100.9 - - [03/Mar/2026:02:00:00 +0000] \"GET /../a HTTP/1.1\" 200 -\n198.51.100.140 - - [03/Mar/2026:02:00:00 +0000] \"GET /../a HTTP/1.1\" 200 -\n198.51.100.23 - - [03/Mar/2026:02:00:00 +0000] \"GET /../a HTTP/1.1\" 200 -\n198.51.100.9 - - [03/Mar/2026:02:00:00 +0000] \"GET /../a HTTP/1.1\" 200 -\n198.51.100.140 - - [03/Mar/2026:02:00:00 +0000] \"GET /../a HTTP/1.1\" 200 -\n198.51.100.23 - - [03/Mar/2026:02:00:00 +0000] \"GET /../a HTTP/1.1\" 200 -\n198.51.100.7 - - [03/Mar/2026:02:00:00 +0000] \"GET /../a HTTP/1.1\" 200 -\n198.51.100.7 - - [03/Mar/2026:02:00:00 +0000] \"GET /../a HTTP/1.1\" 200 -\n198.51.100.7 - - [03/Mar/2026:02:00:00 +0000] \"GET /../a HTTP/1.1\" 200 -\n",
+    "expected": "2xx=9 3xx=0 4xx=0 5xx=0 malformed=0\nSUSPECT 198.51.100.7 hits=3\nSUSPECT 198.51.100.140 hits=2\nSUSPECT 198.51.100.23 hits=2\nSUSPECT 198.51.100.9 hits=2\n"
+  },
+  {
+    "name": "1xx lines are valid but not in any class",
+    "stdin": "192.0.2.6 - - [03/Mar/2026:02:00:00 +0000] \"GET /a HTTP/1.1\" 101 -\n192.0.2.6 - - [03/Mar/2026:02:00:00 +0000] \"GET /b HTTP/1.1\" 199 -\n192.0.2.6 - - [03/Mar/2026:02:00:00 +0000] \"GET /c HTTP/1.1\" 204 -\n",
+    "expected": "2xx=1 3xx=0 4xx=0 5xx=0 malformed=0\n"
+  },
+  {
+    "name": "empty input",
+    "stdin": "",
+    "expected": "2xx=0 3xx=0 4xx=0 5xx=0 malformed=0\n"
   }
 ]

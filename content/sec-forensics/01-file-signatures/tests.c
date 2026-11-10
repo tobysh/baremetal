@@ -86,5 +86,77 @@ int main(void) {
         const char *got = identify(M[i].p, M[i].n);
         CHECK(name, got && strcmp(got, M[i].want) == 0, "expected \"%s\", got \"%s\"", M[i].want, got ? got : "(null)");
     }
+
+    /* Extra cases: every signature is built at run time so nothing can be matched by position. */
+    {
+        static const struct { const char *want; const char *sig; size_t len; } S[] = {
+            {"PNG", "\x89PNG\r\n\x1a\n", 8}, {"JPEG", "\xff\xd8\xff", 3}, {"GIF", "GIF87a", 6}, {"GIF", "GIF89a", 6},
+            {"PDF", "%PDF-", 5}, {"ZIP", "PK\x03\x04", 4}, {"ELF", "\x7f" "ELF", 4},
+        };
+        uint8_t buf[300];
+        for (size_t i = 0; i < sizeof S / sizeof S[0]; i++) {
+            char name[64];
+            snprintf(name, sizeof name, "%s signature alone, exactly %zu bytes", S[i].want, S[i].len);
+            memset(buf, 0x41, sizeof buf);
+            memcpy(buf, S[i].sig, S[i].len);
+            const char *got = identify(buf, S[i].len);
+            CHECK(name, got && strcmp(got, S[i].want) == 0, "expected \"%s\", got \"%s\"", S[i].want, got ? got : "(null)");
+        }
+        int bad = -1;
+        const char *bad_got = "";
+        for (size_t i = 0; i < sizeof S / sizeof S[0] && bad < 0; i++) {
+            memset(buf, 0x41, sizeof buf);
+            memcpy(buf, S[i].sig, S[i].len); /* the complete signature sits in memory, but n stops one byte short */
+            const char *got = identify(buf, S[i].len - 1);
+            if (!got || strcmp(got, "unknown") != 0) { bad = (int)i; bad_got = got ? got : "(null)"; }
+        }
+        CHECK("a signature cut off by n is unknown", bad < 0, "%s with n one byte short returned \"%s\"; compare only when n >= signature length", bad < 0 ? "" : S[bad].want, bad_got);
+
+        bad = -1;
+        for (size_t i = 0; i < sizeof S / sizeof S[0] && bad < 0; i++) {
+            memset(buf, 0x41, sizeof buf);
+            memcpy(buf + 1, S[i].sig, S[i].len);
+            const char *got = identify(buf, S[i].len + 1);
+            if (!got || strcmp(got, "unknown") != 0) bad = (int)i;
+        }
+        CHECK("a signature at offset 1 is not a match", bad < 0, "%s shifted by one byte was recognised; only offset 0 counts", bad < 0 ? "" : S[bad].want);
+
+        static const struct { const char *label; const char *bytes; size_t len; } N[] = {
+            {"GIF88a", "GIF88a", 6}, {"GIF8 only", "GIF8", 4}, {"%PDF without dash", "%PDF", 4}, {"lowercase %pdf-", "%pdf-", 5},
+            {"empty ZIP marker", "PK\x05\x06", 4}, {"ZIP central dir", "PK\x01\x02", 4}, {"ELF with last byte wrong", "\x7f" "ELG", 4},
+            {"JPEG ff d8 fe", "\xff\xd8\xfe", 3}, {"PNG last byte wrong", "\x89PNG\r\n\x1a\x0b", 8}, {"lowercase gif89a", "gif89a", 6},
+        };
+        bad = -1;
+        for (size_t i = 0; i < sizeof N / sizeof N[0] && bad < 0; i++) {
+            const char *got = identify((const uint8_t *)N[i].bytes, N[i].len);
+            if (!got || strcmp(got, "unknown") != 0) bad = (int)i;
+        }
+        CHECK("near misses are unknown", bad < 0, "\"%s\" must be unknown", bad < 0 ? "" : N[bad].label);
+
+        uint32_t x = 12345;
+        bad = -1;
+        for (size_t i = 0; i < sizeof S / sizeof S[0] && bad < 0; i++) {
+            size_t total = S[i].len + 200;
+            memcpy(buf, S[i].sig, S[i].len);
+            for (size_t k = S[i].len; k < total; k++) { x = x * 1103515245u + 12345u; buf[k] = (uint8_t)(x >> 16); }
+            const char *got = identify(buf, total);
+            if (!got || strcmp(got, S[i].want) != 0) bad = (int)i;
+        }
+        CHECK("bytes after the signature do not matter", bad < 0, "%s followed by 200 arbitrary bytes was not recognised", bad < 0 ? "" : S[bad].want);
+
+        int wrong = 0;
+        for (int b = 0; b < 256; b++) {
+            buf[0] = (uint8_t)b;
+            buf[1] = 0; buf[2] = 0; buf[3] = 0;
+            const char *got = identify(buf, 1);
+            if (!got || strcmp(got, "unknown") != 0) wrong = 1;
+        }
+        CHECK("a single byte is never enough", !wrong, "one byte of evidence must give \"unknown\" for every value");
+
+        buf[0] = 0x89;
+        const char *got = identify(buf, 0);
+        CHECK("zero length evidence is unknown", got && strcmp(got, "unknown") == 0, "n = 0 returned \"%s\"", got ? got : "(null)");
+    }
+
     return 0;
 }

@@ -1,0 +1,15 @@
+{
+  "kind": "choice",
+  "prompt": "A triage line reads `item.bin: ZIP, first bytes 50 4b 03 04 00 01 02 03, hash 1122334455667788, CHANGED`. Select every statement that the report itself supports.",
+  "choices": [
+    "The first bytes match the ZIP local header signature.",
+    "The archive is a valid, complete ZIP file.",
+    "The computed checksum differs from the reference value.",
+    "An attacker modified the file."
+  ],
+  "answer": [
+    0,
+    2
+  ],
+  "explain": "A signature and a checksum comparison are observations. Neither proves the file is complete or valid, and a differing checksum does not say who changed it or why."
+}

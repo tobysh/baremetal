@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This UDP parser can be tricked into reporting a huge payload. Tap the faulty line.",
+  "code": "int parse_udp(const uint8_t *p, size_t n, UDP *out) {\n    if (!p || !out || n < 8) return -1;\n    size_t len = (size_t)(p[4] << 8 | p[5]);\n    if (len > n) return -1;\n    *out = (UDP){ be16(p), be16(p + 2), len - 8 };\n    return 0;\n}",
+  "bugLine": 4,
+  "explain": "The check only rejects lengths above `n`. A declared length below 8 passes, and `len - 8` wraps around to a huge `size_t`. The check must be `len < 8 || len > n`."
+}

@@ -1,0 +1,43 @@
+{
+  "kind": "predict",
+  "prompt": "What does `classify` return for each frame? Remember the order: Ethernet type, IPv4 checks, fragments, then the transport header inside the IP total length.",
+  "trace": [
+    {
+      "label": "EtherType 0x0806, 60 bytes",
+      "choices": [
+        "arp",
+        "invalid",
+        "other"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "IPv4 total 32, IHL 5, protocol 17, UDP length 12, ports 53 and 50000, frame 62 bytes",
+      "choices": [
+        "ipv4/udp",
+        "ipv4/udp/dns-port",
+        "invalid"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "The same packet with More Fragments set",
+      "choices": [
+        "ipv4/fragment",
+        "ipv4/udp/dns-port",
+        "invalid"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "IP total 32, IHL 5, UDP length field 20, 16 bytes of padding after the packet",
+      "choices": [
+        "ipv4/udp",
+        "invalid",
+        "ipv4/other"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "ARP stops at the Ethernet type. Port 53 is a hint, so the label says dns-port. A fragment is labelled before the transport header is read. In the last frame the UDP span is 12 bytes, so a declared length of 20 reaches into padding and is invalid."
+}

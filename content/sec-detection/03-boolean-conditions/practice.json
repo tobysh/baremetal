@@ -1,0 +1,11 @@
+{
+  "kind": "predict",
+  "prompt": "Selections: a is true, b is false, c is true for one event. Evaluate each condition (`not` > `and` > `or`).",
+  "trace": [
+    { "label": "`a or b and c` is", "choices": ["true", "false"], "answer": 0 },
+    { "label": "`not a or c` is", "choices": ["true", "false"], "answer": 0 },
+    { "label": "`not ( a and c )` is", "choices": ["true", "false"], "answer": 1 },
+    { "label": "`( a or b ) and not c` is", "choices": ["true", "false"], "answer": 1 }
+  ],
+  "explain": "`a or (b and c)` is true because a is true. `(not a) or c` is true because c is. `a and c` is true, so its negation is false. `a or b` is true but `not c` is false, so the and is false."
+}

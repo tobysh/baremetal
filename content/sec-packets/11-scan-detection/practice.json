@@ -1,0 +1,34 @@
+{
+  "kind": "predict",
+  "prompt": "One client's records, in order (time omitted). Count each (server, port) once, using its first outcome.",
+  "code": "s1 22  closed\ns1 23  filtered\ns1 22  open\ns2 22  closed\ns2 80  open\ns3 80  closed",
+  "trace": [
+    {
+      "label": "Distinct targets",
+      "choices": [
+        "5",
+        "6",
+        "3"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "open count",
+      "choices": [
+        "1",
+        "2",
+        "0"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Is the client flagged (needs 5 or more targets and failures above open)?",
+      "choices": [
+        "Yes",
+        "No"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "The third line repeats target (s1, 22), so it adds nothing and the first outcome (closed) stays. That leaves five targets: open=1, closed=3, filtered=1, and 4 failures exceed 1 open."
+}

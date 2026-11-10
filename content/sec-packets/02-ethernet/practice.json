@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This parser handles one VLAN tag. Tap the line that can read outside a short frame.",
+  "code": "int parse_ethernet(const uint8_t *p, size_t n, Ethernet *out) {\n    if (!p || !out || n < 14) return -1;\n    Ethernet e = {0};\n    e.type = (uint16_t)(p[12] << 8 | p[13]);\n    e.payload = 14;\n    if (e.type == 0x8100) {\n        e.type = (uint16_t)(p[16] << 8 | p[17]);\n        e.payload = 18;\n    }\n    *out = e;\n    return 0;\n}",
+  "bugLine": 7,
+  "explain": "A tagged frame needs 18 bytes, but only 14 were checked. With n = 14 to 17, `p[16]` and `p[17]` are read past the end. Add `if (n < 18) return -1;` before reading the inner type."
+}

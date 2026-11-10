@@ -27,6 +27,8 @@ func (s *Store) Handler() http.Handler {
 	return http.NewServeMux()
 }
 
+// Scaffolding supplied for you: main below only demonstrates your code.
+// Your part is the stubbed declarations above; replace their bodies.
 // Try it with Run.
 func main() {
 	h := NewStore().Handler()

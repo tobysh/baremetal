@@ -1,0 +1,7 @@
+{
+  "kind": "choice",
+  "prompt": "Which of these tokens is accepted as an IPv4 indicator by the strict rules (four parts, 0 to 255, no leading zeros)?",
+  "choices": ["198.51.100.7", "007.1.1.1", "300.1.1.1", "10.2.3.4.5", "10.0.0"],
+  "answer": 0,
+  "explain": "`007` has a leading zero, `300` is above 255, `10.2.3.4.5` has five parts and `10.0.0` has three. Only `198.51.100.7` passes every rule."
+}

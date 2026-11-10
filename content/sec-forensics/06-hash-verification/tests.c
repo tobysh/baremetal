@@ -121,6 +121,12 @@ static const struct { const uint8_t *p; size_t n; uint64_t want; } V[] = {
     {v4, 43, 0xf3f9b7f5e7e47110ULL},
 };
 
+static uint64_t ref_fnv(const uint8_t *p, size_t n) {
+    uint64_t h = 14695981039346656037ULL;
+    while (n--) { h ^= *p++; h *= 1099511628211ULL; }
+    return h;
+}
+
 int main(void) {
     for (size_t i = 0; i < sizeof V / sizeof V[0]; i++) {
         char name[64];
@@ -144,5 +150,59 @@ int main(void) {
         for (int k = 0; k < A[i].n; k++) pos += snprintf(msg + pos, sizeof msg - pos, "%s:%d(want %d) ", A[i].items[k].name, status[k], A[i].want[k]);
         CHECK(name, ok && bad == expect_bad, "returned %d (want %d); statuses %s", bad, expect_bad, msg);
     }
+
+    /* Extra cases: manifests are generated from an independent reference checksum inside the test. */
+    {
+        static const uint8_t ABC[] = "abcdefghij";
+        static const uint8_t ZEROS[16] = {0};
+        static const uint8_t HIGH[] = {0xff, 0xfe, 0x80, 0x00, 0xff};
+        static const uint8_t EMPTY[1] = {0};
+#define REF(arr, len) ref_fnv((arr), (len))
+        char man[1024];
+        int st[8];
+        int bad;
+        Item it[8];
+
+        /* hand-checked digests of tiny inputs (a, foobar, empty) */
+        CHECK("known digests of a, foobar and the empty input", fnv1a64((const uint8_t *)"a", 1) == 0xaf63dc4c8601ec8cULL && fnv1a64((const uint8_t *)"foobar", 6) == 0x85944171f73967e8ULL && fnv1a64(EMPTY, 0) == 0xcbf29ce484222325ULL,
+              "a=%016llx foobar=%016llx empty=%016llx", (unsigned long long)fnv1a64((const uint8_t *)"a", 1), (unsigned long long)fnv1a64((const uint8_t *)"foobar", 6), (unsigned long long)fnv1a64(EMPTY, 0));
+
+        CHECK("zero bytes still change the digest", fnv1a64(ZEROS, 1) != fnv1a64(ZEROS, 2) && fnv1a64(ZEROS, 3) == ref_fnv(ZEROS, 3) && fnv1a64(HIGH, 5) == ref_fnv(HIGH, 5),
+              "digests of {00}, {00,00}, {00,00,00} and bytes above 0x7f must follow the FNV-1a rule exactly");
+
+        snprintf(man, sizeof man, "%016llx  zeros.bin\n%016llx  abc.txt\n%016llx  high.bin", (unsigned long long)REF(ZEROS, 16), (unsigned long long)REF(ABC, 10), (unsigned long long)REF(HIGH, 5));
+        it[0] = (Item){"high.bin", HIGH, 5}; it[1] = (Item){"zeros.bin", ZEROS, 16}; it[2] = (Item){"abc.txt", ABC, 10};
+        memset(st, 0x55, sizeof st);
+        bad = audit(man, it, 3, st);
+        CHECK("order is irrelevant and the last line needs no newline", bad == 0 && st[0] == 0 && st[1] == 0 && st[2] == 0, "all three items match their lines; returned %d, statuses %d %d %d", bad, st[0], st[1], st[2]);
+
+        snprintf(man, sizeof man, "%016llx  a.bin.bak\n%016llx  B.BIN\n", (unsigned long long)REF(ABC, 10), (unsigned long long)REF(ABC, 10));
+        it[0] = (Item){"a.bin", ABC, 10}; it[1] = (Item){"a.bin.bak", ABC, 10}; it[2] = (Item){"b.bin", ABC, 10}; it[3] = (Item){"B.BIN", ABC, 10}; it[4] = (Item){"a.bi", ABC, 10};
+        bad = audit(man, it, 5, st);
+        CHECK("names match exactly, not by prefix or case", bad == 3 && st[0] == 2 && st[1] == 0 && st[2] == 2 && st[3] == 0 && st[4] == 2,
+              "only a.bin.bak and B.BIN are listed; statuses %d %d %d %d %d (want 2 0 2 0 2), returned %d", st[0], st[1], st[2], st[3], st[4], bad);
+
+        snprintf(man, sizeof man, "%016llx  one.bin\n%016llx  two.bin\n", (unsigned long long)(REF(ABC, 10) ^ 1ULL), (unsigned long long)(REF(HIGH, 5) ^ (1ULL << 63)));
+        it[0] = (Item){"one.bin", ABC, 10}; it[1] = (Item){"two.bin", HIGH, 5};
+        bad = audit(man, it, 2, st);
+        CHECK("a single flipped digit, even in the top bit, is a change", bad == 2 && st[0] == 1 && st[1] == 1, "digests differ by one bit: statuses %d %d (want 1 1), returned %d", st[0], st[1], bad);
+
+        snprintf(man, sizeof man, "%016llx  empty.dat\n%016llx  zeros.bin\n", (unsigned long long)REF(EMPTY, 0), (unsigned long long)REF(ZEROS, 16));
+        it[0] = (Item){"empty.dat", EMPTY, 0}; it[1] = (Item){"zeros.bin", ZEROS, 15};
+        bad = audit(man, it, 2, st);
+        CHECK("an empty item and a shortened item", bad == 1 && st[0] == 0 && st[1] == 1, "empty.dat must match the initial state; zeros.bin hashed over 15 bytes must differ: got %d %d", st[0], st[1]);
+
+        snprintf(man, sizeof man, "%016llx  dup.bin\n", (unsigned long long)REF(ABC, 10));
+        it[0] = (Item){"dup.bin", ABC, 10}; it[1] = (Item){"dup.bin", HIGH, 5};
+        bad = audit(man, it, 2, st);
+        CHECK("the same name supplied twice is judged per item", bad == 1 && st[0] == 0 && st[1] == 1, "statuses %d %d (want 0 1), returned %d", st[0], st[1], bad);
+
+        int sentinel[3] = {-7, -7, -7};
+        bad = audit(man, it, 0, sentinel);
+        CHECK("n = 0 returns 0 and writes nothing", bad == 0 && sentinel[0] == -7, "returned %d, status[0] = %d", bad, sentinel[0]);
+        bad = audit(man, it, 1, sentinel);
+        CHECK("only status[0..n-1] is written", sentinel[1] == -7 && sentinel[2] == -7 && sentinel[0] == 0, "status[0]=%d status[1]=%d status[2]=%d", sentinel[0], sentinel[1], sentinel[2]);
+    }
+
     return 0;
 }

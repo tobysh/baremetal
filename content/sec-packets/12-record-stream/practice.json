@@ -1,0 +1,35 @@
+{
+  "kind": "predict",
+  "prompt": "Run the record walk on this 15-byte buffer. Valid headers use type 20 to 23, version 3.1 to 3.4 and length 1 to 16384.",
+  "code": "17 03 03 00 03 aa bb cc\n16 03 03 00 10 01 02",
+  "trace": [
+    {
+      "label": "Return value",
+      "choices": [
+        "0",
+        "1",
+        "-1"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "records",
+      "choices": [
+        "1",
+        "2",
+        "0"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "consumed",
+      "choices": [
+        "8",
+        "15",
+        "5"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "The first record is 5 + 3 = 8 bytes. The second header is valid, announcing a 16-byte body, but only 2 bytes are present, so the walk returns 1 (wait for more) with the first record counted and 8 bytes consumed."
+}

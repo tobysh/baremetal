@@ -1,0 +1,35 @@
+{
+  "kind": "predict",
+  "prompt": "One record header from a little-endian classic pcap file (global snaplen 65535). Read each field in the byte order the magic selected.",
+  "code": "80 8c e2 6a  40 42 0f 00  3c 00 00 00  2a 01 00 00\nts_sec       ts_usec      caplen       origlen",
+  "trace": [
+    {
+      "label": "caplen `3c 00 00 00` is",
+      "choices": [
+        "60",
+        "1006632960",
+        "15360"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "origlen `2a 01 00 00` is",
+      "choices": [
+        "42",
+        "298",
+        "704708608"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Is this record valid?",
+      "choices": [
+        "Yes",
+        "No: ts_usec is 1000000",
+        "No: caplen exceeds origlen"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "`40 42 0f 00` read little-endian is 0x000f4240 = 1,000,000, one more than the largest valid microsecond value (999,999). Caplen 60 is below origlen 298, which is ordinary truncation."
+}

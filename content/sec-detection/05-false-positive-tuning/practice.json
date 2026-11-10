@@ -1,0 +1,7 @@
+{
+  "kind": "choice",
+  "prompt": "Which of these patterns match the text `backup-02` as a whole? Select all that apply.",
+  "choices": ["backup-0?", "backup-?", "back*", "*-02", "backup"],
+  "answer": [0, 2, 3],
+  "explain": "`?` is exactly one character, so `backup-0?` matches `backup-02` but `backup-?` would need a one-character tail. `back*` and `*-02` match with `*` absorbing the rest or the start. `backup` has no wildcard and must equal the whole text."
+}

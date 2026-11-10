@@ -1,0 +1,10 @@
+{
+  "kind": "predict",
+  "prompt": "Window `W=10`, threshold `N=3`, one key. Events arrive at times 100, 105, 110, 111. The window at time `t` holds events with timestamp `> t - W`.",
+  "trace": [
+    { "label": "At t=110 the window holds how many events?", "choices": ["2", "3", "4"], "answer": 0 },
+    { "label": "At t=111 the window holds how many events?", "choices": ["2", "3", "4"], "answer": 1 },
+    { "label": "Does the event at t=111 raise an alert?", "choices": ["yes", "no"], "answer": 0 }
+  ],
+  "explain": "At 110 the window is (100, 110], which excludes the event at 100 (exactly W earlier), leaving 105 and 110. At 111 it is (101, 111] and holds 105, 110 and 111, which reaches the threshold of 3."
+}

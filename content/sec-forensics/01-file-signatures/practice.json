@@ -1,0 +1,32 @@
+{
+  "kind": "predict",
+  "prompt": "The evidence buffer holds five bytes. Predict what `identify` returns for each call, remembering that a signature must be complete, inside `n` bytes and at offset zero.",
+  "code": "uint8_t a[] = {0x50, 0x4b, 0x03, 0x04, 0x00};\nidentify(a, 5);      // 1\nidentify(a, 3);      // 2\nidentify(a + 1, 4);  // 3",
+  "trace": [
+    {
+      "label": "call 1: `identify(a, 5)`",
+      "choices": [
+        "ZIP",
+        "unknown"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "call 2: `identify(a, 3)`",
+      "choices": [
+        "ZIP",
+        "unknown"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "call 3: `identify(a + 1, 4)`",
+      "choices": [
+        "ZIP",
+        "unknown"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "The ZIP marker needs all four bytes at the start of the evidence. With n = 3 the signature is cut off, and starting one byte later the bytes read 4b 03 04 00, which match nothing."
+}

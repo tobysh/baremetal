@@ -1,0 +1,8 @@
+{
+  "kind": "typed",
+  "prompt": "Every full row is `%08zx: `, then a 39-character hex field, two spaces, 16 printable characters and a newline. How many characters long is one full 16-byte row, including the newline?",
+  "accepted": [
+    "68"
+  ],
+  "explain": "8 offset digits + colon + space is 10, plus 39 for the hex field, plus 2 spaces, plus 16 text characters, plus the newline: 10 + 39 + 2 + 16 + 1 = 68. A short last row has the same width up to the text column."
+}

@@ -23,5 +23,40 @@
     "name": "signature set 5",
     "stdin": "SIG 1000 0 0 nocase 73656c65637420\nSIG 1007 0 0 nocase 61646d696e\nSIG 1014 4 40 case 2f6574632f706173737764\nSIG 1021 0 14 case 5553455220616e6f6e796d6f7573\nSIG 1028 0 16 case 90909090\n\n00019090909090cc\n474554202f41646d696e2f6c6f67696e20485454502f312e31\n474554202f66696c65733f663d2f6574632f70617373776420485454502f312e31\n504f5354202f7820485454502f312e310d0a0d0a713d53454c454354202a2046524f4d2074\n474554202f66696c65733f663d2f6574632f70617373776420485454502f312e31\n00019090909090cc\n073b72df31b615880caa31b268f64077a5678\n504f5354202f7820485454502f312e310d0a0d0a713d53454c454354202a2046524f4d2074\n474554202f66696c65733f663d2f6574632f70617373776420485454502f312e31\n474554202f66696c65733f663d2f6574632f70617373776420485454502f312e31\n",
     "expected": "payload 1: 1028\npayload 2: 1007\npayload 3: 1014\npayload 4: 1000\npayload 5: 1014\npayload 6: 1028\npayload 7: invalid\npayload 8: 1000\npayload 9: 1014\npayload 10: 1014\n"
+  },
+  {
+    "name": "window, fold and short payloads",
+    "stdin": "SIG 2001 0 0 case 474554\nSIG 2002 0 3 case 474554\nSIG 2003 4 0 nocase 61646d696e\nSIG 2004 0 0 case 436d643d\nSIG 2005 6 5 nocase 41444d494e\nSIG 2006 100 0 case 78\n\n474554202f41444d494e\n504f5354202f61646d696e\n4745\n474554202f613f436d643d31\n676574202f41646d696e\n7878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878\n474554202f6\n474g54\n",
+    "expected": "payload 1: 2001 2002 2003\npayload 2: 2003 2005\npayload 3: -\npayload 4: 2001 2002 2004\npayload 5: 2003\npayload 6: 2006\npayload 7: invalid\npayload 8: invalid\n"
+  },
+  {
+    "name": "pattern must fit inside depth window",
+    "stdin": "SIG 1 3 4 case 6465\nSIG 2 3 3 case 6465\nSIG 3 3 2 case 6465\nSIG 4 0 0 case 6768\nSIG 5 7 5 case 68\nSIG 6 8 0 case 68\n\n6162636465666768\n61626364656667\n",
+    "expected": "payload 1: 1 2 3 4 5\npayload 2: 1 2 3\n"
+  },
+  {
+    "name": "case sensitivity",
+    "stdin": "SIG 10 0 0 case 486f73743a\nSIG 11 0 0 nocase 486f73743a\nSIG 12 0 0 nocase 484f53543a\nSIG 13 0 0 case 484f53543a\n\n486f73743a2061\n686f73743a2061\n484f53543a2061\n7820486f53743a2062\n486f73\n",
+    "expected": "payload 1: 10 11 12\npayload 2: 11 12\npayload 3: 11 12 13\npayload 4: 11 12\npayload 5: -\n"
+  },
+  {
+    "name": "malformed payloads",
+    "stdin": "SIG 7 0 0 case 6162\n\n6162\n616\n6162g0\n 6162\n6162 \n61 62\nZZ\n0x6162\n6162AB\n",
+    "expected": "payload 1: 7\npayload 2: invalid\npayload 3: invalid\npayload 4: invalid\npayload 5: invalid\npayload 6: invalid\npayload 7: invalid\npayload 8: invalid\npayload 9: 7\n"
+  },
+  {
+    "name": "binary patterns and zero bytes",
+    "stdin": "SIG 21 0 0 case 00ff00\nSIG 22 2 0 case 0000\nSIG 23 0 2 case 90909090\nSIG 24 1 0 nocase 41ff\n\n00ff00\naa00ff00\n0000\n00000000\na0a1\n90909090\n41FF\n41ff\n0041ff\n",
+    "expected": "payload 1: 21\npayload 2: 21\npayload 3: -\npayload 4: 22\npayload 5: -\npayload 6: -\npayload 7: -\npayload 8: -\npayload 9: 24\n"
+  },
+  {
+    "name": "sids printed in signature order",
+    "stdin": "SIG 31 0 0 case 63\nSIG 30 0 0 case 61\nSIG 32 0 0 case 62\nSIG 29 0 0 case 616263\n\n616263\n6362\n7a\n",
+    "expected": "payload 1: 31 30 32 29\npayload 2: 31 32\npayload 3: -\n"
+  },
+  {
+    "name": "match starts inside but ends outside the window",
+    "stdin": "SIG 1 2 2 case 6465\nSIG 2 2 3 case 6465\nSIG 3 4 1 case 6465\nSIG 4 0 4 case 6364\n\n6162636465666768\n6162636465\n6162636\n",
+    "expected": "payload 1: 2 4\npayload 2: 2 4\npayload 3: invalid\n"
   }
 ]

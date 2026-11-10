@@ -1,0 +1,35 @@
+{
+  "kind": "predict",
+  "prompt": "A 40-byte TCP segment has these two bytes at offsets 12 and 13.",
+  "code": "offset 12: 0x80   offset 13: 0x12",
+  "trace": [
+    {
+      "label": "Header length in bytes",
+      "choices": [
+        "20",
+        "32",
+        "128"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Flags `0x12` mean",
+      "choices": [
+        "SYN only",
+        "SYN and ACK",
+        "ACK and PSH"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "Payload length",
+      "choices": [
+        "8",
+        "20",
+        "40"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "The data offset is the high nibble, 8 words, so the header is 32 bytes and the payload is 40 - 32 = 8. Flag 0x02 is SYN and 0x10 is ACK, so 0x12 is SYN-ACK."
+}

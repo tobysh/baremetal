@@ -1,0 +1,35 @@
+{
+  "kind": "predict",
+  "prompt": "Reassemble one direction of a connection with base sequence number 5000. Segments arrive out of order.",
+  "code": "A: seq 5007, 10 bytes\nB: seq 5000,  7 bytes\nC: seq 5020,  4 bytes",
+  "trace": [
+    {
+      "label": "Segment A is stored at offset",
+      "choices": [
+        "7",
+        "5007",
+        "10"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "After A and B, the contiguous stream covers offsets",
+      "choices": [
+        "0 to 16",
+        "0 to 6",
+        "7 to 16"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Adding C leaves missing offsets",
+      "choices": [
+        "17 to 19",
+        "none",
+        "7 to 16"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "Offset = seq - base. A covers 7..16 and B covers 0..6, so 0..16 is present. C starts at offset 20, leaving 17, 18 and 19 missing, so the request is incomplete and must be rejected."
+}

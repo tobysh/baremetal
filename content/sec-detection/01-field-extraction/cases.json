@@ -23,5 +23,35 @@
     "name": "mixed noise",
     "stdin": "user=\"say \\\"hi\\\"\" ts=1700091962 action=logout src=192.0.2.249\nsrc=198.51.100.38 user=\"say \\\"hi\\\"\" ts=1700062321\nuser=second ts=1700055977 src=192.0.2.225 user=root action=logout\naction=logout src=192.0.2.202 src= ts=1700018320 msg=\"a b c\" user=\"a=b user=evil\"\n",
     "expected": "user=say \"hi\" src=192.0.2.249 action=logout\nuser=say \"hi\" src=198.51.100.38 action=-\nuser=second src=192.0.2.225 action=logout\nuser=a=b user=evil src=192.0.2.202 action=logout\n"
+  },
+  {
+    "name": "empty quoted value and bare words",
+    "stdin": "user=\"\" src=192.0.2.7 stray action=login\nstray words only\n",
+    "expected": "user= src=192.0.2.7 action=login\nuser=- src=- action=-\n"
+  },
+  {
+    "name": "escaped backslash",
+    "stdin": "user=\"dom\\\\alice\" action=\"say \\\"x\\\"\" src=198.51.100.9\n",
+    "expected": "user=dom\\alice src=198.51.100.9 action=say \"x\"\n"
+  },
+  {
+    "name": "no keys at all",
+    "stdin": "ts=1 msg=hello\nmsg=\"action=sudo\"\n",
+    "expected": "user=- src=- action=-\nuser=- src=- action=-\n"
+  },
+  {
+    "name": "duplicate key after quoted decoy",
+    "stdin": "msg=\"src=203.0.113.9\" src=192.0.2.1 src=192.0.2.2 user=a action=x action=y\n",
+    "expected": "user=a src=192.0.2.1 action=x\n"
+  },
+  {
+    "name": "keys at line end",
+    "stdin": "ts=9 user=carol\nsrc=198.51.100.200\naction=logout\n",
+    "expected": "user=carol src=- action=-\nuser=- src=198.51.100.200 action=-\nuser=- src=- action=logout\n"
+  },
+  {
+    "name": "key prefix and suffix lookalikes",
+    "stdin": "user2=x xuser=y srcip=1 actions=z user=real src=s action=a\n",
+    "expected": "user=real src=s action=a\n"
   }
 ]

@@ -28,5 +28,40 @@
     "name": "no indicators",
     "stdin": "Ticket 4411 closed. Version 2.4.1.9.3 is out.\n",
     "expected": "no indicators\n"
+  },
+  {
+    "name": "strict addresses",
+    "stdin": "Seen: 0.0.0.0 255.255.255.255 256.1.1.1 1.2.3 01.2.3.4 1.02.3.4 1.2.3.04 192.0.2.1.\n",
+    "expected": "ip 0.0.0.0\nip 192.0.2.1\nip 255.255.255.255\n"
+  },
+  {
+    "name": "five parts and trailing dots",
+    "stdin": "Path 10.2.3.4.5 then host.example.test... and (203.0.113.9).\n",
+    "expected": "ip 203.0.113.9\ndomain host.example.test\n"
+  },
+  {
+    "name": "hash lengths",
+    "stdin": "31: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n32: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n33: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n64: 0123456789abcdef0123456789ABCDEF0123456789abcdef0123456789abcdef\n32g: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaag\n",
+    "expected": "hash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\nhash aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
+  },
+  {
+    "name": "domains with hyphens and labels",
+    "stdin": "ok a-b.test -a.test a-.test a..test x.y-z.test .test test not.example.com\n",
+    "expected": "domain a-b.test\ndomain x.y-z.test\n"
+  },
+  {
+    "name": "urls and separators",
+    "stdin": "GET http://cdn(.)update-check(.)test:8080/path?host=198[.]51[.]100[.]7,203.0.113.5\n",
+    "expected": "ip 198.51.100.7\nip 203.0.113.5\ndomain cdn.update-check.test\n"
+  },
+  {
+    "name": "duplicates across lines and case",
+    "stdin": "EVIL.test\nevil.TEST\nEvil[.]Test\n203.0.113.7 203[.]0[.]113[.]7\n",
+    "expected": "ip 203.0.113.7\ndomain evil.test\n"
+  },
+  {
+    "name": "nothing here",
+    "stdin": "Ticket 12345 closed. See version 1.2.3 and file report.pdf.\nbad.example.com is not a lab name.\n",
+    "expected": "no indicators\n"
   }
 ]

@@ -23,5 +23,40 @@
     "name": "review run 5",
     "stdin": "300 5\nALLOW *\n\n5008 fail alice 192.0.2.5\n5008 ok root 203.0.113.2\n5009 fail root 192.0.2.5\n5017 fail alice 192.0.2.77\n5025 fail alice 192.0.2.5\n5034 ok bob 203.0.113.1\n5042 fail root 192.0.2.5\n5047 ok root 192.0.2.5\n5055 fail root 203.0.113.1\n5057 fail root 192.0.2.77\n5059 fail root 192.0.2.77\n5061 fail root 203.0.113.2\n5067 fail root 203.0.113.3\n5073 ok alice 203.0.113.1\n5073 fail bob 192.0.2.77\n5073 fail root 192.0.2.77\n5076 fail root 192.0.2.5\n5076 fail root 192.0.2.5\n5080 fail alice 203.0.113.1\n5089 ok bob 192.0.2.77\n5090 fail bob 192.0.2.5\n5098 ok alice 203.0.113.3\n5103 ok bob 192.0.2.77\n5107 fail root 198.51.100.9\n5111 fail alice 198.51.100.9\n5114 ok alice 203.0.113.3\n5114 ok bob 192.0.2.77\n5118 fail alice 192.0.2.77\n5120 ok bob 192.0.2.5\n5125 fail root 203.0.113.1\n5128 fail root 192.0.2.5\n5128 fail root 192.0.2.5\n5135 fail bob 203.0.113.3\n5139 ok alice 203.0.113.1\n5145 fail bob 192.0.2.77\n5152 fail alice 203.0.113.2\n5152 fail bob 192.0.2.77\n5155 fail root 192.0.2.77\n5157 ok bob 198.51.100.9\n5158 fail root 192.0.2.5\n5162 fail alice 203.0.113.2\n5167 fail root 203.0.113.3\n5167 ok bob 192.0.2.5\n",
     "expected": "no alerts\n"
+  },
+  {
+    "name": "allowlisted source never alerts",
+    "stdin": "30 2\nALLOW 10.0.0.*\n\n1 fail a 10.0.0.1\n2 fail a 10.0.0.1\n3 fail a 10.0.0.1\n4 fail a 192.0.2.9\n5 fail b 192.0.2.9\n6 ok a 192.0.2.9\n",
+    "expected": "ALERT 5 192.0.2.9 failures=2 first-ok=6\n"
+  },
+  {
+    "name": "ok of another source is ignored",
+    "stdin": "20 2\n\n100 fail u 192.0.2.1\n101 ok u 192.0.2.2\n102 fail u 192.0.2.1\n103 ok u 192.0.2.3\n150 ok u 192.0.2.1\n",
+    "expected": "ALERT 102 192.0.2.1 failures=2 first-ok=150\n"
+  },
+  {
+    "name": "ok events do not count as failures",
+    "stdin": "10 3\n\n1 fail a 192.0.2.1\n2 ok a 192.0.2.1\n3 fail a 192.0.2.1\n4 ok a 192.0.2.1\n5 ok a 192.0.2.1\n",
+    "expected": "no alerts\n"
+  },
+  {
+    "name": "suppressed until t+W then alerts again",
+    "stdin": "10 2\n\n100 fail a 198.51.100.1\n101 fail a 198.51.100.1\n105 fail a 198.51.100.1\n111 fail a 198.51.100.1\n112 fail a 198.51.100.1\n120 ok a 198.51.100.1\n",
+    "expected": "ALERT 101 198.51.100.1 failures=2 first-ok=120\nALERT 111 198.51.100.1 failures=2 first-ok=120\n"
+  },
+  {
+    "name": "two sources interleaved with different outcomes",
+    "stdin": "50 2\nALLOW 203.0.113.9\nALLOW 192.0.2.1?\n\n10 fail x 192.0.2.5\n12 fail x 203.0.113.9\n13 fail y 203.0.113.9\n14 fail y 192.0.2.5\n15 fail z 192.0.2.12\n16 fail z 192.0.2.12\n20 ok q 192.0.2.5\n90 ok z 192.0.2.12\n",
+    "expected": "ALERT 14 192.0.2.5 failures=2 first-ok=20\n"
+  },
+  {
+    "name": "window excludes old failures",
+    "stdin": "5 3\n\n1 fail a 192.0.2.7\n3 fail a 192.0.2.7\n6 fail a 192.0.2.7\n10 fail a 192.0.2.7\n11 fail a 192.0.2.7\n",
+    "expected": "no alerts\n"
+  },
+  {
+    "name": "failures across accounts add up",
+    "stdin": "100 4\n\n1 fail alice 192.0.2.40\n2 fail bob 192.0.2.40\n3 fail carol 192.0.2.40\n4 fail dave 192.0.2.40\n5 ok dave 192.0.2.40\n",
+    "expected": "ALERT 4 192.0.2.40 failures=4 first-ok=5\n"
   }
 ]

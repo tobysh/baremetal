@@ -1,0 +1,12 @@
+{
+  "kind": "predict",
+  "prompt": "Check whether packet addresses fall inside the rule network `10.1.2.3/8` using `(addr & mask) == (net & mask)`, where `mask` keeps the leading 8 bits.",
+  "code": "net  = 10.1.2.3   (/8, so mask = 255.0.0.0)\nA    = 10.200.0.1\nB    = 11.1.2.3",
+  "trace": [
+    { "label": "`net & mask` is", "choices": ["10.0.0.0", "10.1.2.3", "0.0.0.0"], "answer": 0 },
+    { "label": "Is A inside the network?", "choices": ["yes", "no"], "answer": 0 },
+    { "label": "Is B inside the network?", "choices": ["yes", "no"], "answer": 1 },
+    { "label": "The mask for `/0` must be set specially because", "choices": ["a shift by 32 is undefined in C", "it has no host bits", "0 is not a valid prefix"], "answer": 0 }
+  ],
+  "explain": "Masking the rule's own network drops the host bits in `10.1.2.3`, leaving 10.0.0.0, so A (10.x.x.x) matches and B (11.x.x.x) does not. For `/0` the mask would be `0xFFFFFFFF << 32`, which is undefined behaviour, so handle it as mask 0."
+}

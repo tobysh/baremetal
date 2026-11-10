@@ -1,0 +1,26 @@
+{
+  "kind": "predict",
+  "prompt": "The sender protocol address in an ARP packet is the four bytes `c6 33 64 07` (198.51.100.7).",
+  "code": "const uint8_t *a = p + 14;   /* c6 33 64 07 */",
+  "trace": [
+    {
+      "label": "`(uint32_t)a[0] << 24 | a[1] << 16 | a[2] << 8 | a[3]` equals",
+      "choices": [
+        "0xc6336407",
+        "0x076433c6",
+        "198"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "On a little-endian CPU, `*(const uint32_t *)a` equals",
+      "choices": [
+        "0xc6336407",
+        "0x076433c6",
+        "0xc6"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Network order puts the first address byte in the most significant position. Reading the memory as a native integer on a little-endian machine reverses the bytes, and the cast can also be misaligned. Build the value byte by byte."
+}

@@ -1,0 +1,10 @@
+{
+  "kind": "predict",
+  "prompt": "A domain `d.test` received these queries. The suspect rule is `U >= 8` and `S >= 20 * U`, where U is the count of distinct subdomains and S their total length.",
+  "code": "same.d.test  x 5 times\nabcdefghijklmnopqrstuvwxyz.d.test  x 1\nother.d.test  x 1",
+  "trace": [
+    { "label": "U is", "choices": ["2", "3", "7"], "answer": 1 },
+    { "label": "Is `d.test` suspect?", "choices": ["yes", "no"], "answer": 1 }
+  ],
+  "explain": "Repeats of `same` count once, so there are three distinct subdomains. U is far below 8, so the domain is not suspect no matter how many queries it received."
+}

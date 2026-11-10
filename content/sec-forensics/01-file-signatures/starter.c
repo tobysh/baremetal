@@ -5,5 +5,13 @@
 #include <string.h>
 #include <limits.h>
 #include <time.h>
-const char *identify(const uint8_t *p,size_t n){(void)p;(void)n;return "unknown";}
-int main(void){return 0;}
+
+/* Identify the format of the evidence by its leading bytes. */
+const char *identify(const uint8_t *p, size_t n) {
+    (void)p;
+    (void)n;
+    /* TODO: table of signatures, check n first, then memcmp. */
+    return "unknown";
+}
+
+int main(void) { return 0; }

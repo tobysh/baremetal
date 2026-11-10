@@ -23,5 +23,40 @@
     "name": "gap 1",
     "stdin": "1\n10023 db2 svc-ci sudo used\n10025 vpn svc-ci query big table\n10018 web1 bob login ok\n10020 web1 bob sudo used\n10021 db2 bob query big table\n10020 web1 bob copy file out\n10021 vpn svc-ci login ok\n10017 app3 bob copy file out\n10046 db2 alice query big table\n10046 vpn alice copy file out\n10044 web1 alice copy file out\n10021 db2 svc-ci copy file out\n10028 web1 svc-ci query big table\n10046 app3 alice sudo used\n10029 db2 svc-ci login ok\n10026 app3 svc-ci copy file out\n10044 app3 alice login ok\n10018 db2 bob copy file out\n10023 db2 bob sudo used\n10028 app3 svc-ci sudo used\n",
     "expected": "bob 10017-10018 n=3 hosts=app3,web1,db2 MULTI-HOST\nbob 10020-10021 n=3 hosts=web1,db2 MULTI-HOST\nsvc-ci 10021-10021 n=2 hosts=vpn,db2 MULTI-HOST\nbob 10023-10023 n=1 hosts=db2\nsvc-ci 10023-10023 n=1 hosts=db2\nsvc-ci 10025-10026 n=2 hosts=vpn,app3 MULTI-HOST\nsvc-ci 10028-10029 n=3 hosts=web1,app3,db2 MULTI-HOST\nalice 10044-10044 n=2 hosts=web1,app3 MULTI-HOST\nalice 10046-10046 n=3 hosts=db2,vpn,app3 MULTI-HOST\n"
+  },
+  {
+    "name": "gap exactly G stays together",
+    "stdin": "60\n100 h1 u first\n160 h1 u exact gap\n221 h1 u one over\n281 h2 u exact again\n",
+    "expected": "u 100-160 n=2 hosts=h1\nu 221-281 n=2 hosts=h1,h2 MULTI-HOST\n"
+  },
+  {
+    "name": "long steady burst is not cut",
+    "stdin": "10\n1000 h1 svc tick\n1010 h2 svc tick\n1020 h1 svc tick\n1030 h2 svc tick\n1040 h1 svc tick\n1050 h2 svc tick\n1060 h1 svc tick\n1070 h2 svc tick\n1080 h1 svc tick\n1090 h2 svc tick\n1100 h1 svc tick\n1110 h2 svc tick\n",
+    "expected": "svc 1000-1110 n=12 hosts=h1,h2 MULTI-HOST\n"
+  },
+  {
+    "name": "G zero joins only same second",
+    "stdin": "0\n50 a u1 x\n50 b u1 y\n51 a u1 z\n51 a u2 w\n51 b u2 v\n53 a u1 q\n",
+    "expected": "u1 50-50 n=2 hosts=a,b MULTI-HOST\nu1 51-51 n=1 hosts=a\nu2 51-51 n=2 hosts=a,b MULTI-HOST\nu1 53-53 n=1 hosts=a\n"
+  },
+  {
+    "name": "unsorted input and stable ties",
+    "stdin": "30\n205 web alice c\n200 db alice a\n200 web alice b\n199 app bob x\n300 app bob y\n230 db alice d\n",
+    "expected": "bob 199-199 n=1 hosts=app\nalice 200-230 n=4 hosts=db,web MULTI-HOST\nbob 300-300 n=1 hosts=app\n"
+  },
+  {
+    "name": "same hosts repeated and same-time bursts of two users",
+    "stdin": "100\n10 web1 zed a\n10 web1 amy b\n12 web1 zed c\n15 db2 amy d\n500 web1 zed e\n505 web1 amy f\n",
+    "expected": "amy 10-15 n=2 hosts=web1,db2 MULTI-HOST\nzed 10-12 n=2 hosts=web1\nzed 500-500 n=1 hosts=web1\namy 505-505 n=1 hosts=web1\n"
+  },
+  {
+    "name": "single event",
+    "stdin": "5\n42 h1 solo only one\n",
+    "expected": "solo 42-42 n=1 hosts=h1\n"
+  },
+  {
+    "name": "many users and hosts",
+    "stdin": "120\n900 a u3 m\n100 a u1 m\n150 b u1 m\n190 c u1 m\n400 a u2 m\n500 a u2 m\n620 d u2 m\n2000 a u1 m\n2100 b u1 m\n2300 c u1 m\n300 b u3 m\n305 b u3 m\n",
+    "expected": "u1 100-190 n=3 hosts=a,b,c MULTI-HOST\nu3 300-305 n=2 hosts=b\nu2 400-620 n=3 hosts=a,d MULTI-HOST\nu3 900-900 n=1 hosts=a\nu1 2000-2100 n=2 hosts=a,b MULTI-HOST\nu1 2300-2300 n=1 hosts=c\n"
   }
 ]

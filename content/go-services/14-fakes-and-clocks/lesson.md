@@ -34,3 +34,37 @@ Now "wait a minute" is `clock.Advance(time.Minute)`: instant and exact.
 Fakes, stubs and spies are all *test doubles*: simple stand-ins for a real dependency. The key design rule is to depend on the **smallest interface you need** (`Now()` here), defined where it is *used*, not where it is implemented. That is why Go interfaces are usually one or two methods.
 
 Boundaries matter in a TTL cache. If an entry lives for 10 seconds, is it still there at *exactly* 10 seconds? Decide, document it, and test both sides of the line.
+
+## A worked example
+
+Testing expiry with no sleeping, including the boundary:
+
+```go
+clock := NewFakeClock(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
+cache := NewTTLCache(clock, time.Minute)
+
+cache.Set("a", "1")
+clock.Advance(59 * time.Second)
+_, ok := cache.Get("a") // ok == true: one second left
+clock.Advance(time.Second)
+_, ok = cache.Get("a")  // ok == false: exactly at the TTL counts as expired
+```
+
+```text
+t=0s    Set(a)      expires at 60s
+t=59s   Get(a)  ->  "1", true
+t=60s   Get(a)  ->  "", false   (entry deleted)
+t=60s   Len()   ->  0
+```
+
+## Pitfalls
+
+- **Mixed clocks.** One stray `time.Now()` inside the cache makes the fake meaningless. Every read of time goes through the `Clock`.
+- A fake clock shared across goroutines needs its own mutex, as above, or `go test -race` will flag it.
+- Expired entries that are never read stay in the map forever. Sweep them in `Len` or on a timer, otherwise memory grows.
+- Holding the cache lock while calling out to other code invites deadlocks. Keep critical sections short.
+- Fakes drift from reality. Keep them dumb, and keep one test that uses the real implementation.
+
+## When to use it
+
+Inject a clock wherever behaviour depends on elapsed time: TTLs, token expiry, rate limits, retry backoff. Use the same pattern for any other awkward dependency, such as random numbers or the filesystem.

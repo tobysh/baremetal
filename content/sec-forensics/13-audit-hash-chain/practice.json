@@ -1,0 +1,12 @@
+{
+  "kind": "choice",
+  "prompt": "Line 3 of an audit log has sequence number 5 (3 was expected) and also a hash that does not match. The line is otherwise well formed. What does the verifier print?",
+  "choices": [
+    "BROKEN at line 3: hash mismatch",
+    "BROKEN at line 3: sequence (expected 3, found 5)",
+    "BROKEN at line 3: malformed",
+    "chain ok: 3 entries"
+  ],
+  "answer": 1,
+  "explain": "Checks run in order: malformed, then sequence, then hash. The sequence check already fails, so that is the only problem reported."
+}

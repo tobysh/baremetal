@@ -1,0 +1,10 @@
+{
+  "kind": "typed",
+  "prompt": "Decode this DNS name as the lesson parser would display it. Labels are joined with dots and the zero byte ends the name.",
+  "code": "03 77 77 77  02 6f 6b  00\n(hex for: 3 'w' 'w' 'w', 2 'o' 'k', end)",
+  "accepted": [
+    "www.ok"
+  ],
+  "caseSensitive": true,
+  "explain": "`03` announces three bytes (`www`), `02` two bytes (`ok`) and `00` ends the name. There is no trailing dot except for the root name, which is shown as `.`."
+}

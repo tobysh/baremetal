@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This JPEG-like carver accepts `ff d8 ff d9` as a complete 4-byte image. Tap the faulty line.",
+  "code": "if (n - i >= 3 && memcmp(p + i, \"\\377\\330\\377\", 3) == 0) {\n    for (size_t j = i; j + 1 < n; j++) {\n        if (p[j] == 0xff && p[j + 1] == 0xd9) {\n            end = j + 2;\n            break;\n        }\n    }\n}",
+  "bugLine": 2,
+  "explain": "The footer search must start after the three header bytes (`j = i + 3`). Starting at `i + 2` lets the last byte of the header act as the first byte of `ff d9`, so a header followed directly by `d9` looks like a complete object."
+}

@@ -1,0 +1,17 @@
+{
+  "kind": "choice",
+  "prompt": "Which of these access-log lines are well formed (quoted request with three words, status 100-599, size `-` or digits)? Select all.",
+  "code": "1  192.0.2.1 - - [t] \"GET /a HTTP/1.1\" 200 5\n2  192.0.2.1 - - [t] \"GET /a HTTP/1.1\" 600 5\n3  192.0.2.1 - - [t] \"GET /a b HTTP/1.1\" 200 5\n4  192.0.2.1 - - [t] \"GET /a HTTP/1.1\" 304 -\n5  192.0.2.1 - - [t] GET /a 200 5",
+  "choices": [
+    "line 1",
+    "line 2",
+    "line 3",
+    "line 4",
+    "line 5"
+  ],
+  "answer": [
+    0,
+    3
+  ],
+  "explain": "Line 2 has status 600, outside 100-599. Line 3 has four words inside the quotes. Line 5 has no quoted request. Lines 1 and 4 are well formed (a size of `-` is allowed)."
+}

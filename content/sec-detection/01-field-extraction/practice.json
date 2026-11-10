@@ -1,0 +1,7 @@
+{
+  "kind": "choice",
+  "prompt": "A line is `ts=5 username=deploy msg=\"user=root\" user=alice user=mallory`. Which value does a correct extractor report for the key `user`?",
+  "choices": ["root", "deploy", "alice", "mallory"],
+  "answer": 2,
+  "explain": "`username` is a different key, `user=root` is inside a quoted value so it is data, not a field, and the first real `user` wins, so a later `user=mallory` cannot override it."
+}

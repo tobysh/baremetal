@@ -42,3 +42,38 @@ defer func() {
 }()
 ```
 Two rules: if the handler already sent headers you can no longer change the status, and a panic with `http.ErrAbortHandler` is the deliberate way to abort a response, so re-panic with it.
+
+## A worked trace
+
+Handler panics before writing anything:
+
+```text
+GET /boom
+  AccessLog in
+    Recover in
+      handler: panic("nil map")
+    Recover: recover() != nil, sw.wrote == false
+             logs the panic and stack, writes 500
+  AccessLog out -> logs "GET /boom 500"
+```
+
+Handler panics after writing:
+
+```text
+GET /half
+  handler: writes "partial", status 200 already sent
+  handler: panic
+  Recover: wrote == true, so it logs but must not call WriteHeader again
+```
+
+## Pitfalls
+
+- Forgetting that `recover` only works **directly inside a deferred function**. Calling a helper that calls `recover` does nothing.
+- Recovering and then writing a second status: the server prints "superfluous WriteHeader" and the client sees the first status.
+- Swallowing `http.ErrAbortHandler`. It is how handlers abort a stream on purpose, and the server expects it to propagate.
+- Logging `r.URL.Path` and a status that your wrapper never captured because the handler used the implicit 200 from `Write`.
+- Panics in goroutines the handler started are **not** caught by this middleware; only the request goroutine is.
+
+## When to use it
+
+Put `Recover` and `AccessLog` as the outermost middleware in every service, so one bad request cannot crash the process and every response, including the 500s, is logged.

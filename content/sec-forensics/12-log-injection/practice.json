@@ -1,0 +1,27 @@
+{
+  "kind": "predict",
+  "prompt": "`log_escape(out, 6, \"ab\\x01c\")` escapes the control byte as four characters and writes only whole pieces, leaving room for the terminator. Predict the result.",
+  "code": "char out[6];\nsize_t n = log_escape(out, 6, \"ab\\x01c\");",
+  "trace": [
+    {
+      "label": "the text left in `out`",
+      "choices": [
+        "ab",
+        "ab\\x01",
+        "abc",
+        "ab\\x01c"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "the value of `n`",
+      "choices": [
+        "3",
+        "6",
+        "7"
+      ],
+      "answer": 2
+    }
+  ],
+  "explain": "a and b fit (2 characters). The `\\x01` piece needs 4 more plus the terminator, which would be 7 > 6, so writing stops there, and the later `c` is not written even though it would fit. The return value is the full length: 2 + 4 + 1 = 7."
+}

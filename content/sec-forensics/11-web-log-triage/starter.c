@@ -5,4 +5,10 @@
 #include <string.h>
 #include <limits.h>
 #include <time.h>
-int main(void){puts("2xx=0 3xx=0 4xx=0 5xx=0 malformed=0");return 0;}
+
+/* Read access-log lines from stdin: count status classes and malformed lines, flag probing sources. */
+int main(void) {
+    /* TODO: validate each line, tally status classes, count traversal-looking paths per address. */
+    puts("2xx=0 3xx=0 4xx=0 5xx=0 malformed=0");
+    return 0;
+}

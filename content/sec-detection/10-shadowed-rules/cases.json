@@ -28,5 +28,45 @@
     "name": "clean policy",
     "stdin": "allow tcp 10.0.0.0/8 any 80\nallow tcp 192.0.2.0/24 any 443\ndeny any any any any\n",
     "expected": "no shadowed rules\n"
+  },
+  {
+    "name": "no shadowing",
+    "stdin": "allow tcp 10.0.0.0/8 any 22\nallow udp 10.0.0.0/8 any 22\nallow tcp 11.0.0.0/8 any 22\ndeny tcp 10.0.0.0/8 any 23\ndeny any any any any\n",
+    "expected": "no shadowed rules\n"
+  },
+  {
+    "name": "wider rule below is not shadowed",
+    "stdin": "deny tcp 10.1.0.0/16 any 80\nallow tcp 10.0.0.0/8 any 80\nallow tcp any any 80-443\ndeny tcp any any 1-65535\n",
+    "expected": "no shadowed rules\n"
+  },
+  {
+    "name": "identical rules",
+    "stdin": "allow tcp 192.0.2.0/24 198.51.100.0/24 443\nallow tcp 192.0.2.0/24 198.51.100.0/24 443\ndeny tcp 192.0.2.0/24 198.51.100.0/24 443\n",
+    "expected": "rule 2 shadowed by rule 1 (redundant)\nrule 3 shadowed by rule 1 (conflict)\n"
+  },
+  {
+    "name": "lowest covering rule is reported",
+    "stdin": "deny tcp 10.0.0.0/8 any any\nallow tcp 10.0.0.0/8 any 22\nallow tcp 10.1.0.0/16 any 22\nallow any any any any\ndeny udp 10.9.9.9 any 53\n",
+    "expected": "rule 2 shadowed by rule 1 (conflict)\nrule 3 shadowed by rule 1 (conflict)\nrule 5 shadowed by rule 4 (conflict)\n"
+  },
+  {
+    "name": "port edges",
+    "stdin": "allow tcp any any 22-80\ndeny tcp any any 80-443\ndeny tcp any any 22\ndeny tcp any any 21-22\ndeny tcp any any 23-79\nallow tcp any any 80\n",
+    "expected": "rule 3 shadowed by rule 1 (conflict)\nrule 5 shadowed by rule 1 (conflict)\nrule 6 shadowed by rule 1 (redundant)\n"
+  },
+  {
+    "name": "non-normalised networks and slash zero",
+    "stdin": "allow udp 10.1.2.3/8 172.16.5.5/12 any\ndeny udp 10.99.0.0/16 172.20.0.0/14 53\ndeny udp 0.0.0.0/0 0.0.0.0/0 53\ndeny udp 10.1.2.3 172.16.5.5 53\n",
+    "expected": "rule 2 shadowed by rule 1 (conflict)\nrule 4 shadowed by rule 1 (conflict)\n"
+  },
+  {
+    "name": "destination decides",
+    "stdin": "allow tcp any 192.0.2.0/25 any\ndeny tcp any 192.0.2.64/26 80\ndeny tcp any 192.0.2.128/25 80\ndeny tcp 192.0.2.0/24 192.0.2.1 80\n",
+    "expected": "rule 2 shadowed by rule 1 (conflict)\nrule 4 shadowed by rule 1 (conflict)\n"
+  },
+  {
+    "name": "single rule",
+    "stdin": "allow tcp any any any\n",
+    "expected": "no shadowed rules\n"
   }
 ]

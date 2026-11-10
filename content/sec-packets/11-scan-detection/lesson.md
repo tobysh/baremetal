@@ -7,8 +7,48 @@ tags: security, protocol-analysis, detection
 id: sec-packets/scan-detection
 mode: stdout
 ---
-A port scan asks many different service endpoints, "are you there?", to map what a machine offers. A connection attempt to a TCP port gets one of three outcomes that an observer can record: it opens (the service answers), it is closed (the host answers with a reset) or it is filtered (nothing comes back, usually a firewall). A client that touches many distinct destination ports and mostly meets closed or filtered ones is behaving very differently from one that talks to the three ports it needs.
+A port scan asks many different service endpoints "are you there?" to map what a machine offers. From a monitor's side each attempt has one of three outcomes: `open` (the service answered), `closed` (the host replied with a reset) or `filtered` (nothing came back, usually a firewall). A client that touches three ports it needs looks very different from one that touches forty and meets mostly closed or filtered doors.
 
-Flow records make this easy to see. Here each line is `time client server port outcome` for connection attempts seen by a monitor on a synthetic network, using documentation addresses. Count distinct targets, a target being the pair of server and port, and count each target once, using the first outcome recorded for it, because retries of the same target say nothing new about coverage. Flag a client only when it reached five or more distinct targets and more of them failed (closed or filtered) than opened.
+## Layout
 
-This is triage over a bounded file, with no time window. A real detector would use windows, per-server thresholds, and exceptions for authorised vulnerability scanning, and an alert is an observation to investigate, not proof of intent. Ignore lines you cannot parse: comments starting with `#`, blank lines, ports outside 1 to 65535 or unknown outcomes.
+```text
+one record per line, five whitespace-separated fields:
+
+  time   client         server         port  outcome
+  1001   198.51.100.23  203.0.113.6    21    closed
+
+target  = (server, port) pair            counted once per client
+outcome = the FIRST one recorded for that target
+flag a client when:  targets >= 5  and  closed + filtered > open
+
+ignored lines: '#' comments, blank lines, wrong field count,
+               port outside 1..65535, outcome not open/closed/filtered
+```
+
+The file is a bounded sample with no time window, using documentation addresses and invented servers.
+
+## Worked example
+
+```text
+1000 198.51.100.7 203.0.113.5 22 closed
+1001 198.51.100.7 203.0.113.5 23 filtered
+1002 198.51.100.7 203.0.113.6 22 closed
+1003 198.51.100.7 203.0.113.5 22 open      <- retry of the first target, ignored
+1004 198.51.100.7 203.0.113.7 80 closed
+1005 198.51.100.7 203.0.113.7 443 closed
+1006 192.0.2.11   203.0.113.5 80 open
+```
+
+For 198.51.100.7 the five distinct targets are (.5, 22), (.5, 23), (.6, 22), (.7, 80) and (.7, 443). The retry on line four is the same target as line one, so the first outcome, `closed`, stays. The totals are open=0, closed=4, filtered=1, and since 5 >= 5 and 5 > 0 the output line is `198.51.100.7 targets=5 open=0 closed=4 filtered=1`. The client 192.0.2.11 has one target and is not listed. If nothing qualifies, print `no scans detected`.
+
+## Pitfalls
+
+- **Target, not port.** Port 22 on two servers is two targets. Port 22 on one server five times is one.
+- **First outcome wins.** A retry that later succeeds does not rewrite the history. Search the list before adding.
+- **Parse strictly.** A line with six fields, a port of 0 or 65536, or `reset` as an outcome is junk and must not be half-counted.
+- **Sort order.** Count descending, then client name with `strcmp`, so output is deterministic.
+- **Bounds.** Limits are 1000 lines, 256 clients and 256 targets per client; names are at most 63 characters. Do not let one client overflow its array.
+
+## The defender's view
+
+A scan count is a prompt to look, not a verdict. Authorised vulnerability scanners and monitoring checks behave exactly like this, shared addresses merge many people, and a slow scan stays under any threshold that has no time window. Real detectors add windows, per-destination rules and allow-lists, then alert a human. Treat the output as triage: ask who owns the address and whether the scan was expected before drawing any conclusion.

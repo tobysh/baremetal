@@ -226,5 +226,68 @@ int main(void) {
         got = carve(I[1].p, 0, out, 2);
         CHECK("an empty image has nothing to carve", got == 0, "returned %zu", got);
     }
+
+    /* Extra cases: images are assembled at run time from small pieces. */
+    {
+        static uint8_t img[600];
+        size_t len = 0;
+#define RESET() (len = 0)
+#define PUT(...) do { const uint8_t b_[] = {__VA_ARGS__}; memcpy(img + len, b_, sizeof b_); len += sizeof b_; } while (0)
+#define JUNK(k) do { for (size_t q_ = 0; q_ < (size_t)(k); q_++) { img[len] = (uint8_t)(0x20 + (q_ * 5 + len) % 0x40); len++; } } while (0)
+#define PNGSIG 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a
+        Carved out[8];
+        size_t got;
+
+        RESET(); JUNK(13); PUT(0xff, 0xd8, 0xff, 0xff, 0xd9); JUNK(7);
+        memset(out, 0, sizeof out);
+        got = carve(img, len, out, 8);
+        CHECK("minimal JPEG: header plus footer, offset after junk", got == 1 && out[0].type && strcmp(out[0].type, "JPEG") == 0 && out[0].offset == 13 && out[0].length == 5,
+              "expected one JPEG at 13 of length 5, got %zu object(s); first: %s @%zu +%zu", got, got && out[0].type ? out[0].type : "none", got ? out[0].offset : 0, got ? out[0].length : 0);
+
+        RESET(); JUNK(5); PUT(0xff, 0xd8, 0xff, 0xd9); JUNK(9);
+        got = carve(img, len, out, 8);
+        CHECK("ff d8 ff d9 is not complete: the footer search starts after the header", got == 0, "found %zu object(s); the d9 here belongs to the header's last ff, not a footer", got);
+
+        RESET(); JUNK(4); PUT(PNGSIG, 'I', 'E', 'N', 'D', 1, 2, 3, 4); JUNK(3);
+        memset(out, 0, sizeof out);
+        got = carve(img, len, out, 8);
+        CHECK("minimal PNG: signature, IEND and four CRC bytes", got == 1 && out[0].type && strcmp(out[0].type, "PNG") == 0 && out[0].offset == 4 && out[0].length == 16,
+              "expected one PNG at 4 of length 16, got %zu; first length %zu", got, got ? out[0].length : 0);
+
+        RESET(); JUNK(6); PUT(PNGSIG, 0x00, 0x01, 'I', 'E', 'N', 'D', 9, 9, 9);
+        got = carve(img, len, out, 8);
+        CHECK("IEND with only three CRC bytes is truncated", got == 0, "found %zu object(s); an object needs 8 bytes from the start of IEND", got);
+
+        RESET(); PUT(0xff, 0xd8, 0xff, 1, 2, 0xff, 0xd9); PUT(PNGSIG, 'I', 'E', 'N', 'D', 0, 0, 0, 0); PUT(0xff, 0xd8, 0xff, 0xff, 0xd9);
+        memset(out, 0, sizeof out);
+        got = carve(img, len, out, 8);
+        CHECK("back-to-back objects, the last ending on the final byte", got == 3 && out[0].offset == 0 && out[0].length == 7 && out[1].offset == 7 && out[1].length == 16 && out[2].offset == 23 && out[2].length == 5,
+              "expected JPEG 0+7, PNG 7+16, JPEG 23+5; got %zu object(s)", got);
+
+        RESET(); PUT(0xff, 0xd8, 0xff, 0x01); JUNK(10); PUT(0xff, 0xd8, 0xff, 0x02, 0xff, 0xd9);
+        memset(out, 0, sizeof out);
+        got = carve(img, len, out, 8);
+        CHECK("a second header inside an open object is absorbed by it", got == 1 && out[0].offset == 0 && out[0].length == len,
+              "expected one JPEG covering all %zu bytes (first footer wins), got %zu object(s) with first length %zu", len, got, got ? out[0].length : 0);
+
+        RESET(); PUT(0xff, 0xd8, 0xff, 7, 7, 7); JUNK(5); PUT(PNGSIG, 'I', 'E', 'N', 'D', 1, 1, 1, 1);
+        memset(out, 0, sizeof out);
+        got = carve(img, len, out, 8);
+        CHECK("an unterminated header does not hide a later complete object", got == 1 && out[0].type && strcmp(out[0].type, "PNG") == 0 && out[0].offset == 11,
+              "expected the PNG at offset 11, got %zu object(s)", got);
+
+        RESET(); PUT(0xff, 0xd8, 0xff, 0xff, 0xd9); PUT(0xff, 0xd8, 0xff, 0xff, 0xd9); PUT(0xff, 0xd8, 0xff, 0xff, 0xd9);
+        for (int i = 0; i < 8; i++) out[i] = (Carved){"sentinel", 99, 99};
+        got = carve(img, len, out, 2);
+        CHECK("max limits the number stored", got == 2 && strcmp(out[2].type, "sentinel") == 0 && out[2].offset == 99, "with max 2 returned %zu and wrote out[2]", got);
+        for (int i = 0; i < 8; i++) out[i] = (Carved){"sentinel", 99, 99};
+        got = carve(img, len, out, 0);
+        CHECK("max zero stores nothing", got == 0 && out[0].offset == 99, "max 0 returned %zu or wrote to out", got);
+
+        RESET(); PUT(PNGSIG, 'I', 'E', 'N', 'D', 1, 2, 3, 4);
+        got = carve(img, len - 1, out, 8);
+        CHECK("an object cut one byte short by n is not reported", got == 0, "found %zu object(s) when the last CRC byte lies beyond n", got);
+    }
+
     return 0;
 }
