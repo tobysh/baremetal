@@ -11,6 +11,11 @@ export default defineConfig({
     baseURL: process.env.TEST_BASE_URL ?? "http://127.0.0.1:3100",
     browserName: "chromium",
     trace: "retain-on-failure",
-    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {},
+    launchOptions: {
+      ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {}),
+      // Trust only the isolated harness certificate, including service-worker fetches.
+      args: process.env.BM_REGRESSION_HTTPS === "1" && process.env.BM_REGRESSION_TLS_SPKI
+        ? [`--ignore-certificate-errors-spki-list=${process.env.BM_REGRESSION_TLS_SPKI}`] : [],
+    },
   },
 });
