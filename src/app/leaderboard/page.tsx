@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { Card, Container, Skeleton } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
@@ -60,6 +61,8 @@ async function SearchInput({ searchParams }: { searchParams: PageProps<"/leaderb
 }
 
 async function Results({ searchParams }: { searchParams: PageProps<"/leaderboard">["searchParams"] }) {
+  // MongoDB initialization uses request-time clocks; keep it out of the static shell.
+  await connection();
   const { q } = await searchParams;
   const me = await getCurrentUser();
   if (typeof q === "string" && q.trim()) {

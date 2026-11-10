@@ -51,7 +51,7 @@ async function DashboardBody() {
   const bySlug = new Map(courses.map((course) => [course.track.slug, course]));
   const prerequisite = (course: CourseEntry) => (course.track.prerequisite ? bySlug.get(course.track.prerequisite) : undefined);
 
-  const nextUp = recommendLearning(tracks, progress);
+  const nextUp = recommendLearning(tracks, progress, undefined, { experience: user.experience });
   const nextUpDone = nextUp ? courseState(nextUp.track, progress).done : 0;
 
   // Other courses already under way, so a second course in progress is still reachable from here.
@@ -69,7 +69,6 @@ async function DashboardBody() {
     : null;
   const level = levelFor(user.xp);
   const heroLabel = progress.size === 0 ? "Start first lesson" : nextUpDone === 0 && progress.get(nextUp?.lesson.exercise.id ?? "")?.status !== "started" ? "Start lesson" : "Continue";
-  const xpFill = level.next === null ? 1 : user.xp / level.next;
 
   const previewCourse = nextUp ? { track: nextUp.track, done: nextUpDone, nextTitle: nextUp.lesson.title } : null;
 
@@ -87,6 +86,7 @@ async function DashboardBody() {
               </p>
               <h1 className="display mt-3 text-2xl font-bold leading-[1.1] sm:text-[34px]">{nextUp.lesson.title}</h1>
               <p className="mt-2 line-clamp-2 max-w-[560px] text-base leading-relaxed text-text-2 sm:line-clamp-none">{nextUp.lesson.summary}</p>
+              {nextUp.reason && <p className="mt-2 max-w-[560px] text-sm leading-relaxed text-muted">{nextUp.reason}</p>}
             </div>
             <div className="flex flex-wrap items-center gap-x-10 gap-y-4">
               <div className="flex min-w-0 flex-[1_1_240px] flex-col gap-2">
@@ -114,8 +114,8 @@ async function DashboardBody() {
             <span className="text-sm font-semibold text-accent">Level {level.level}</span>
           </div>
           <span className="mt-1 hidden text-sm text-muted lg:block">{titleBlurb(level.level)}</span>
-          <div role="img" aria-label={level.next === null ? `${user.xp} XP, top level` : `${user.xp} of ${level.next} XP`} className="mt-3 h-2 overflow-hidden rounded-sm bg-line">
-            <div className="h-full bg-accent" style={{ width: `${Math.round(Math.min(1, xpFill) * 100)}%` }} />
+          <div role="img" aria-label={level.next === null ? `${user.xp} XP, top level` : `Level ${level.level} progress: ${user.xp - level.floor} of ${level.next - level.floor} XP`} className="mt-3 h-2 overflow-hidden rounded-sm bg-line">
+            <div className="h-full bg-accent" style={{ width: `${Math.round(Math.min(1, level.progress) * 100)}%` }} />
           </div>
           <div className="mt-2 flex flex-wrap justify-between gap-x-2 text-sm">
             <span className="font-medium">{user.xp}{level.next !== null && ` / ${level.next}`} XP</span>
