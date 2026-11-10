@@ -5,7 +5,8 @@
   "level": "Advanced",
   "language": "c",
   "path": "c",
-  "order": 4,
+  "order": 9,
+  "core": true,
   "prerequisite": "c-systems",
   "outcomes": [
     "Coordinate C threads using locks, condition variables and atomics."

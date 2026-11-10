@@ -6,6 +6,7 @@
   "language": "c",
   "path": "start",
   "order": 1,
+  "core": true,
   "outcomes": [
     "Write C programs that read input, make decisions and repeat work with loops.",
     "Break a small problem into functions and check its output."

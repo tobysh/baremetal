@@ -5,7 +5,7 @@
   "level": "Advanced",
   "language": "go",
   "path": "go",
-  "order": 5,
+  "order": 10,
   "prerequisite": "go-practice",
   "outcomes": [
     "Read an unfamiliar Go codebase and predict its behaviour before running it.",

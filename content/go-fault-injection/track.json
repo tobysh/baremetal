@@ -5,7 +5,7 @@
   "level": "Advanced",
   "language": "go",
   "path": "go",
-  "order": 5,
+  "order": 11,
   "prerequisite": "go-database",
   "outcomes": [
     "Handle short and truncated writes without losing or duplicating bytes.",

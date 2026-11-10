@@ -59,6 +59,14 @@ export function recommendLearning(tracks: Track[], progress: ReadonlyMap<string,
 
 export function validateLearningPaths(tracks: Track[]) {
   const bySlug = new Map(tracks.map((track) => [track.slug, track]));
+  const positions = new Map<string, string>();
+  for (const track of tracks) {
+    const key = `${track.path}:${track.order}`;
+    if (positions.has(key)) throw new Error(`${track.slug}: order ${track.order} in path "${track.path}" is already used by ${positions.get(key)}; orders must be unique within a path`);
+    positions.set(key, track.slug);
+    const prerequisite = track.prerequisite ? bySlug.get(track.prerequisite) : undefined;
+    if (prerequisite && prerequisite.path === track.path && prerequisite.order >= track.order) throw new Error(`${track.slug}: its prerequisite ${prerequisite.slug} must come earlier in path "${track.path}" (order ${prerequisite.order} is not below ${track.order})`);
+  }
   for (const track of tracks) {
     if (!Array.isArray(track.outcomes) || !track.outcomes.length || track.outcomes.some((value) => typeof value !== "string" || !value.trim())) throw new Error(`${track.slug}: needs authored course outcomes`);
     const seen = new Set<string>();

@@ -5,7 +5,7 @@
   "level": "Advanced",
   "language": "go",
   "path": "go",
-  "order": 5,
+  "order": 8,
   "prerequisite": "go-practice",
   "outcomes": [
     "Write encoders and decoders that survive truncated, damaged and hostile input.",

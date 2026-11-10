@@ -6,6 +6,7 @@
   "language": "go",
   "path": "go",
   "order": 1,
+  "core": true,
   "prerequisite": "first-steps",
   "outcomes": [
     "Write Go programs using collections, interfaces, errors and goroutines."

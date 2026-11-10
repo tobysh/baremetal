@@ -5,7 +5,8 @@
   "level": "Beginner",
   "language": "c",
   "path": "c",
-  "order": 1,
+  "order": 2,
+  "core": true,
   "prerequisite": "c-data",
   "outcomes": [
     "Use pointers and heap allocation to build and traverse linked data."

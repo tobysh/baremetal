@@ -5,7 +5,7 @@
   "level": "Advanced",
   "language": "go",
   "path": "go",
-  "order": 5,
+  "order": 13,
   "prerequisite": "go-database",
   "outcomes": [
     "Explain and implement the iterator (pull) model of query execution.",

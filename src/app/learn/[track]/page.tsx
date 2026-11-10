@@ -86,6 +86,7 @@ async function TrackContent({ params, searchParams }: { params: PageProps<"/lear
       <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14">
         <div>
           <div className="flex flex-wrap gap-2">
+            {track.core && <Badge tone="accent">Core course</Badge>}
             <Badge>{track.level}</Badge>
             <Badge>{LANGUAGE_LABEL[track.language]}</Badge>
             <Badge>{track.lessons.length} lessons</Badge>

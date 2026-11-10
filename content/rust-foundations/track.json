@@ -6,6 +6,7 @@
   "language": "rust",
   "path": "rust",
   "order": 1,
+  "core": true,
   "prerequisite": "first-steps",
   "outcomes": [
     "Use ownership, borrowing and error handling to write memory-safe Rust."

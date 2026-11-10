@@ -5,7 +5,7 @@
   "level": "Advanced",
   "language": "c",
   "path": "c",
-  "order": 6,
+  "order": 14,
   "prerequisite": "c-shell",
   "outcomes": [
     "Explain and implement descriptor sharing through dup, dup2 and close.",

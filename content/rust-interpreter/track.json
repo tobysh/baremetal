@@ -5,7 +5,7 @@
   "level": "Advanced",
   "language": "rust",
   "path": "rust",
-  "order": 6,
+  "order": 8,
   "prerequisite": "rust-traits",
   "outcomes": [
     "Build an interpreter and compile a small language to bytecode."

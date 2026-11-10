@@ -5,7 +5,7 @@
   "level": "Advanced",
   "language": "kernel",
   "path": "low",
-  "order": 3,
+  "order": 5,
   "prerequisite": "osdev",
   "outcomes": [
     "Add user mode, preemption, address spaces, files and pipes to a kernel."

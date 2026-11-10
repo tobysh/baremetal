@@ -5,7 +5,8 @@
   "level": "Intermediate",
   "language": "rust",
   "path": "rust",
-  "order": 3,
+  "order": 4,
+  "core": true,
   "prerequisite": "rust-traits",
   "outcomes": [
     "Build Rust iterators, collections, a tokenizer and a cache."

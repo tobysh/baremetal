@@ -5,7 +5,8 @@
   "level": "Advanced",
   "language": "go",
   "path": "go",
-  "order": 4,
+  "order": 5,
+  "core": true,
   "prerequisite": "go-practice",
   "outcomes": [
     "Build and test HTTP handlers, clients and cancellation in Go."

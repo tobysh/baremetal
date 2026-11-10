@@ -37,7 +37,8 @@ The `//` comments below are explanatory only; real JSON can't contain them.
   "level": "Beginner",          // Beginner | Intermediate | Advanced
   "language": "c",              // c | rust | go | asm | kernel
   "path": "c",                  // start | c | rust | go | low | security  (src/lib/curriculum/paths.ts)
-  "order": 1,                   // position within the path
+  "order": 1,                   // position within the path; unique per path, and a prerequisite in the same path must have a lower order
+  "core": true,                 // optional; marks the main route through the path (shown as "Core course"), everything else is an elective
   "prerequisite": "c-data",     // optional track slug; recommendations and the course map use it
   "outcomes": ["Concrete things a learner can do after finishing."],
   "draft": true                 // optional; hides the whole course (see "Drafts")

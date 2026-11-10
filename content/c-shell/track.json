@@ -5,7 +5,7 @@
   "level": "Advanced",
   "language": "c",
   "path": "c",
-  "order": 4,
+  "order": 11,
   "prerequisite": "c-systems",
   "outcomes": [
     "Implement shell parsing, pipelines, process control and small Unix tools."

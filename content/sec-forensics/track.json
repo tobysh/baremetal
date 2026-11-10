@@ -6,6 +6,7 @@
   "language": "c",
   "path": "security",
   "order": 4,
+  "core": true,
   "prerequisite": "c-systems",
   "outcomes": [
     "Inspect synthetic files, disk structures, metadata and evidence timelines."

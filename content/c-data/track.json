@@ -5,7 +5,8 @@
   "level": "Beginner",
   "language": "c",
   "path": "c",
-  "order": 0,
+  "order": 1,
+  "core": true,
   "prerequisite": "first-steps",
   "outcomes": [
     "Store and process values in arrays, strings and structs."

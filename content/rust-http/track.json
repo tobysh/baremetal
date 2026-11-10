@@ -5,7 +5,7 @@
   "level": "Advanced",
   "language": "rust",
   "path": "rust",
-  "order": 4,
+  "order": 6,
   "prerequisite": "rust-foundations",
   "outcomes": [
     "Build a concurrent HTTP server using the Rust standard library."

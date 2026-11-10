@@ -5,7 +5,7 @@
   "level": "Advanced",
   "language": "c",
   "path": "c",
-  "order": 6,
+  "order": 12,
   "prerequisite": "c-debugging",
   "outcomes": [
     "Predict and measure cache misses for different access orders and strides with a simulated cache.",

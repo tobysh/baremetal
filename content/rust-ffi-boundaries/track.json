@@ -5,7 +5,7 @@
   "level": "Advanced",
   "language": "rust",
   "path": "rust",
-  "order": 8,
+  "order": 9,
   "prerequisite": "rust-bridge",
   "outcomes": [
     "Design and implement a C-style API in Rust with explicit layout, ownership and error conventions."

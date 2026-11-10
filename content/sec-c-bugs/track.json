@@ -6,6 +6,7 @@
   "language": "c",
   "path": "security",
   "order": 1,
+  "core": true,
   "prerequisite": "c-memory",
   "outcomes": [
     "Find and repair bounds, allocation and ownership bugs in synthetic C examples.",

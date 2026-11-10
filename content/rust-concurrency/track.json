@@ -5,7 +5,8 @@
   "level": "Advanced",
   "language": "rust",
   "path": "rust",
-  "order": 5,
+  "order": 7,
+  "core": true,
   "prerequisite": "rust-traits",
   "outcomes": [
     "Coordinate Rust threads using channels, locks and atomics."

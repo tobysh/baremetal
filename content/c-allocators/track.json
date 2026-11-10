@@ -5,7 +5,7 @@
   "level": "Intermediate",
   "language": "c",
   "path": "c",
-  "order": 7,
+  "order": 6,
   "prerequisite": "c-memory",
   "outcomes": [
     "Compute aligned addresses and struct layouts without overflow.",

@@ -5,7 +5,7 @@
   "level": "Advanced",
   "language": "go",
   "path": "security",
-  "order": 12,
+  "order": 14,
   "prerequisite": "sec-infra-offense",
   "outcomes": [
     "Build one UTC timeline from sources with different time zones and known clock skew.",

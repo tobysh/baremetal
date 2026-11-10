@@ -5,7 +5,7 @@
   "level": "Advanced",
   "language": "asm",
   "path": "low",
-  "order": 3,
+  "order": 4,
   "prerequisite": "asm-intermediate",
   "outcomes": [
     "Build assembly programs using stack frames, libc, SIMD and a small VM."

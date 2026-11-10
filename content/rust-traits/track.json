@@ -5,7 +5,8 @@
   "level": "Intermediate",
   "language": "rust",
   "path": "rust",
-  "order": 2,
+  "order": 3,
+  "core": true,
   "prerequisite": "rust-foundations",
   "outcomes": [
     "Design Rust interfaces with traits, lifetimes and smart pointers."

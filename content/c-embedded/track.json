@@ -5,7 +5,7 @@
   "level": "Intermediate",
   "language": "c",
   "path": "c",
-  "order": 6,
+  "order": 7,
   "prerequisite": "c-memory",
   "outcomes": [
     "Read and modify bit fields in a device register without disturbing neighbouring bits or touching the register more often than its contract allows.",

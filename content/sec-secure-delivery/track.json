@@ -5,7 +5,7 @@
   "level": "Advanced",
   "language": "go",
   "path": "security",
-  "order": 12,
+  "order": 13,
   "prerequisite": "sec-appsec",
   "outcomes": [
     "Verify artifact digests and Ed25519 signatures, parsing only after authenticity is established.",

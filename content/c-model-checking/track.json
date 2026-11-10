@@ -5,7 +5,7 @@
   "level": "Advanced",
   "language": "c",
   "path": "c",
-  "order": 6,
+  "order": 13,
   "prerequisite": "c-concurrency",
   "outcomes": [
     "Model threads as step machines and enumerate every interleaving with a depth-first search.",

@@ -5,7 +5,7 @@
   "level": "Advanced",
   "language": "go",
   "path": "go",
-  "order": 5,
+  "order": 12,
   "prerequisite": "go-database",
   "outcomes": [
     "Encode and validate a superblock, bitmap, inodes and directory records.",

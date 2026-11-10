@@ -6,6 +6,7 @@
   "language": "asm",
   "path": "low",
   "order": 1,
+  "core": true,
   "prerequisite": "c-memory",
   "outcomes": [
     "Write x86-64 functions that exchange arguments and results with C."

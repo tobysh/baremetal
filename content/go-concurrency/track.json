@@ -6,6 +6,7 @@
   "language": "go",
   "path": "go",
   "order": 3,
+  "core": true,
   "prerequisite": "go-practice",
   "outcomes": [
     "Build cancellable concurrent Go programs with bounded work and clean shutdown."

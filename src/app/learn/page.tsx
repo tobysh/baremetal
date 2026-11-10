@@ -52,7 +52,7 @@ export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
       <h1 className="sr-only">Courses</h1>
       <Suspense fallback={<Skeleton className="h-64 w-full" />}><RecommendedLearning /></Suspense>
       <h2 id="all-courses" className="display-sm mt-10 scroll-mt-20 text-2xl sm:mt-14 font-bold">All courses</h2>
-      <p className="mt-1 max-w-2xl text-muted">Courses run in order within each path. Prerequisites are advice, never locks.</p>
+      <p className="mt-1 max-w-2xl text-muted">Courses run in order within each path. Core courses are the main route; the others are electives you can take when they interest you. Prerequisites are advice, never locks.</p>
       <Suspense fallback={<CourseFilterBar lang={null} level={null} type={null} counts={counts} tracks={tracks} />}><CourseFilters searchParams={searchParams} tracks={tracks} counts={counts} /></Suspense>
       <nav aria-label="Learning paths" className="mt-4">
         <ul className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))]">
@@ -85,7 +85,7 @@ export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
                   </h3>
                   <p className="mt-1 text-muted">{t.summary}</p>
                   <p className="mt-2 flex flex-wrap items-center gap-x-2 text-sm text-muted">
-                    <span>{LANGUAGE_LABEL[t.language]}</span><span aria-hidden="true">·</span><span>{t.level}</span>
+                    {t.core && <><span className="font-medium text-text-2">Core course</span><span aria-hidden="true">·</span></>}<span>{LANGUAGE_LABEL[t.language]}</span><span aria-hidden="true">·</span><span>{t.level}</span>
                     <span aria-hidden="true">·</span><span>{t.lessons.length} lessons, about {Math.round(t.lessons.reduce((m, l) => m + l.minutes, 0) / 60 * 2) / 2} h</span>
                   </p>
                   <details className="mt-2">

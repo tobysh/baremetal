@@ -5,7 +5,7 @@
   "level": "Advanced",
   "language": "c",
   "path": "c",
-  "order": 4,
+  "order": 10,
   "prerequisite": "c-systems",
   "outcomes": [
     "Parse network protocols and build loopback TCP and UDP programs."

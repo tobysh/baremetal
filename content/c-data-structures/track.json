@@ -5,7 +5,8 @@
   "level": "Intermediate",
   "language": "c",
   "path": "c",
-  "order": 4,
+  "order": 5,
+  "core": true,
   "prerequisite": "c-memory",
   "outcomes": [
     "Implement collections, sorting and graph algorithms in C."

@@ -70,6 +70,8 @@ export type Track = {
   /** Learning path this course belongs to (see paths.ts) and its position within it. */
   path: string;
   order: number;
+  /** True for the courses that form the main route through their path; the rest are electives. */
+  core?: boolean;
   lessons: Lesson[];
 };
 
