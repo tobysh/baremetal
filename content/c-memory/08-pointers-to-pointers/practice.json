@@ -1,0 +1,42 @@
+{
+  "kind": "predict",
+  "prompt": "Follow the two levels of pointer. `pp` holds the address of `s`.",
+  "code": "const char *s = \"cat\";\nconst char **pp = &s;\n*pp = \"dog\";\nconst char *t = *pp;",
+  "trace": [
+    {
+      "label": "After line 2, `*pp` is the same box as",
+      "choices": [
+        "s",
+        "&s",
+        "pp"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "After line 3, `s` points at the text",
+      "choices": [
+        "\"cat\"",
+        "\"dog\""
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After line 4, `t` points at the text",
+      "choices": [
+        "\"cat\"",
+        "\"dog\""
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After line 4, `**pp` is the character",
+      "choices": [
+        "'c'",
+        "'d'",
+        "'o'"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "`*pp` follows pp to s, so `*pp = \"dog\"` changes s itself. `t = *pp` copies s's new value. `**pp` follows two arrows, to the first character of the text: 'd'."
+}

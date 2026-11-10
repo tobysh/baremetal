@@ -1,10 +1,7 @@
-Build the mask once with `1u << n`, then each function is one short expression using that mask.
+Keep the register in a `uint32_t` (from `<stdint.h>`) that starts at 0. Read each command word with `scanf("%15s", cmd)` and compare it with `strcmp`; every command except `show` is followed by a bit number.
 ===
-Set uses `|`, clear uses `&` with the flipped mask `~mask`, toggle uses `^`. For test, AND with the mask and compare the result to zero so you return exactly 1 or 0.
+Make a mask with `1u << n`. Then `set` is `x | mask`, `clear` is `x & ~mask`, and `toggle` is `x ^ mask`. Write them as small functions that take `x` and `n` and return the new value.
 ===
-```c
-uint32_t set_bit(uint32_t x, int n) {
-    return x | (1u << n);
-}
-```
-`clear_bit` is `x & ~(1u << n)`, `toggle_bit` is `x ^ (1u << n)`, and `test_bit` is `(x & (1u << n)) != 0`.
+For `test`, check `(x & mask) != 0`. That already gives exactly 1 or 0.
+===
+Print with `printf("flags: 0x%08X (%u)\n", x, x)`. Cast to `unsigned` if your compiler warns. Try bit 31 first: `1u << 31` must be unsigned.

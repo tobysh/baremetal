@@ -33,6 +33,20 @@ while (s[i] != '\0') {
 
 `printf("%s", word)` does exactly this walk to know where to stop. That also means a string without a terminator is a bug: functions will keep reading past the end.
 
+## What's in memory
+
+Each `char` is one byte, holding a number. `word` is four bytes in a row, and the last one is the terminator (addresses are made up):
+
+```text
+address   box        character   number held
+0x3000    word[0]    'c'         99
+0x3001    word[1]    'a'         97
+0x3002    word[2]    't'         116
+0x3003    word[3]    '\0'        0
+```
+
+The array is 4 bytes, but the *string* "cat" is the 3 characters before the first zero. The two can differ: if you set `word[1] = '\0'`, the array is still 4 bytes, but every string function now sees the empty-looking text "c". And if the zero is missing, nothing stops a function from walking on into whatever memory follows, which is undefined behaviour.
+
 ## Characters are small numbers
 
 `'a'` is just a number (97 in ASCII), so you can compare and calculate with characters: `c >= 'a' && c <= 'z'` tests for a lowercase letter, and `c - 'a' + 'A'` turns a lowercase letter into the uppercase one. The header `<ctype.h>` offers helpers like `isdigit(c)` and `toupper(c)`; cast the argument to `unsigned char` when you call them, as in `toupper((unsigned char)c)`.

@@ -1,17 +1,7 @@
-`best_index`, `total_score` and `count_passing` are the loops from the first lesson with `e[i].score` instead of `a[i]`. For `best_index` keep the *index* of the best so far, starting at 0, and replace it only when a score is strictly bigger (so ties keep the first).
+Start with a struct holding the id and the score, an array of them, and a loop that reads the entries. Print what you read before doing anything else.
 ===
-`add_bonus` writes `e[i].score += bonus;` in the loop, which changes the caller's records. For `sort_by_score` use insertion sort: for each `i` from 1, save `Entry current = e[i];`, shift earlier records with a *smaller* score one place right, then drop `current` into the gap.
+Split the report into small functions that take the array and its length: one finds the index of the best entry, one adds the scores, one counts the passes, one adds the bonus. Calling them from `main` in the order of the report keeps the output order right.
 ===
-```c
-void sort_by_score(Entry e[], int n) {
-    for (int i = 1; i < n; i++) {
-        Entry current = e[i];
-        int j = i - 1;
-        while (j >= 0 && e[j].score < current.score) {
-            e[j + 1] = e[j];
-            j--;
-        }
-        e[j + 1] = current;
-    }
-}
-```
+For the best entry, remember the index of the best so far and replace it only when a score is strictly higher, so a tie keeps the first.
+===
+Sort with insertion sort: take `current = e[i]`, shift entries with a lower score one place right, then drop `current` into the gap. Only shift past strictly lower scores, so ties stay in order. Print `best`, `total` and `passing` before you add the bonus.

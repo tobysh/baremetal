@@ -1,0 +1,46 @@
+[
+  {
+    "kind": "predict",
+    "prompt": "Follow two pointers into the same array.",
+    "code": "int a[5] = {2, 4, 6, 8, 10};\nint *p = a + 1;\nint *q = p + 3;\n*(q - 2) = 0;",
+    "trace": [
+      {
+        "label": "After line 2, `*p` is",
+        "choices": [
+          "2",
+          "4",
+          "6"
+        ],
+        "answer": 1
+      },
+      {
+        "label": "After line 3, `q - p` (in elements) is",
+        "choices": [
+          "3",
+          "12",
+          "4"
+        ],
+        "answer": 0
+      },
+      {
+        "label": "After line 4, the element that changed is",
+        "choices": [
+          "a[1]",
+          "a[2]",
+          "a[3]"
+        ],
+        "answer": 1
+      },
+      {
+        "label": "After line 4, `*q` is",
+        "choices": [
+          "10",
+          "8",
+          "0"
+        ],
+        "answer": 0
+      }
+    ],
+    "explain": "p points at a[1] (4). q is three elements later, a[4] (10). `q - 2` is a[2], which becomes 0. q still points at a[4], which still holds 10."
+  }
+]

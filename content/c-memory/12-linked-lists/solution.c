@@ -1,43 +1,38 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stddef.h>
+#include <string.h>
 
 typedef struct Node {
     int value;
     struct Node *next;
 } Node;
 
-Node *push_front(Node *head, int value) {
+static Node *push_front(Node *head, int value) {
     Node *n = malloc(sizeof *n);
-    if (n == NULL) {
-        return head;
-    }
+    if (n == NULL) return head;
     n->value = value;
     n->next = head;
     return n;
 }
 
-size_t list_length(const Node *head) {
-    size_t count = 0;
-    for (const Node *cur = head; cur != NULL; cur = cur->next) {
-        count++;
-    }
-    return count;
-}
-
-Node *reverse_list(Node *head) {
+static Node *reverse_list(Node *head) {
     Node *prev = NULL;
-    Node *cur = head;
-    while (cur != NULL) {
-        Node *next = cur->next;
-        cur->next = prev;
-        prev = cur;
-        cur = next;
+    while (head != NULL) {
+        Node *next = head->next;
+        head->next = prev;
+        prev = head;
+        head = next;
     }
     return prev;
 }
 
-void free_list(Node *head) {
+static size_t list_length(const Node *head) {
+    size_t count = 0;
+    for (; head != NULL; head = head->next) count++;
+    return count;
+}
+
+static void free_list(Node *head) {
     while (head != NULL) {
         Node *next = head->next;
         free(head);
@@ -46,10 +41,31 @@ void free_list(Node *head) {
 }
 
 int main(void) {
-    Node *list = NULL;
-    for (int i = 1; i <= 3; i++) list = push_front(list, i);
-    for (const Node *n = list; n != NULL; n = n->next) printf("%d ", n->value);
-    printf("\n");
-    free_list(list);
+    Node *head = NULL;
+    char cmd[16];
+    while (scanf("%15s", cmd) == 1) {
+        if (strcmp(cmd, "push") == 0) {
+            int v;
+            if (scanf("%d", &v) != 1) break;
+            head = push_front(head, v);
+        } else if (strcmp(cmd, "pop") == 0) {
+            if (head == NULL) {
+                printf("empty\n");
+            } else {
+                Node *old = head;
+                printf("%d\n", old->value);
+                head = old->next;
+                free(old);
+            }
+        } else if (strcmp(cmd, "reverse") == 0) {
+            head = reverse_list(head);
+        } else if (strcmp(cmd, "print") == 0) {
+            if (head == NULL) printf("empty\n");
+            for (const Node *cur = head; cur != NULL; cur = cur->next) printf("%d%c", cur->value, cur->next ? ' ' : '\n');
+        } else if (strcmp(cmd, "count") == 0) {
+            printf("%zu\n", list_length(head));
+        }
+    }
+    free_list(head);
     return 0;
 }

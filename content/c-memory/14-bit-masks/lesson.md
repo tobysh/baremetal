@@ -3,9 +3,10 @@ title: Bit Masks
 summary: Use a one-bit mask to set, clear, test and toggle a single bit of a number, the building block of flags, permissions and hardware registers.
 minutes: 15
 difficulty: easy
-tags: bitwise, flags
+tags: bitwise, flags, design
 id: c-memory/bit-masks
-mode: harness
+mode: stdout
+revision: 2
 ---
 A 32-bit number is 32 tiny on/off switches side by side. The rightmost is **bit 0**, next is bit 1, and so on up to bit 31. Programs use them as flags: bit 0 might mean "readable", bit 1 "writable", bit 2 "executable".
 
@@ -50,6 +51,13 @@ C passes numbers by value, so these helpers take `x` and return the changed numb
 - Using `1 << n` with a signed int when `n` reaches 31.
 - Forgetting that bit numbering starts at 0.
 
-## Your turn
+## Design it yourself
 
-Write the four helpers. Every bit position from 0 to 31 is tried.
+This lesson used to give you four helper signatures. Now you choose them. The starter has only the includes: write the helpers you want, and a `main` that reads commands and applies them.
+
+1. **Understand the problem.** What is the state, and which commands change it, which print?
+2. **Write examples.** Work out the output of a short series by hand. Include bit 0 and bit 31, which are the easy ones to get wrong.
+3. **Choose signatures.** The four moves are functions from a value and a bit number to a new value (or, for the test, to 1 or 0). Decide their types before the bodies.
+4. **Plan.** This is a **sentinel loop** reading commands until the input ends, with the flag value as an **accumulator** that each command updates.
+5. **Code.** One move at a time, starting with `set` and `show`.
+6. **Test.** Run your own series. If a bit looks wrong, print the value in hex after each command and check it against your hand-worked example.

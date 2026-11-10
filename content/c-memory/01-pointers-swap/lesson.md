@@ -46,6 +46,18 @@ printf("%d\n", x);    // 99! x changed, because p points at x
 
 Note that `*` does two jobs: in a declaration (`int *p`) it means "this is a pointer", and in an expression (`*p`) it means "follow the pointer".
 
+## What's in memory
+
+A pointer is an ordinary box. The only special thing is what it holds: the address of another box. After `int x = 42; int *p = &x;` the frame of `main` looks like this (addresses are made up):
+
+```text
+main's frame
+0x7000   x   42
+0x7008   p   0x7000      <- p holds x's address
+```
+
+`*p` means "go to address 0x7000 and use the box there". Writing `*p = 99;` changes the box at `0x7000`, which is `x`.
+
 ## Why swap(int a, int b) cannot work
 
 C passes arguments **by value**: each function gets its own *copy*.
@@ -74,6 +86,21 @@ int main(void) {
     return 0;
 }
 ```
+
+## What's in memory: calling inc(&count)
+
+A call pushes a new frame on top of the caller's. The argument is copied into the new frame as usual, but what is copied is an address, so it still leads to the caller's box:
+
+```text
+while inc runs      inc's frame     n      0x7000   <- a copy of the address
+                    main's frame    count  5        at address 0x7000
+
+after *n = *n + 1                   main's frame    count  6
+
+after inc returns   main's frame    count  6        (inc's frame is gone, n with it)
+```
+
+The pointer `n` lives only as long as `inc`'s frame does. The box it pointed at, `count`, lives in `main`'s frame, which is why the change survives. The reverse is the trap: a pointer to a local variable is only good while that variable's frame exists. The heap lesson shows what goes wrong when a function returns such a pointer.
 
 ## Common mistakes
 

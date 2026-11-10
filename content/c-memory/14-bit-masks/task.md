@@ -1,6 +1,18 @@
-Write four functions that work on one bit of a `uint32_t`. The bit number `n` is between 0 and 31, and bit 0 is the least significant. Every position is tried, on several different starting values.
+Write a program that simulates a 32-bit flag register. It starts at 0. The input is any number of commands, one per line, until the input ends. Bits are numbered 0 to 31 from the least significant end.
 
-- `uint32_t set_bit(uint32_t x, int n)` returns `x` with bit `n` turned on.
-- `uint32_t clear_bit(uint32_t x, int n)` returns `x` with bit `n` turned off.
-- `uint32_t toggle_bit(uint32_t x, int n)` returns `x` with bit `n` flipped.
-- `int test_bit(uint32_t x, int n)` returns 1 if bit `n` of `x` is on, otherwise 0 (exactly 1 or 0, not another non-zero number).
+- `set N` turns bit `N` on.
+- `clear N` turns bit `N` off.
+- `toggle N` flips bit `N`.
+- `test N` prints `1` if bit `N` is on, otherwise `0`.
+- `show` prints the register as `flags: 0x` followed by eight uppercase hexadecimal digits, then the decimal value in brackets.
+
+For example, the commands `set 3`, `set 0`, `show`, `toggle 3`, `test 3`, `test 0`, `show` produce:
+
+```
+flags: 0x00000009 (9)
+0
+1
+flags: 0x00000001 (1)
+```
+
+Every bit position from 0 to 31 is tried, on several different series. Start from the empty file: choose your own helper functions and `main`.

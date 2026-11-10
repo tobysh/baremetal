@@ -3,7 +3,7 @@ title: Reading until the input ends
 summary: Keep reading numbers with scanf until there are no more, and handle empty input.
 minutes: 20
 difficulty: medium
-tags: input, loops
+tags: input, loops, design
 id: first-steps/read-until-eof
 mode: stdout
 ---
@@ -39,3 +39,14 @@ while (scanf("%d", &x) == 1) {
 A running maximum needs a starting value. If you start it at `0`, a list of only negative numbers gives the wrong answer. Use the first number you read, tracked with a flag or by checking `count == 0`, as the starting maximum.
 
 Also decide what to print when there was no input at all. Check `count` after the loop rather than assuming at least one number arrived.
+
+## Design it yourself
+
+From this lesson on, you choose the shape of the program. The starter is empty: write `main` yourself, and add helper functions if they make it clearer. Follow the six steps of the design recipe:
+
+1. **Understand the problem.** What goes in and what comes out?
+2. **Write examples.** Work out the output for a normal list, a list of only negative numbers, and an empty one.
+3. **Choose signatures.** One `main` is enough here. If you use helpers, decide their parameters first.
+4. **Plan.** This is a **sentinel loop** (read until the input ends) around a **counter**, an **accumulator** (the sum) and a running biggest value.
+5. **Code.** Write the plan as comments, then fill them in.
+6. **Test.** Run it with your own inputs in the input box, including no input at all.

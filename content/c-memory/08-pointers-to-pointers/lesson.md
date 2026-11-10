@@ -22,6 +22,29 @@ point_at_hello(&s);        // s now points at "hello"
 
 Read `char **out` right to left: `out` is a pointer to a pointer to a `char`. `*out` is the caller's pointer; `**out` would be the first character.
 
+## What's in memory
+
+A `char *` is a box holding an address, and a `char **` is a box holding the address of *that* box. Before the call, `s` holds `NULL`:
+
+```text
+main's frame        0x7010   s     NULL
+```
+
+During `point_at_hello(&s)`, the function's frame holds a copy of `s`'s address, not of `s`:
+
+```text
+point_at_hello's frame   0x6FF0   out   0x7010      <- the address OF s
+main's frame             0x7010   s     NULL
+```
+
+`*out = "hello";` follows `out` to `0x7010` and writes into `s`, whose new value is the address of the text:
+
+```text
+main's frame        0x7010   s     0x4000      <- where the characters "hello" live
+```
+
+When the function returns, `out` disappears and `s` keeps its new value. Assigning `out = "hello"` instead would only change the function's own box.
+
 ## Out-parameters
 
 A C function returns only one value. When it needs to give back something more (a new string, a second number), it takes an **out-parameter**: a pointer where it writes the extra result. The return value is then free to report success or failure:

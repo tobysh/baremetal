@@ -1,0 +1,46 @@
+[
+  {
+    "kind": "predict",
+    "prompt": "Follow the two structs. Assigning a struct copies all of its fields.",
+    "code": "Time a = {9, 30};\nTime b = a;\nb.minutes = b.minutes + 45;\nb.hours = b.hours + b.minutes / 60;\nb.minutes = b.minutes % 60;",
+    "trace": [
+      {
+        "label": "After line 3, `b.minutes` holds",
+        "choices": [
+          "45",
+          "75",
+          "30"
+        ],
+        "answer": 1
+      },
+      {
+        "label": "After line 4, `b.hours` holds",
+        "choices": [
+          "9",
+          "10",
+          "11"
+        ],
+        "answer": 1
+      },
+      {
+        "label": "After line 5, `b.minutes` holds",
+        "choices": [
+          "15",
+          "75",
+          "0"
+        ],
+        "answer": 0
+      },
+      {
+        "label": "At the end, `a.minutes` holds",
+        "choices": [
+          "30",
+          "15",
+          "75"
+        ],
+        "answer": 0
+      }
+    ],
+    "explain": "`Time b = a;` copies both fields into b's own block. 30 + 45 is 75; 75 / 60 is 1 hour, so b.hours becomes 10; 75 % 60 is 15 minutes. Nothing ever touched a."
+  }
+]

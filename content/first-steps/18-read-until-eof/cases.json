@@ -1,7 +1,37 @@
 [
-  { "name": "mixed numbers", "stdin": "3 9 -2 7\n", "expected": "count: 4\nsum: 17\nmax: 9\n" },
-  { "name": "one per line", "stdin": "5\n1\n8\n2\n", "expected": "count: 4\nsum: 16\nmax: 8\n" },
-  { "name": "only negatives", "stdin": "-5 -2 -9\n", "expected": "count: 3\nsum: -16\nmax: -2\n" },
-  { "name": "single number", "stdin": "42\n", "expected": "count: 1\nsum: 42\nmax: 42\n" },
-  { "name": "empty input", "stdin": "", "expected": "count: 0\nsum: 0\nmax: none\n" }
+  {
+    "name": "mixed numbers",
+    "stdin": "3 9 -2 7\n",
+    "expected": "count: 4\nsum: 17\nmax: 9\n"
+  },
+  {
+    "name": "one per line",
+    "stdin": "5\n1\n8\n2\n",
+    "expected": "count: 4\nsum: 16\nmax: 8\n"
+  },
+  {
+    "name": "only negatives",
+    "stdin": "-5 -2 -9\n",
+    "expected": "count: 3\nsum: -16\nmax: -2\n"
+  },
+  {
+    "name": "single number",
+    "stdin": "42\n",
+    "expected": "count: 1\nsum: 42\nmax: 42\n"
+  },
+  {
+    "name": "empty input",
+    "stdin": "",
+    "expected": "count: 0\nsum: 0\nmax: none\n"
+  },
+  {
+    "name": "a long list",
+    "stdin": "4 -8 15 16 -23 42 7 7 0 99 -100 12\n",
+    "expected": "count: 12\nsum: 71\nmax: 99\n"
+  },
+  {
+    "name": "all zeros",
+    "stdin": "0 0 0\n",
+    "expected": "count: 3\nsum: 0\nmax: 0\n"
+  }
 ]

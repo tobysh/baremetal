@@ -3,7 +3,7 @@ title: "Project: A Gradebook"
 summary: Read student records from input into an array of structs, find the top student, rank everyone by score with a stable sort and print a report with an average.
 minutes: 30
 difficulty: hard
-tags: structs, arrays, strings, input, project
+tags: structs, arrays, strings, input, project, design
 id: c-data/gradebook
 mode: stdout
 ---
@@ -31,3 +31,14 @@ Read with `scanf`, as in [Reading Input](/learn/first-steps/reading-input). `%s`
 If `n` is 0, print only `average: 0.00` and `passed: 0 of 0`, never dividing by zero.
 
 Break the work into small functions if you like; the shape is read, sort, print.
+
+## Design it yourself
+
+The starter is empty, so you decide the types, the functions and what `main` does. A gradebook is too big to write as one block, so follow the design recipe:
+
+1. **Understand the problem.** What goes in, and what are the three things to print?
+2. **Write examples.** Work out the ranking for a small class by hand, including a tie and an empty class.
+3. **Choose signatures.** Decide your struct and the functions you want (reading, sorting, printing, perhaps one for the average), and what each takes and returns, before writing any body.
+4. **Plan.** Name the patterns: a **sentinel loop** to read, a **filter** to count the passes, an **accumulator** for the total.
+5. **Code.** One function at a time, testing each with a small `main`.
+6. **Test.** Run the examples. If the output is wrong, say what you expect each step to give and print the value that checks it.

@@ -1,6 +1,18 @@
-The `Node` type is already defined in the starter code. Write four functions:
+Write a program that keeps a list of whole numbers and obeys commands. The input is any number of commands, one per line, until the input ends:
 
-- `Node *push_front(Node *head, int value)` allocates a new node holding `value`, links it in front of `head`, and returns the new head. `head` may be `NULL` (empty list). If allocation fails, return `head` unchanged.
-- `size_t list_length(const Node *head)` returns the number of nodes. An empty list has length 0.
-- `Node *reverse_list(Node *head)` reverses the list by relinking the existing nodes (no new allocation) and returns the new head. Reversing an empty list or a one-node list is fine.
-- `void free_list(Node *head)` frees every node. `head` may be `NULL`.
+- `push N` puts the number `N` at the front of the list.
+- `pop` removes the front number and prints it. If the list is empty, it prints `empty` instead.
+- `reverse` turns the list around, so the back becomes the front.
+- `print` prints the numbers from front to back on one line, separated by single spaces. An empty list prints `empty`.
+- `count` prints how many numbers the list holds.
+
+For example, the commands `push 1`, `push 2`, `push 3`, `print`, `reverse`, `print`, `pop`, `count` produce:
+
+```
+3 2 1
+1 2 3
+1
+2
+```
+
+Store the numbers in a linked list of heap nodes, with no upper limit on its length. Other command series are tried, including long ones and ones that pop from an empty list. Start from the empty file: choose your own node type, functions and `main`.

@@ -38,6 +38,21 @@ printf("%d\n", *(p + 2));  // also 60
 
 `p + 2` means "two elements further along", not "two bytes". C scales by the element size for you. And `p[2]` is just shorthand for `*(p + 2)`.
 
+## What's in memory
+
+In `main`, `scores` is four `int` boxes (16 bytes). When `scores` decays to a pointer, one 8-byte pointer box is made that holds the address of the first element (the addresses are made up):
+
+```text
+main's frame
+0x6000   scores[0]  90
+0x6004   scores[1]  75
+0x6008   scores[2]  60
+0x600C   scores[3]  88
+0x6010   p          0x6000      <- int *p = scores;
+```
+
+`p + 2` is `0x6000 + 2 * 4 = 0x6008`, the address of `scores[2]`. The same picture explains the function call: `first_or_zero(nums, 3)` puts a copy of the address in `arr` and a 3 in `len`. That is all the function gets, and why `sizeof arr` inside it is 8.
+
 ## Passing arrays to functions
 
 Decay has a big consequence: a function that receives an array only receives a pointer to the first element. It has **no idea how long the array is**. So you pass the length separately:

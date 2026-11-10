@@ -1,0 +1,42 @@
+[
+  {
+    "name": "the example",
+    "stdin": "4\n1 70\n2 95\n3 80\n4 95\n80 5\n",
+    "expected": "best: 2\ntotal: 340\npassing: 3\nafter the bonus:\n2 100\n4 100\n3 85\n1 75\n"
+  },
+  {
+    "name": "a single entry",
+    "stdin": "1\n7 40\n50 0\n",
+    "expected": "best: 7\ntotal: 40\npassing: 0\nafter the bonus:\n7 40\n"
+  },
+  {
+    "name": "no entries",
+    "stdin": "0\n50 5\n",
+    "expected": "best: none\ntotal: 0\npassing: 0\nafter the bonus:\n"
+  },
+  {
+    "name": "all scores equal",
+    "stdin": "3\n5 60\n3 60\n9 60\n60 10\n",
+    "expected": "best: 5\ntotal: 180\npassing: 3\nafter the bonus:\n5 70\n3 70\n9 70\n"
+  },
+  {
+    "name": "negative bonus",
+    "stdin": "3\n1 50\n2 10\n3 30\n20 -15\n",
+    "expected": "best: 1\ntotal: 90\npassing: 2\nafter the bonus:\n1 35\n3 15\n2 -5\n"
+  },
+  {
+    "name": "nobody passes",
+    "stdin": "3\n4 10\n2 20\n8 5\n99 3\n",
+    "expected": "best: 2\ntotal: 35\npassing: 0\nafter the bonus:\n2 23\n4 13\n8 8\n"
+  },
+  {
+    "name": "already in order",
+    "stdin": "5\n1 10\n2 20\n3 30\n4 40\n5 50\n30 1\n",
+    "expected": "best: 5\ntotal: 150\npassing: 3\nafter the bonus:\n5 51\n4 41\n3 31\n2 21\n1 11\n"
+  },
+  {
+    "name": "thirty entries with ties",
+    "stdin": "30\n486 85\n674 85\n147 100\n12 85\n495 85\n659 12\n708 70\n572 40\n678 70\n451 85\n167 85\n928 70\n61 70\n77 85\n698 100\n818 55\n20 40\n840 70\n94 100\n970 12\n116 100\n995 70\n553 85\n904 70\n714 40\n569 70\n520 55\n411 100\n685 12\n489 100\n70 -7\n",
+    "expected": "best: 147\ntotal: 2106\npassing: 22\nafter the bonus:\n147 93\n698 93\n94 93\n116 93\n411 93\n489 93\n486 78\n674 78\n12 78\n495 78\n451 78\n167 78\n77 78\n553 78\n708 63\n678 63\n928 63\n61 63\n840 63\n995 63\n904 63\n569 63\n818 48\n520 48\n572 33\n20 33\n714 33\n659 5\n970 5\n685 5\n"
+  }
+]

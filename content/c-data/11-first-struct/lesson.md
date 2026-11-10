@@ -26,6 +26,16 @@ t.minutes = 45;
 
 (`%02d` pads with a zero to two digits.) You can also set fields by name: `Time t = {.hours = 9, .minutes = 30};`.
 
+## What's in memory
+
+A struct is one block of memory with its fields side by side, in the order you declared them. `Time t = {9, 30};` in `main`'s frame is two `int` boxes (addresses are made up):
+
+```text
+main's frame
+0x1000   t.hours     9
+0x1004   t.minutes   30
+```
+
 ## Structs are passed and returned by value
 
 Pass a struct to a function and the function gets a **copy**, like an `int`. Changing the copy does not change the caller's. To produce a new value, build one and `return` it:
@@ -37,7 +47,22 @@ Time time_make(int h, int m) {
 }
 ```
 
-This is the opposite of arrays, where the function works on the original. (Later courses show how to let a function modify a struct: that needs a pointer.) You can compare fields but not whole structs with `==`.
+The whole block is copied into the new function's frame. Take this function, called from `main` as `Time u = later(t);`:
+
+```c
+Time later(Time t) {
+    t.minutes = t.minutes + 15;
+    return t;
+}
+```
+
+```text
+main's frame        later's frame (a copy)     after the return
+t  {9, 30}          t  {9, 45}                 t  {9, 30}
+                                               u  {9, 45}
+```
+
+`main`'s `t` is untouched. The result travels back as a copy and lands in `u`. This is the opposite of arrays, where the function works on the original. (Later courses show how to let a function modify a struct: that needs a pointer.) You can compare fields but not whole structs with `==`.
 
 ## Normalising
 

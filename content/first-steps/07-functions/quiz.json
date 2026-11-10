@@ -23,5 +23,49 @@
     ],
     "answer": 0,
     "explain": "The inner call returns 6, which is passed to the outer call, giving 12."
+  },
+  {
+    "kind": "predict",
+    "prompt": "Trace the call stack through this program.",
+    "code": "void bump(int n) { n = n + 1; }\n\nint main(void) {\n    int n = 5;\n    bump(n);\n    printf(\"%d\", n);\n}",
+    "trace": [
+      {
+        "label": "While `bump` is running, how many stack frames exist",
+        "choices": [
+          "1",
+          "2",
+          "3"
+        ],
+        "answer": 1
+      },
+      {
+        "label": "At the end of `bump`, its own `n` holds",
+        "choices": [
+          "5",
+          "6",
+          "1"
+        ],
+        "answer": 1
+      },
+      {
+        "label": "After `bump` returns, `main`'s `n` holds",
+        "choices": [
+          "5",
+          "6",
+          "0"
+        ],
+        "answer": 0
+      },
+      {
+        "label": "After `bump` returns, the `bump` frame",
+        "choices": [
+          "is gone",
+          "still holds n = 6",
+          "is copied into main"
+        ],
+        "answer": 0
+      }
+    ],
+    "explain": "The call copies 5 into bump's parameter. bump changes its own copy to 6, then its frame is discarded. main's n was never touched, so it prints 5."
   }
 ]

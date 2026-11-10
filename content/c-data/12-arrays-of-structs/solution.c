@@ -48,11 +48,29 @@ void sort_by_score(Entry e[], int n) {
 }
 
 int main(void) {
-    Entry board[4] = {{1, 70}, {2, 95}, {3, 80}, {4, 95}};
-    printf("best index = %d\n", best_index(board, 4));
-    printf("total = %d\n", total_score(board, 4));
-    sort_by_score(board, 4);
-    for (int i = 0; i < 4; i++) printf("%d:%d ", board[i].id, board[i].score);
-    printf("\n");
+    Entry board[30];
+    int n = 0;
+    if (scanf("%d", &n) != 1 || n < 0) n = 0;
+    if (n > 30) n = 30;
+    for (int i = 0; i < n; i++) {
+        if (scanf("%d %d", &board[i].id, &board[i].score) != 2) {
+            n = i;
+            break;
+        }
+    }
+    int pass_mark = 0, bonus = 0;
+    if (scanf("%d %d", &pass_mark, &bonus) != 2) {
+        pass_mark = 0;
+        bonus = 0;
+    }
+
+    if (n == 0) printf("best: none\n");
+    else printf("best: %d\n", board[best_index(board, n)].id);
+    printf("total: %d\n", total_score(board, n));
+    printf("passing: %d\n", count_passing(board, n, pass_mark));
+    add_bonus(board, n, bonus);
+    sort_by_score(board, n);
+    printf("after the bonus:\n");
+    for (int i = 0; i < n; i++) printf("%d %d\n", board[i].id, board[i].score);
     return 0;
 }

@@ -1,0 +1,46 @@
+[
+  {
+    "kind": "predict",
+    "prompt": "Follow this grid, stored as one block of six boxes, row by row.",
+    "code": "int g[2][3] = {{1, 2, 3}, {4, 5, 6}};\ng[1][0] = g[0][2];\ng[0][1] = g[1][2] + g[1][1];",
+    "trace": [
+      {
+        "label": "After line 2, `g[1][0]` holds",
+        "choices": [
+          "3",
+          "4",
+          "1"
+        ],
+        "answer": 0
+      },
+      {
+        "label": "After line 3, `g[0][1]` holds",
+        "choices": [
+          "9",
+          "11",
+          "7"
+        ],
+        "answer": 1
+      },
+      {
+        "label": "Counting boxes in the single block from 0, `g[1][2]` is box number",
+        "choices": [
+          "3",
+          "5",
+          "6"
+        ],
+        "answer": 1
+      },
+      {
+        "label": "How many boxes does `g` have in total",
+        "choices": [
+          "5",
+          "6",
+          "8"
+        ],
+        "answer": 1
+      }
+    ],
+    "explain": "Line 2 copies g[0][2] (3) into g[1][0]. Line 3 adds g[1][2] (6) and g[1][1] (5) to get 11. The box number of g[r][c] is r * 3 + c, so g[1][2] is box 5. Two rows of three make six boxes."
+  }
+]

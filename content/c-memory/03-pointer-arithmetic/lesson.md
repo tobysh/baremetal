@@ -22,6 +22,21 @@ p++;               // p now points at a[1]
 
 On a machine where `int` is 4 bytes, `p + 1` is an address 4 higher. For a `char *` it would be 1 higher, for a `double *` 8 higher.
 
+## What's in memory
+
+Pointers are just addresses, and the scaling by element size is what keeps them tidy. For the array above, `p` starts at `a[0]` and `p++` steps to the next box (addresses made up):
+
+```text
+address   box    holds
+0x5000    a[0]   10   <- p (at first)
+0x5004    a[1]   20   <- p after p++
+0x5008    a[2]   30
+0x500C    a[3]   40
+0x5010    (one past the end: you may point here, never read it)
+```
+
+`p` held `0x5000`, and after `p++` it holds `0x5004`: 4 more, because an `int` is 4 bytes. A `char *` would have gone up by 1.
+
 ## Subtracting pointers
 
 Two pointers into the same array can be subtracted. The answer is the number of **elements** between them, with type `ptrdiff_t` (from `<stddef.h>`):

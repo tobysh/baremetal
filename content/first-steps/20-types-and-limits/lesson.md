@@ -22,14 +22,31 @@ A 4-byte `int` holds numbers from about -2.1 billion to +2.1 billion. The exact 
 
 ## Overflow
 
-Go past the top and the number does not stop, it **overflows**. For a signed `int` the C standard doesn't say what happens, and in practice the result is garbage, often a large negative number:
+Go past the top and the number does not stop, it **overflows**. For a signed `int` the C standard says nothing about what happens. That is called **undefined behaviour**: the language makes no promise, so the program may print a wrong number, print a different wrong number when compiled another way, or do something stranger, because the compiler is allowed to assume it never happens.
 
 ```c
 int big = 2000000000;
 int sum = big + big;     // not 4000000000
 ```
 
-The compiler doesn't warn you, so you have to choose a type big enough in advance.
+Compiled normally on a typical computer, this quietly gives `-294967296` with no warning. On this site your code is built with a checker turned on, so the same lines stop the program with a message instead:
+
+```text
+main.c:5:9: runtime error: signed integer overflow: 2000000000 * 2 cannot be represented in type 'int'
+```
+
+Read it like any error: the file and line, then what went wrong. The checker only helps you find the mistake. The cure is to choose a type big enough in advance.
+
+## What's in memory
+
+An `int` is a 4-byte box, which can hold only 2^32 different bit patterns. The sum 4000000000 needs a bigger box. A `long long` box has 8 bytes:
+
+```text
+int       [ 4 bytes ]            range about -2.1 billion .. +2.1 billion
+long long [ 8 bytes            ]  range about -9.2 quintillion .. +9.2 quintillion
+```
+
+Undefined behaviour is not only about overflow. Reading a variable you never set, indexing past the end of an array, and using a pointer that points nowhere are all the same kind of mistake. Later lessons show each one.
 
 ## Bigger and unsigned types
 

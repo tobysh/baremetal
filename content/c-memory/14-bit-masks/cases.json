@@ -1,0 +1,42 @@
+[
+  {
+    "name": "the example",
+    "stdin": "set 3\nset 0\nshow\ntoggle 3\ntest 3\ntest 0\nshow\n",
+    "expected": "flags: 0x00000009 (9)\n0\n1\nflags: 0x00000001 (1)\n"
+  },
+  {
+    "name": "nothing set",
+    "stdin": "show\ntest 0\ntest 31\nclear 5\nshow\n",
+    "expected": "flags: 0x00000000 (0)\n0\n0\nflags: 0x00000000 (0)\n"
+  },
+  {
+    "name": "every bit set one by one",
+    "stdin": "set 0\nset 1\nset 2\nset 3\nset 4\nset 5\nset 6\nset 7\nset 8\nset 9\nset 10\nset 11\nset 12\nset 13\nset 14\nset 15\nset 16\nset 17\nset 18\nset 19\nset 20\nset 21\nset 22\nset 23\nset 24\nset 25\nset 26\nset 27\nset 28\nset 29\nset 30\nset 31\nshow\ntest 31\ntest 0\n",
+    "expected": "flags: 0xFFFFFFFF (4294967295)\n1\n1\n"
+  },
+  {
+    "name": "the top bit",
+    "stdin": "set 31\nshow\ntest 31\ntoggle 31\nshow\n",
+    "expected": "flags: 0x80000000 (2147483648)\n1\nflags: 0x00000000 (0)\n"
+  },
+  {
+    "name": "toggle twice",
+    "stdin": "toggle 7\nshow\ntoggle 7\nshow\n",
+    "expected": "flags: 0x00000080 (128)\nflags: 0x00000000 (0)\n"
+  },
+  {
+    "name": "clear a bit that is on",
+    "stdin": "set 4\nset 5\nclear 4\nshow\ntest 4\ntest 5\n",
+    "expected": "flags: 0x00000020 (32)\n0\n1\n"
+  },
+  {
+    "name": "forty random commands",
+    "stdin": "test 23\ntoggle 8\nclear 0\ntoggle 29\nset 21\nset 24\nclear 28\ntest 10\nclear 15\nset 7\nclear 4\ntest 6\ntoggle 13\nclear 26\nset 17\nclear 25\ntoggle 21\nset 12\nset 26\nset 24\ntest 8\nset 15\ntest 7\nset 7\nclear 12\ntoggle 0\nset 8\nset 5\ntest 12\ntest 4\ntest 12\nset 9\nclear 2\nset 17\nclear 17\nset 7\ntest 15\nclear 2\ntoggle 5\ntoggle 7\nshow\n",
+    "expected": "0\n0\n0\n1\n1\n0\n0\n0\n1\nflags: 0x2500A301 (620798721)\n"
+  },
+  {
+    "name": "tests of every position",
+    "stdin": "set 0\nset 3\nset 6\nset 9\nset 12\nset 15\nset 18\nset 21\nset 24\nset 27\nset 30\ntest 0\ntest 1\ntest 2\ntest 3\ntest 4\ntest 5\ntest 6\ntest 7\ntest 8\ntest 9\ntest 10\ntest 11\ntest 12\ntest 13\ntest 14\ntest 15\ntest 16\ntest 17\ntest 18\ntest 19\ntest 20\ntest 21\ntest 22\ntest 23\ntest 24\ntest 25\ntest 26\ntest 27\ntest 28\ntest 29\ntest 30\ntest 31\n",
+    "expected": "1\n0\n0\n1\n0\n0\n1\n0\n0\n1\n0\n0\n1\n0\n0\n1\n0\n0\n1\n0\n0\n1\n0\n0\n1\n0\n0\n1\n0\n0\n1\n0\n"
+  }
+]

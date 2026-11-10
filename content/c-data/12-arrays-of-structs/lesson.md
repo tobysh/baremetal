@@ -3,9 +3,10 @@ title: Arrays of Structs
 summary: Keep a table of records in an array of structs, loop over it, update records in place, and sort it by one field.
 minutes: 25
 difficulty: medium
-tags: structs, arrays, algorithms
+tags: structs, arrays, algorithms, design
 id: c-data/arrays-of-structs
-mode: harness
+mode: stdout
+revision: 2
 ---
 One record is useful; a table of records is how programs hold real data: players, products, orders. Put structs in an array, just like `int`s:
 
@@ -45,6 +46,13 @@ for (int i = 1; i < n; i++) {
 
 Insertion sort is **stable**: records with equal scores stay in their original order, because we only move a record past strictly smaller ones.
 
-## Your turn
+## Design it yourself
 
-`Entry` is defined in the starter. Each function receives the array and its length `n`.
+This lesson used to give you five function signatures. Now you choose them. The starter is empty: define your own struct, write the functions you want and a `main` that reads the input and prints the report. Follow the design recipe:
+
+1. **Understand the problem.** Read the task twice. What is the input, and what must each output line say?
+2. **Write examples.** Work out the full output by hand for the example, for a single entry, and for an empty scoreboard.
+3. **Choose signatures.** The five jobs (find the best, add up, count the passes, add a bonus, sort) each become a function over an array of structs and its length. Decide each one's parameters and return type before writing bodies.
+4. **Plan.** The patterns here are an **accumulator** (the total), a **counter** with a condition (the passes), a **search** (the best entry), and a stable sort for the last step.
+5. **Code.** One function at a time, trying each with a small `main` before moving on.
+6. **Test.** Press Run with your own inputs. When an answer is wrong, say which function you suspect and print what it receives and returns.

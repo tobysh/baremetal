@@ -1,0 +1,42 @@
+{
+  "kind": "predict",
+  "prompt": "Both `int` values are 2000000000. Decide where each addition happens.",
+  "code": "int a = 2000000000, b = 2000000000;\nlong long wrong = a + b;\nlong long right = (long long)a + b;",
+  "trace": [
+    {
+      "label": "In `wrong`, the addition `a + b` is done in type",
+      "choices": [
+        "int",
+        "long long"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "So the value stored in `wrong` is",
+      "choices": [
+        "4000000000",
+        "the result of an overflow, which is undefined",
+        "0"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "In `right`, the addition is done in type",
+      "choices": [
+        "int",
+        "long long"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "So `right` holds",
+      "choices": [
+        "4000000000",
+        "-294967296",
+        "undefined behaviour"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "C works out the right-hand side before it looks at the type on the left. `a + b` is int plus int, so it overflows before anything is converted. Casting one operand first makes the addition happen in `long long`."
+}

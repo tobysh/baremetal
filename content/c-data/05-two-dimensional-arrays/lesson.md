@@ -29,6 +29,18 @@ for (int r = 0; r < 2; r++) {
 }
 ```
 
+## What's in memory
+
+Memory has no rows or columns. A grid is stored as one block, row 0 first, then row 1, and so on. `grid[2][3]` is six `int` boxes in a line:
+
+```text
+box number    0      1      2      3      4      5
+cell        [0][0] [0][1] [0][2] [1][0] [1][1] [1][2]
+holds         1      2      3      4      5      6
+```
+
+`grid[r][c]` is box number `r * 3 + c`. The 3 is the width of a row. That is why a function parameter must spell out every size except the first: without the row width, the function could not work out where row 1 begins.
+
 ## Passing a grid to a function
 
 For a 2D array parameter, C needs every size except the first. The program defines `SIZE` with `#define`, a name that is replaced by `3` before compiling:

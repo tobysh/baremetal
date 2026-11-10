@@ -22,5 +22,49 @@
       "14"
     ],
     "explain": "4 + 3 = 7, then 7 * 2 = 14. Assignment evaluates the right side first, then stores the result."
+  },
+  {
+    "kind": "predict",
+    "prompt": "Follow the boxes through this program, one line at a time.",
+    "code": "int a = 5;\nint b = a;\na = a + 2;\nb = b * 3;",
+    "trace": [
+      {
+        "label": "After line 2, `b` holds",
+        "choices": [
+          "5",
+          "7",
+          "15"
+        ],
+        "answer": 0
+      },
+      {
+        "label": "After line 3, `a` holds",
+        "choices": [
+          "5",
+          "7",
+          "10"
+        ],
+        "answer": 1
+      },
+      {
+        "label": "After line 4, `b` holds",
+        "choices": [
+          "15",
+          "21",
+          "7"
+        ],
+        "answer": 0
+      },
+      {
+        "label": "After line 4, `a` holds",
+        "choices": [
+          "7",
+          "15",
+          "21"
+        ],
+        "answer": 0
+      }
+    ],
+    "explain": "`int b = a;` copies the value 5 into b's own box. Changing a afterwards never reaches b, and changing b never reaches a: they are two boxes in the frame."
   }
 ]

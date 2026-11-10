@@ -1,0 +1,44 @@
+{
+  "kind": "predict",
+  "prompt": "Push three values onto the front of a list and follow the `next` links.",
+  "code": "Node *head = NULL;\nhead = push_front(head, 1);\nhead = push_front(head, 2);\nhead = push_front(head, 3);\nNode *second = head->next;",
+  "trace": [
+    {
+      "label": "After line 4, `head->value` is",
+      "choices": [
+        "1",
+        "3",
+        "2"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After line 4, `head->next->value` is",
+      "choices": [
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After line 5, `second->value` is",
+      "choices": [
+        "1",
+        "2",
+        "3"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "The last node's `next` holds",
+      "choices": [
+        "the head's address",
+        "NULL",
+        "0x9000"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Each push makes a new node that points at the old head and becomes the new head, so the list reads 3, 2, 1. `head->next` is the node holding 2. The node holding 1 was pushed first, so its next is still NULL."
+}

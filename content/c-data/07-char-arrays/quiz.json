@@ -1,0 +1,46 @@
+[
+  {
+    "kind": "predict",
+    "prompt": "Follow the bytes of this string. The array has four boxes.",
+    "code": "char w[] = \"hey\";\nw[1] = 'a';\nw[2] = '\\0';",
+    "trace": [
+      {
+        "label": "Before any change, how many bytes does `w` occupy",
+        "choices": [
+          "3",
+          "4",
+          "5"
+        ],
+        "answer": 1
+      },
+      {
+        "label": "After line 2, `w[1]` holds the number",
+        "choices": [
+          "97",
+          "101",
+          "0"
+        ],
+        "answer": 0
+      },
+      {
+        "label": "After line 3, `printf(\"%s\", w)` prints",
+        "choices": [
+          "hey",
+          "ha",
+          "hay"
+        ],
+        "answer": 1
+      },
+      {
+        "label": "After line 3, how many bytes does `w` occupy",
+        "choices": [
+          "2",
+          "3",
+          "4"
+        ],
+        "answer": 2
+      }
+    ],
+    "explain": "'a' is 97 in ASCII. Putting a zero byte in w[2] ends the string after \"ha\", but the array is still four bytes long: the terminator marks where the text stops, not how big the array is."
+  }
+]

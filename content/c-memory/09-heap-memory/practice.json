@@ -1,0 +1,40 @@
+{
+  "kind": "predict",
+  "prompt": "Decide what lives on the stack and what lives on the heap.",
+  "code": "int *make(void) {\n    int local = 7;\n    int *block = malloc(3 * sizeof *block);\n    block[0] = local;\n    return block;\n}\n\nint main(void) {\n    int *q = make();\n    free(q);\n}",
+  "trace": [
+    {
+      "label": "While `make` runs, `local` lives in",
+      "choices": [
+        "make's stack frame",
+        "the heap"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "While `make` runs, the three ints behind `block` live in",
+      "choices": [
+        "make's stack frame",
+        "the heap"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After `make` returns, the block's three ints",
+      "choices": [
+        "are still allocated",
+        "are gone with the frame"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "After `free(q)`, using `q[0]` is",
+      "choices": [
+        "fine",
+        "use after free (undefined)"
+      ],
+      "answer": 1
+    }
+  ],
+  "explain": "Local variables, including the pointer `block` itself, live in the stack frame and vanish on return. malloc'd memory is outside any frame, so it lasts until free. After `free(q)` the address still sits in q, but the block belongs to the allocator again."
+}

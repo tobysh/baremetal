@@ -23,6 +23,20 @@ apples = apples + 2;  // now 5
 
 The `=` here means **assign** (put into the box), not "is equal to".
 
+## What's in memory
+
+When `main` starts, the computer sets aside a block of memory for its variables. That block is called a **stack frame**. Each variable gets its own few bytes inside it, as many as its type needs. After the three lines at the top, the frame looks like this (the addresses are made up, only the pattern matters):
+
+```text
+main's frame
+address   name     type     holds    size
+0x1000    apples   int      3        4 bytes
+0x1008    price    double   0.5      8 bytes
+0x1010    grade    char     'A'      1 byte
+```
+
+The names are for you; the machine only knows addresses. After `apples = apples + 2;` the `apples` row holds 5 and the other rows do not change. A variable declared without a value, such as `int count;`, still has bytes, and they hold whatever the memory held before. Always give a variable its first value yourself.
+
 ## Arithmetic
 
 C has the usual operators: `+`, `-`, `*`, `/`, and `%` (remainder). One surprise: dividing two `int`s throws away the fraction. `7 / 2` is `3`, not `3.5`. And `7 % 2` is `1` — the remainder.

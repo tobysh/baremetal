@@ -1,0 +1,46 @@
+[
+  {
+    "kind": "predict",
+    "prompt": "Follow the boxes and the pointer.",
+    "code": "int x = 10, y = 20;\nint *p = &x;\n*p = *p + 1;\np = &y;\n*p = *p + x;",
+    "trace": [
+      {
+        "label": "After line 3, `x` holds",
+        "choices": [
+          "10",
+          "11",
+          "20"
+        ],
+        "answer": 1
+      },
+      {
+        "label": "After line 4, `*p` is the same box as",
+        "choices": [
+          "x",
+          "y",
+          "neither"
+        ],
+        "answer": 1
+      },
+      {
+        "label": "After line 5, `y` holds",
+        "choices": [
+          "20",
+          "30",
+          "31"
+        ],
+        "answer": 2
+      },
+      {
+        "label": "After line 5, `x` holds",
+        "choices": [
+          "11",
+          "10",
+          "31"
+        ],
+        "answer": 0
+      }
+    ],
+    "explain": "`p = &x` makes p hold x's address, so `*p = *p + 1` raises x to 11. `p = &y` changes which box p leads to, not x. Then `*p = *p + x` stores 20 + 11 = 31 in y."
+  }
+]

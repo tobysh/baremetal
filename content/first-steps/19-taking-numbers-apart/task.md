@@ -1,4 +1,4 @@
-Read a positive whole number. Print three lines: how many digits it has, the sum of its digits, and the number reversed. For `4821`:
+Write a program that reads one positive whole number, of at most nine digits, and describes it by its digits. It prints three labelled lines: how many digits the number has, what its digits add up to, and the number written backwards. For `4821` that is:
 
 ```
 digits: 4
@@ -6,4 +6,6 @@ sum: 15
 reversed: 1284
 ```
 
-Numbers that end in zeros reverse to a smaller number: `1000` gives `reversed: 1`.
+Writing a number backwards drops any zeros that end up at the front, so `1000` reversed is just `1`.
+
+Other numbers are tried, including single digits and numbers with zeros in them. Start from the empty file: choose your own variables and functions.

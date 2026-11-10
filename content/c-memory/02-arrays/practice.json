@@ -1,0 +1,44 @@
+{
+  "kind": "predict",
+  "prompt": "Follow the pointer through the array. Remember that `p + 2` moves two elements, not two bytes.",
+  "code": "int a[4] = {5, 6, 7, 8};\nint *p = a;\np = p + 2;\n*p = 70;\nint *q = &a[1];",
+  "trace": [
+    {
+      "label": "After line 3, `*p` is",
+      "choices": [
+        "5",
+        "6",
+        "7"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "After line 4, `a[2]` holds",
+      "choices": [
+        "70",
+        "7",
+        "8"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "After line 5, `p - q` (in elements) is",
+      "choices": [
+        "1",
+        "2",
+        "4"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "After line 5, `p[1]` is",
+      "choices": [
+        "8",
+        "70",
+        "6"
+      ],
+      "answer": 0
+    }
+  ],
+  "explain": "`p = a` points at a[0]; adding 2 moves it to a[2], holding 7. Writing through p changes a[2] to 70. q points at a[1], one element before p. `p[1]` is `*(p + 1)`, which is a[3], still 8."
+}

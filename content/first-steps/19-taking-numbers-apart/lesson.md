@@ -3,7 +3,7 @@ title: Taking numbers apart
 summary: Use % 10 and / 10 in a loop to visit every digit of a number, then count, add and reverse them.
 minutes: 20
 difficulty: medium
-tags: loops, arithmetic
+tags: loops, arithmetic, design
 id: first-steps/taking-numbers-apart
 mode: stdout
 ---
@@ -54,3 +54,14 @@ For 4821 that builds 1, then 12, then 128, then 1284.
 ## Remember the original
 
 The loop destroys `n`. If you still need the original number later, copy it first (`int rest = n;`) and take the loop apart on the copy.
+
+## Design it yourself
+
+The starter is empty. You decide how to organise the program: a single `main` works, and so do small helper functions such as one that returns the digit count. Use the design recipe:
+
+1. **Understand the problem.** What is the input, and what three things must you report?
+2. **Write examples.** Work out `4821`, a single digit, and a number with zeros in it by hand.
+3. **Choose signatures.** If you write helpers, say what each takes and returns before writing it.
+4. **Plan.** Peeling digits is a **sentinel loop** (stop when nothing is left) with a **counter**, and two **accumulators**: the digit sum and the reversed number.
+5. **Code.** One accumulator at a time.
+6. **Test.** Try your examples. If an answer is wrong, print the variable you suspect inside the loop and compare it with your hand-worked example.
