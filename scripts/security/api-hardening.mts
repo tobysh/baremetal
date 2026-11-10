@@ -6,6 +6,7 @@ import { MongoClient, ObjectId } from "mongodb";
 import { getTracks } from "../../src/lib/curriculum";
 import { withRunnerRequest, RunnerBusyError } from "../../src/lib/runner";
 const base = process.argv[2] ?? "http://localhost:3100";
+const origin = process.env.E2E_ORIGIN ?? base;
 const client = await new MongoClient(process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27017").connect();
 const db = client.db(process.env.MONGODB_DB ?? "baremetal");
 const ids = [new ObjectId(), new ObjectId()];
@@ -15,7 +16,7 @@ const ips = [`192.0.2.${100 + Math.floor(Math.random() * 50)}`, `198.51.100.${10
 const track = getTracks("c-memory")[0];
 const ex = track.lessons[0].exercise;
 const request = (path: string, body: unknown, user = 0, method = "POST", signal?: AbortSignal) => fetch(base + path, {
-  method, signal, headers: { Origin: base, "Content-Type": "application/json", "X-Forwarded-For": ips[user], Cookie: `${SESSION_COOKIE}=${tokens[user]}` },
+  method, signal, headers: { Origin: origin, "Content-Type": "application/json", "X-Forwarded-For": ips[user], Cookie: `${SESSION_COOKIE}=${tokens[user]}` },
   ...(method === "DELETE" ? {} : { body: JSON.stringify(body) }),
 });
 try {
@@ -38,7 +39,7 @@ try {
     assert.equal((await request("/api/tutor", { exerciseId: ex.id, ...body })).status, 400);
   }
   assert.equal(await quota(), 0, "invalid tutor inputs consume no quota");
-  const anonHint = await fetch(base + "/api/hint", { method: "POST", headers: { "Content-Type": "application/json", Origin: base }, body: JSON.stringify({ exerciseId: ex.id, index: 0 }) });
+  const anonHint = await fetch(base + "/api/hint", { method: "POST", headers: { "Content-Type": "application/json", Origin: origin }, body: JSON.stringify({ exerciseId: ex.id, index: 0 }) });
   assert.equal(anonHint.status, 401, "hints are not served without a session");
   const hint = await request("/api/hint", { exerciseId: ex.id, index: 0 });
   assert.equal(hint.status, 200);
@@ -66,7 +67,7 @@ try {
       await db.collection("sessions").insertOne({ userId: u.id, tokenHash: createHash("sha256").update(u.token).digest("hex"), sessionVersion: 0, createdAt: new Date(), expiresAt: new Date(Date.now() + 3600_000) });
     }
     const quick = { exerciseId: ex.id, mode: "run", code: "#include <unistd.h>\nint main(void) { sleep(1); return 0; }" };
-    const post = (cookie?: string) => fetch(base + "/api/run", { method: "POST", headers: { Origin: base, "Content-Type": "application/json", "X-Forwarded-For": classIp, ...(cookie ? { Cookie: `${SESSION_COOKIE}=${cookie}` } : {}) }, body: JSON.stringify(quick) });
+    const post = (cookie?: string) => fetch(base + "/api/run", { method: "POST", headers: { Origin: origin, "Content-Type": "application/json", "X-Forwarded-For": classIp, ...(cookie ? { Cookie: `${SESSION_COOKIE}=${cookie}` } : {}) }, body: JSON.stringify(quick) });
     const signedIn = await Promise.all(crowd.map((u) => post(u.token)));
     assert(signedIn.every((r) => r.status === 200), `ten signed-in learners behind one IP should all be admitted, got ${signedIn.map((r) => r.status)}`);
     const anonymous = await Promise.all(Array.from({ length: 10 }, () => post()));
@@ -92,7 +93,7 @@ try {
       { _id: ownReservation, userId: ids[0].toHexString(), amount: 1, keys: [], state: "settled", createdAt: new Date() },
       { userId: ids[1].toHexString(), amount: 1, keys: [secret], state: "settled", createdAt: new Date() },
     ]);
-    const asZero = (path: string, init: RequestInit = {}) => fetch(base + path, { ...init, headers: { Origin: base, "X-Forwarded-For": ips[0], Cookie: `${SESSION_COOKIE}=${tokens[0]}`, ...(init.headers ?? {}) } });
+    const asZero = (path: string, init: RequestInit = {}) => fetch(base + path, { ...init, headers: { Origin: origin, "X-Forwarded-For": ips[0], Cookie: `${SESSION_COOKIE}=${tokens[0]}`, ...(init.headers ?? {}) } });
     const exported = await (await asZero("/api/account/export")).text();
     assert.ok(!exported.includes(secret) && !exported.includes(`-${suffix}-1@example.test`), "export contains only the caller's data");
     assert.ok(JSON.parse(exported).tutorReservations.some((row: { _id: string }) => row._id === ownReservation.toHexString()), "export includes the caller's accounting journal");
@@ -107,7 +108,7 @@ try {
     // Another account's shell token and a made-up one are indistinguishable, and anonymous callers are refused.
     const fakeToken = randomBytes(32).toString("base64url");
     assert.ok([401, 404].includes((await asZero(`/api/shell/${fakeToken}`)).status));
-    assert.ok([401, 403, 404].includes((await fetch(base + `/api/shell/${fakeToken}`, { method: "DELETE", headers: { Origin: base } })).status));
+    assert.ok([401, 403, 404].includes((await fetch(base + `/api/shell/${fakeToken}`, { method: "DELETE", headers: { Origin: origin } })).status));
     for (const path of ["/api/tutor/quota", "/api/account/export"]) assert.equal((await fetch(base + path)).status, 401, `${path} needs a session`);
     console.log("Cross-user isolation passed.");
 
