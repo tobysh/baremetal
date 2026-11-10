@@ -20,7 +20,12 @@ const ids = new Set<string>();
  * (`{}` for void). Relies on the house style: the signature line ends in `{` and the body ends
  * with a `}` alone at the start of a line.
  */
-function zeroStub(solution: string): string {
+function zeroStub(solution: string, language: string): string {
+  if (language === "asm") {
+    const symbols = [...solution.matchAll(/^\s*\.(?:globl|global)\s+([A-Za-z_]\w*)\s*(?:#.*)?$/gm)].map((m) => m[1]);
+    if (!symbols.length) throw new Error("Assembly driver solution needs an exported function for the zero stub");
+    return [".intel_syntax noprefix", ".text", ...symbols.flatMap((symbol) => [`.globl ${symbol}`, `${symbol}:`, "xor eax, eax", "ret"]), '.section .note.GNU-stack,"",@progbits', ""].join("\n");
+  }
   const out: string[] = [];
   const lines = solution.split("\n");
   for (let i = 0; i < lines.length; i++) {
@@ -81,7 +86,7 @@ for (const track of tracks) {
         const seeded = (t: typeof t1.transcript) => JSON.stringify(t.cases.filter((c) => !c.fixed));
         if (seeded(t1.transcript) === seeded(t2.transcript)) problems.push("driver: seeded cases do not change with the seed (draw their inputs with bm_int/bm_fill)");
       }
-      const stub = zeroStub(ex.solution);
+      const stub = zeroStub(ex.solution, ex.language);
       const s = await testExercise(ex, stub);
       if (!s.compiled) problems.push(`driver: the zero-returning stub did not compile (check zeroStub in this script):\n${s.compileOutput}`);
       else if (s.allPassed) problems.push("driver: a stub that returns zero from every function passes");

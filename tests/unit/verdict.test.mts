@@ -1,6 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { CHANNEL_TAMPERED, compareTranscripts, formatValue, parseTranscript } from "../../src/lib/verdict";
+import { CHANNEL_TAMPERED, compareTranscripts, formatValue, parseTranscript, verdictReferenceKey } from "../../src/lib/verdict";
+
+test("reference cache separates language, adapter and solution changes", () => {
+  const ex = { language: "c" as const, driver: "driver", solution: "source" };
+  const key = verdictReferenceKey(ex);
+  assert.equal(verdictReferenceKey({ ...ex }), key);
+  assert.notEqual(verdictReferenceKey({ ...ex, language: "asm" }), key);
+  assert.notEqual(verdictReferenceKey({ ...ex, driver: "different" }), key);
+  assert.notEqual(verdictReferenceKey({ ...ex, solution: "different" }), key);
+});
 
 const hex = (s: string) => Buffer.from(s).toString("hex");
 const rec = (dir: "I" | "O", type: string, label: string, value: string) => `${dir} ${type} ${hex(label)} ${value}`;

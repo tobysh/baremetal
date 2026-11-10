@@ -4,9 +4,9 @@ import type { Exercise } from "./curriculum/types";
 export type GradingTrust = "driver" | "stdout" | "harness";
 
 export function gradingTrust(ex: Pick<Exercise, "language" | "mode" | "driver">): GradingTrust {
-  // Match testExercise dispatch: stdout takes priority; only C supports drivers.
+  // Match testExercise dispatch: stdout takes priority; C and assembly support drivers.
   if (ex.mode === "stdout") return "stdout";
-  return ex.language === "c" && ex.driver ? "driver" : "harness";
+  return (ex.language === "c" || ex.language === "asm") && ex.driver ? "driver" : "harness";
 }
 
 /** High-trust rewards (certification, rare achievements) may count only these passes. */

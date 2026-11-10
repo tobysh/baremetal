@@ -16,7 +16,7 @@ content/
       starter.<ext>         what the editor starts with
       solution.<ext>        reference solution (server-only)
       tests.<ext>           hidden harness  — or —  cases.json for stdout lessons
-                            — or —  driver.c (C only; out-of-process verdict, see below)
+                            — or —  driver.c (C/assembly; external transcript verdict, see below)
       challenge.md          optional harder variant (see below)
       challenge-starter.<ext>, challenge-solution.<ext>, challenge-tests.<ext> | challenge-cases.json
   legal/                    Terms, Privacy and Cookie notices (rendered at /terms, /privacy, /cookies)
@@ -166,11 +166,11 @@ Write harnesses so that:
 - **Expected values are independent.** Prefer fixed vectors or a separate reference over comparing two things the learner wrote.
 - The starter must **compile but fail**; the solution must pass every test.
 
-### Drivers: out-of-process verdict (C)
+### Drivers: external transcript verdict (C and assembly)
 
-A C harness lesson can ship `driver.c` instead of `tests.c`. Prefer it for new C lessons and when you rewrite one: a `tests.c` decides pass or fail inside the learner's process, which a determined learner can forge (`docs/security.md`, L1); a driver never decides anything. It calls the learner's functions and records what went in and what came out; the runner links the same driver with `solution.c`, runs both with the same fresh random seed in separate sandboxes, and compares the two record streams. A check passes when the learner's records equal the reference's. You never write expected values.
+A C or assembly harness lesson can ship `driver.c` instead of `tests.c`. Prefer it for new C/assembly function exercises and when you rewrite one: a `tests.c` decides pass or fail inside the learner's process, which a determined learner can forge (`docs/security.md`, L1); a driver never decides anything. It calls the learner's functions and records what went in and what came out; the runner links the same driver with the reference solution, runs learner and reference programs with the same fresh random seed in separate sandboxes, and compares the two record streams. A check passes when the learner's records equal the reference's. You never write expected values.
 
-The driver is its own translation unit, linked with the learner's object (their `main` is renamed). It can't see the learner's declarations, so it declares the functions it calls, and any struct it passes, itself, exactly as the starter does. The runner prepends a prelude (`VERDICT_PRELUDE` in `src/lib/verdict.ts`) that provides:
+The driver is its own C translation unit, linked with the learner's object (C `main` is renamed). It can't see the learner's declarations, so it declares the functions it calls, and any struct it passes, itself, exactly as the starter does. For assembly it declares the existing exported System V function ABI with `extern`; the assembly source is assembled alone before driver material is placed in its directory. Assembly links without PIE so existing absolute references remain valid. UBSan can instrument C learner code, but does not instrument assembly. This is external verification of recorded behavior, not memory isolation between the adapter and learner functions. The runner prepends a prelude (`VERDICT_PRELUDE` in `src/lib/verdict.ts`) that provides:
 
 | Macro | Meaning |
 |---|---|

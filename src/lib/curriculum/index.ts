@@ -28,11 +28,11 @@ function parseFrontmatter(src: string): { meta: Record<string, string>; body: st
 
 const read = (p: string) => readFileSync(p, "utf8");
 
-/** A C lesson may ship `driver.c` (out-of-process verdict) instead of `tests.c`; the driver wins if both exist. */
+/** C/assembly lessons may ship `driver.c` (external transcript verdict) instead of `tests.c`; the driver wins if both exist. */
 function harnessFiles(dir: string, mode: Exercise["mode"], language: Track["language"], harnessExt: string): Pick<Exercise, "harness" | "driver"> {
   if (mode !== "harness") return {};
   const driver = path.join(dir, "driver.c");
-  if (language === "c" && existsSync(driver)) return { driver: read(driver) };
+  if ((language === "c" || language === "asm") && existsSync(driver)) return { driver: read(driver) };
   return { harness: read(path.join(dir, `tests.${harnessExt}`)) };
 }
 
