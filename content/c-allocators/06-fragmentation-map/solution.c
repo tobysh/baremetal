@@ -1,3 +1,4 @@
+// ===== SUPPLIED: the heap from the previous lessons (first/best fit, split, coalesce). Do not edit. =====
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -90,6 +91,7 @@ void heap_stats(HeapStats *s) {
     }
 }
 
+// ===== YOUR PART: write heap_map. Return the length the full map needs; write at most cap - 1 characters + NUL. =====
 size_t heap_map(char *out, size_t cap) {
     size_t n = 0;
     for (Block *b = first_block(); b; b = next_block(b)) {

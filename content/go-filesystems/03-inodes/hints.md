@@ -1,9 +1,7 @@
-`ReadInode`/`WriteInode`: the block is `int(sb.InodeStart) + ino/InodesPerBlock`; the offset is `(ino%InodesPerBlock)*InodeSize`. The helper `inodePos` does this for you.
+`ReadInode` and `WriteInode`: the block is `int(sb.InodeStart) + ino/InodesPerBlock` and the offset is `(ino%InodesPerBlock)*InodeSize`. The helper `inodePos` returns both. Check `ino` against `NInodes` first.
 ===
-In `WriteInode`, zero the 32 bytes of your slot first, then fill them. Write the whole block back once.
+In `WriteInode`, read the whole block, clear your 32-byte slot, fill it field by field with `putU32`, and write the block back once. The other inode in the pair shares those bytes, so never rewrite the block from scratch.
 ===
-`WriteFile`: compute `n = ceil(len(data)/BlockSize)`, allocate `n` blocks, and if one allocation fails free the ones you already got before returning the error.
+`WriteFile`: compute `n = (len(data)+BlockSize-1)/BlockSize`. Refuse `ErrTooBig` and `ErrNoSpace` before changing anything (`CountFree` tells you if `n` blocks exist), or free what you already took if a later `AllocBlock` fails. Copy each chunk into a fresh zeroed `BlockSize` slice and write it with `writeData`, so the tail of the last block is zero.
 ===
-Copy each chunk into a fresh zeroed `BlockSize` slice before writing it, so the tail of the last block is zero. Use `writeData`, not `dev.WriteBlock`, for data blocks (a later lesson relies on this).
-===
-`old := in` before you overwrite `in.Direct`; free `old.blocks()` entries only at the very end.
+Keep a copy of the old inode (`old := in`) before you overwrite `in.Direct`, write the new inode, and free `old.blocks()` only at the very end. `FreeInode` frees the blocks first and zeroes the inode after, using the `Inode{}` zero value.

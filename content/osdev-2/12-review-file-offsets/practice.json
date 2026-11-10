@@ -1,0 +1,12 @@
+{
+  "kind": "predict",
+  "prompt": "After `files_init()` the 32-byte file holds the values 0 to 31 and no descriptor is open. Trace the calls.",
+  "code": "x = file_open();\ny = file_open();\nfile_read(x, buf, 30);\nr1 = file_read(x, buf, 5);\nr2 = file_read(y, buf, 1);\nfile_close(x);\nz = file_open();\nr3 = file_read(z, buf, 1);",
+  "trace": [
+    { "label": "[r1] `file_read(x, buf, 5)` at offset 30", "choices": ["5", "2", "0", "-1"], "answer": 1 },
+    { "label": "[buf[0]] after `r2 = file_read(y, buf, 1)`", "choices": ["0", "30", "32", "unchanged"], "answer": 0 },
+    { "label": "[z] from the last `file_open`", "choices": ["0", "2", "-1"], "answer": 0 },
+    { "label": "[buf[0]] after `r3 = file_read(z, buf, 1)`", "choices": ["0", "32", "nothing: r3 is 0"], "answer": 0 }
+  ],
+  "explain": "x is at offset 30, so only 2 bytes are left and the read is short. y has its own offset, still 0, so it reads byte 0. Closing x frees slot 0, which is the lowest free slot, so z is 0, and a reopened slot starts at offset 0 again: its first byte is 0."
+}

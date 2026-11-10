@@ -1,18 +1,47 @@
 {
-  "kind": "parsons",
-  "prompt": "Order the lines that allocate the lowest free block from a bitmap. One line does not belong.",
-  "lines": [
-    "for i := 0; i < b.n; i++ {",
-    "\tif !b.isSet(i) {",
-    "\t\tb.set(i)",
-    "\t\treturn i, nil",
-    "\t}",
-    "}",
-    "return 0, ErrFull"
+  "kind": "predict",
+  "prompt": "A 20-block BMFS disk with `DataStart = 4`. Bit `b` is byte `b/8`, position `b%8` from the least significant bit. After formatting and `MarkMetadata`, three blocks are allocated, then block 5 is freed.",
+  "trace": [
+    {
+      "label": "What is bitmap byte 0 right after MarkMetadata (blocks 0-3 in use)?",
+      "choices": [
+        "0x0f",
+        "0xf0",
+        "0x04",
+        "0x0e"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "Which block does the first AllocBlock return?",
+      "choices": [
+        "3",
+        "4",
+        "5",
+        "8"
+      ],
+      "answer": 1
+    },
+    {
+      "label": "After allocating 4, 5 and 6 and then freeing 5, the next AllocBlock returns",
+      "choices": [
+        "5",
+        "7",
+        "4",
+        "8"
+      ],
+      "answer": 0
+    },
+    {
+      "label": "FreeBlock(5) is called again while 5 is free. The result is",
+      "choices": [
+        "ErrNotAllocated, no write",
+        "nil, one write",
+        "ErrReserved",
+        "a silent no-op with one write"
+      ],
+      "answer": 0
+    }
   ],
-  "runTests": false,
-  "distractors": [
-    "\t\tb.clear(i)"
-  ],
-  "explain": "Scanning from 0 finds the lowest free block; setting its bit marks it used before returning it. `ErrFull` is returned only after every bit has been checked."
+  "explain": "Blocks 0-3 are bits 0-3 of byte 0, so 0b00001111. The allocator always takes the lowest free data block, so a freed hole is reused before higher blocks. Freeing a block that is already free is a double free, which must be reported and must not write."
 }

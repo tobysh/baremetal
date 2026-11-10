@@ -1,15 +1,16 @@
 {
   "kind": "parsons",
-  "prompt": "Replace a file's contents safely: the new data must be written and published before the old blocks are freed. Order the lines. One line does not belong.",
+  "prompt": "Replace a file's contents safely: the new data must be allocated, written and published before the old block is freed. Order the lines. One line does not belong.",
   "lines": [
-    "newBlocks := alloc(len(data))",
-    "writeData(newBlocks, data)",
-    "old := publish(inode, newBlocks)",
-    "free(old)"
+    "fresh := allocBlock()",
+    "writeBlock(fresh, data)",
+    "old := inode.Block",
+    "inode.Block = fresh",
+    "freeBlock(old)"
+  ],
+  "distractors": [
+    "writeBlock(old, data)"
   ],
   "runTests": false,
-  "distractors": [
-    "free(inode.blocks)"
-  ],
-  "explain": "At every instant the inode points at complete data: first the old, then the new. The old blocks are freed only after the switch, so a crash never leaves a file pointing at nothing."
+  "explain": "The inode switch is the single commit point. Before it the file is entirely the old one, after it entirely the new one, and the old block is released only once nothing points at it. Overwriting the old block in place would leave a mixture of old and new data after a crash."
 }

@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "A fresh 16-byte pipe. What does each call return?",
+  "code": "pipe_init(&p);\nr1 = pipe_read(&p, buf, 4);\nr2 = pipe_write(&p, data, 20);\nr3 = pipe_read(&p, buf, 10);\npipe_close_writer(&p);\nr4 = pipe_read(&p, buf, 10);\nr5 = pipe_read(&p, buf, 10);",
+  "trace": [
+    { "label": "[r1] read from the empty, open pipe", "choices": ["0", "-1", "4"], "answer": 1 },
+    { "label": "[r2] `pipe_write(&p, data, 20)`", "choices": ["20", "16", "-1", "0"], "answer": 1 },
+    { "label": "[r3] `pipe_read(&p, buf, 10)`", "choices": ["10", "16", "6"], "answer": 0 },
+    { "label": "[r4] first read after the close", "choices": ["0", "-1", "6", "10"], "answer": 2 },
+    { "label": "[r5] second read after the close", "choices": ["0", "-1", "6"], "answer": 0 }
+  ],
+  "explain": "An empty pipe whose writer is still open says \"try again\" with -1. The 20-byte write is short: only 16 bytes fit. Reading 10 leaves 6 buffered. Closing the writer does not discard them, so the next read returns those 6; only after that is the pipe empty and closed, which is end of file (0)."
+}

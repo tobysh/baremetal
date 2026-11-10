@@ -2,6 +2,11 @@ package main
 
 import "fmt"
 
+// How this file is organised: everything above the "Your work" line is
+// provided scaffolding shared by the whole track (do not change its API).
+// You only write the functions and types below that line; the tests call them
+// and also read the Stats counters to check how much work you did.
+
 // ---- Provided: the shared vocabulary of the whole track -------------------
 
 // Value is one cell. nil is SQL NULL; otherwise it is an int64 or a string.
@@ -102,10 +107,15 @@ func concatRows(a, b Row) Row {
 
 // NewNestedLoopJoin returns outer++inner for every pair where pred is True.
 // The inner iterator is opened afresh (and closed) for each outer row.
+// Plan: a struct with outer, inner, pred and the current outer row (nil when
+// a new one is needed). Open opens only the outer; Next opens the inner when
+// it fetches an outer row and closes it when the inner is exhausted.
 func NewNestedLoopJoin(outer, inner Iterator, pred func(l, r Row) Tri) Iterator {
 	return nil
 }
 
+// main is not part of the exercise. Expected once implemented: three joined
+// rows, "inner opens: 3 inner rows read: 12".
 func main() {
 	users := &Table{Name: "users", Cols: []string{"id", "name"}, Rows: []Row{{int64(1), "ada"}, {int64(2), "bo"}, {int64(3), "cy"}}}
 	orders := &Table{Name: "orders", Cols: []string{"uid", "item"}, Rows: []Row{{int64(2), "pen"}, {int64(1), "ink"}, {int64(2), "pad"}, {nil, "ghost"}}}

@@ -1,0 +1,12 @@
+{
+  "kind": "predict",
+  "prompt": "The kernel writes `STAR = (0x10ULL << 48) | (0x08ULL << 32)`. Work out the selectors the CPU loads.",
+  "trace": [
+    { "label": "[cs] after `syscall`", "choices": ["0x08", "0x10", "0x18", "0x23"], "answer": 0 },
+    { "label": "[ss] after `syscall`", "choices": ["0x08", "0x10", "0x18", "0x1B"], "answer": 1 },
+    { "label": "[cs] after `sysretq`", "choices": ["0x10", "0x1B", "0x20", "0x23"], "answer": 3 },
+    { "label": "[ss] after `sysretq`", "choices": ["0x13", "0x18", "0x1B", "0x23"], "answer": 2 },
+    { "label": "[rcx] on entry to the kernel", "choices": ["the user's rsp", "the address after `syscall`", "the syscall number", "unchanged"], "answer": 1 }
+  ],
+  "explain": "`syscall` takes cs from STAR bits 47:32 (0x08) and uses that + 8 (0x10) for ss. `sysretq` starts from bits 63:48 (0x10): ss is base + 8 = 0x18 and cs is base + 16 = 0x20, each with RPL 3 ORed in, so 0x1B and 0x23. The CPU saves the return address in rcx, which is why the stub must save rcx before reusing it for an argument."
+}

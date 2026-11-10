@@ -1,0 +1,14 @@
+{
+  "kind": "choice",
+  "prompt": "The disk is 512 bytes. Which of these requests must `disk_write(offset, src, len)` accept? Select all that apply.",
+  "choices": [
+    "`offset = 511, len = 1`",
+    "`offset = 512, len = 0`",
+    "`offset = 510, len = 6`",
+    "`offset = 513, len = 0`",
+    "`offset = 10, len = (size_t)-5` (so `offset + len` wraps to 5)",
+    "`offset = 0, len = 512`"
+  ],
+  "answer": [0, 1, 5],
+  "explain": "A request is valid when every byte lies in [0, 512), with an empty request at the very end (offset 512) allowed. 510 + 6 runs past the end, 513 starts past it, and the wrapping case only looks small because of overflow: its true end is far beyond 512. Checking `offset > 512 || len > 512 - offset` gets every case right."
+}

@@ -50,7 +50,7 @@ void kmain(void) {
     current = t3; t3->state = T_RUNNING; tasks[0].state = T_READY;
     CHECK("it wraps around to the boot task in slot 0", pick_next() == &tasks[0], "chose slot %ld", (long)(pick_next() - tasks));
     t1->state = T_DEAD; tasks[0].state = T_BLOCKED; t3->state = T_RUNNING;
-    CHECK("with nothing else ready, a running current task is picked again? no: slot 0 is the fallback", pick_next() == &tasks[0], "chose slot %ld", (long)(pick_next() - tasks));
+    CHECK("with nothing else ready, pick_next falls back to the boot task in slot 0", pick_next() == &tasks[0], "chose slot %ld", (long)(pick_next() - tasks));
 
     // Cooperative round robin through yield(), still without a timer.
     sched_init();

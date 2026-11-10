@@ -1,33 +1,47 @@
 {
   "kind": "predict",
-  "prompt": "Blocks are 4 bytes. An inode lists the blocks of a file.",
+  "prompt": "BMFS uses 64-byte blocks and six direct pointers per inode. Inodes are 32 bytes and two share a block, with `InodeStart = 2`.",
   "trace": [
     {
-      "label": "A file of 10 bytes needs how many blocks?",
+      "label": "How many data blocks does a 130-byte file need?",
       "choices": [
         "2",
         "3",
         "4",
-        "10"
+        "130"
       ],
       "answer": 1
     },
     {
-      "label": "An empty file (0 bytes) needs how many blocks?",
+      "label": "Which block holds inode 5, and at which byte offset?",
       "choices": [
-        "0",
-        "1"
+        "block 4, offset 32",
+        "block 4, offset 0",
+        "block 5, offset 0",
+        "block 7, offset 32"
       ],
       "answer": 0
     },
     {
-      "label": "Writing allocated 2 of the 3 blocks, then the disk ran full. The right cleanup is to",
+      "label": "What is the largest file BMFS can store?",
+      "choices": [
+        "64 bytes",
+        "192 bytes",
+        "384 bytes",
+        "512 bytes"
+      ],
+      "answer": 2
+    },
+    {
+      "label": "WriteFile has allocated 2 of the 3 blocks it needs and the third allocation fails with ErrNoSpace. The right cleanup is to",
       "choices": [
         "keep the 2 blocks for next time",
-        "free those 2 blocks again"
+        "free those 2 blocks and leave the inode unchanged",
+        "write the inode with a smaller size",
+        "free the old blocks to make room"
       ],
       "answer": 1
     }
   ],
-  "explain": "Block count is the size divided by block size, rounded up: 10 / 4 -> 3. A failed write must not leak blocks, so it hands back what it already took."
+  "explain": "130 / 64 rounds up to 3. Inode 5 is slot 1 of block 2 + 5/2 = 4, so offset 32. Six direct blocks of 64 bytes is 384. A failed write must leave the file as it was and hand back every block it took."
 }

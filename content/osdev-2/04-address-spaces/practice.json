@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This `aspace_destroy` frees the right number of frames for a process, but the first interrupt after destroying any process crashes the machine. Tap the faulty line.",
+  "code": "unsigned aspace_destroy(uint64_t as) {\n    if (as == kernel_pml4) return 0;\n    if (as == current_as) aspace_switch(kernel_pml4);\n    uint64_t *pml4 = (uint64_t *)(uintptr_t)as;\n    unsigned n = 0;\n    for (int i = 0; i < 512; i++)\n        if (pml4[i] & PTE_P)\n            n += free_tree(pml4[i] & ADDR_MASK, 2);\n    frame_free(as);\n    return n + 1;\n}",
+  "bugLine": 6,
+  "explain": "PML4 entry 0 is the kernel's mapping, copied into every address space and pointing at the same shared tables. Starting the walk at 0 frees the kernel's own page tables, so every remaining address space (including the kernel's) loses its kernel mappings. The walk must start at entry 1."
+}

@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "`build_iret_frame` returns `frame`, the lowest of the five slots that `iretq` pops. Fill in each slot for a ring 3 program with interrupts disabled.",
+  "code": "uint64_t *frame = build_iret_frame(top, entry, user_sp);\n__asm__ volatile(\"mov %0, %%rsp; iretq\" :: \"r\"(frame));",
+  "trace": [
+    { "label": "[frame[0]]", "choices": ["entry", "0x23", "0x2", "user_sp", "0x1B"], "answer": 0 },
+    { "label": "[frame[1]]", "choices": ["entry", "0x23", "0x2", "user_sp", "0x1B"], "answer": 1 },
+    { "label": "[frame[2]]", "choices": ["entry", "0x23", "0x2", "user_sp", "0x1B"], "answer": 2 },
+    { "label": "[frame[3]]", "choices": ["entry", "0x23", "0x2", "user_sp", "0x1B"], "answer": 3 },
+    { "label": "[frame[4]]", "choices": ["entry", "0x23", "0x2", "user_sp", "0x1B"], "answer": 4 }
+  ],
+  "explain": "`iretq` pops rip, cs, rflags, rsp and ss, lowest address first. The user code selector 0x23 has RPL 3, so the CPU enters ring 3 and therefore also loads rsp and ss (0x1B, user data). RFLAGS 0x2 has only the always-one reserved bit set, so IF is clear."
+}

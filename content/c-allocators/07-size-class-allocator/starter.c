@@ -1,3 +1,4 @@
+// ===== SUPPLIED: the general heap (first fit, split, coalesce) from the previous lessons. Do not edit. =====
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -90,11 +91,27 @@ void heap_stats(HeapStats *s) {
     }
 }
 
-_Alignas(16) static unsigned char small_pool[8][16],large_pool[8][64];
-static unsigned char small_used[8],large_used[8];
-void classes_init(void*buf,size_t n){heap_init(buf,n);}
-void*classes_alloc(size_t n){(void)n;return NULL;}
-int classes_free(void*p){(void)p;return -1;}
+// ===== SUPPLIED: pool storage. Eight 16-byte and eight 64-byte slots, one `used` flag per slot. =====
+_Alignas(16) static unsigned char small_pool[8][16], large_pool[8][64];
+static unsigned char small_used[8], large_used[8];
+
+// ===== YOUR PART: the three functions below. See the lesson for the routing table. =====
+void classes_init(void *buf, size_t n) {
+    // TODO: clear small_used and large_used, then initialise the heap.
+    heap_init(buf, n);
+}
+
+void *classes_alloc(size_t n) {
+    // TODO: n == 0 -> NULL; 1..16 small pool; 17..64 large pool; pool full or n > 64 -> heap_alloc.
+    (void)n;
+    return NULL;
+}
+
+int classes_free(void *p) {
+    // TODO: NULL -> 0; exact live pool slot -> 0; bad pool pointer -> -1; everything else -> heap_free.
+    (void)p;
+    return -1;
+}
 
 int main(void) {
     _Alignas(16) unsigned char buf[1024];

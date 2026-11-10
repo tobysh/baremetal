@@ -2,6 +2,11 @@ package main
 
 import "fmt"
 
+// How this file is organised: everything above the "Your work" line is
+// provided scaffolding shared by the whole track (do not change its API).
+// You only write the functions and types below that line; the tests call them
+// and also read the Stats counters to check how much work you did.
+
 // ---- Provided: the shared vocabulary of the whole track -------------------
 
 // Value is one cell. nil is SQL NULL; otherwise it is an int64 or a string.
@@ -102,10 +107,14 @@ func concatRows(a, b Row) Row {
 
 // NewHashJoin joins left and right on left[lcol] = right[rcol]. On the first
 // Next it reads ALL of right into a hash table, then streams left.
+// Plan: state for the table (map[Value][]Row), a built flag, and a cursor into
+// the current probe row's matches. Build lazily in Next, skip NULL keys.
 func NewHashJoin(left, right Iterator, lcol, rcol int) Iterator {
 	return nil
 }
 
+// main is not part of the exercise. Expected once implemented: three joined
+// rows, "opens: 2 rows read: 7" (one pass over each side).
 func main() {
 	users := &Table{Name: "users", Cols: []string{"id", "name"}, Rows: []Row{{int64(1), "ada"}, {int64(2), "bo"}, {int64(3), "cy"}}}
 	orders := &Table{Name: "orders", Cols: []string{"uid", "item"}, Rows: []Row{{int64(2), "pen"}, {int64(1), "ink"}, {int64(2), "pad"}, {nil, "ghost"}}}

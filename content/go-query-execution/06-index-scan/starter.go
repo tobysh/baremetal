@@ -7,6 +7,11 @@ import (
 
 var _ = sort.Ints
 
+// How this file is organised: everything above the "Your work" line is
+// provided scaffolding shared by the whole track (do not change its API).
+// You only write the functions and types below that line; the tests call them
+// and also read the Stats counters to check how much work you did.
+
 // ---- Provided: the shared vocabulary of the whole track -------------------
 
 // Value is one cell. nil is SQL NULL; otherwise it is an int64 or a string.
@@ -108,6 +113,8 @@ type Bound struct {
 // ---- Your work -----------------------------------------------------------
 
 // BuildIndex indexes column col of t: skip NULL keys, sort by key then RowID.
+// Plan: loop over rows, append an Entry for every non-NULL key, then sort with
+// idx.Cmp (stable, so equal keys stay in RowID order).
 func BuildIndex(t *Table, col int) *Index {
 	return &Index{}
 }
@@ -119,6 +126,8 @@ func NewIndexScan(t *Table, idx *Index, lo, hi *Bound, st *Stats) Iterator {
 	return nil
 }
 
+// main is not part of the exercise. Expected once implemented: the rows with
+// keys in [20, 40): [[20 b] [20 b2] [30 c]] rows read: 3
 func main() {
 	t := &Table{Name: "t", Cols: []string{"k", "v"}, Rows: []Row{
 		{int64(30), "c"}, {int64(10), "a"}, {nil, "n"}, {int64(20), "b"}, {int64(20), "b2"}, {int64(40), "d"},

@@ -1,0 +1,11 @@
+{
+  "kind": "predict",
+  "prompt": "Use the GDT layout from the lesson (null, kernel code, kernel data, user data, user code, then the 16-byte TSS descriptor).",
+  "trace": [
+    { "label": "[selector] for user code, loaded into `cs` in ring 3", "choices": ["0x20", "0x23", "0x1B", "0x18"], "answer": 1 },
+    { "label": "[access] byte of the user data segment (present, DPL 3, data, writable)", "choices": ["0x92", "0xF2", "0xFA", "0x9A"], "answer": 1 },
+    { "label": "[access] byte of the TSS descriptor after `ltr 0x28` has run", "choices": ["0x89", "0x8B", "0xE9", "0x00"], "answer": 1 },
+    { "label": "[size] field of the pointer passed to `gdt_flush`", "choices": ["48", "55", "56", "47"], "answer": 1 }
+  ],
+  "explain": "User code is GDT slot 4 (offset 0x20); a ring 3 selector adds RPL 3 in the low bits, giving 0x23. Setting both DPL bits turns data 0x92 into 0xF2. `ltr` marks the TSS busy by changing type 9 to type 11 (0x89 to 0x8B) in your table. Five 8-byte entries plus the 16-byte TSS descriptor make 56 bytes, and the size field is one less: 55."
+}

@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "With this `timer_tick`, the tasks switch once and then the timer seems to stop: `ticks` stays where it was and nothing else is ever preempted. Tap the faulty line.",
+  "code": "void timer_tick(void) {\n    ticks++;\n    if (--current->slice <= 0)\n        schedule();\n    pic_eoi();\n}",
+  "bugLine": 5,
+  "explain": "`schedule()` may switch to another task, which then keeps running without returning into this call, so the EOI is not sent until this task is scheduled again. The PIC delivers no further timer interrupts until it gets the EOI, so that may be never. Acknowledge first, then schedule."
+}

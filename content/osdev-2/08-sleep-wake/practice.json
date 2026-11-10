@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This `sleep_on` passes simple tests, but after a few wake-ups it overwrites a waiter that is still in the queue. Tap the faulty line.",
+  "code": "int sleep_on(WaitQueue *q, Task *t) {\n    if (t->state != READY || q->count == 8)\n        return -1;\n    q->items[q->count % 8] = t;\n    q->count++;\n    t->state = BLOCKED;\n    return 0;\n}",
+  "bugLine": 4,
+  "explain": "The free slot after the newest waiter is `(head + count) % 8`, not `count % 8`. Once `wake_one` has advanced `head`, `items[count % 8]` can be a slot that still holds a waiting task, which is then lost for good."
+}

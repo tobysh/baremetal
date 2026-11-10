@@ -1,7 +1,7 @@
-Best fit needs a variable `best` initialised to `NULL`. In the loop, count the step first, skip unusable blocks, then update `best` when `best == NULL || b->size < best->size`.
+Both policies share one loop. Increment `steps` as the *first* statement of each iteration, before any `continue`, so used blocks and too-small blocks are counted as well.
 ===
-First fit returns inside the loop as soon as it finds a block; best fit returns after the loop. Increment `search_steps` at the top of each iteration, before any `continue`.
+After counting, skip blocks that cannot serve the request: `if (!b->is_free || b->size < need) continue;`. For `FIRST_FIT` return `b` right here. That early return is the only difference in cost between the policies.
 ===
-For `run_workload`: `static _Alignas(16) unsigned char buf[2048]; void *ptr[32] = {0};`, call `heap_init(buf, sizeof buf); heap_set_policy(p);`, then loop over the ops.
+For `BEST_FIT` keep a `Block *best = NULL` outside the loop. Replace it only when `!best || b->size < best->size`. The strict `<` is what makes the lowest address win ties. Return `best` after the loop, which is also the `NULL` "nothing fits" case.
 ===
-Read the final counters with `heap_stats(&st)`: `st.failed_allocs`, `st.search_steps`, `st.largest_free`, `st.free_blocks`.
+For `run_workload`, declare `static _Alignas(16) unsigned char buf[2048];` and `void *ptr[32] = {0};`, call `heap_init` and then `heap_set_policy(p)` (init resets the policy to first fit, so the order matters). Read the results with `HeapStats st; heap_stats(&st);` and copy `failed_allocs`, `search_steps`, `largest_free`, `free_blocks`.

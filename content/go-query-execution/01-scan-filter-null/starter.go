@@ -2,6 +2,11 @@ package main
 
 import "fmt"
 
+// How this file is organised: everything above the "Your work" line is
+// provided scaffolding shared by the whole track (do not change its API).
+// You only write the functions and types below that line; the tests call them
+// and also read the Stats counters to check how much work you did.
+
 // ---- Provided: the shared vocabulary of the whole track -------------------
 
 // Value is one cell. nil is SQL NULL; otherwise it is an int64 or a string.
@@ -60,6 +65,8 @@ const (
 
 // ---- Your work -----------------------------------------------------------
 
+// And, Or and Not implement SQL three-valued logic (see the lesson table).
+// Hint: with the numeric order False < Unknown < True, AND is a minimum.
 func And(a, b Tri) Tri {
 	return Unknown
 }
@@ -77,6 +84,8 @@ func Compare(op string, a, b Value) Tri {
 	return Unknown
 }
 
+// scan walks t.Rows in order. Open must reset pos and count st.Opens; Next
+// must count st.RowsRead only for rows it actually returns.
 type scan struct {
 	t   *Table
 	st  *Stats
@@ -88,10 +97,15 @@ func (s *scan) Open()                       {}
 func (s *scan) Close()                      {}
 func (s *scan) Next() (Row, bool)           { return nil, false }
 
+// NewFilter keeps a row only when pred(row) is exactly True. It must pull from
+// in lazily, one row at a time, and pass Open and Close through.
 func NewFilter(in Iterator, pred func(Row) Tri) Iterator {
 	return nil
 }
 
+// main is not part of the exercise. Expected once implemented:
+//   [[3 90]] rows read: 3
+//   NOT (score > 50) for NULL: 1   (Unknown)
 func main() {
 	t := &Table{Name: "t", Cols: []string{"id", "score"}, Rows: []Row{
 		{int64(1), int64(40)}, {int64(2), nil}, {int64(3), int64(90)},

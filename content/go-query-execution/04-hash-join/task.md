@@ -7,3 +7,5 @@ Implement `NewHashJoin(left, right Iterator, lcol, rcol int) Iterator`, an inner
 - `Open` after `Close` starts over; `Close` closes both inputs.
 
 `EqCols` and `concatRows` are provided.
+
+Edge cases the tests try: NULL keys on both sides, many duplicates, int64 vs string keys, join columns other than 0, empty inputs (the build side is still read when the probe is empty), the probe side streaming lazily, and reopening.

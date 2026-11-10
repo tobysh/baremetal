@@ -54,7 +54,7 @@ Then whatever your change touches:
 
 | If you changed… | Run |
 |---|---|
-| Lessons, tracks, or anything under `content/` | `npm run verify:content -- <track>`, then `npm run check:ids`, `npm run check:learning`, `npm run check:curriculum` |
+| Lessons, tracks, or anything under `content/` | `npm run verify:content -- <track>`, then `npm run check:ids`, `npm run check:learning`, `npm run check:curriculum`, `npm run check:content-bar -- --track <track>` (reports lessons below the minimum for teaching depth, tests, hints and recall questions; add `--strict` to fail on findings) |
 | A lesson's difficulty or `LEVEL_FLOORS` | `npm run recompute-xp` against any database with real learners (site stopped) |
 | Runner, sandbox, harness scanning | `npm run test:runner`, `node --import tsx scripts/security/integrity/fixtures-forgery.mts`, `node --import tsx scripts/security/runner-cancellation.mts`, `npm run test:sandbox` |
 | Pure helpers (`redirects`, `totp`, `crypto`, `rate-limit`, `tutor-normalize`) | `npm run test:unit` |

@@ -1,0 +1,7 @@
+{
+  "kind": "bug",
+  "prompt": "This lock passes a quick test with interrupts enabled, but it can still deadlock against a timer handler that takes the same lock, and it breaks callers that already had interrupts off. Tap the line that causes both problems.",
+  "code": "unsigned long lock_irqsave(Spinlock *l) {\n    unsigned long flags = irq_save();\n    while (__atomic_exchange_n(&l->held, 1, __ATOMIC_ACQUIRE))\n        __asm__ volatile(\"pause\");\n    return flags;\n}\n\nvoid unlock_irqrestore(Spinlock *l, unsigned long flags) {\n    __asm__ volatile(\"sti\");\n    __atomic_store_n(&l->held, 0, __ATOMIC_RELEASE);\n    (void)flags;\n}",
+  "bugLine": 9,
+  "explain": "`sti` runs while the lock is still held, so a pending timer interrupt can fire immediately and its handler spins on `held == 1` forever. It also enables interrupts unconditionally, ignoring `flags`; a caller that had them off (or holds a second lock) wakes up with them on. Release first, then `irq_restore(flags)`."
+}

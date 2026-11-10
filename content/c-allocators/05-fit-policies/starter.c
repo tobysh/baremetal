@@ -1,3 +1,4 @@
+// ===== SUPPLIED: the free-list heap from the last lesson. Read it, but you only edit the two TODOs below. =====
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -37,6 +38,7 @@ void heap_init(void *buf, size_t size) {
     b->is_free = 1;
 }
 
+// ===== YOUR PART (1/2) =====
 // TODO: count every examined block in `steps`, and implement BEST_FIT.
 static Block *find_block(size_t need) {
     for (Block *b = first_block(); b; b = next_block(b)) {
@@ -87,6 +89,7 @@ void heap_stats(HeapStats *s) {
     }
 }
 
+// ===== YOUR PART (2/2): the types are supplied, run_workload is yours. =====
 typedef struct { int is_free; int id; size_t size; } Op;
 typedef struct { unsigned long failed; unsigned long steps; size_t largest_free; size_t free_blocks; } WorkResult;
 

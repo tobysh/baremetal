@@ -1,3 +1,4 @@
+// ===== SUPPLIED: the free-list heap from the last lesson. Read it, but you only edit the two TODOs below. =====
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -37,6 +38,7 @@ void heap_init(void *buf, size_t size) {
     b->is_free = 1;
 }
 
+// ===== YOUR PART (1/2) =====
 static Block *find_block(size_t need) {
     Block *best = NULL;
     for (Block *b = first_block(); b; b = next_block(b)) {
@@ -90,10 +92,12 @@ void heap_stats(HeapStats *s) {
     }
 }
 
+// ===== YOUR PART (2/2): the types are supplied, run_workload is yours. =====
 typedef struct { int is_free; int id; size_t size; } Op;
 typedef struct { unsigned long failed; unsigned long steps; size_t largest_free; size_t free_blocks; } WorkResult;
 
-// Which policy did better on the example below, and why? Write two sentences here.
+// First fit put the 200 into the 512 hole, leaving 288, so the 300 failed; best fit used the tighter 256 hole
+// and kept the big one whole, so both succeeded. That is true for this trace only, not in general.
 WorkResult run_workload(Policy p, const Op *ops, int n) {
     _Alignas(16) static unsigned char buf[2048];
     void *ptr[32] = { 0 };

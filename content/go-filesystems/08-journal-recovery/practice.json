@@ -1,20 +1,20 @@
 {
   "kind": "blanks",
-  "prompt": "Recovery replays the journal: only transactions that were fully committed are applied, then the journal is emptied. Fill the slots.",
-  "template": "for _, tx := range journal {\n\tif tx.{{0}} {\n\t\tfor _, w := range tx.writes {\n\t\t\tdisk.{{1}}(w.block, w.data)\n\t\t}\n\t}\n}\njournal = journal[:{{2}}]",
+  "prompt": "Recovery replays a committed journal and then clears it. Fill in the slots so that a crash during recovery loses nothing.",
+  "template": "if !d.Journal.{{0}} {\n\treturn nil\n}\nfor _, r := range d.Journal.Records {\n\tif e := d.{{1}}(r.Block, r.Value); e != nil {\n\t\treturn e\n\t}\n}\nd.Journal = {{2}}{}\nreturn nil",
   "answers": [
     "Committed",
     "Write",
-    "0"
+    "Journal"
   ],
   "tokens": [
     "Committed",
     "Write",
-    "0",
-    "Begun",
-    "Read",
-    "len(journal)"
+    "Journal",
+    "Records",
+    "Attempts",
+    "Disk"
   ],
   "runTests": false,
-  "explain": "A transaction without a commit record may be half-written, so it is skipped. Because replay just rewrites whole block images, running it twice gives the same disk. The journal is cleared only after the replay is done."
+  "explain": "Only a committed transaction is replayed. Each record is installed through `d.Write`, and an error returns immediately with the journal untouched, so the next recovery can retry every record. Replaying is safe to repeat because records assign values. The journal is cleared (`Journal{}`) only after the last write succeeded."
 }

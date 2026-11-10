@@ -1,20 +1,20 @@
 {
   "kind": "blanks",
-  "prompt": "Fill in the checks for decoding a superblock from a block of bytes. Reject anything that is too short, has the wrong magic, or describes a bitmap that does not fit.",
-  "template": "if len(b) < superSize {\n\treturn Super{}, ErrShort\n}\nif binary.LittleEndian.Uint32(b[0:4]) {{0}} Magic {\n\treturn Super{}, ErrMagic\n}\ns.BlockCount = binary.LittleEndian.{{1}}(b[8:12])\nif s.BitmapStart+s.BitmapLen {{2}} s.BlockCount {\n\treturn Super{}, ErrLayout\n}",
+  "prompt": "Fill in the checks that decode a superblock. Reject a wrong magic, and a layout whose data region does not follow the inode table.",
+  "template": "if {{0}}(b[0:]) != 0x424D4653 {\n\treturn Super{}, ErrBadSuper\n}\ns.NInodes = u32(b[12:])\nif s.NInodes < 2 || s.DataStart {{1}} 2+inodeBlocks(s.NInodes) {\n\treturn Super{}, ErrBadSuper\n}\nif s.DataStart {{2}} s.NBlocks {\n\treturn Super{}, ErrBadSuper\n}",
   "answers": [
+    "u32",
     "!=",
-    "Uint32",
-    ">"
+    ">="
   ],
   "tokens": [
+    "u32",
     "!=",
-    "Uint32",
-    ">",
+    ">=",
+    "putU32",
     "==",
-    "Uint64",
     "<"
   ],
   "runTests": false,
-  "explain": "Wrong magic means this is not our filesystem. A 4-byte field is read with `Uint32` (`Uint64` would read 8 bytes). The bitmap region ends at start + length; ending past the last block is the error."
+  "explain": "`u32` reads one big-endian word. The data region must start exactly where the inode table ends, so any difference is corruption. And at least one data block has to exist, so `DataStart >= NBlocks` is rejected. `NInodes` is checked before it feeds `inodeBlocks`."
 }

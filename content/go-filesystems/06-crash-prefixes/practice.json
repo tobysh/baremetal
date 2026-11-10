@@ -1,9 +1,9 @@
 {
   "kind": "predict",
-  "prompt": "An update is three atomic block writes in this order: W1 writes the new data block, W2 points the inode at it, W3 marks it used in the bitmap. A crash can happen after any prefix of the writes.",
+  "prompt": "An update is three atomic block writes in this order: W1 writes the new data block, W2 points the inode at it, W3 marks it used in the bitmap. A crash can happen after any prefix of the writes, and the disk keeps writes in order.",
   "trace": [
     {
-      "label": "How many different crash states (including none and all)?",
+      "label": "How many different crash states (including none and all writes)?",
       "choices": [
         "3",
         "4",
@@ -15,7 +15,7 @@
     {
       "label": "Crash after W1 only. The disk is",
       "choices": [
-        "consistent (the new block is simply unused)",
+        "consistent (the new block is simply unreferenced)",
         "inconsistent"
       ],
       "answer": 0
@@ -24,10 +24,20 @@
       "label": "Crash after W1 and W2. The disk is",
       "choices": [
         "consistent",
-        "inconsistent (the inode uses a block the bitmap calls free)"
+        "inconsistent (the inode points at a block the bitmap calls free)"
       ],
       "answer": 1
+    },
+    {
+      "label": "Which order makes every crash state safe?",
+      "choices": [
+        "data, bitmap, inode pointer",
+        "bitmap, inode pointer, data",
+        "inode pointer, bitmap, data",
+        "any order, because writes are atomic"
+      ],
+      "answer": 0
     }
   ],
-  "explain": "A prefix of three writes can have length 0, 1, 2 or 3: four states. Pointing at a block that is not marked used risks it being handed out again, which is why write order matters."
+  "explain": "Three writes have prefixes of length 0, 1, 2 and 3: four states. Pointing at a block that is not marked used risks it being handed to someone else, so the bitmap must be written before the pointer. A leaked (used but unreferenced) block is the harmless failure."
 }

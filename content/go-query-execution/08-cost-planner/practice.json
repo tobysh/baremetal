@@ -1,34 +1,27 @@
 {
   "kind": "predict",
-  "prompt": "Toy cost model: a nested-loop join costs `left x right` row comparisons; a hash join costs `left + right`. The planner picks the cheaper plan.",
+  "prompt": "Use this lesson's cost model: nested = `L*R`, hash = `3*(L+R)`, merge = `L+R` plus `4*L` if the left is unsorted and `4*R` if the right is unsorted. Ties prefer nested, then hash, then merge.",
   "trace": [
     {
-      "label": "Left 100 rows, right 10 rows: nested-loop cost",
-      "choices": [
-        "110",
-        "1000",
-        "10",
-        "100"
-      ],
+      "label": "L=10, R=10, nothing sorted: cost of hash",
+      "choices": ["60", "20", "100", "30"],
+      "answer": 0
+    },
+    {
+      "label": "L=10, R=10, nothing sorted: the winner is",
+      "choices": ["nested (100)", "hash (60)", "merge (100)"],
       "answer": 1
     },
     {
-      "label": "The planner picks",
-      "choices": [
-        "nested loop",
-        "hash join"
-      ],
+      "label": "L=10, R=10, only the left sorted: hash (60) and merge (60) tie. The planner picks",
+      "choices": ["merge, it is newer", "hash, it comes first in the tie order", "either one at random"],
       "answer": 1
     },
     {
-      "label": "Left 2 rows, right 2 rows give equal costs of 4. A good planner then",
-      "choices": [
-        "picks at random",
-        "applies a fixed tie-break rule",
-        "refuses to plan"
-      ],
-      "answer": 1
+      "label": "L=0, R=500, nothing sorted: the winner is",
+      "choices": ["nested (cost 0)", "hash (cost 1500)", "merge (cost 2500)"],
+      "answer": 0
     }
   ],
-  "explain": "100 x 10 = 1000 against 100 + 10 = 110. Ties must be broken by a documented rule (for example the first candidate listed) so the same query always gets the same plan."
+  "explain": "Hash costs 3*20 = 60 against nested 100 and merge 20 + 40 + 40 = 100. With the left sorted merge costs 20 + 40 = 60, a tie that the fixed order resolves to hash. An empty left side makes nested cost 0, which no other plan beats."
 }

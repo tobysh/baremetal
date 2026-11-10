@@ -1,3 +1,4 @@
+// ===== SUPPLIED: the heap from the previous lessons (first/best fit, split, coalesce). Do not edit. =====
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -90,13 +91,19 @@ void heap_stats(HeapStats *s) {
     }
 }
 
-size_t heap_map(char *out,size_t cap){if(cap)out[0]=0;return 0;}
+// ===== YOUR PART: write heap_map. Return the length the full map needs; write at most cap - 1 characters + NUL. =====
+size_t heap_map(char *out, size_t cap) {
+    // TODO: for every block emit 'H', then size/16 times '.' (free) or 'U' (used).
+    if (cap) out[0] = 0;
+    return 0;
+}
+
 int main(void) {
     _Alignas(16) unsigned char buf[128];
     char map[32];
     heap_init(buf, sizeof buf);
     heap_alloc(16);
     heap_map(map, sizeof map);
-    puts(map);
+    puts(map);   // expected: HUH.....
     return 0;
 }

@@ -2,6 +2,11 @@ package main
 
 import "fmt"
 
+// How this file is organised: everything above the "Your work" line is
+// provided scaffolding shared by the whole track (do not change its API).
+// You only write the functions and types below that line; the tests call them
+// and also read the Stats counters to check how much work you did.
+
 // ---- Provided: the shared vocabulary of the whole track -------------------
 
 // Value is one cell. nil is SQL NULL; otherwise it is an int64 or a string.
@@ -109,16 +114,22 @@ type SortKey struct {
 
 // NewSort reads all of in on the first Next, then returns the rows ordered by
 // keys. Rows with equal keys keep their input order (stable).
+// Plan: a done flag, a buffer of rows and a position. Read, sort and buffer on
+// the first Next, then hand the rows out one by one.
 func NewSort(in Iterator, keys []SortKey) Iterator {
 	return nil
 }
 
 // NewMergeJoin joins two inputs that are ALREADY sorted ascending on their join
 // column (NULLs first). One forward pass over each side, no rescanning.
+// Plan: the current left row, the current right row, and a buffered group of
+// right rows with the same key that you replay for each equal left row.
 func NewMergeJoin(left, right Iterator, lcol, rcol int) Iterator {
 	return nil
 }
 
+// main is not part of the exercise. Expected once implemented: three joined
+// rows (the NULL keys never match) printed with the total rows read.
 func main() {
 	a := &Table{Name: "a", Cols: []string{"k", "v"}, Rows: []Row{{int64(3), "c"}, {nil, "n"}, {int64(1), "a"}, {int64(3), "d"}}}
 	b := &Table{Name: "b", Cols: []string{"k", "w"}, Rows: []Row{{int64(3), "x"}, {int64(1), "y"}, {int64(3), "z"}, {nil, "m"}}}

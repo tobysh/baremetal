@@ -1,3 +1,4 @@
+// ===== SUPPLIED: the general heap (first fit, split, coalesce) from the previous lessons. Do not edit. =====
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -90,9 +91,11 @@ void heap_stats(HeapStats *s) {
     }
 }
 
+// ===== SUPPLIED: pool storage. =====
 _Alignas(16) static unsigned char small_pool[8][16], large_pool[8][64];
 static unsigned char small_used[8], large_used[8];
 
+// ===== YOUR PART =====
 void classes_init(void *buf, size_t n) {
     memset(small_used, 0, 8);
     memset(large_used, 0, 8);

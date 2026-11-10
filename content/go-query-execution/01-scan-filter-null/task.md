@@ -6,3 +6,5 @@ Implement, in `main.go`:
 - `NewFilter(in, pred)`: returns only rows where `pred` is `True`. It must be lazy: one `Next` pulls only as many input rows as needed. `Open` and `Close` pass through to `in`.
 
 The tests check results against an independent reference on random tables with NULLs, and check `RowsRead`, never time.
+
+Edge cases the tests try: every operator against a NULL operand, a comparison between an `int64` and a `string` (Unknown), an empty table, an exhausted scan asked for more rows, and a scan reopened after `Close`. Do not modify the rows you receive.

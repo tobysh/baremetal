@@ -1,0 +1,13 @@
+{
+  "kind": "predict",
+  "prompt": "Trace the frame allocator from this lesson (`BASE = 0x100000`, 64 frames). What does each call return?",
+  "code": "frame_init();\nframe_reserve(1, 2);\nuint64_t a = frame_take();\nuint64_t b = frame_take();\nint r1 = frame_release(a);\nint r2 = frame_release(a);\nuint64_t c = frame_take();",
+  "trace": [
+    { "label": "[a] from the first `frame_take`", "choices": ["0x100000", "0x101000", "0x103000", "0"], "answer": 0 },
+    { "label": "[b] from the second `frame_take`", "choices": ["0x101000", "0x102000", "0x103000", "0x104000"], "answer": 2 },
+    { "label": "[r1] from the first `frame_release(a)`", "choices": ["0", "-1"], "answer": 0 },
+    { "label": "[r2] from the second `frame_release(a)`", "choices": ["0", "-1"], "answer": 1 },
+    { "label": "[c] from the last `frame_take`", "choices": ["0x100000", "0x103000", "0x104000", "0"], "answer": 0 }
+  ],
+  "explain": "Reserving 2 frames from index 1 marks frames 1 and 2. Frame 0 is still free, so `a` is 0x100000; the next free frame is 3, at 0x103000. Releasing `a` clears bit 0, so the second release finds the bit already clear and reports a double free. Frame 0 is then the lowest free frame again, so `c` is 0x100000."
+}

@@ -2,6 +2,11 @@ package main
 
 import "fmt"
 
+// How this file is organised: everything above the "Your work" line is
+// provided scaffolding shared by the whole track (do not change its API).
+// You only write the functions and types below that line; the tests call them
+// and also read the Stats counters to check how much work you did.
+
 // ---- Provided: the shared vocabulary of the whole track -------------------
 
 // Value is one cell. nil is SQL NULL; otherwise it is an int64 or a string.
@@ -118,6 +123,9 @@ func Concat(a, b Expr) Expr {
 	return func(r Row) Value { return nil }
 }
 
+// Provided above: Col and Const build Expr values; filter and scan work as in
+// lesson 1. Write the four functions below.
+
 // NewProject emits one fresh row per input row, one cell per expression.
 func NewProject(in Iterator, exprs []Expr) Iterator {
 	return nil
@@ -129,6 +137,8 @@ func NewLimit(in Iterator, offset, n int) Iterator {
 	return nil
 }
 
+// main is not part of the exercise. Expected once implemented:
+//   [[2 <nil>] [3 75]] rows read: 3
 func main() {
 	t := &Table{Name: "t", Cols: []string{"id", "price", "tax"}, Rows: []Row{
 		{int64(1), int64(100), int64(8)}, {int64(2), int64(50), nil}, {int64(3), int64(70), int64(5)}, {int64(4), int64(10), int64(1)},

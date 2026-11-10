@@ -1,0 +1,12 @@
+{
+  "kind": "predict",
+  "prompt": "Starting from `heap_init()` on the 256-byte arena, trace this sequence. Give each result as an offset into the arena, or NULL.",
+  "code": "a = heap_alloc(10);\nb = heap_alloc(40);\nc = heap_alloc(8);\nheap_free(a);\nheap_free(b);\nd = heap_alloc(50);\ne = heap_alloc(200);",
+  "trace": [
+    { "label": "[b] offset of `b = heap_alloc(40)`", "choices": ["10", "16", "40", "48"], "answer": 1 },
+    { "label": "[c] offset of `c = heap_alloc(8)`", "choices": ["50", "56", "64", "48"], "answer": 1 },
+    { "label": "[d] offset of `d = heap_alloc(50)`", "choices": ["0", "16", "64", "NULL"], "answer": 0 },
+    { "label": "[e] result of `e = heap_alloc(200)`", "choices": ["56", "64", "0", "NULL"], "answer": 3 }
+  ],
+  "explain": "10 rounds to 16, so `b` starts at 16 and runs to 56; `c` takes 56..64. Freeing `a` then `b` merges them into one free block 0..56, so the 50-byte request (rounded to 56) fits exactly at 0. The only other free block is 64..256, 192 bytes, too small for 200, so `e` is NULL."
+}

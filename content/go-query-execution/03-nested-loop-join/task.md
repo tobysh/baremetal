@@ -7,3 +7,5 @@ Implement `NewNestedLoopJoin(outer, inner Iterator, pred func(l, r Row) Tri) Ite
 - `Close` closes whatever is open.
 
 `EqCols` and `concatRows` are provided.
+
+Edge cases the tests try: NULL keys on either side, heavy duplicates, an empty outer or inner input, non-equality and always-true predicates, and stopping early (the counters must show no extra reads). Output rows must not alias the inputs.
