@@ -60,6 +60,7 @@ Then whatever your change touches:
 | Pure helpers (`redirects`, `totp`, `crypto`, `rate-limit`, `tutor-normalize`) | `npm run test:unit` |
 | Anything stored (collections, cookies, localStorage keys) or `content/legal/` | `npm run check:legal`; update `content/legal/` and bump `SITE.legal.lastUpdated` |
 | Auth, API routes, rate limits | `npm run build && npx next start -p 3100` then `npm run test:e2e -- http://localhost:3100` |
+| Production-only behaviour (HSTS, same-origin check, boot config, instrumentation) | `MONGODB_DB=bm_prod_local scripts/dev/prod-local.sh [--no-build] [--keep]`: builds with a placeholder https site URL, starts a runner and `next start -p 3500` with every production-required variable, runs `test:e2e` and `scripts/security/api-hardening.mts`, then kills what it started. Needs `npm run db`; do not run it while `npm run dev` uses the checkout (shared `.next`) |
 | Tutor | `scripts/tutor/*.mts` (stream guard, cost, reservations) |
 | Workspace/UI behaviour | `npm run test:browser` (Playwright; `npx playwright install chromium`) |
 | Anything user-visible end to end | `npm run test:regressions` (builds an isolated production copy with its own scratch DB; needs MongoDB) |

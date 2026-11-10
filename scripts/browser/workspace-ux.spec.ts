@@ -84,13 +84,16 @@ test("a collapsible task summary stays above the editor", async ({ page }) => {
 test("course filters are plain links that hide non-matching courses", async ({ page }) => {
   await page.goto("/learn");
   const filters = page.getByRole("region", { name: "Filter courses" });
-  await filters.getByRole("link", { name: "Rust", exact: true }).click();
+  await filters.getByRole("link", { name: /^Rust\s*\d*$/ }).click();
   await expect(page).toHaveURL(/\/learn\?lang=rust/);
   await expect(page.locator('[data-track="rust-foundations"]')).toBeVisible();
   await expect(page.locator('[data-track="c-memory"]')).toBeHidden();
-  await filters.getByRole("link", { name: "Advanced", exact: true }).click();
+  const moreFilters = async () => { if (!(await filters.locator("details").first().evaluate((d: HTMLDetailsElement) => d.open))) await filters.getByText("More filters").click(); };
+  await moreFilters();
+  await filters.getByRole("link", { name: /^Advanced\s*\d*$/ }).click();
   await expect(page).toHaveURL(/lang=rust&level=Advanced/);
-  await filters.getByRole("link", { name: "All" }).first().click();
+  await moreFilters();
+  await filters.getByRole("link", { name: /^Any\s*\d*$/ }).first().click();
   await expect(page).toHaveURL(/\/learn\?level=Advanced/);
 });
 

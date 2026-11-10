@@ -15,6 +15,7 @@ content/
       starter.<ext>         what the editor starts with
       solution.<ext>        reference solution (server-only)
       tests.<ext>           hidden harness  — or —  cases.json for stdout lessons
+                            — or —  driver.c (C only; out-of-process verdict, see below)
       challenge.md          optional harder variant (see below)
       challenge-starter.<ext>, challenge-solution.<ext>, challenge-tests.<ext> | challenge-cases.json
   legal/                    Terms, Privacy and Cookie notices (rendered at /terms, /privacy, /cookies)
@@ -114,6 +115,55 @@ Write harnesses so that:
 - **Failures explain themselves**: say what was expected and what was received (`"got %d"`). This is what the learner reads.
 - **Expected values are independent.** Prefer fixed vectors or a separate reference over comparing two things the learner wrote.
 - The starter must **compile but fail**; the solution must pass every test.
+
+### Drivers: out-of-process verdict (C)
+
+A C harness lesson can ship `driver.c` instead of `tests.c`. Prefer it for new C lessons and when you rewrite one: a `tests.c` decides pass or fail inside the learner's process, which a determined learner can forge (`docs/security.md`, L1); a driver never decides anything. It calls the learner's functions and records what went in and what came out; the runner links the same driver with `solution.c`, runs both with the same fresh random seed in separate sandboxes, and compares the two record streams. A check passes when the learner's records equal the reference's. You never write expected values.
+
+The driver is its own translation unit, linked with the learner's object (their `main` is renamed). It can't see the learner's declarations, so it declares the functions it calls, and any struct it passes, itself, exactly as the starter does. The runner prepends a prelude (`VERDICT_PRELUDE` in `src/lib/verdict.ts`) that provides:
+
+| Macro | Meaning |
+|---|---|
+| `BM_DRIVER { ... }` | The driver's body (instead of `main`). |
+| `BM_CASE("name")` | Starts a fixed edge case. On failure the learner sees the input, the expected values and their values. |
+| `BM_SEEDED("name")` | Starts a seeded case. On failure the learner sees the input and their values, never the expected ones. |
+| `BM_IN_I / BM_OUT_I(label, v)` | A signed integer (any integer type, as `int64_t`). `_U` for unsigned, `_F` for a `double` (compared bit for bit). |
+| `BM_IN_S / BM_OUT_S(label, s)` | A NUL-terminated string, or `NULL`. |
+| `BM_IN_BYTES / BM_OUT_BYTES(label, p, n)` | `n` raw bytes. |
+| `BM_IN_ARR / BM_OUT_ARR(label, arr, n)` | `n` signed integers from any integer array. `_UARR` for unsigned. |
+| `bm_int(lo, hi)`, `bm_rand()`, `bm_fill(arr, n, lo, hi)` | The seeded generator (splitmix64): an `int64_t` in `[lo, hi]`, a raw `uint64_t`, an array filled with `bm_int`. |
+
+`IN` records are the arguments; emit them **before** the call. `OUT` records are what you observe afterwards: the return value, the memory a pointer argument points to, an array that must stay unchanged. Labels are what the learner reads (`"array_max(a, n)"`, `"arr afterwards"`). For a struct, record each field you care about with its own label (`"p.x"`, `"p.y"`); never record pointers, padding or uninitialised memory, which differ between runs.
+
+```c
+int array_max(int a[], int n);
+
+BM_DRIVER {
+    int d[4] = {-9, -3, -7, -20};
+    BM_CASE("array_max works when all are negative");
+    BM_IN_ARR("a", d, 4);
+    BM_IN_I("n", 4);
+    BM_OUT_I("array_max(a, n)", array_max(d, 4));
+
+    int r[20];
+    int n = (int)bm_int(1, 20);
+    bm_fill(r, n, -500, 500);
+    BM_SEEDED("array_max of a random array");
+    BM_IN_ARR("a", r, n);
+    BM_IN_I("n", n);
+    BM_OUT_I("array_max(a, n)", array_max(r, n));
+}
+```
+
+Rules:
+
+- **Names and order are fixed.** Every run must produce the same list of checks in the same order whatever the seed: don't build names from random values, and don't skip or add checks depending on the seed or on the learner's results.
+- **Never branch on the learner's results, and never draw random numbers after a call depending on what it returned.** The learner's run and the reference run must feed identical inputs; a difference is reported as tampering.
+- Keep fixed edge cases for the classic traps (0, empty, one element, all negative, the extreme value, the maximum in the first and in the last place) and add seeded cases for the general behaviour, so neither hardcoding the visible edge cases nor a constant answer passes. Pick seeded ranges that can't overflow.
+- Say in `task.md` that the functions are also tried on fresh random inputs.
+- Undefined behaviour in the learner's code (UBSan), a crash or a timeout fails the check it happened in and every later one.
+
+`npm run verify:content` checks a driver lesson more strictly: the solution passes under two different seeds, the driver has both fixed and seeded cases, the seeded records change with the seed while the list of names doesn't, and a stub with every function returning zero fails. The driver and the solution are server-only; neither reaches the learner's sandbox or the browser. Challenges still use `challenge-tests.c`.
 
 ## Challenges
 

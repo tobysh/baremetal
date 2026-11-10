@@ -43,6 +43,7 @@ const limits: Partial<BrokerLimits> = {
   maxSessions: num("SHELL_MAX_SESSIONS", 4),
   idleMs: num("SHELL_IDLE_SECONDS", 300) * 1000,
   absoluteMs: num("SHELL_MAX_SECONDS", 1800) * 1000,
+  dailyMs: num("SHELL_DAILY_SECONDS", 7200) * 1000,
   outputPerSec: num("SHELL_OUTPUT_PER_SEC", 128 * 1024),
   outputBurst: num("SHELL_OUTPUT_BURST", 512 * 1024),
   outputFloodMs: num("SHELL_OUTPUT_FLOOD_SECONDS", 60) * 1000,

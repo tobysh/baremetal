@@ -1,5 +1,5 @@
 import { createServer, type Server, type Socket } from "node:net";
-import type { Vm } from "./vm";
+import { VmLeakError, type Vm } from "./vm";
 
 /**
  * The privileged half of the shell service. Starting the jailer needs root, so a tiny launcher runs as root and does
@@ -84,9 +84,15 @@ export function createLauncher(options: LauncherOptions) {
         leases.delete(close);
         let destroyedOk = true;
         try {
-          // A VM still starting must be waited for, or it would outlive its lease.
-          const running = vm ?? (await start?.catch(() => undefined));
+          // A VM still starting must be waited for, or it would outlive its lease. A start that failed and could not
+          // clean up after itself (VmLeakError) may have left a live VM behind: treat it like a failed destroy.
+          let leaked: unknown;
+          const running = vm ?? (await start?.catch((error: unknown) => {
+            if (error instanceof VmLeakError) leaked = error;
+            return undefined;
+          }));
           await running?.destroy();
+          if (leaked) throw leaked;
         } catch (error) {
           destroyedOk = false;
           log({ event: "destroy_failed", slot: slot!, error: String(error) });

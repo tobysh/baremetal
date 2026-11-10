@@ -1,6 +1,6 @@
 # Interactive shell: host deployment
 
-Status: written 30 October 2026 and **not yet exercised on a real host**. Everything marked UNVERIFIED below is derived from documentation or from the prototype, not from a boot under these units. Design and threat model: `docs/interactive-shell-isolation.md`. General web/runner deployment: `docs/deployment-hardening.md`. Do the checklist at the end before any learner can reach a shell.
+Status: written 30 October 2026, units and launcher checks revised 10 November 2026; **not yet exercised on a real host**. Everything marked UNVERIFIED below is derived from documentation or from the prototype, not from a boot under these units. Design and threat model: `docs/interactive-shell-isolation.md`. General web/runner deployment: `docs/deployment-hardening.md`. Do the checklist at the end before any learner can reach a shell.
 
 ## What gets installed
 
@@ -9,7 +9,9 @@ Status: written 30 October 2026 and **not yet exercised on a real host**. Everyt
 | Slice (limits for everything below) | `deploy/systemd/baremetal-shell.slice` | `/etc/systemd/system/` |
 | Launcher (root, starts and kills VMs only) | `deploy/systemd/baremetal-shell-launcher.service`, entry `scripts/shell-launcher.mts` | `/etc/systemd/system/` |
 | Broker (unprivileged, sessions and limits) | `deploy/systemd/baremetal-shell-broker.service`, entry `scripts/shell-broker.mts` | `/etc/systemd/system/` |
-| Socket directories | `deploy/shell/tmpfiles.d/baremetal-shell.conf` | `/etc/tmpfiles.d/` |
+| Socket directories, jail base | `deploy/shell/tmpfiles.d/baremetal-shell.conf` | `/etc/tmpfiles.d/` |
+| Web service drop-in (joins `baremetal-shell-client`, sets `SHELL_BROKER_SOCKET`) | `deploy/shell/systemd/web-shell-client.conf` | `/etc/systemd/system/baremetal-web.service.d/shell-client.conf` |
+| `SHELL_BROKER_GID` for the launcher | written by `install-host.sh` | `/etc/baremetal-shell/launcher.env` |
 | `/dev/kvm` permissions | `deploy/shell/udev/99-baremetal-kvm.rules` | `/etc/udev/rules.d/` |
 | Firecracker 1.17.0 + jailer (static) | downloaded by `scripts/shell/install-host.sh`, sha256 pinned | `/usr/local/libexec/baremetal-shell/v1.17.0/`, symlink `current` |
 | Guest kernel (6.1.191) | `scripts/shell/build-kernel.sh` | `/usr/local/share/baremetal-shell/images/vmlinux` |
@@ -18,7 +20,7 @@ Status: written 30 October 2026 and **not yet exercised on a real host**. Everyt
 | Lab namespace firewall | `deploy/shell/nftables/lab-session.nft` (tested by `test-lab-session.sh`) | applied per session by the launcher |
 | Code | the repository | `/opt/baremetal-shell` (root-owned, read-only to services) |
 
-Users and groups (all created by `install-host.sh`): user `baremetal-shell-broker` (no login, primary group `baremetal-shell-client`, supplementary `baremetal-shell-launch`). The launcher runs as root with a reduced capability set; there is deliberately no launcher user. Group `baremetal-shell-client` is what the **web service** must join (`SupplementaryGroups=baremetal-shell-client` in `baremetal-web.service`, not changed by this work). Group `baremetal-shell-launch` is the only group that can connect to the launcher socket, and only the broker is in it. Firecracker processes run under numeric uids 300000-365535 with no accounts behind them; the script refuses to continue if any account sits in that range. The prototype uses a single uid (`SHELL_VM_UID`, 300001) for every VM. One uid per session is the stronger setup (TODO-to-confirm with the launcher author; if adopted, the unit needs no change because the range is already reserved).
+Users and groups (all created by `install-host.sh`): user `baremetal-shell-broker` (no login, primary group `baremetal-shell-client`, supplementary `baremetal-shell-launch`). The launcher runs as root with a reduced capability set; there is deliberately no launcher user. Group `baremetal-shell-client` is what the **web service** joins, through the drop-in `deploy/shell/systemd/web-shell-client.conf` (installed by `install-host.sh` when `baremetal-web.service` is present; `baremetal-web.service` itself does not name the group, so it still starts on hosts without the shell). Group `baremetal-shell-launch` is the only group that can connect to the launcher socket and to the per-VM vsock socket links, and only the broker is in it. The launcher learns its numeric gid from `SHELL_BROKER_GID` in `/etc/baremetal-shell/launcher.env` (written by `install-host.sh`; required by the unit) and **refuses to start unless that number equals the group of `/run/baremetal-shell`**, which tmpfiles.d sets to `baremetal-shell-launch`, so a wrong number cannot hand the sockets to another group. Firecracker processes run under numeric uids and gids 300000-365535 with no accounts or groups behind them; the script refuses to continue if any account or group sits in that range. Each VM slot has its own uid (`SHELL_VM_UID_BASE` + slot, so 300000-300015 with 16 slots), so two live VMMs never share one.
 
 ## Host requirements
 
@@ -48,24 +50,32 @@ The units were checked with `systemd-analyze verify` and scored with `systemd-an
 - `journalctl -u baremetal-shell-launcher -b` for `EPERM`, `Operation not permitted` or `Bad system call`. The capability list in `CapabilityBoundingSet=` and the `SystemCallFilter=` lines are a best derivation from the jailer's behaviour (chroot, pivot_root, mknod, chown, setuid, namespace creation). Add only the one item that the journal names. `SystemCallErrorNumber=EPERM` makes missing syscalls fail visibly instead of killing the process with SIGSYS.
 - `MemoryDenyWriteExecute=yes` with `node --jitless`: Node without the JIT works under it in principle; WebAssembly would not. MDWE is inherited by the jailer and Firecracker. If Firecracker or the Node runtime fails to start because of it, remove it from the launcher first and record why.
 - `Delegate=` + `DelegateSubgroup=supervisor` + `ProtectControlGroups=private`: the intent is that the jailer's default cgroup path (`/sys/fs/cgroup/firecracker/<id>`) lands inside the launcher unit's cgroup, so the slice limits cover every VM. Confirm after the first VM boots: `systemd-cgls /baremetal-shell.slice` must show the VM's cgroup under the launcher unit, and `cat /sys/fs/cgroup/baremetal-shell.slice/memory.max` must read 8G. If the private cgroup root turns out to be the `supervisor` subgroup (not the unit), the jailer cannot enable controllers there (Node process in the same cgroup); the fallback is to pass the jailer `--parent-cgroup` and make the cgroup root a launcher setting (TODO-to-confirm; `startJailedVm` already has a `cgroupRoot` option).
-- `PrivateDevices=yes` with `DeviceAllow=/dev/kvm rwm`: the second makes the unit's device cgroup allow the node that the jailer creates inside each chroot. If a VM fails with "permission denied" on `/dev/kvm`, this is the place to look.
+- `DevicePolicy=closed` with `DeviceAllow=/dev/kvm rwm`, and deliberately **no** `PrivateDevices=yes`: that option also drops `CAP_MKNOD` from the bounding set, and the jailer must `mknod` `/dev/kvm` inside every chroot. The closed device cgroup allows only the standard pseudo devices plus `/dev/kvm` (read, write, mknod), and it also governs the per-VM cgroups below the unit. If a VM fails with "permission denied" or "operation not permitted" on `/dev/kvm`, this is the place to look.
 - `ProtectKernelTunables=yes` makes `/sys` read-only; check that the private cgroup mount stays writable.
-- How the broker reaches a VM's vsock socket (`v.sock` inside the root-only chroot) is not decided in the units: the broker unit makes `/var/lib/baremetal-shell` inaccessible. The launcher protocol in `src/lib/shell/launcher.ts` returns a socket path "reachable by the broker's group"; the mechanism (a socket link in `/run/baremetal-shell`, or fd passing) is TODO-to-confirm, and the unit's `ReadOnlyPaths=`/`ReadWritePaths=` must follow it.
+- The broker reaches a VM's vsock socket through a hard link, `/var/lib/baremetal-shell/jail/sockets/<id>.sock` (root:`baremetal-shell-launch` 0660, in a root:`baremetal-shell-launch` 0750 directory; `exposeSocket` in `src/lib/shell/vm.ts`). `/var/lib/baremetal-shell` and `jail` are 0711 (the launcher unit's `StateDirectoryMode=` re-applies it at every start; tmpfiles.d creates all three). The broker unit replaces `/var/lib/baremetal-shell` with an empty read-only tmpfs and binds only `jail/sockets` into it read-only (`TemporaryFileSystem=` + `BindReadOnlyPaths=`), so it never sees a chroot. Check that a session connects; if the bind fails, use `ReadOnlyPaths=/var/lib/baremetal-shell/jail/sockets` without the tmpfs.
 
-## Environment variables (TODO-to-confirm)
+## Environment variables
 
-Confirmed from `scripts/shell-broker.mts` as of this writing: `SHELL_BROKER_SOCKET`, `SHELL_MAX_SESSIONS` (default 4), `SHELL_IDLE_SECONDS` (300), `SHELL_MAX_SECONDS` (1800); and, for the pre-split in-process root mode, `FIRECRACKER`, `JAILER`, `SHELL_KERNEL`, `SHELL_ROOTFS`, `SHELL_CHROOT_BASE`, `SHELL_VM_UID`, `SHELL_MODE`. After the privilege split these must be re-read from `scripts/shell-launcher.mts` and the new `scripts/shell-broker.mts`:
+Read from `scripts/shell-launcher.mts` and `scripts/shell-broker.mts`; the units set the values below.
 
-| Variable in the units | Where | Status |
-|---|---|---|
-| `SHELL_LAUNCHER_SOCKET=/run/baremetal-shell/launcher.sock` | both | name invented to make the units consistent; TODO-to-confirm |
-| `FIRECRACKER`, `JAILER`, `SHELL_KERNEL`, `SHELL_ROOTFS`, `SHELL_CHROOT_BASE`, `SHELL_VM_UID` | launcher | names from the old broker; TODO-to-confirm |
-| launcher VM cap (the launcher has `maxVms`, default 4) | launcher | no variable known; **must be at least `SHELL_MAX_SESSIONS`** or sessions are refused as `busy`. TODO-to-confirm |
-| per-VM limits (jailer `cpu.max`, `memory.max`, `pids.max`: today 50% / 400M / 64) | launcher | hard-coded defaults in `startJailedVm` unless exposed; the slice sizing below assumes these |
-| `SHELL_MODE` | broker | must not be settable in production (the unit does not set it) |
-| web service: broker socket path | web | TODO-to-confirm; the web unit needs the same value as `SHELL_BROKER_SOCKET` |
+| Variable | Where | Value in the units | Notes |
+|---|---|---|---|
+| `SHELL_LAUNCHER_SOCKET` | both | `/run/baremetal-shell/launcher.sock` | directory from tmpfiles.d, root:`baremetal-shell-launch` 0750 |
+| `FIRECRACKER`, `JAILER`, `SHELL_KERNEL`, `SHELL_ROOTFS`, `SHELL_CHROOT_BASE` | launcher | install layout | each must be root-owned up to `/` (`trusted-path.ts`) |
+| `SHELL_BROKER_GID` | launcher | from `/etc/baremetal-shell/launcher.env` | gid of `baremetal-shell-launch`; must equal the socket directory's group or the launcher refuses to start |
+| `SHELL_VM_UID_BASE` | launcher | `300000` | VM n runs as uid/gid base + n |
+| `SHELL_MAX_VMS` | launcher | `16` | hard VM cap; **must equal `SHELL_MAX_SESSIONS`** (a smaller value refuses sessions as `busy`, a larger one lets the launcher exceed the slice sizing) |
+| `SHELL_VM_MAX_SECONDS` | launcher | `2100` | lifetime backstop, above the broker's `SHELL_MAX_SECONDS` |
+| `SHELL_BROKER_SOCKET` | broker, web | `/run/baremetal-shell-broker/broker.sock` | the web drop-in sets the same value |
+| `SHELL_MAX_SESSIONS` | broker | `16` | sized with the slice below |
+| `SHELL_IDLE_SECONDS`, `SHELL_MAX_SECONDS` | broker | `300`, `1800` | per session |
+| `SHELL_DAILY_SECONDS` | broker | `7200` | VM time per account per UTC day; in memory, so a broker restart (which ends all sessions) resets it |
+| `SHELL_OUTPUT_PER_SEC`, `SHELL_OUTPUT_BURST`, `SHELL_OUTPUT_FLOOD_SECONDS` | broker | defaults | output rate limiting |
+| `SHELL_MODE`, `SHELL_LAUNCHER_MODE` | never | removed with `UnsetEnvironment=` | development-only unjailed modes; an env file cannot switch them on |
 
-`/etc/baremetal-shell/launcher.env` and `broker.env` are optional (`EnvironmentFile=-`) for overrides. They hold no secrets: the broker has none by design.
+Per-VM jailer limits (`cpu.max` 50%, `memory.max` 400M, `pids.max` 64) are defaults in `startJailedVm`, not variables; the slice sizing assumes them.
+
+`/etc/baremetal-shell/launcher.env` is required (it holds `SHELL_BROKER_GID`); `broker.env` is optional. Both are read by systemd as root and hold no secrets: the broker has none by design.
 
 ## Resource sizing
 
@@ -86,7 +96,7 @@ Let `S` be `SHELL_MAX_SESSIONS`. With the per-VM limits above (1 vCPU, 256 MiB g
 | 16 (shipped slice) | 8G | 800% | 1280 | 16 threads, 12 GiB |
 | 32 | 14G | 1600% | 2304 | 24 cores, 18 GiB |
 
-The shipped `baremetal-shell.slice` is sized for S = 16 and `MemoryHigh=7G`. For another S, edit the slice (or add `/etc/systemd/system/baremetal-shell.slice.d/size.conf`) **and** `SHELL_MAX_SESSIONS`, and keep the launcher's VM cap at least as large. The broker's own `MemoryMax=512M` and `TasksMax=64` do not depend on S for the byte-relay design (frames are at most 16 KiB; per session buffers are bounded), but watch it on the first load test. If sessions share cores with other work, remember the CPU quota is a ceiling, not a reservation.
+The shipped `baremetal-shell.slice` is sized for S = 16 and `MemoryHigh=7G`, with `SHELL_MAX_SESSIONS=16` and `SHELL_MAX_VMS=16`. For another S, edit the slice (or add `/etc/systemd/system/baremetal-shell.slice.d/size.conf`) **and** both variables (drop-ins or the env files), keeping them equal. The broker's own `MemoryMax=512M` and `TasksMax=64` do not depend on S for the byte-relay design (frames are at most 16 KiB; per session buffers are bounded), but watch it on the first load test. If sessions share cores with other work, remember the CPU quota is a ceiling, not a reservation.
 
 ## Host egress firewall
 
@@ -125,7 +135,8 @@ Alert on:
 
 - `destroy_failed`, or `ls /var/lib/baremetal-shell/jail/firecracker | wc -l` greater than the number of live sessions for more than five minutes (an orphan chroot or cgroup). The launcher reaps at start; a recurring orphan is a bug.
 - Either unit restarting (`NRestarts` rising, or three starts in ten minutes). A launcher restart ends every session by design.
-- `vm_end` reasons in unusual proportion: `cap`, `idle` or `output_cap` rising sharply, or one account hash producing many `start_failed` and `busy` events (probing for the cap).
+- `vm_end` reasons in unusual proportion: `cap`, `idle` or `output_cap` rising sharply, or one account hash producing many `start_failed` and `busy` events (probing for the cap). Broker `rejected` lines with reason `quota` show accounts hitting the daily limit.
+- The launcher failing to start with `stale VMs survived cgroup.kill`, or `destroy_failed` events: a VM could not be killed, its chroot was left in place and its slot stays reserved until a restart reaps it. Investigate before restarting.
 - Slice pressure: `memory.events` `high`/`max`/`oom_kill` in `/sys/fs/cgroup/baremetal-shell.slice/` nonzero; `pids.events` `max` nonzero; `cpu.stat` `nr_throttled` growing steadily for the whole slice (capacity, not abuse).
 - Kernel log: `kvm:`, `BUG:`, `Oops`, `general protection`, `nf_conntrack: table full`, any `Firecracker` seccomp violation (`audit: type=1326` / `SIGSYS`). A seccomp kill of a VMM is a possible escape attempt; preserve the journal and the chroot (disable cleanup) before anything else.
 - Firewall: counts of `bm-host-in-drop` and `bm-host-out-drop` log lines. Outbound drops on a host that should initiate nothing are interesting by themselves.
@@ -158,19 +169,36 @@ Run on the real host (or an identical staging host) after the install order abov
 8. The host has no swap, KSM is off, SMT policy is applied and recorded, and `mitigations=off` is not on the kernel command line.
 9. Sizing: run `S` simultaneous sessions with the busy-loop workload and confirm the slice stays under its limits and the host stays responsive.
 10. A learner account cannot open a second session; the (S+1)-th concurrent session is refused cleanly.
-11. The launcher cap (`maxVms`) is at least `S`, and the web endpoint, quotas and `content/legal/` changes are in place (separate work).
+11. `SHELL_MAX_VMS` equals `SHELL_MAX_SESSIONS` (= S). The web endpoint's limits are in place: per-user and per-IP creation rates, at most `LIMITS.maxPerIp` concurrent shells per client address, and the broker's `SHELL_DAILY_SECONDS`. Signing out (or a revoke, lock, ban or deletion) ends the user's open shell within one 15 s heartbeat.
 12. Alerts above are wired and each was triggered once on purpose (kill a VM's cgroup, fill the disk quota, stop the broker).
-13. Write down what was **not** tested and who accepted it: a hypervisor- or CPU-level escape is out of scope for tests and remains the accepted residual risk, mitigated by the empty host and the patch policy.
+13. Every item in "Host-only verifications" below is ticked off with its result.
+14. Write down what was **not** tested and who accepted it: a hypervisor- or CPU-level escape is out of scope for tests and remains the accepted residual risk, mitigated by the empty host and the patch policy.
 
-## Verified and unverified (30 October 2026)
+### Host-only verifications
+
+These cannot be checked on a development machine and have **never been run**. Each one is a launch blocker; record the command output for each.
+
+- [ ] **Cgroup path under `ProtectControlGroups=private`.** After the first VM boots, `systemd-cgls /baremetal-shell.slice` shows `firecracker/bm-<id>` below `baremetal-shell-launcher.service`, the jailer's `cpu.max`, `memory.max` and `pids.max` are set there, and the launcher's reaper and `cgroup.kill` act on that same directory (`/sys/fs/cgroup/firecracker/<id>` inside the unit's namespace). If the controllers cannot be enabled, use the `--parent-cgroup` fallback described in "First-start checks".
+- [ ] **Slice ceilings.** `cat /sys/fs/cgroup/baremetal-shell.slice/{memory.max,memory.high,cpu.max,pids.max}` read 8G, 7G, 800% and 1280; S busy-loop sessions stay under them and `memory.events` shows no `oom_kill` outside the VM cgroups.
+- [ ] **`CAP_MKNOD` and the device cgroup.** The jailer creates `/dev/kvm` in a chroot (`ls -l /var/lib/baremetal-shell/jail/firecracker/<id>/root/dev/kvm` while a VM runs), Firecracker opens it, and opening any other device node from inside the launcher's cgroup fails (`DevicePolicy=closed`).
+- [ ] **Node `--jitless` under `MemoryDenyWriteExecute=yes`.** Both units start and serve a session with MDWE on; the jailer and Firecracker, which inherit it, boot a VM.
+- [ ] **Broker sees only the socket directory.** `nsenter` into the broker (or `systemd-run -p ...` with its settings) and confirm `ls /var/lib/baremetal-shell` shows only `jail/sockets`, and a session connects through `jail/sockets/<id>.sock`.
+- [ ] **`SHELL_BROKER_GID` pinning.** Edit `launcher.env` to a wrong gid: the launcher refuses to start naming `SHELL_BROKER_GID`. Restore it.
+- [ ] **Hostile suite.** `scripts/shell/hostile/run.sh` on a disposable host built from these units passes in full; record the results in `docs/security.md`.
+- [ ] **`nosmt` (or the chosen SMT policy).** `cat /sys/devices/system/cpu/smt/control` reads `off` or `forceoff` after reboot, or the written acceptance of option (c) exists.
+- [ ] **nft rules.** `nft list ruleset` matches `host-egress.nft` with real addresses; from a second session, SSH from a non-admin address and outbound connections other than DNS/NTP/updates fail and appear in the drop counters; the lab cases pass from inside a real guest.
+- [ ] **Reaper and leak handling.** Kill the launcher with SIGKILL while VMs run: the restart reaps every chroot, cgroup and socket link. A VM that will not die keeps its chroot and the launcher refuses to start (`stale VMs survived cgroup.kill`) rather than reuse its uid.
+
+## Verified and unverified (30 October 2026, updated 10 November 2026)
 
 Verified here, without root and without booting a VM:
 
-- The three unit files parse under `systemd-analyze verify` (systemd 262) with no warnings; `systemd-analyze security --offline`: launcher 2.4 (OK), broker 0.4 (SAFE).
+- The three unit files parse under `systemd-analyze verify` (systemd 262) with no warnings; `systemd-analyze security --offline`: launcher 2.6 (OK; 2.4 before `PrivateDevices=` was replaced by `DevicePolicy=closed`), broker 0.4 (SAFE).
+- Unit tests (`npm run test:unit`, `tests/unit/shell-*.test.mts`): the `SHELL_BROKER_GID` and chroot-base checks with injected stat results; a VM that survives destroy keeps its launcher slot and its chroot (fake jailer and cgroup files); the reaper skips and reports live VMs; the broker's daily quota and connection cap; the web side's per-IP cap, input and resize costs, session binding (including token rotation), heartbeat recheck and `killUser`.
 - `udevadm verify` accepts the udev rule; `systemd-tmpfiles --dry-run` parses the tmpfiles entry (group and user lookups fail only because the accounts do not exist on the development machine).
 - `install-host.sh --dry-run` runs as a normal user and prints every action; non-dry-run refuses to run unprivileged; `sh -n` is clean (shellcheck is not installed here).
 - The Firecracker v1.17.0 tarball hash (`06094a11...e558`) was downloaded and matched the published `.sha256.txt`; the archive's internal `SHA256SUMS` match; both binaries are static-pie with no interpreter.
 - The kernel tarball hash comes from the PGP-signed `sha256sums.asc`; the configuration step passes its assertions.
 - `lab-session.nft` and `host-egress.nft` pass `nft -c`; the lab ruleset passed its behavioural test in user and network namespaces.
 
-Not verified: any real VM start under the units (capabilities, seccomp list, MDWE, device cgroup, delegated cgroup layout); the kernel compile and boot; `install-host.sh` actual (root) execution; the launcher entry point and its environment names; vsock socket handover between launcher and broker; lab tap creation; host firewall behaviour on real interfaces; behaviour under hostile workloads.
+Not verified: everything in "Host-only verifications"; the kernel compile and boot; `install-host.sh` actual (root) execution, including writing `launcher.env` and the web drop-in; `TemporaryFileSystem=` + `BindReadOnlyPaths=` in the broker unit; lab tap creation; behaviour under hostile workloads.

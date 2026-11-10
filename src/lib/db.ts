@@ -67,6 +67,8 @@ async function ensureIndexes(db: Db) {
     db.collection("admin_audit").createIndex({ ts: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 365 }),
     db.collection("admin_audit").createIndex({ targetId: 1, ts: -1 }),
     db.collection("tutor_usage").createIndex({ ts: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 180 }),
+    // Keyed owner hash (see tutor-budget.ts), used to export and delete one account's usage rows.
+    db.collection("tutor_usage").createIndex({ owner: 1 }, { sparse: true }),
   ]);
   await migrateTutorCache(db);
 }

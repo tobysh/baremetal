@@ -120,9 +120,13 @@ node --conditions=react-server --env-file=.env.local --import tsx scripts/delive
 
 Delivery is at least once, so a crash after SMTP accepts a message may cause a duplicate. Monitor delivery failures and expired jobs. Use `npm ci` for deployment so the committed lockfile controls dependency versions; production dependency audit on 29 October 2026 reported zero advisories.
 
-## CSP rendering constraint
+## Content Security Policy
 
-The installed Next.js guide (`node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md`) explicitly says nonce CSP is incompatible with Partial Prerendering. This app uses Cache Components and partial shells. Strict nonce enforcement remains a separate rendering migration; simply adding a nonce header would block shell scripts and break hydration. The existing CSP remains enforced, including its `script-src 'unsafe-inline'` limitation. The only application inline script is the static theme bootstrap; it receives no learner data. Both Markdown renderers have executable-markup regression fixtures.
+`src/proxy.ts` sets a per-request policy on every page: a fresh nonce plus the SHA-256 hashes of the inline scripts in the prerendered shells, with no `script-src 'unsafe-inline'` (details and the reasoning in `docs/security.md`). Deployment consequences:
+
+- Run `next start` from the project directory: the proxy reads the shells from `.next/server/app` on its first request. If it cannot, it logs `[csp] no prerendered shells found` and serves the old `'unsafe-inline'` policy; treat that log line as a deployment error.
+- Do not add a `Content-Security-Policy` header in nginx (`deploy/nginx/baremetal.conf` has none; a second header is enforced as well) and do not cache HTML pages in nginx or a CDN, because a cached page would carry a stale nonce.
+- After each build, run `npx tsx scripts/security/csp-check.mts https://<site>` (add `--no-browser` where Chromium is not installed). It fails if any inline script is not covered, which is how a Next or React upgrade that adds a shell script would show up.
 
 ## Database backup and restore
 

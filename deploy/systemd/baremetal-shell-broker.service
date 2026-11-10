@@ -16,17 +16,20 @@ WorkingDirectory=/opt/baremetal-shell
 ExecStart=/usr/bin/env node --jitless --import tsx scripts/shell-broker.mts
 Environment=NODE_ENV=production
 Environment=PATH=/usr/local/bin:/usr/bin
-# Confirmed names (scripts/shell-broker.mts at the time of writing):
+# Variables read by scripts/shell-broker.mts. The broker gets no kernel, rootfs, jailer or chroot path: VMs come from
+# the launcher.
 Environment=SHELL_BROKER_SOCKET=/run/baremetal-shell-broker/broker.sock
+Environment=SHELL_LAUNCHER_SOCKET=/run/baremetal-shell/launcher.sock
+# Must equal the launcher's SHELL_MAX_VMS; the slice is sized for 16 (docs/shell-deployment.md, "Resource sizing").
 Environment=SHELL_MAX_SESSIONS=16
 Environment=SHELL_IDLE_SECONDS=300
 Environment=SHELL_MAX_SECONDS=1800
-# TODO-to-confirm after the privilege split lands: the launcher socket variable, and whether FIRECRACKER/SHELL_KERNEL/
-# SHELL_ROOTFS/JAILER/SHELL_CHROOT_BASE/SHELL_VM_UID/SHELL_MODE are dropped from the broker (they must be: it is
-# unprivileged and gets no kernel, rootfs or chroot path). SHELL_MODE must not be settable here at all.
-Environment=SHELL_LAUNCHER_SOCKET=/run/baremetal-shell/launcher.sock
+# VM time per account per UTC day (in memory; a broker restart resets it).
+Environment=SHELL_DAILY_SECONDS=7200
 # Optional overrides only; never put secrets here, the broker has none.
 EnvironmentFile=-/etc/baremetal-shell/broker.env
+# Applied after EnvironmentFile=: the development-only unjailed mode can never be switched on from an env file.
+UnsetEnvironment=SHELL_MODE FIRECRACKER SHELL_KERNEL SHELL_ROOTFS
 UMask=0007
 Restart=on-failure
 RestartSec=3
@@ -49,11 +52,17 @@ PrivateDevices=yes
 ProcSubset=pid
 ProtectProc=invisible
 # The two socket directories (created by tmpfiles.d): its own listening socket, and the launcher's socket to connect to.
-# TODO-to-confirm: how the broker reaches each VM's vsock socket (today it is inside the root-only jail directory).
 ReadWritePaths=/run/baremetal-shell-broker
 ReadOnlyPaths=/run/baremetal-shell
-InaccessiblePaths=-/etc/baremetal -/var/lib/baremetal -/var/lib/baremetal-shell -/opt/baremetal-web -/opt/baremetal-runner -/root -/boot -/usr/local/share/baremetal-shell -/usr/local/libexec/baremetal-shell
-NoExecPaths=/run/baremetal-shell /run/baremetal-shell-broker
+# Each VM's vsock socket is a root:baremetal-shell-launch 0660 link in /var/lib/baremetal-shell/jail/sockets (see
+# exposeSocket in src/lib/shell/vm.ts). The broker sees only that directory: the rest of /var/lib/baremetal-shell (the
+# per-VM chroots) is replaced by an empty read-only tmpfs and the socket directory is bound into it read-only.
+# Connecting to a Unix socket needs write permission on the socket inode, not a writable mount. UNVERIFIED on a real
+# host; if the bind fails, fall back to ReadOnlyPaths=/var/lib/baremetal-shell/jail/sockets without the tmpfs.
+TemporaryFileSystem=/var/lib/baremetal-shell:ro
+BindReadOnlyPaths=/var/lib/baremetal-shell/jail/sockets
+InaccessiblePaths=-/etc/baremetal -/var/lib/baremetal -/opt/baremetal-web -/opt/baremetal-runner -/root -/boot -/usr/local/share/baremetal-shell -/usr/local/libexec/baremetal-shell
+NoExecPaths=/run/baremetal-shell /run/baremetal-shell-broker /var/lib/baremetal-shell
 ExecPaths=/usr /opt/baremetal-shell
 
 # --- Network: Unix sockets only (path-based sockets work across network namespaces).

@@ -1,22 +1,14 @@
 import type { NextConfig } from "next";
+import { contentSecurityPolicy } from "./src/lib/csp";
 
 const isDev = process.env.NODE_ENV === "development";
 
 // No third-party origins at all: fonts are self-hosted by next/font, analytics
-// is first-party, and the tutor is called from the server.
-const csp = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self'",
-  "connect-src 'self'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-  ...(isDev ? [] : ["upgrade-insecure-requests"]),
-].join("; ");
+// is first-party, and the tutor is called from the server. Pages get a per-request
+// policy with a nonce and the shell-script hashes from src/proxy.ts; this static one
+// (no inline scripts at all) covers what the proxy skips: API routes, build assets
+// and static files.
+const csp = contentSecurityPolicy({ dev: isDev });
 
 const securityHeaders = [
   { key: "Content-Security-Policy", value: csp },

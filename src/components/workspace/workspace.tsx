@@ -462,7 +462,7 @@ export function Workspace({
 
   return (
     <div ref={rootRef} onKeyDown={onKeyDown} className="flex flex-col overflow-clip panel lg:min-h-0 lg:flex-1">
-      <div className="sticky top-16 z-10 flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-surface px-3 py-3 lg:relative">
+      <div className="sticky top-16 z-10 flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-surface px-3 py-3 lg:static">
         <span className="font-mono text-xs text-muted">{LANGUAGE_FILE[exercise.language]}</span>
         <span className="text-xs text-muted" aria-live="polite">
           {variant === "review" ? "Review draft: saved solution unchanged" : recovered ? "Recovered browser draft. Save it to your account." : saveState === "error" ? "Couldn't save. Your draft is still in the editor." : signedIn ? (saveState === "saved" && savedAt !== null ? <SavedAgo key={savedAt} at={savedAt} /> : saveState === "saving" ? "Saving…" : edited !== null ? "Unsaved changes" : "") : saveState === "saved" && savedAt !== null ? <SavedAgo key={savedAt} at={savedAt} where=" in this browser" /> : "Saved in this browser only"}

@@ -26,6 +26,8 @@ export type Exercise = {
   cases?: StdoutCase[];
   /** C: code using CHECK(name, cond, fmt, ...) with its own main(). Rust: #[test] functions. asm: C file (tests.c) declaring the learner's functions extern. Go: a bm_test.go file (package main, with its own imports) of TestXxx functions. */
   harness?: string;
+  /** C only: a `driver.c` (src/lib/verdict.ts) that replaces `harness`. It calls the learner's functions with fixed and seeded inputs and the runner compares its records with the reference solution's. Server-only, like `solution`. */
+  driver?: string;
   hints: string[];
 };
 

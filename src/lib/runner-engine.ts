@@ -12,8 +12,10 @@ import { tmpdir, homedir, userInfo } from "node:os";
 import path from "node:path";
 import type { Exercise, Language } from "./curriculum/types";
 import { runnerResources } from "./runner-resources";
+import { VERDICT_PRELUDE, compareTranscripts, parseTranscript, type Transcript } from "./verdict";
 
 const MAX_OUTPUT = 64 * 1024;
+const MAX_RECORDS = 4 * 1024 * 1024;
 const COMPILE_TIMEOUT_MS = 20_000;
 // Go has no precompiled standard library in this toolchain, so the first build in a fresh
 // sandbox compiles what it imports (about 3 s wall, 25 s CPU across cores). Give it its own budget.
@@ -196,7 +198,9 @@ async function withSlot<T>(pool: Pool, fn: () => Promise<T>): Promise<T> {
   }
 }
 
-type Exec = { stdout: string; stderr: string; code: number | null; signal: string | null; timedOut: boolean; truncated: boolean; ms: number };
+type Exec = { stdout: string; stderr: string; code: number | null; signal: string | null; timedOut: boolean; truncated: boolean; ms: number; records?: string };
+/** `seed`: verdict runs only. The 16 seed bytes are written to fd 4 and fd 5 carries the driver's records back (src/lib/verdict.ts). */
+type ExecOpts = { timeoutMs: number; stdin?: string | Buffer;limits: string[]; env?: Record<string, string>; run?: boolean; tmpMb?: number; artifact?: string; goCache?: "overlay" | "seed"; seed?: Buffer };
 
 // Syscalls no learner program or toolchain needs, and which are the usual route from a
 // sandboxed process into the host kernel (io_uring, bpf, userfaultfd, perf, ptrace, module
@@ -289,12 +293,12 @@ function sandboxArgs(work: string, extraEnv: Record<string, string> = {}, opts: 
 /** Occupy a runner slot for the duration of `fn` under the current request's identity (exported for scheduler checks). */
 export const withRunnerSlot = <T,>(pool: "compile" | "run", fn: () => Promise<T>) => withSlot(POOLS[pool], fn);
 
-async function exec(work: string, cmd: string[], opts: { timeoutMs: number; stdin?: string; limits: string[]; env?: Record<string, string>; run?: boolean; tmpMb?: number; artifact?: string; goCache?: "overlay" | "seed" }): Promise<Exec> {
+async function exec(work: string, cmd: string[], opts: ExecOpts): Promise<Exec> {
   // Builds (artifact jobs) take a compile slot, program runs a run slot, each only while the child lives.
   return withSlot(opts.artifact ? POOLS.compile : POOLS.run, () => execUnslotted(work, cmd, opts));
 }
 
-async function execUnslotted(work: string, cmd: string[], opts: { timeoutMs: number; stdin?: string; limits: string[]; env?: Record<string, string>; run?: boolean; tmpMb?: number; artifact?: string; goCache?: "overlay" | "seed" }): Promise<Exec> {
+async function execUnslotted(work: string, cmd: string[], opts: ExecOpts): Promise<Exec> {
   const resources = await runnerResources(!!opts.artifact);
   try {
     return await new Promise<Exec>((resolve) => {
@@ -308,7 +312,21 @@ async function execUnslotted(work: string, cmd: string[], opts: { timeoutMs: num
         const at = args.indexOf("--clearenv") + 1;
         args.splice(at, 0, "--setenv", "BM_ARTIFACT", opts.artifact);
       }
-      const child = spawn(resources.command, [...resources.prefix, ...args], { stdio: ["pipe", "pipe", "pipe", "pipe", ...(opts.artifact ? ["pipe" as const] : [])] });
+      const extra = opts.artifact ? ["pipe" as const] : opts.seed ? ["pipe" as const, "pipe" as const] : [];
+      const child = spawn(resources.command, [...resources.prefix, ...args], { stdio: ["pipe", "pipe", "pipe", "pipe", ...extra] });
+      let records = "";
+      if (opts.seed && !opts.artifact) {
+        const seedPipe = child.stdio[4] as Writable;
+        seedPipe.on("error", () => {});
+        seedPipe.end(opts.seed);
+        ((child.stdio as unknown[])[5] as import("node:stream").Readable).on("data", (chunk: Buffer) => {
+          if (records.length + chunk.length > MAX_RECORDS) {
+            if (!truncated) { truncated = true; child.kill("SIGKILL"); }
+            return;
+          }
+          records += chunk.toString("latin1");
+        });
+      }
       const binary: Buffer[] = [];
       let binarySize = 0;
       if (opts.artifact) (child.stdio[4] as import("node:stream").Readable).on("data", (chunk: Buffer) => {
@@ -362,7 +380,7 @@ async function execUnslotted(work: string, cmd: string[], opts: { timeoutMs: num
           try { await writeFile(path.join(work, opts.artifact), Buffer.concat(binary), { mode: 0o700 }); }
           catch (error) { stderr += String(error); code = 1; }
         }
-        resolve({ stdout, stderr, code, signal: childSignal, timedOut, truncated, ms: Date.now() - started });
+        resolve({ stdout, stderr, code, signal: childSignal, timedOut, truncated, ms: Date.now() - started, ...(opts.seed ? { records } : {}) });
       });
       child.stdin.on("error", () => {});
       child.stdin.end(opts.stdin ?? "");
@@ -518,17 +536,30 @@ function kernelTestSource(student: string, harness: string, nonce: string, undef
   return `${student}\n${undefs}\n#undef kmain\n#line 1 "tests.c"\n${kernelTestPrelude(nonce)}\n${harness}\n`;
 }
 
-async function compileKernel(dir: string, source: string, test: boolean) {
+const KERNEL_LINK = [
+  `gcc ${KERNEL_CFLAGS} -c boot.S runtime.c`,
+  `ld -m elf_x86_64 -nostdlib -z max-page-size=4096 -T link.ld -o kernel64.elf boot.o runtime.o kernel.o`,
+  `objcopy -O elf32-i386 kernel64.elf kernel.elf`,
+];
+
+async function writeKernelSupport(dir: string) {
   for (const f of ["boot.S", "runtime.c", "link.ld"]) await writeFile(path.join(/*turbopackIgnore: true*/ dir, f), await readFile(path.join(/*turbopackIgnore: true*/ KERNEL_SUPPORT, f)));
+}
+
+/** Run mode only (no hidden code). Test builds go through compileKernelTest. */
+async function compileKernel(dir: string, source: string) {
+  await writeKernelSupport(dir);
   await writeFile(path.join(dir, "kernel.c"), source);
-  const rename = test ? "-Dkmain=__bm_student_kmain " : "";
-  const script = [
-    `gcc ${KERNEL_CFLAGS} -c boot.S runtime.c`,
-    `gcc ${KERNEL_CFLAGS} ${rename}-c kernel.c`,
-    `ld -m elf_x86_64 -nostdlib -z max-page-size=4096 -T link.ld -o kernel64.elf boot.o runtime.o kernel.o`,
-    `objcopy -O elf32-i386 kernel64.elf kernel.elf`,
-  ].join(" && ");
+  const script = [`gcc ${KERNEL_CFLAGS} -c kernel.c`, ...KERNEL_LINK].join(" && ");
   return exec(dir, ["sh", "-c", script], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "kernel.elf" });
+}
+
+/** Test mode: assembles the scanned combined source (compileToAssembly) from stdin, so no source file sits beside it. */
+async function compileKernelTest(dir: string, built: Assembled) {
+  await writeKernelSupport(dir);
+  const script = [`gcc -m64 -c -x assembler - -o kernel.o`, ...KERNEL_LINK].join(" && ");
+  const r = await exec(dir, ["sh", "-c", script], { stdin: built.asm, timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "kernel.elf" });
+  return { ...r, stderr: built.step.stderr + r.stderr, stdout: built.step.stdout + r.stdout };
 }
 
 // QEMU needs a lot of address space, so no --as limit here; CPU time, process count, file
@@ -651,14 +682,14 @@ export async function warmGoCache(): Promise<Exec> {
 }
 
 async function compile(dir: string, language: Language, source: string, opts: { test?: boolean; harness?: string } = {}) {
-  if (language === "kernel") return compileKernel(dir, source, !!opts.test);
+  if (language === "kernel") return compileKernel(dir, source);
   if (language === "go") return compileGo(dir, source, opts.test ? (opts.harness ?? "") : null);
   if (language === "asm") return compileAsm(dir, source, opts.test ? (opts.harness ?? "") : null);
   if (language === "c") {
     await writeFile(path.join(dir, "main.c"), source);
     await writeFile(path.join(dir, "bm_init.c"), C_STDIO_INIT);
-    const rename = opts.test ? ["-Dmain=__bm_student_main"] : [];
-    return exec(dir, ["gcc", ...C_FLAGS, ...rename, "main.c", "bm_init.c", "-o", "prog", "-lm"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "prog" });
+    // Run and stdout modes only (no hidden code). Harness builds go through compileCTest.
+    return exec(dir, ["gcc", ...C_FLAGS, "main.c", "bm_init.c", "-o", "prog", "-lm"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "prog" });
   }
   if (!RUST_TC) throw new Error("Rust toolchain not found. Install it with rustup or set RUST_TOOLCHAIN_DIR.");
   await writeFile(path.join(dir, "main.rs"), source);
@@ -749,6 +780,8 @@ async function keepOnlyProgram(dir: string) {
 //    `#define if(c) if(1)` can't rewrite the tests. Macros from system headers are restored to
 //    their header definitions. Names the lesson's own starter defines (COM1, ...) are left alone because
 //    harnesses use them.
+// This standalone build can differ from the real one, so the real combined build is checked again
+// (compileToAssembly below); that second check is what stops directives gated on the difference.
 // Residual: the harness still shares a translation unit (docs/security.md L1/L2); the proper fix is
 // compiling it as a separate object, which struct-testing C harnesses would need type declarations for.
 const SENTINEL = "\n#ifdef BM_PREFLIGHT_END\n#error bm-self-include\n#endif\n#define BM_PREFLIGHT_END\n";
@@ -812,7 +845,63 @@ async function guardSharedSource(language: "c" | "kernel", code: string, starter
   return { ok: true, undefs: lines.join("\n") };
 }
 
-const HARNESS_REACH_MESSAGE = "Your code reads files or builds assembler directives at compile time, which could reach the hidden tests. Tests can't be checked while it's there. Remove it and run the tests again.";
+// ---------- Combined test build (C and kernel) ----------
+
+// The guard above sees the learner's file alone, so anything gated on a difference between that
+// build and the real one (`#ifdef __SSP_STRONG__`, a file that only the real directory holds) was
+// invisible to it. The real build is therefore split in two:
+//  1. the combined source (learner + harness, real flags and renames) is compiled with `gcc -S` in a
+//     directory holding only that file; every file the preprocessor opened (-MD) must be the source
+//     itself or a system header under /usr, and the emitted assembly is scanned for directives that
+//     read files or generate directives;
+//  2. that exact assembly is fed to `as` on stdin and linked in a directory that holds no source at
+//     all (C: bm_init.c; kernel: boot.S, runtime.c, link.ld), so a directive the scan missed still
+//     has no harness file to open.
+// What is scanned is byte-for-byte what is assembled, so there is no gate left to split the two.
+const ASM_READS = /(?:^|[;:\n]|\*\/)[ \t]*\.(?:incbin|include|macro|altmacro|irpc?|rept|reptc?)\b/i;
+const ASM_MARK = "\n@@BM-ASM\n";
+
+type Assembled = { asm: Buffer; step: Exec };
+type Assembly = ({ ok: true } & Assembled) | { ok: false; reach: boolean; step: Exec };
+
+/** True if gas could read a file or build a directive from this assembly (also with C comments removed). */
+const asmReaches = (asm: string) => ASM_READS.test(asm) || ASM_READS.test(asm.replace(/\/\*[\s\S]*?\*\//g, " "));
+
+/** -MD output: every dependency must be the source file itself or a plain path under /usr. */
+function unexpectedDependency(deps: string, file: string): boolean {
+  const text = deps.replace(/\\\n/g, " ").trim();
+  if (!text.startsWith("bm:")) return true;
+  return text.slice(3).trim().split(/\s+/).filter(Boolean).some((dep) =>
+    dep !== file && !(dep.startsWith("/usr/") && !/\\|\$|(?:^|\/)\.\.?(?:\/|$)/.test(dep)));
+}
+
+async function compileToAssembly(language: "c" | "kernel", source: string): Promise<Assembly> {
+  const file = language === "kernel" ? "kernel.c" : "main.c";
+  const flags = language === "kernel" ? `${KERNEL_CFLAGS} -Dkmain=__bm_student_kmain` : `${C_FLAGS.join(" ")} -Dmain=__bm_student_main`;
+  return withWorkdir(async (work): Promise<Assembly> => {
+    await writeFile(path.join(work, file), source);
+    const script = `gcc ${flags} -MD -MF bm.d -MT bm -S ${file} -o bm.s && { cat bm.d; printf '${ASM_MARK.replaceAll("\n", "\\n")}'; cat bm.s; } > out`;
+    const step = await exec(work, ["sh", "-c", script], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "out" });
+    if (step.code !== 0) return { ok: false, reach: false, step };
+    const out = await readFile(path.join(work, "out"));
+    const at = out.indexOf(ASM_MARK, 0, "latin1");
+    if (at < 0) return { ok: false, reach: true, step };
+    const asm = out.subarray(at + ASM_MARK.length);
+    if (unexpectedDependency(out.subarray(0, at).toString("latin1"), file) || asmReaches(asm.toString("latin1"))) return { ok: false, reach: true, step };
+    return { ok: true, asm, step };
+  });
+}
+
+async function compileCTest(dir: string, built: Assembled) {
+  await writeFile(path.join(dir, "bm_init.c"), C_STDIO_INIT);
+  const script = `gcc -c -x assembler - -o main.o && gcc ${C_FLAGS.join(" ")} -c bm_init.c -o bm_init.o && gcc -fsanitize=undefined main.o bm_init.o -o prog -lm`;
+  const r = await exec(dir, ["sh", "-c", script], { stdin: built.asm, timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "prog" });
+  return { ...r, stderr: built.step.stderr + r.stderr, stdout: built.step.stdout + r.stdout };
+}
+
+const reachResult = (): TestResult => ({ compiled: true, compileOutput: "", results: [], allPassed: false, output: "", error: HARNESS_REACH_MESSAGE });
+
+const HARNESS_REACH_MESSAGE ="Your code reads files or builds assembler directives at compile time, which could reach the hidden tests. Tests can't be checked while it's there. Remove it and run the tests again.";
 
 /** Text with no honest use in a solution: the harness's result protocol, its internals, and load-time hooks. */
 const TAMPER_PATTERNS: RegExp[] = [
@@ -832,8 +921,10 @@ const TAMPER_PATTERNS_BY_LANGUAGE: Partial<Record<Language, RegExp[]>> = {
   rust: [/\binclude(?:_str|_bytes)?\b/, /#\s*!?\s*\[\s*path\b/],
   // GNU as directives are case-insensitive; macros can assemble a directive name from parameters.
   asm: [/\.(?:incbin|include|init_array|preinit_array|fini_array)\b/i, /\.(?:alt)?macro\b/i, /\.irpc?\b/i],
-  c: [/#\s*embed\b|__has_embed/],
-  kernel: [/#\s*embed\b|__has_embed/],
+  // __has_include(_next) probes which files sit beside the build, which is how a directive can be
+  // emitted only where the harness is present.
+  c: [/#\s*embed\b|__has_embed|__has_include/],
+  kernel: [/#\s*embed\b|__has_embed|__has_include/],
 };
 
 export function harnessTampering(code: string, language: Language): string | null {
@@ -904,13 +995,17 @@ export function setInitialValues(code: string, set: Record<string, string>): str
 
 const normalizeOut = (s: string) => s.replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, "").trimEnd();
 
-/** Run an exercise's tests against learner code. */
-export function testExercise(exercise: Exercise, code: string): Promise<TestResult> {
+/**
+ * Run an exercise's tests against learner code. `seed` fixes the 16-byte seed of a driver
+ * lesson (curriculum checks only); otherwise every attempt draws a fresh one.
+ */
+export function testExercise(exercise: Exercise, code: string, opts: { seed?: Buffer } = {}): Promise<TestResult> {
   return (
     withWorkdir(async (dir) => {
       if (exercise.mode === "stdout") return testStdout(dir, exercise, code);
       const tampering = harnessTampering(code, exercise.language);
       if (tampering) return { compiled: true, compileOutput: "", results: [], allPassed: false, output: "", error: tampering };
+      if (exercise.driver && exercise.language === "c") return testVerdict(dir, exercise, code, opts.seed ?? randomBytes(16));
       const result = await runHarness(dir, exercise, code);
       if (!result.allPassed) return result;
       // Every reported result must match what the harness really emits, so one forged PASS
@@ -1026,7 +1121,9 @@ async function testStdout(dir: string, ex: Exercise, code: string): Promise<Test
 async function testCHarness(dir: string, ex: Exercise, code: string, nonce: string): Promise<TestResult> {
   const guard = await guardSharedSource("c", code, ex.starter);
   if (!guard.ok) return guard.result;
-  return runCHarness(dir, nonce, () => compile(dir, "c", cTestSource(code, ex.harness ?? "", guard.undefs), { test: true }));
+  const built = await compileToAssembly("c", cTestSource(code, ex.harness ?? "", guard.undefs));
+  if (!built.ok && built.reach) return reachResult();
+  return runCHarness(dir, nonce, async () => (built.ok ? compileCTest(dir, built) : built.step));
 }
 
 function testAsmHarness(dir: string, ex: Exercise, code: string, nonce: string): Promise<TestResult> {
@@ -1069,7 +1166,9 @@ function parseHarnessOutput(text: string, nonce: string) {
 async function testKernelHarness(dir: string, ex: Exercise, code: string, nonce: string): Promise<TestResult> {
   const guard = await guardSharedSource("kernel", code, ex.starter);
   if (!guard.ok) return guard.result;
-  const c = await compile(dir, "kernel", kernelTestSource(code, ex.harness ?? "", nonce, guard.undefs), { test: true });
+  const built = await compileToAssembly("kernel", kernelTestSource(code, ex.harness ?? "", nonce, guard.undefs));
+  if (!built.ok && built.reach) return reachResult();
+  const c = built.ok ? await compileKernelTest(dir, built) : built.step;
   const compileOutput = redactHarnessDiagnostics(cleanCompilerOutput(c.stderr + c.stdout), "kernel", 0);
   if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: "Your code didn't compile." };
   const k = await bootKernel(dir);
@@ -1092,6 +1191,109 @@ async function runCHarness(dir: string, nonce: string, build: () => ReturnType<t
   if (running) results.push({ name: running, passed: false, message: error ?? "The program stopped during this test." });
   const allPassed = !error && valid && running === null && results.length > 0 && results.every((t) => t.passed);
   return { compiled: true, compileOutput, results, allPassed, output: [...userOutput, r.stderr.trim()].filter(Boolean).join("\n"), error: error ?? (!valid ? TESTS_INCOMPLETE : null), ...(r.timedOut ? { timedOut: true } : {}) };
+}
+
+// ---------- Out-of-process verdict (C lessons with a driver.c) ----------
+
+// The learner's file is compiled alone, in a directory holding nothing else, to an object; the
+// driver (VERDICT_PRELUDE + driver.c) is its own translation unit, built once per lesson together
+// with the reference program and cached. Learner and reference run in separate sandboxes with the
+// same seed, and the server compares their transcripts (src/lib/verdict.ts, docs/security.md L1).
+// The reference build is ownerless (not charged to the learner's compile budget, not cancelled
+// by one learner's disconnect) and a failed build is never cached, so the lesson fails closed.
+type VerdictReference = { ok: true; driverObject: Buffer; program: Buffer } | { ok: false; reason: string };
+const referenceCache = new Map<string, Promise<VerdictReference>>();
+const MAX_REFERENCE_CACHE = 128;
+const DRIVER_FLAGS = ["-std=c17", "-Wall", "-Wextra", "-O1", "-fno-builtin", "-fstack-protector-strong"];
+const driverSource = (driver: string) => `${VERDICT_PRELUDE}\n#line 1 "driver.c"\n${driver}\n`;
+
+function verdictReference(ex: Exercise): Promise<VerdictReference> {
+  const key = createHash("sha256").update(VERDICT_PRELUDE).update("\0").update(ex.driver ?? "").update("\0").update(ex.solution).digest("hex");
+  let hit = referenceCache.get(key);
+  if (hit) {
+    referenceCache.delete(key);
+    referenceCache.set(key, hit);
+    return hit;
+  }
+  const build = requestContext.exit(() => withWorkdir(async (dir): Promise<VerdictReference> => {
+    await writeFile(path.join(dir, "driver.c"), driverSource(ex.driver ?? ""));
+    const d = await exec(dir, ["gcc", ...DRIVER_FLAGS, "-c", "driver.c", "-o", "driver.o"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "driver.o" });
+    if (d.code !== 0) return { ok: false, reason: `driver.c does not compile:\n${cleanCompilerOutput(d.stderr + d.stdout)}` };
+    await writeFile(path.join(dir, "main.c"), ex.solution);
+    const p = await exec(dir, ["sh", "-c", `gcc ${C_FLAGS.join(" ")} -Dmain=__bm_student_main -c main.c -o main.o && gcc -fsanitize=undefined main.o driver.o -o prog -lm`], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "prog" });
+    if (p.code !== 0) return { ok: false, reason: `the reference solution does not build with the driver:\n${cleanCompilerOutput(p.stderr + p.stdout)}` };
+    return { ok: true, driverObject: await readFile(path.join(dir, "driver.o")), program: await readFile(path.join(dir, "prog")) };
+  })).catch((error: unknown): VerdictReference => ({ ok: false, reason: String(error) }));
+  hit = build.then((r) => {
+    if (!r.ok && referenceCache.get(key) === hit) referenceCache.delete(key);
+    return r;
+  });
+  referenceCache.set(key, hit);
+  while (referenceCache.size > MAX_REFERENCE_CACHE) {
+    const oldest = referenceCache.keys().next().value;
+    if (oldest === undefined) break;
+    referenceCache.delete(oldest);
+  }
+  return hit;
+}
+
+/** Run a verdict program (learner or reference) alone in a read-only work dir with this attempt's seed. */
+async function runVerdictProgram(dir: string, seed: Buffer) {
+  return exec(dir, ["./prog"], { run: true, timeoutMs: RUN_TIMEOUT_MS, limits: runLimits(), env: runEnv, seed });
+}
+
+/** The reference transcript for one seed, or why there is none. Exported for scripts/verify-curriculum.mts. */
+export async function referenceTranscript(ex: Exercise, seed: Buffer): Promise<{ ok: true; transcript: Transcript; text: string } | { ok: false; reason: string }> {
+  const ref = await verdictReference(ex);
+  if (!ref.ok) return ref;
+  return withWorkdir(async (dir) => {
+    await writeFile(path.join(dir, "prog"), ref.program, { mode: 0o700 });
+    const r = await runVerdictProgram(dir, seed);
+    const text = r.records ?? "";
+    const transcript = parseTranscript(text);
+    if (r.timedOut || r.truncated || r.signal || r.code !== 0 || !transcript.valid || !transcript.complete || transcript.cases.length === 0) {
+      return { ok: false, reason: `the reference run did not finish cleanly (exit ${r.code}${r.signal ? `, ${r.signal}` : ""}${r.timedOut ? ", timed out" : ""}): ${cleanCompilerOutput(r.stderr).slice(0, 500)}` };
+    }
+    return { ok: true, transcript, text };
+  });
+}
+
+const REFERENCE_UNAVAILABLE = "This lesson's checks could not be prepared right now, so your code wasn't judged. Try again in a moment.";
+
+async function testVerdict(dir: string, ex: Exercise, code: string, seed: Buffer): Promise<TestResult> {
+  const fail = (compiled: boolean, compileOutput: string, error: string): TestResult => ({ compiled, compileOutput, results: [], allPassed: false, output: "", error });
+  // 1. The learner's object, built where nothing but main.c exists (no driver, no solution).
+  await writeFile(path.join(dir, "main.c"), code);
+  const c = await exec(dir, ["gcc", ...C_FLAGS, "-Dmain=__bm_student_main", "-c", "main.c", "-o", "main.o"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "main.o" });
+  let compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
+  if (c.code !== 0) return fail(false, compileOutput, c.timedOut ? "Compilation took too long." : "Your code didn't compile.");
+  // 2. The driver object and the reference program (cached per lesson content).
+  const ref = await verdictReference(ex);
+  if (!ref.ok) return fail(true, compileOutput, REFERENCE_UNAVAILABLE);
+  // 3. Link. Only objects are present, so learner text can't read the driver source here either.
+  await rm(path.join(dir, "main.c"), { force: true });
+  await writeFile(path.join(dir, "driver.o"), ref.driverObject);
+  const l = await exec(dir, ["gcc", "-fsanitize=undefined", "main.o", "driver.o", "-o", "prog", "-lm"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "prog" });
+  compileOutput = [compileOutput, cleanCompilerOutput(l.stderr + l.stdout).replace(/^.*\bin function `bm_driver_':\n?/gm, "")].filter(Boolean).join("\n");
+  if (l.code !== 0) {
+    const missing = [...compileOutput.matchAll(/undefined reference to `(\w+)'/g)].map((m) => m[1]);
+    return fail(false, compileOutput, missing.length ? `The tests call ${[...new Set(missing)].join(", ")}, which your code doesn't define (check the name, and that it isn't static).` : "Your code didn't link.");
+  }
+  await keepOnlyProgram(dir);
+  // 4. Learner run, then the reference run with the same seed in its own sandbox.
+  const r = await runVerdictProgram(dir, seed);
+  const want = await referenceTranscript(ex, seed);
+  const output = [r.stdout.trim(), r.stderr.trim()].filter(Boolean).join("\n");
+  if (!want.ok) return { ...fail(true, compileOutput, REFERENCE_UNAVAILABLE), output };
+  const got = parseTranscript(r.records ?? "");
+  const crash = r.timedOut
+    ? `Timed out after ${RUN_TIMEOUT_MS / 1000}s — is there a loop that never ends?`
+    : r.truncated
+      ? "Output was cut off — your program printed a lot (maybe an infinite loop?)."
+      : (signalMessage(r.signal, r.code) ?? undefinedBehaviour(r.stderr) ?? (r.code !== 0 ? `The program exited with status ${r.code}.` : null));
+  const { results, intact } = compareTranscripts(want.transcript, got, crash);
+  const allPassed = !crash && intact && results.length > 0 && results.every((t) => t.passed);
+  return { compiled: true, compileOutput, results, allPassed, output, error: crash ?? (!intact ? TESTS_INCOMPLETE : null), ...(r.timedOut ? { timedOut: true } : {}) };
 }
 
 async function testGoHarness(dir: string, ex: Exercise, code: string): Promise<TestResult> {

@@ -1,0 +1,13 @@
+# Extends the default gitleaks rules. Only confirmed false positives are allowlisted.
+title = "baremetal gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic fixtures"
+paths = [
+  # The secret-scan lesson plants invented tokens and a fake "SYNTHETIC PRIVATE KEY" on purpose
+  # (starter.go, solution.go and tests.go).
+  '''content/sec-secure-delivery/05-secret-scan/.*''',
+]

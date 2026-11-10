@@ -27,6 +27,14 @@ function parseFrontmatter(src: string): { meta: Record<string, string>; body: st
 
 const read = (p: string) => readFileSync(p, "utf8");
 
+/** A C lesson may ship `driver.c` (out-of-process verdict) instead of `tests.c`; the driver wins if both exist. */
+function harnessFiles(dir: string, mode: Exercise["mode"], language: Track["language"], harnessExt: string): Pick<Exercise, "harness" | "driver"> {
+  if (mode !== "harness") return {};
+  const driver = path.join(dir, "driver.c");
+  if (language === "c" && existsSync(driver)) return { driver: read(driver) };
+  return { harness: read(path.join(dir, `tests.${harnessExt}`)) };
+}
+
 function loadLesson(trackDir: string, dirName: string, language: Track["language"]): Lesson | null {
   const dir = path.join(trackDir, dirName);
   const ext = { c: "c", asm: "s", go: "go", rust: "rs", kernel: "c" }[language];
@@ -47,7 +55,7 @@ function loadLesson(trackDir: string, dirName: string, language: Track["language
     mode,
     ...(revision > 1 ? { revision } : {}),
     cases: mode === "stdout" ? JSON.parse(read(path.join(dir, "cases.json"))) : undefined,
-    harness: mode === "harness" ? read(path.join(dir, `tests.${harnessExt}`)) : undefined,
+    ...harnessFiles(dir, mode, language, harnessExt),
     hints: read(path.join(dir, "hints.md"))
       .split(/\n===\n/)
       .map((h) => h.trim())

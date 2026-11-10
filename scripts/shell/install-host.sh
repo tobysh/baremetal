@@ -27,7 +27,8 @@ ETC=/etc/baremetal-shell
 G_CLIENT=baremetal-shell-client
 G_LAUNCH=baremetal-shell-launch
 U_BROKER=baremetal-shell-broker
-# Reserved uid/gid range for Firecracker processes (no accounts behind it). Must match SHELL_VM_UID in the launcher unit.
+# Reserved uid/gid range for Firecracker processes (no accounts or groups behind it). The launcher unit's
+# SHELL_VM_UID_BASE .. SHELL_VM_UID_BASE + SHELL_MAX_VMS - 1 must lie inside it.
 VM_UID_MIN=300000
 VM_UID_MAX=365535
 
@@ -93,10 +94,14 @@ if command -v findmnt >/dev/null 2>&1; then
   opts=$(findmnt -no OPTIONS -T "$(dirname "$STATE")" 2>/dev/null || true)
   case ",$opts," in *,nodev,*) bad "$(dirname "$STATE") is on a nodev mount; the jail base needs device nodes" ;; esac
 fi
-# The VM uid range must be unused.
+# The VM uid range must be unused, and so must the same numbers as gids: each VMM runs as uid N and gid N, so a group
+# with that gid would hand its members' files to a VM (and the VM's files to them).
 if getent passwd | awk -F: -v lo=$VM_UID_MIN -v hi=$VM_UID_MAX '$3>=lo && $3<=hi {found=1} END{exit !found}'; then
   bad "an account uses a uid in the reserved VM range $VM_UID_MIN-$VM_UID_MAX"
 else say "ok    uids $VM_UID_MIN-$VM_UID_MAX unused"; fi
+if getent group | awk -F: -v lo=$VM_UID_MIN -v hi=$VM_UID_MAX '$3>=lo && $3<=hi {found=1} END{exit !found}'; then
+  bad "a group uses a gid in the reserved VM range $VM_UID_MIN-$VM_UID_MAX"
+else say "ok    gids $VM_UID_MIN-$VM_UID_MAX unused"; fi
 
 if [ "$problems" != 0 ]; then
   if [ "$dry" = 1 ]; then say "(dry run: $problems check(s) would stop a real install)"; else die "$problems check(s) failed; nothing was changed"; fi
@@ -151,9 +156,25 @@ else
   run useradd --system --no-create-home --home-dir / --shell "$nologin" --gid "$G_CLIENT" --groups "$G_LAUNCH" "$U_BROKER"
 fi
 run install -d -m 0755 -o root -g root "$LIBEXEC" "$SHARE" "$SHARE/images"
-run install -d -m 0700 -o root -g root "$STATE" "$STATE/jail"
-run install -d -m 0750 -o root -g "$U_BROKER" "$ETC"   # optional launcher.env / broker.env; no secrets belong here
-say "NOTE  the web service must join group $G_CLIENT (SupplementaryGroups=) to reach the broker socket"
+# 0711: the broker must traverse both to reach jail/sockets; only root may list them. The launcher unit's
+# StateDirectoryMode= re-applies this at every start, and tmpfiles.d creates jail/sockets (root:$G_LAUNCH 0750).
+run install -d -m 0711 -o root -g root "$STATE" "$STATE/jail"
+# launcher.env / broker.env are read by systemd (as root), never by the services; no secrets belong here.
+run install -d -m 0755 -o root -g root "$ETC"
+# SHELL_BROKER_GID must be the numeric gid of $G_LAUNCH (systemd cannot resolve a group name into a variable). The
+# launcher refuses to start without it or when it differs from the group of /run/baremetal-shell.
+launch_gid=$(getent group "$G_LAUNCH" | cut -d: -f3 || true)
+if [ "$dry" = 1 ] && [ -z "$launch_gid" ]; then say "DRY   write SHELL_BROKER_GID=<gid of $G_LAUNCH> to $ETC/launcher.env"
+elif [ -z "$launch_gid" ]; then die "group $G_LAUNCH has no gid"
+elif [ -f "$ETC/launcher.env" ] && grep -qx "SHELL_BROKER_GID=$launch_gid" "$ETC/launcher.env"; then say "ok    $ETC/launcher.env has SHELL_BROKER_GID=$launch_gid"
+elif [ -f "$ETC/launcher.env" ] && grep -q '^SHELL_BROKER_GID=' "$ETC/launcher.env"; then die "$ETC/launcher.env sets a SHELL_BROKER_GID other than $launch_gid ($G_LAUNCH); fix it by hand"
+elif [ "$dry" = 1 ]; then say "DRY   append SHELL_BROKER_GID=$launch_gid to $ETC/launcher.env (root:root 0644)"
+else
+  printf 'SHELL_BROKER_GID=%s\n' "$launch_gid" >> "$ETC/launcher.env"
+  chown root:root "$ETC/launcher.env"
+  chmod 0644 "$ETC/launcher.env"
+  say "wrote SHELL_BROKER_GID=$launch_gid to $ETC/launcher.env"
+fi
 
 # ---- 4. systemd, tmpfiles, udev ----------------------------------------------------------------------------------
 say "== units, tmpfiles.d, udev rule"
@@ -162,6 +183,13 @@ for u in baremetal-shell.slice baremetal-shell-launcher.service baremetal-shell-
 done
 run install -m 0644 -o root -g root "$repo/deploy/shell/tmpfiles.d/baremetal-shell.conf" /etc/tmpfiles.d/baremetal-shell.conf
 run install -m 0644 -o root -g root "$repo/deploy/shell/udev/99-baremetal-kvm.rules" /etc/udev/rules.d/99-baremetal-kvm.rules
+# The web service joins $G_CLIENT through a drop-in, so baremetal-web.service itself stays valid on hosts without the shell.
+if [ -f /etc/systemd/system/baremetal-web.service ]; then
+  run install -d -m 0755 -o root -g root /etc/systemd/system/baremetal-web.service.d
+  run install -m 0644 -o root -g root "$repo/deploy/shell/systemd/web-shell-client.conf" /etc/systemd/system/baremetal-web.service.d/shell-client.conf
+else
+  say "NOTE  baremetal-web.service is not installed here; on the host that runs it, install deploy/shell/systemd/web-shell-client.conf as baremetal-web.service.d/shell-client.conf"
+fi
 run systemd-tmpfiles --create /etc/tmpfiles.d/baremetal-shell.conf
 run udevadm control --reload
 run udevadm trigger --action=change --subsystem-match=misc --sysname-match=kvm

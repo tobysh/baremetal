@@ -9,6 +9,8 @@
 //   TUTOR_PRICE_IN_PER_MTOK / TUTOR_PRICE_OUT_PER_MTOK   USD per million tokens (default 1 / 5)
 //   TUTOR_PRICE_CACHE_READ_MULT / TUTOR_PRICE_CACHE_WRITE_MULT  multiples of the input price (default 0.1 / 1.25)
 
+import { hmac } from "./crypto";
+
 export type Usage = { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; provider?: string };
 
 const num = (name: string, fallback: number) => {
@@ -110,3 +112,23 @@ export async function reserveBudget(db: import("mongodb").Db, userId: string, am
     await adjust((usage ? estimateCostMicro(usage) : 0) - amount);
   };
 }
+
+// Per-question usage records (`tutor_usage`). Each new row carries `owner`, a keyed HMAC of the user id
+// (never the id itself), so the account's rows can be exported and deleted. Rows written before this
+// have no owner; they cannot be linked to anyone and age out through the 180-day TTL index.
+type UsageCollection = {
+  insertOne(doc: Record<string, unknown>): Promise<unknown>;
+  deleteMany(filter: { owner: string }): Promise<unknown>;
+  find(filter: { owner: string }, options?: { projection: Record<string, 0 | 1> }): { toArray(): Promise<Record<string, unknown>[]> };
+};
+type UsageDb = { collection(name: string): UsageCollection };
+
+export const tutorUsageOwner = (userId: string) => hmac("tutor-usage-owner", userId);
+
+export const recordTutorUsage = (db: UsageDb, userId: string, row: Record<string, unknown>, now = new Date()) =>
+  db.collection("tutor_usage").insertOne({ ...row, owner: tutorUsageOwner(userId), ts: now });
+
+export const deleteTutorUsage = (db: UsageDb, userId: string) => db.collection("tutor_usage").deleteMany({ owner: tutorUsageOwner(userId) });
+
+export const exportTutorUsage = (db: UsageDb, userId: string) =>
+  db.collection("tutor_usage").find({ owner: tutorUsageOwner(userId) }, { projection: { _id: 0, owner: 0 } }).toArray();

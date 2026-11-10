@@ -73,11 +73,12 @@ Set on the broker/launcher units; names and status are in [shell-deployment.md](
 |---|---|---|
 | `SHELL_BROKER_SOCKET` | none | Broker socket; also read by the web app to find it |
 | `SHELL_LAUNCHER_SOCKET` | none | Launcher socket the broker talks to |
-| `SHELL_MAX_SESSIONS` | `4` | Concurrent sessions |
+| `SHELL_MAX_SESSIONS` | `4` | Concurrent sessions (the unit sets 16; keep equal to `SHELL_MAX_VMS`) |
 | `SHELL_IDLE_SECONDS`, `SHELL_MAX_SECONDS` | `300`, `1800` | Idle and absolute session limits |
+| `SHELL_DAILY_SECONDS` | `7200` | VM time per account per UTC day (broker memory) |
 | `SHELL_OUTPUT_PER_SEC`, `SHELL_OUTPUT_BURST`, `SHELL_OUTPUT_FLOOD_SECONDS` | 128 KiB, 512 KiB, `60` | Output rate limiting |
-| `SHELL_KERNEL`, `SHELL_ROOTFS`, `SHELL_CHROOT_BASE`, `SHELL_BROKER_GID`, `SHELL_VM_UID_BASE`, `SHELL_MAX_VMS`, `SHELL_VM_MAX_SECONDS` | see `scripts/shell-launcher.mts` | Launcher inputs. Must be root-owned (`trusted-path.ts`) |
-| `SHELL_MODE=unjailed` | unset | Development only; refused in production |
+| `SHELL_KERNEL`, `SHELL_ROOTFS`, `SHELL_CHROOT_BASE`, `SHELL_BROKER_GID`, `SHELL_VM_UID_BASE`, `SHELL_MAX_VMS`, `SHELL_VM_MAX_SECONDS` | see `scripts/shell-launcher.mts` | Launcher inputs. Paths must be root-owned (`trusted-path.ts`); `SHELL_BROKER_GID` must equal the group of the launcher socket's directory |
+| `SHELL_MODE=unjailed`, `SHELL_LAUNCHER_MODE=unjailed` | unset | Development only; refused in production and removed by the units (`UnsetEnvironment=`) |
 
 ## Scripts and tooling
 

@@ -109,7 +109,8 @@ type Tok = { text: string; start: number; end: number };
  * is also checked with comments kept, since a comment is still visible text). `start` and `end` are
  * offsets into the original string; `end` is -1 when the token runs to the end of the text (it may still be growing).
  */
-function leakTokens(raw: string, stripComments: boolean): Tok[] {
+function leakTokens(raw: string, stripComments: boolean, language = ""): Tok[] {
+  const asm = language === "asm";
   const src: string[] = [];
   const at: number[] = [];
   let pos = 0;
@@ -128,8 +129,18 @@ function leakTokens(raw: string, stripComments: boolean): Tok[] {
       let j = i + 2;
       while (j < src.length && !(src[j] === "*" && src[j + 1] === "/")) j++;
       i = j + 2;
-    } else if (stripComments && c === "/" && src[i + 1] === "/") {
+    } else if (stripComments && ((c === "/" && src[i + 1] === "/") || (asm && (c === ";" || c === "#")))) {
+      // Assembly line comments: `;` and `#` (a `$` immediate is not a comment).
       while (i < src.length && src[i] !== "\n") i++;
+    } else if (asm && c === '"') {
+      // String literals are kept as plain tokens so a `;` or `#` inside one does not start a comment.
+      out.push({ text: c, start: at[i], end: at[i] + 1 });
+      let j = i + 1;
+      while (j < src.length && src[j] !== '"' && src[j] !== "\n") {
+        out.push({ text: src[j], start: at[j], end: at[j] + 1 });
+        j += src[j] === "\\" ? 2 : 1;
+      }
+      i = j;
     } else if (/[A-Za-z_]/.test(c)) {
       let j = i + 1;
       while (j < src.length && /\w/.test(src[j])) j++;
@@ -150,8 +161,8 @@ function leakTokens(raw: string, stripComments: boolean): Tok[] {
 }
 
 /** The window width for a solution: 24 tokens, less for a very short solution so it is still covered. */
-function widthFor(solution: string): number {
-  const n = leakTokens(solution, true).length;
+function widthFor(solution: string, language = ""): number {
+  const n = leakTokens(solution, true, language).length;
   return n >= 2 * MAX_WIDTH ? MAX_WIDTH : Math.max(MIN_WIDTH, Math.ceil(n / 2));
 }
 
@@ -167,17 +178,19 @@ class LeakView {
   private priorTokens: number;
   private prior: Tok[];
   checked = 0;
-  constructor(readonly strip: boolean, readonly width: number, solution: string, starter: string, prior: string) {
-    this.answer = windowSet(leakTokens(solution, strip), width);
-    this.given = windowSet(leakTokens(starter, strip), width);
-    this.prior = leakTokens(prior, strip);
+  private readonly language: string;
+  constructor(readonly strip: boolean, readonly width: number, solution: string, starter: string, prior: string, language = "") {
+    this.answer = windowSet(leakTokens(solution, strip, language), width);
+    this.given = windowSet(leakTokens(starter, strip, language), width);
+    this.prior = leakTokens(prior, strip, language);
+    this.language = language;
     this.priorTokens = this.prior.length;
     // Windows made only of earlier replies were checked when those replies were given.
     this.checked = Math.max(0, this.priorTokens - width + 1);
   }
   /** Checks every new complete window of prior + reply; returns whether one matches, and where text is safe up to. */
   scan(reply: string, final: boolean): { hit: boolean; safeTo: number } {
-    const own = leakTokens(reply, this.strip);
+    const own = leakTokens(reply, this.strip, this.language);
     const all = [...this.prior, ...own];
     // The last token may still be growing, so only count it once more text follows.
     const complete = final || !own.length || own.at(-1)!.end >= 0 ? all.length : all.length - 1;
@@ -196,9 +209,9 @@ class LeakView {
  * Suppress substantial solution excerpts before any response is sent or cached. `prior` holds earlier
  * assistant replies in the same thread, so a solution split across turns is caught.
  */
-export function exposesSolution(reply: string, solution: string, starter: string, prior: string[] = []): boolean {
-  const width = widthFor(solution);
-  return [true, false].some((strip) => new LeakView(strip, width, solution, starter, prior.join("\n")).scan(reply, true).hit);
+export function exposesSolution(reply: string, solution: string, starter: string, prior: string[] = [], language = ""): boolean {
+  const width = widthFor(solution, language);
+  return [true, false].some((strip) => new LeakView(strip, width, solution, starter, prior.join("\n"), language).scan(reply, true).hit);
 }
 
 /**
@@ -214,10 +227,10 @@ export class SolutionGuard {
   private reply = "";
   private shown = 0;
   leaked = false;
-  constructor(solution: string, starter: string, prior: string[] = []) {
-    const width = widthFor(solution);
+  constructor(solution: string, starter: string, prior: string[] = [], language = "") {
+    const width = widthFor(solution, language);
     const before = prior.join("\n");
-    this.views = [true, false].map((strip) => new LeakView(strip, width, solution, starter, before));
+    this.views = [true, false].map((strip) => new LeakView(strip, width, solution, starter, before, language));
   }
   private scan(final: boolean): number {
     let safe = Infinity;

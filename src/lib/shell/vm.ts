@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { constants as fsConstants } from "node:fs";
 import { chmod, chown, copyFile, link as link_, lstat, mkdir, mkdtemp, readdir, readFile, rm, rmdir, writeFile } from "node:fs/promises";
 import { connect, type Socket } from "node:net";
 import os from "node:os";
@@ -13,6 +14,12 @@ export type Vm = {
   /** Destroy the VM and remove everything it left on the host. Safe to call twice. */
   destroy(): Promise<void>;
 };
+
+/**
+ * Destroying a VM did not end it (or could not be confirmed): a process may still run under its uid, and its chroot,
+ * which that uid owns, was left alone. The caller must keep the VM's slot and uid out of use until a restart reaps it.
+ */
+export class VmLeakError extends Error {}
 
 export type VmSpec = {
   firecracker: string;
@@ -80,6 +87,8 @@ export type JailedSpec = VmSpec & {
   cpuMax?: string;
   memoryMax?: string;
   pidsMax?: number;
+  /** How long destroy() waits for cgroup.kill to empty the cgroup. */
+  killWaitMs?: number;
 };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -104,18 +113,23 @@ export async function startJailedVm(spec: JailedSpec): Promise<Vm> {
   let destroyed: Promise<void> | undefined;
   const destroy = () => (destroyed ??= (async () => {
     await writeFile(path.join(cgroup, "cgroup.kill"), "1").catch(() => {});
-    for (let i = 0; i < 50 && (await alive()); i++) await sleep(100);
+    const deadline = Date.now() + (spec.killWaitMs ?? 5_000);
+    while ((await alive()) && Date.now() < deadline) await sleep(100);
+    // Nothing is deleted while a process may still run as the VM uid: it owns the chroot and could race the removal.
+    // The caller must not reuse this VM's uid either; the launcher keeps the slot until a restart reaps it.
+    if (await alive()) throw new VmLeakError(`VM ${id} survived cgroup.kill`);
     if (link) await rm(link, { force: true });
     await rm(vmDir, { recursive: true, force: true });
     await rmdir(cgroup).catch(() => {}); // cgroup directories are removed with rmdir, not rm
-    // The caller must not reuse this VM's uid while a process may still run under it.
-    if (await alive()) throw new Error(`VM ${id} survived cgroup.kill`);
   })());
   let socketPath = path.join(root, "v.sock");
   try {
     await mkdir(root, { recursive: true });
-    await copyFile(spec.kernel, path.join(root, "vmlinux"));
-    await copyFile(spec.rootfs, path.join(root, "rootfs.ext4"));
+    // Reflink where the filesystem supports it (XFS, btrfs), a plain copy otherwise. Sharing blocks is safe: the drive
+    // is attached read-only (is_read_only in vmConfig, "ro" on the kernel command line), and a write to a reflinked
+    // copy would be copy-on-write anyway, never reaching the source.
+    await copyFile(spec.kernel, path.join(root, "vmlinux"), fsConstants.COPYFILE_FICLONE);
+    await copyFile(spec.rootfs, path.join(root, "rootfs.ext4"), fsConstants.COPYFILE_FICLONE);
     await writeFile(path.join(root, "vm.json"), vmConfig({ ...spec, kernel: "/vmlinux", rootfs: "/rootfs.ext4" }, "/v.sock"));
     for (const entry of ["", "root", "root/vmlinux", "root/rootfs.ext4", "root/vm.json"]) await chown(path.join(vmDir, entry), spec.uid, spec.uid);
     const jailer = spawn(spec.jailer, [
@@ -128,7 +142,11 @@ export async function startJailedVm(spec: JailedSpec): Promise<Vm> {
     if (!(await alive())) throw new Error("jailer did not start a VM");
     if (link) socketPath = await exposeSocket(path.join(root, "v.sock"), link, spec.uid, spec.socketGid!);
   } catch (error) {
-    await destroy().catch(() => {});
+    // A VM that could not be destroyed must surface as a leak, never as an ordinary start failure, or the launcher
+    // would hand its slot (and uid) to the next VM while it may still be running.
+    await destroy().catch((leak: unknown) => {
+      throw leak instanceof VmLeakError ? leak : new VmLeakError(`VM ${id} cleanup failed: ${String(leak)}`);
+    });
     throw error;
   }
   const exited = (async () => {
@@ -163,21 +181,34 @@ async function exposeSocket(inChroot: string, link: string, vmUid: number, gid: 
 
 /**
  * Remove VMs, chroots, cgroups and socket links left by a crashed launcher. Run once at startup, before accepting
- * requests: the launcher is their only owner, so anything here is stale.
+ * requests: the launcher is their only owner, so anything here is stale. A VM that does not die within `waitMs` keeps
+ * its files and the call throws VmLeakError: starting anyway could hand its uid to a new VM.
  */
-export async function reapStaleVms(chrootBase: string, firecracker: string, cgroupRoot = "/sys/fs/cgroup"): Promise<number> {
+export async function reapStaleVms(chrootBase: string, firecracker: string, cgroupRoot = "/sys/fs/cgroup", waitMs = 5_000): Promise<number> {
   const name = path.basename(firecracker);
   const list = async (dir: string) => (await readdir(dir).catch(() => [] as string[])).filter((i) => /^bm-[0-9a-f]{12}$/.test(i));
   const ids = new Set([...(await list(path.join(chrootBase, name))), ...(await list(path.join(cgroupRoot, name)))]);
+  const alive = async (id: string) => (await readFile(path.join(cgroupRoot, name, id, "cgroup.procs"), "utf8").catch(() => "")).trim().length > 0;
   for (const id of ids) await writeFile(path.join(cgroupRoot, name, id, "cgroup.kill"), "1").catch(() => {});
-  if (ids.size) await sleep(300);
+  let survivors = [...ids];
+  const deadline = Date.now() + waitMs;
+  for (;;) {
+    const next: string[] = [];
+    for (const id of survivors) if (await alive(id)) next.push(id);
+    survivors = next;
+    if (!survivors.length || Date.now() >= deadline) break;
+    await sleep(100);
+  }
   for (const id of ids) {
+    if (survivors.includes(id)) continue;
     await rm(path.join(chrootBase, name, id), { recursive: true, force: true });
     await rmdir(path.join(cgroupRoot, name, id)).catch(() => {});
   }
   for (const entry of await readdir(socketsDir(chrootBase)).catch(() => [] as string[])) {
-    if (/^bm-[0-9a-f]{12}\.sock$/.test(entry)) await rm(path.join(socketsDir(chrootBase), entry), { force: true });
+    const m = /^(bm-[0-9a-f]{12})\.sock$/.exec(entry);
+    if (m && !survivors.includes(m[1])) await rm(path.join(socketsDir(chrootBase), entry), { force: true });
   }
+  if (survivors.length) throw new VmLeakError(`stale VMs survived cgroup.kill: ${survivors.join(", ")}`);
   return ids.size;
 }
 

@@ -41,7 +41,7 @@ const broker = createServer((socket) => {
 });
 await new Promise<void>((r) => broker.listen(socketPath, r));
 
-let user: ShellUser | null = { id: "user-one-0000000000000001", emailVerified: true };
+let user: ShellUser | null = { id: "user-one-0000000000000001", emailVerified: true, session: "sess-1" };
 let allow = true;
 const handlers = createShellHandlers({
   getUser: async () => user,
@@ -49,7 +49,9 @@ const handlers = createShellHandlers({
   rateLimit: async () => allow,
   hash: (purpose, data) => Buffer.from(`${purpose}:${data}`).toString("base64url").padEnd(20, "0"),
   clientIp: () => "203.0.113.9",
+  ipLimit: (_ip, limit) => limit,
   socketPath: () => socketPath,
+  sessionCurrent: async (session) => session,
 });
 
 const base = "http://localhost:3000";
@@ -67,11 +69,11 @@ try {
   ok("cross-site and origin-less requests are refused");
   user = null;
   assert.equal((await create()).status, 401);
-  user = { id: "user-one-0000000000000001", emailVerified: false };
+  user = { id: "user-one-0000000000000001", emailVerified: false, session: "sess-1" };
   assert.equal((await create()).status, 403);
   assert.equal(seen.length, 0, "broker untouched by gated requests");
   ok("signed-out and unverified accounts never reach the broker");
-  user = { id: "user-one-0000000000000001", emailVerified: true };
+  user = { id: "user-one-0000000000000001", emailVerified: true, session: "sess-1" };
 
   // Rate limit.
   allow = false;
@@ -101,7 +103,7 @@ try {
   assert.ok(token.length >= 40);
   const rec = seen[seen.length - 1];
   assert.deepEqual([rec.open!.cols, rec.open!.rows], [80, 24]);
-  assert.ok(!rec.open!.account.includes(user.id) && /^[A-Za-z0-9_-]{8,128}$/.test(rec.open!.account), "account is an opaque hash");
+  assert.ok(!rec.open!.account.includes(user!.id) && /^[A-Za-z0-9_-]{8,128}$/.test(rec.open!.account), "account is an opaque hash");
   ok("session opens with an opaque account hash");
 
   // One session per account, also when racing.
@@ -110,7 +112,7 @@ try {
 
   // Other users cannot touch the token; bad token is 404.
   const mine = user;
-  user = { id: "user-two-0000000000000002", emailVerified: true };
+  user = { id: "user-two-0000000000000002", emailVerified: true, session: "sess-1" };
   const sid = (suffix = "") => `/api/shell/${token}${suffix}`;
   assert.equal((await handlers.input(post(sid("/input"), "a", { "content-type": "application/octet-stream" }), token)).status, 404);
   assert.equal((await handlers.stream(new Request(`${base}${sid()}`, { headers: headers() }), token)).status, 404);

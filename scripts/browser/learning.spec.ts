@@ -14,7 +14,7 @@ const userToken = randomBytes(32).toString("hex"), adminToken = randomBytes(32).
 const tracks = getTracks();
 const zero = tracks.find((track) => track.slug === "first-steps")!;
 const go = tracks.find((track) => track.slug === "go-foundations")!;
-const login = async (page: Page, admin = false) => page.context().addCookies([{ name: SESSION_COOKIE, value: admin ? adminToken : userToken, url: base, httpOnly: true, secure: SECURE_COOKIES, sameSite: "Strict" }]);
+const login = async (page: Page, admin = false) => page.context().addCookies([{ name: SESSION_COOKIE, value: admin ? adminToken : userToken, domain: new URL(base).hostname, path: "/", httpOnly: true, secure: SECURE_COOKIES, sameSite: "Strict" }]);
 const edit = async (page: Page, code: string) => {
   const editor = page.getByRole("textbox", { name: /code editor/ });
   await editor.click();
@@ -35,8 +35,9 @@ test.beforeEach(async () => { await db.collection("progress").deleteMany({ userI
 test("anonymous recommendations and small-screen catalogue", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/learn");
-  await expect(page.getByRole("heading", { name: "Your recommended starting point" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Start first lesson" })).toHaveAttribute("href", "/learn/first-steps/hello-world");
+  const recommended = page.getByRole("region", { name: "Recommended for you" });
+  await expect(recommended.getByText("Start here", { exact: true })).toBeVisible();
+  await expect(recommended.getByRole("link", { name: /^Start: / })).toHaveAttribute("href", "/learn/first-steps/hello-world");
   await page.getByText("What you'll learn").first().click();
   await expect(page.getByText(zero.outcomes[0]).first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

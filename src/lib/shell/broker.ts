@@ -10,6 +10,11 @@ export type BrokerLimits = {
   idleMs: number;
   /** Hard wall-clock cap from admission, boot included. */
   absoluteMs: number;
+  /**
+   * VM time per account per UTC day, from admission until the VM is destroyed. Held in memory only (nothing is
+   * stored), so a broker restart, which ends every session, also resets it.
+   */
+  dailyMs: number;
   /** Time allowed for the guest agent to report ready. */
   bootMs: number;
   /** Time allowed between connecting and sending a valid OPEN frame. */
@@ -33,6 +38,7 @@ export const DEFAULT_LIMITS: BrokerLimits = {
   maxSessions: 4,
   idleMs: 5 * 60_000,
   absoluteMs: 30 * 60_000,
+  dailyMs: 2 * 3_600_000,
   bootMs: 15_000,
   openMs: 5_000,
   inputBurst: 64 * 1024,
@@ -53,6 +59,8 @@ export type BrokerOptions = {
   startVm: () => Promise<Vm>;
   limits?: Partial<BrokerLimits>;
   audit?: (event: AuditEvent) => void;
+  /** Clock for the daily quota (tests). Timers always use real time. */
+  clock?: () => number;
 };
 
 class Bucket {
@@ -95,6 +103,7 @@ const errorFrame = (code: string, message: string) => encodeFrame(FrameType.Erro
 const MESSAGES: Record<string, string> = {
   busy: "No shell is free right now. Try again in a minute.",
   account_busy: "You already have a shell open.",
+  quota: "You have used today's shell time. It resets at midnight UTC.",
   bad_open: "Invalid request.",
   idle_timeout: "The shell closed after a period of inactivity.",
   time_limit: "The shell reached its time limit.",
@@ -115,8 +124,23 @@ export function createBroker(options: BrokerOptions) {
   const sessions = new Set<{ end: (reason: string) => Promise<void> }>();
   const accounts = new Set<string>();
   let reserved = 0; // sessions admitted (booting + live) until their VM is destroyed
+  const clock = options.clock ?? Date.now;
+  // Daily VM time per account hash, for the current UTC day only (cleared when the day changes).
+  const usage = new Map<string, number>();
+  let usageDay = -1;
+  const usedToday = (account: string) => {
+    const day = Math.floor(clock() / 86_400_000);
+    if (day !== usageDay) {
+      usage.clear();
+      usageDay = day;
+    }
+    return usage.get(account) ?? 0;
+  };
 
   const server: Server = createServer((client) => handle(client));
+  // Idle or slow connections hold no VM, but each costs a descriptor and parser; the web side never needs more than
+  // one connection per session plus a few being opened or closed.
+  server.maxConnections = limits.maxSessions * 2 + 8;
 
   function handle(client: Socket) {
     const id = randomBytes(8).toString("hex");
@@ -136,6 +160,7 @@ export function createBroker(options: BrokerOptions) {
     let vmStart: Promise<Vm> | undefined;
     let guest: Socket | undefined;
     let admitted = false;
+    let admittedAt = 0;
     let bytesIn = 0;
     let bytesOut = 0;
     let idleTimer: NodeJS.Timeout | undefined;
@@ -165,7 +190,10 @@ export function createBroker(options: BrokerOptions) {
           // Capacity and the per-account lock are released only once the VM is really gone.
           if (admitted) {
             reserved--;
-            if (account) accounts.delete(account);
+            if (account) {
+              accounts.delete(account);
+              usage.set(account, usedToday(account) + Math.max(0, clock() - admittedAt));
+            }
           }
           if (previous === "waiting" && !admitted) audit({ event: "rejected", reason, account });
           else audit({ event: "session_end", id, account, reason, durationMs: Date.now() - started, bytesIn, bytesOut });
@@ -204,13 +232,18 @@ export function createBroker(options: BrokerOptions) {
       if (!request) return void end("bad_open");
       account = request.account;
       if (accounts.has(account)) return void end("account_busy"); // the more specific answer wins over "busy"
+      const remaining = limits.dailyMs - usedToday(account);
+      if (remaining <= 0) return void end("quota");
       if (reserved >= limits.maxSessions) return void end("busy");
       accounts.add(account);
       reserved++;
       admitted = true;
+      admittedAt = clock();
       state = "booting";
       sessions.add(session);
-      absoluteTimer = setTimeout(() => void end("time_limit"), limits.absoluteMs);
+      // Whichever comes first: the per-session cap or what is left of the account's daily time.
+      if (remaining < limits.absoluteMs) absoluteTimer = setTimeout(() => void end("quota"), remaining);
+      else absoluteTimer = setTimeout(() => void end("time_limit"), limits.absoluteMs);
       bootTimer = setTimeout(() => void end("boot_failed"), limits.bootMs);
       try {
         vmStart = options.startVm();

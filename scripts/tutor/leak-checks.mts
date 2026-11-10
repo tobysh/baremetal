@@ -34,6 +34,22 @@ for (const [name, reply] of Object.entries(evasions)) {
   assert.equal(s.leaked, true, `guard: ${name}`);
 }
 
+// Assembly: `;` and `#` comments interleaved between instructions must not hide the solution.
+{
+  const asmSolution = "sum:\n  xor eax, eax\n  xor ecx, ecx\n.loop:\n  cmp ecx, esi\n  jge .done\n  add eax, [rdi + rcx*4]\n  inc rcx\n  jmp .loop\n.done:\n  ret\n";
+  const asmStarter = "sum:\n  xor eax, eax\n  ret\n";
+  const lines = asmSolution.trim().split("\n");
+  for (const [name, mark] of [["semicolon", "; note"], ["hash", "# note"]] as const) {
+    const reply = "```asm\n" + lines.map((l) => `${l} ${mark} x`).join("\n") + "\n```";
+    assert.equal(exposesSolution(reply, asmSolution, asmStarter, [], "asm"), true, `asm ${name} comments: exposesSolution`);
+    const g = new SolutionGuard(asmSolution, asmStarter, [], "asm");
+    for (let i = 0; i < reply.length; i += 5) g.push(reply.slice(i, i + 5));
+    g.finish();
+    assert.equal(g.leaked, true, `asm ${name} comments: guard`);
+  }
+  assert.equal(exposesSolution("Loop over the array adding each element to eax; return it.", asmSolution, asmStarter, [], "asm"), false);
+}
+
 // A solution wrapped in an unterminated comment is still visible to the learner.
 assert.equal(exposesSolution(`/* ${body}`, solution, starter), true, "unterminated comment");
 

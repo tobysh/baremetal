@@ -12,6 +12,8 @@
     "make-admin": "tsx --env-file=.env.local scripts/make-admin.mts",
     "test:unit": "node --conditions=react-server --import tsx --test tests/unit/*.test.mts",
     "check:legal": "tsx scripts/checks/legal-drift.mts",
+    "test:sessions": "node --conditions=react-server --experimental-test-module-mocks --import tsx --test scripts/security/sessions.mts",
+    "test:rate-limits": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/security/rate-limits.mts",
     "test:sandbox": "node --conditions=react-server --import tsx scripts/security/sandbox-escape.mts",
     "test:e2e": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/e2e-auth.mts",
     "flagged-accounts": "tsx --env-file=.env.local scripts/flagged-accounts.mts",

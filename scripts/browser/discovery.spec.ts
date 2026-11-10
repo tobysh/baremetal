@@ -61,7 +61,7 @@ test.describe("search", () => {
 });
 
 test("the next unfinished lesson is marked Up next with text and aria-current", async ({ page }) => {
-  await page.context().addCookies([{ name: SESSION_COOKIE, value: token, url: base, httpOnly: true, secure: SECURE_COOKIES, sameSite: "Strict" }]);
+  await page.context().addCookies([{ name: SESSION_COOKIE, value: token, domain: new URL(base).hostname, path: "/", httpOnly: true, secure: SECURE_COOKIES, sameSite: "Strict" }]);
   await db.collection("progress").deleteMany({ userId });
   await db.collection("progress").insertOne({ userId, exerciseId: first.lessons[0].exercise.id, trackSlug: first.slug, status: "passed", code: "", attempts: 1, startedAt: new Date(), passedAt: new Date(), updatedAt: new Date() });
   await page.goto(`/learn/${first.slug}`);

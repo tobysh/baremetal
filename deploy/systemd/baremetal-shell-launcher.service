@@ -17,22 +17,29 @@ User=root
 Group=root
 Slice=baremetal-shell.slice
 WorkingDirectory=/opt/baremetal-shell
-# Node needs a JIT unless told otherwise; --jitless is what makes MemoryDenyWriteExecute=yes possible. TODO-to-confirm:
-# the final entry script and flags (scripts/shell-launcher.mts is being written), and that Firecracker boots under MDWE.
+# Node needs a JIT unless told otherwise; --jitless is what makes MemoryDenyWriteExecute=yes possible. UNVERIFIED: that
+# Node, the jailer and Firecracker all start under MDWE (pre-launch checklist in docs/shell-deployment.md).
 ExecStart=/usr/bin/env node --jitless --import tsx scripts/shell-launcher.mts
 Environment=NODE_ENV=production
 Environment=PATH=/usr/local/bin:/usr/bin
-# Paths: confirmed for this deployment layout (install-host.sh creates them). The variable NAMES below are the ones
-# scripts/shell-broker.mts used before the split; TODO-to-confirm each against scripts/shell-launcher.mts.
+# Variables read by scripts/shell-launcher.mts. Paths match the layout install-host.sh creates.
 Environment=FIRECRACKER=/usr/local/libexec/baremetal-shell/current/firecracker
 Environment=JAILER=/usr/local/libexec/baremetal-shell/current/jailer
 Environment=SHELL_KERNEL=/usr/local/share/baremetal-shell/images/vmlinux
 Environment=SHELL_ROOTFS=/usr/local/share/baremetal-shell/images/rootfs.ext4
 Environment=SHELL_CHROOT_BASE=/var/lib/baremetal-shell/jail
-Environment=SHELL_VM_UID=300001
-# TODO-to-confirm: launcher socket path variable (this is the path the broker unit and tmpfiles.d assume).
 Environment=SHELL_LAUNCHER_SOCKET=/run/baremetal-shell/launcher.sock
-EnvironmentFile=-/etc/baremetal-shell/launcher.env
+# VM n runs as uid/gid SHELL_VM_UID_BASE + n (n < SHELL_MAX_VMS), inside the range install-host.sh reserves.
+Environment=SHELL_VM_UID_BASE=300000
+# Must equal the broker's SHELL_MAX_SESSIONS; the slice is sized for 16 (docs/shell-deployment.md, "Resource sizing").
+Environment=SHELL_MAX_VMS=16
+Environment=SHELL_VM_MAX_SECONDS=2100
+# SHELL_BROKER_GID (the numeric gid of group baremetal-shell-launch) comes from this file, written by install-host.sh;
+# systemd cannot resolve a group name into a variable. The file is required: without it the launcher must not start.
+# The launcher also refuses to start unless the number equals the group of /run/baremetal-shell (set by tmpfiles.d).
+EnvironmentFile=/etc/baremetal-shell/launcher.env
+# Applied after EnvironmentFile=: the development-only unjailed mode can never be switched on from an env file.
+UnsetEnvironment=SHELL_LAUNCHER_MODE
 UMask=0077
 Restart=on-failure
 RestartSec=3
@@ -58,14 +65,20 @@ LimitMEMLOCK=0
 ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
-# The jailer creates its own /dev/kvm node inside each chroot (so the base must live on a filesystem without "nodev",
-# see docs). The host's /dev/kvm is only needed in the device-cgroup allow-list below.
-PrivateDevices=yes
+# No PrivateDevices=: it removes CAP_MKNOD from the bounding set, and the jailer mknod()s /dev/kvm inside every chroot
+# (so the jail base must also live on a filesystem without "nodev", see docs). Instead the device cgroup is closed
+# (only the standard pseudo devices: null, zero, full, random, urandom, tty, ptmx) plus /dev/kvm, read, write and mknod.
+# The BPF device program is attached to this unit's cgroup and also governs the per-VM cgroups below it, so a
+# Firecracker process can open its chroot's /dev/kvm and no other device. The host /dev stays visible, but root here
+# can only use the allowed nodes. UNVERIFIED on a real host (pre-launch checklist).
+DevicePolicy=closed
 DeviceAllow=/dev/kvm rwm
 ProcSubset=all
 ProtectProc=invisible
+# 0711 (search only) on both, re-applied by systemd at every start: the broker must traverse them to reach
+# jail/sockets (root:baremetal-shell-launch 0750, created by the launcher), and nobody but root may list them.
 StateDirectory=baremetal-shell baremetal-shell/jail
-StateDirectoryMode=0700
+StateDirectoryMode=0711
 ReadWritePaths=/run/baremetal-shell
 InaccessiblePaths=-/etc/baremetal -/var/lib/baremetal -/opt/baremetal-web -/opt/baremetal-runner -/root -/boot
 

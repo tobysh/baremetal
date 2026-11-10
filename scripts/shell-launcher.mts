@@ -7,11 +7,14 @@
 // Unjailed (development only, any user): SHELL_LAUNCHER_MODE=unjailed SHELL_LAUNCHER_SOCKET FIRECRACKER SHELL_KERNEL SHELL_ROOTFS
 //
 // Permissions: the socket is created under umask 0177, then given to root:SHELL_BROKER_GID with mode 0660, so only
-// root and the broker's group can connect. Node cannot read SO_PEERCRED, so the peer is not checked per connection;
+// root and the broker's group can connect. SHELL_BROKER_GID must be the gid of the socket's directory (group
+// baremetal-shell-launch, set by tmpfiles.d); the launcher refuses to start otherwise, so a wrong number cannot hand
+// the sockets to another group. Node cannot read SO_PEERCRED, so the peer is not checked per connection;
 // the socket mode and its parent directory (root-owned, not group/world-writable, checked below) are the gate.
 import { chmod, chown, lstat, mkdir, realpath, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { createLauncher } from "../src/lib/shell/launcher";
+import { chrootBaseProblem, launcherSocketDirProblem } from "../src/lib/shell/launcher-checks";
 import { untrustedComponent } from "../src/lib/shell/trusted-path";
 import { reapStaleVms, socketsDir, startJailedVm, startUnjailedVm, type Vm } from "../src/lib/shell/vm";
 
@@ -53,16 +56,19 @@ const firecracker = await trusted("FIRECRACKER", "file", jailed);
 const kernel = await trusted("SHELL_KERNEL", "file", jailed);
 const rootfs = await trusted("SHELL_ROOTFS", "file", jailed);
 
+const brokerGid = jailed ? int("SHELL_BROKER_GID", -1, 1, 2 ** 31 - 1) : undefined;
+// The socket's directory decides who can replace or reach it, and pins SHELL_BROKER_GID to its group. Checked before
+// anything is chowned to that gid.
+const socketDirProblem = launcherSocketDirProblem(await stat(path.dirname(socketPath)), { jailed, brokerGid });
+if (socketDirProblem) throw new Error(socketDirProblem);
+
 let startVm: (slot: number) => Promise<Vm>;
-let brokerGid: number | undefined;
-if (jailed) {
-  brokerGid = int("SHELL_BROKER_GID", -1, 1, 2 ** 31 - 1);
+if (brokerGid !== undefined) {
   const uidBase = int("SHELL_VM_UID_BASE", 300000, 65536, 2 ** 31 - 1 - 64);
   const jailer = await trusted("JAILER", "file", true);
   const chrootBase = await trusted("SHELL_CHROOT_BASE", "dir", true);
-  // The broker reaches vsock sockets through <chrootBase>/sockets, so it must be able to search chrootBase.
-  const base = await stat(chrootBase);
-  if (!(base.mode & 0o001) && !(base.gid === brokerGid && base.mode & 0o010)) throw new Error("SHELL_CHROOT_BASE must be searchable by the broker (mode 0711, or group SHELL_BROKER_GID with g+x)");
+  const baseProblem = chrootBaseProblem(await stat(chrootBase), brokerGid);
+  if (baseProblem) throw new Error(baseProblem);
   // root:<broker group> 0750: the broker can open sockets in it, VMM uids cannot even list it.
   const sockets = socketsDir(chrootBase);
   await mkdir(sockets, { recursive: true, mode: 0o750 });
@@ -70,6 +76,7 @@ if (jailed) {
   if (!sdir.isDirectory() || sdir.uid !== 0) throw new Error(`${sockets} must be a root-owned directory`);
   await chown(sockets, 0, brokerGid);
   await chmod(sockets, 0o750);
+  // Throws if a stale VM survives cgroup.kill: starting anyway could give its uid to a new VM. systemd restarts us.
   const reaped = await reapStaleVms(chrootBase, firecracker);
   if (reaped) console.log(JSON.stringify({ event: "reaped_stale_vms", count: reaped }));
   // One uid per slot: two live VMMs never share a uid, so a compromised VMM cannot signal or ptrace another.
@@ -78,11 +85,6 @@ if (jailed) {
   console.warn("WARNING: unjailed development launcher. Guests are NOT isolated by the jailer.");
   startVm = () => startUnjailedVm({ firecracker, kernel, rootfs });
 }
-
-// The socket's directory decides who can replace or reach it; refuse one that others can write to.
-const parent = await stat(path.dirname(socketPath));
-if (parent.mode & 0o002 && !(parent.mode & 0o1000)) throw new Error("SHELL_LAUNCHER_SOCKET must not be in a world-writable directory");
-if (jailed && (parent.uid !== 0 || parent.mode & 0o022)) throw new Error("SHELL_LAUNCHER_SOCKET's directory must be owned by root and not writable by group or others");
 
 const launcher = createLauncher({ startVm, limits: { maxVms, maxLifetimeMs } });
 const existing = await lstat(socketPath).catch(() => null);

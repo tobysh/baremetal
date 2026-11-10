@@ -8,7 +8,7 @@ import { hmac } from "@/lib/crypto";
 import type { TutorThreadDoc } from "@/lib/models";
 import { getProgress, getTutorThread } from "@/lib/progress";
 import { clientIp, ipLimit, rateLimit, rateLimitHit } from "@/lib/rate-limit";
-import { checkBudget, estimateCostMicro, reserveBudget } from "@/lib/tutor-budget";
+import { checkBudget, estimateCostMicro, recordTutorUsage, reserveBudget } from "@/lib/tutor-budget";
 import { HOUR, LIMITS } from "@/lib/tutor-limits";
 import { MAX_REPLY_TOKENS, TUTOR_PROVIDER, TUTOR_SYSTEM, TutorUnavailableError, exposesSolution, SolutionGuard, buildMessages, lessonContext, planCache, streamTutor, type TutorUsage } from "@/lib/tutor";
 import { POPULAR_HITS, expiryFor, replyLeaks, type CacheKind } from "@/lib/tutor-cache";
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     for (const c of plan.candidates) {
       const doc = docs.find((d) => d.key === c.key);
       if (!doc) continue;
-      if (exposesSolution(doc.reply, found.exercise.solution, found.exercise.starter)) await cacheCol.deleteOne({ key: doc.key });
+      if (exposesSolution(doc.reply, found.exercise.solution, found.exercise.starter, [], found.exercise.language)) await cacheCol.deleteOne({ key: doc.key });
       else {
         cached = doc;
         break;
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
     );
   };
   const recordUsage = (usage: Partial<TutorUsage> & { responseCacheHit: boolean; costMicroUsd?: number; cacheKind?: string }) =>
-    db.collection("tutor_usage").insertOne({ ...usage, exerciseId: found.exercise.id, ts: new Date() });
+    recordTutorUsage(db, user.id, { ...usage, exerciseId: found.exercise.id });
 
   const encoder = new TextEncoder();
   const headers: Record<string, string> = { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" };
@@ -157,7 +157,7 @@ export async function POST(req: Request) {
     async start(controller) {
       let reply = "";
       // Text streams out as soon as it is certain no 24-token solution excerpt is forming (SolutionGuard).
-      const guard = new SolutionGuard(found.exercise.solution, found.exercise.starter, (thread?.messages ?? []).filter((m) => m.role === "assistant").map((m) => m.content));
+      const guard = new SolutionGuard(found.exercise.solution, found.exercise.starter, (thread?.messages ?? []).filter((m) => m.role === "assistant").map((m) => m.content), found.exercise.language);
       const send = (text: string) => { if (text && !abort.signal.aborted) controller.enqueue(encoder.encode(text)); };
       const FALLBACK = "Let's work through the idea one step at a time. Which part of the task is unclear?";
       try {

@@ -12,6 +12,7 @@ import { randomToken, sha256 } from "./crypto";
 import type { ExperienceLevel, SessionDoc, UserDoc } from "./models";
 import { isSuspended } from "./suspension";
 import { PENDING_2FA_COOKIE, SECURE_COOKIES, SESSION_COOKIE } from "./session-cookie";
+import { killUser as killShells } from "./shell/kill";
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number, opts: object) => Promise<Buffer>;
 // New hashes: N=2^17, r=8 (128 MiB, a few hundred ms). The parameters are stored in the hash so they can be raised
@@ -145,14 +146,18 @@ export async function destroySession() {
     const sessions = db.collection<SessionDoc>("sessions");
     const own = await sessions.findOne({ tokenHash: sha256(token) });
     // Rotation leaves the predecessor valid for a minute; remove it with the current record.
-    if (own) await sessions.deleteMany({ userId: own.userId, createdAt: own.createdAt });
+    if (own) {
+      await sessions.deleteMany({ userId: own.userId, createdAt: own.createdAt });
+      // Signing out ends the user's interactive shells in this process (other processes notice on their heartbeat).
+      killShells(own.userId.toHexString());
+    }
   }
   jar.delete(SESSION_COOKIE);
 }
 
 /**
- * Invalidate every session for a user (password reset, 2FA change, deletion).
- * Pass `keepCurrent` to re-issue a session for the browser making the change.
+ * Invalidate every session for a user (password reset, 2FA change, admin lock, ban and sign-out-everywhere).
+ * Pass `keepCurrent` to re-issue a session for the browser making the change. Ends the user's interactive shells too.
  */
 export async function revokeAllSessions(userId: ObjectId, keepCurrent?: { userAgent?: string }) {
   const db = await getDb();
@@ -160,7 +165,40 @@ export async function revokeAllSessions(userId: ObjectId, keepCurrent?: { userAg
     .collection<UserDoc>("users")
     .findOneAndUpdate({ _id: userId }, { $inc: { sessionVersion: 1 } }, { returnDocument: "after" });
   await db.collection("sessions").deleteMany({ userId });
+  killShells(userId.toHexString());
   if (keepCurrent && user) await createSession(user, keepCurrent.userAgent);
+}
+
+/** Hash of this request's session token (the `tokenHash` key of its record), or null without a cookie. */
+export async function currentSessionHash(): Promise<string | null> {
+  const token = await currentSessionToken();
+  return token ? sha256(token) : null;
+}
+
+/**
+ * For a long-lived connection bound to one session (the interactive shell): the token hash of that session's live
+ * record, following a rotation to its successor, or null once the session was signed out, revoked or expired, or the
+ * account was suspended, deleted or had its sessions invalidated. Applies the same rules as `loadUser`, without
+ * touching `lastSeenAt`.
+ */
+export async function liveSessionHash(tokenHash: string): Promise<string | null> {
+  const db = await getDb();
+  const now = new Date();
+  const sessions = db.collection<SessionDoc>("sessions");
+  let session = await sessions.findOne({ tokenHash });
+  if (!session) return null;
+  if (session.retired || session.expiresAt <= now) {
+    // Rotation keeps userId and createdAt; the successor is the family's record that is not retired.
+    session = await sessions.findOne({ userId: session.userId, createdAt: session.createdAt, retired: { $ne: true }, expiresAt: { $gt: now } });
+    if (!session) return null;
+  }
+  const user = await db.collection<UserDoc>("users").findOne({ _id: session.userId }, { projection: { sessionVersion: 1, suspension: 1, role: 1 } });
+  if (!user || (user.sessionVersion ?? 0) !== session.sessionVersion || isSuspended(user)) return null;
+  const admin = user.role === "admin";
+  const lastSeen = (session.lastSeenAt ?? session.createdAt).getTime();
+  if (now.getTime() - lastSeen > (admin ? ADMIN_IDLE_MS : IDLE_MS)) return null;
+  if (admin && now.getTime() - session.createdAt.getTime() > ADMIN_SESSION_MS) return null;
+  return session.tokenHash;
 }
 
 async function currentSessionToken() {

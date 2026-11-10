@@ -3,6 +3,8 @@ import type { ObjectId } from "mongodb";
 import { getDb } from "./db";
 import { hmac, randomToken, sha256 } from "./crypto";
 import { queueEmail } from "./email";
+import { deleteTutorUsage } from "./tutor-budget";
+import { killUser as killShells } from "./shell/kill";
 import type { UserDoc } from "./models";
 import { absoluteUrl } from "./site";
 
@@ -41,6 +43,7 @@ export async function deleteUserData(user: Pick<UserDoc, "_id" | "email">) {
   // in-flight autosave or tutor turn can't recreate rows behind the cleanup below.
   await db.collection("sessions").deleteMany({ userId: id });
   await db.collection("users").deleteOne({ _id: id });
+  killShells(id.toHexString());
   await Promise.all([
     db.collection("progress").deleteMany({ userId: id }),
     db.collection("tutor_threads").deleteMany({ userId: id }),
@@ -52,6 +55,7 @@ export async function deleteUserData(user: Pick<UserDoc, "_id" | "email">) {
     db.collection("email_verifications").deleteMany({ userId: id }),
     db.collection("email_queue").deleteMany({ recipientHash: hmac("email-queue-recipient", user.email.toLowerCase()) }),
     db.collection("pending_2fa").deleteMany({ userId: id }),
+    deleteTutorUsage(db, id.toHexString()),
     db.collection("tutor_spend").deleteMany({ key: { $regex: `^u:${id.toHexString()}:` } }),
   ]);
 }

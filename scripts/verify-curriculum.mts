@@ -5,7 +5,8 @@
 import { getTracks } from "../src/lib/curriculum/index";
 import { assembleParsons, canonicalSubmission, checkPractice, fillBlanks, toPublicPractice } from "../src/lib/curriculum/practice";
 import { practiceIdOf } from "../src/lib/gamification";
-import { testExercise } from "../src/lib/runner";
+import { referenceTranscript, testExercise } from "../src/lib/runner";
+import { toPublicExercise } from "../src/lib/curriculum/types";
 
 import { validateLearningPaths } from "../src/lib/learning";
 
@@ -13,6 +14,25 @@ validateLearningPaths(getTracks());
 const only = process.argv[2];
 let failed = 0;
 const ids = new Set<string>();
+
+/**
+ * The solution with every top-level function except main reduced to returning a zero value
+ * (`{}` for void). Relies on the house style: the signature line ends in `{` and the body ends
+ * with a `}` alone at the start of a line.
+ */
+function zeroStub(solution: string): string {
+  const out: string[] = [];
+  const lines = solution.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const m = /^((?:[A-Za-z_][\w\s*]*?[\s*]))([A-Za-z_]\w*)\s*\([^;]*\)\s*\{\s*$/.exec(lines[i]);
+    const end = m && m[2] !== "main" ? lines.indexOf("}", i + 1) : -1;
+    if (!m || end < 0) { out.push(lines[i]); continue; }
+    const ret = m[1].replace(/\b(static|inline|extern)\b/g, "").trim();
+    out.push(lines[i], ret === "void" ? "" : `    static ${ret} bm_zero; return bm_zero;`, "}");
+    i = end;
+  }
+  return out.join("\n");
+}
 
 const tracks = getTracks(only);
 if (only && tracks.length === 0) throw new Error(`Unknown track: ${only}`);
@@ -41,6 +61,33 @@ for (const track of tracks) {
     if (!start.compiled && emptyStart) { /* expected: the learner writes main */ }
     else if (!start.compiled) problems.push(`starter does not compile (it should, so beginners start from a working state):\n${start.compileOutput}`);
     else if (start.allPassed) problems.push("starter already passes all tests");
+
+    if (ex.driver) {
+      // Out-of-process verdict lessons (driver.c, src/lib/verdict.ts): the solution must pass under
+      // two fixed, different seeds; the driver must have fixed and seeded checks, and the seeded ones
+      // must actually change with the seed; a stub that returns zero from every function must fail;
+      // and nothing server-only may appear in the public exercise.
+      const seeds = [Buffer.alloc(16, 0x11), Buffer.alloc(16, 0xa7)];
+      for (const seed of seeds) {
+        const r = await testExercise(ex, ex.solution, { seed });
+        if (!r.allPassed) problems.push(`driver: solution fails with seed ${seed.toString("hex")}:\n${r.results.filter((t) => !t.passed).map((t) => `  - ${t.name}: ${t.message}`).join("\n")}${r.error ? `\n  error: ${r.error}` : ""}`);
+      }
+      const [t1, t2] = await Promise.all(seeds.map((seed) => referenceTranscript(ex, seed)));
+      if (!t1.ok || !t2.ok) problems.push(`driver: ${!t1.ok ? t1.reason : !t2.ok ? t2.reason : ""}`);
+      else {
+        if (!t1.transcript.cases.some((c) => c.fixed)) problems.push("driver: has no fixed edge cases (BM_CASE)");
+        if (!t1.transcript.cases.some((c) => !c.fixed)) problems.push("driver: has no seeded cases (BM_SEEDED)");
+        if (t1.transcript.cases.map((c) => c.name).join("\0") !== t2.transcript.cases.map((c) => c.name).join("\0")) problems.push("driver: the list of checks depends on the seed (names and order must be fixed)");
+        const seeded = (t: typeof t1.transcript) => JSON.stringify(t.cases.filter((c) => !c.fixed));
+        if (seeded(t1.transcript) === seeded(t2.transcript)) problems.push("driver: seeded cases do not change with the seed (draw their inputs with bm_int/bm_fill)");
+      }
+      const stub = zeroStub(ex.solution);
+      const s = await testExercise(ex, stub);
+      if (!s.compiled) problems.push(`driver: the zero-returning stub did not compile (check zeroStub in this script):\n${s.compileOutput}`);
+      else if (s.allPassed) problems.push("driver: a stub that returns zero from every function passes");
+      const pub = JSON.stringify(toPublicExercise(ex));
+      if (/"(driver|solution|harness|hints)":/.test(pub) || pub.includes(ex.driver.trim().slice(0, 80))) problems.push("driver: the public exercise exposes server-only fields");
+    }
 
     const ch = lesson.challenge?.exercise;
     if (ch) {
@@ -87,7 +134,7 @@ for (const track of tracks) {
       }
       // The public view must not carry answers.
       const json = JSON.stringify(toPublicPractice(pr, ex.id, lesson.difficulty));
-      if (/"(answers?|accepted|pairs|bugLine|explain|distractors|runTests|base)"/.test(json)) problems.push("practice: the public view exposes an answer field");
+      if (/"(answers?|accepted|pairs|bugLine|explain|distractors|runTests|base)":/.test(json)) problems.push("practice: the public view exposes an answer field");
       if (pr.kind === "bug" && lesson.practice && json.includes(pr.explain ?? "\u0000")) problems.push("practice: the public view exposes the explanation");
       if (practiceIdOf(ex.id) !== toPublicPractice(pr, ex.id, lesson.difficulty).id) problems.push("practice: id mismatch");
     }
@@ -95,7 +142,7 @@ for (const track of tracks) {
     for (const [qi, q] of (lesson.quiz ?? []).entries()) {
       const ok = checkPractice(q, canonicalSubmission(q));
       if (!ok.valid || !ok.exact) problems.push(`quiz[${qi}]: the canonical answer is not accepted by the checker`);
-      if (/"(answers?|accepted|pairs|bugLine|explain|distractors)"/.test(JSON.stringify(toPublicPractice(q, ex.id, lesson.difficulty, `${ex.id}#q${qi}`)))) problems.push(`quiz[${qi}]: the public view exposes an answer field`);
+      if (/"(answers?|accepted|pairs|bugLine|explain|distractors)":/.test(JSON.stringify(toPublicPractice(q, ex.id, lesson.difficulty, `${ex.id}#q${qi}`)))) problems.push(`quiz[${qi}]: the public view exposes an answer field`);
     }
 
     const status = problems.length ? "FAIL" : "ok  ";
