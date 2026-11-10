@@ -7,7 +7,7 @@ type Kind = "passed" | "unaided" | "challenge";
 
 const META: Record<Kind, { label: string; earned: string; locked: string; tone: string }> = {
   passed: { label: "Passed", earned: "Passed the tests", locked: "Not passed yet", tone: "text-accent" },
-  unaided: { label: "Unaided", earned: "Passed without hints or the tutor", locked: "Unaided: pass without hints or the tutor, after at least one failed run (or on a hard lesson)", tone: "text-ok" },
+  unaided: { label: "Unaided", earned: "Passed without hints or the tutor", locked: "Unaided: pass without hints or the tutor before your first completion", tone: "text-ok" },
   challenge: { label: "Challenge", earned: "Passed the challenge", locked: "Challenge not passed", tone: "text-text" },
 };
 

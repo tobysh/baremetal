@@ -92,7 +92,9 @@ export async function recordAttempt(o: AttemptInput): Promise<AttemptOutcome> {
   if (!o.challenge && !o.practice) {
     const thread = await db.collection<TutorThreadDoc>("tutor_threads").findOne({ userId, lessonId: o.exerciseId }, { projection: { messages: 1 } });
     const askedTutor = after?.tutorUsed || (thread?.messages ?? []).some((m) => m.role === "user");
-    unaided = hintsUsed === 0 && !askedTutor && (attempts >= 2 || o.difficulty === "hard" || o.difficulty === "impossible");
+    // Unaided records assistance, not speed or number of submissions. First-try
+    // recognition uses attemptsAtPass separately; deliberate failure earns no advantage.
+    unaided = hintsUsed === 0 && !askedTutor;
   }
   const flipped = await c.updateOne(
     { ...filter, status: { $ne: "passed" } },
