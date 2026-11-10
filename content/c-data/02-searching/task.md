@@ -2,3 +2,5 @@
 - `int last_index_of(int a[], int n, int target)` returns the index of the **last** match, or `-1`.
 - `int count_value(int a[], int n, int target)` returns how many elements equal `target`.
 - `int is_sorted(int a[], int n)` returns `1` if each element is greater than or equal to the one before it, otherwise `0`. Arrays of length 0 or 1 are sorted.
+
+Only the first `n` elements count. The functions are also tried on fresh random arrays, including repeated and negative values.
