@@ -82,3 +82,6 @@ next-env.d.ts
 # browser regression artifacts
 /test-results/
 /playwright-report/
+
+# local working plans (not part of the repo)
+/SECURITY-FIX-PLAN-*.md

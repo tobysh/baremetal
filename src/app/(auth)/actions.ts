@@ -162,16 +162,20 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
     return { message: user.suspension?.kind === "banned" ? "This account has been closed." : "This account is temporarily locked. Contact support if you think this is a mistake.", values };
   }
   if (user.emailVerified === false) return { message: "Please verify your email before signing in. Check your inbox for the link.", values };
+  const rehash = async () => {
+    // Upgrade hashes made with older scrypt parameters now that we hold the plaintext. Guarded so a concurrent
+    // password change is not overwritten.
+    if (passwordNeedsRehash(user.passwordHash)) {
+      await db.collection<UserDoc>("users").updateOne({ _id: user._id, passwordHash: user.passwordHash }, { $set: { passwordHash: await hashPassword(password) } });
+    }
+  };
   if (user.twoFactor?.enabled) {
+    await rehash();
     await startPending2fa(user._id, next, user.sessionVersion ?? 0);
     redirect("/login/verify");
   }
   await clearLoginFailures(addr, ip, user._id.toHexString());
-  // Upgrade hashes made with older scrypt parameters now that we hold the plaintext. Guarded so a concurrent
-  // password change is not overwritten.
-  if (passwordNeedsRehash(user.passwordHash)) {
-    await db.collection<UserDoc>("users").updateOne({ _id: user._id, passwordHash: user.passwordHash }, { $set: { passwordHash: await hashPassword(password) } });
-  }
+  await rehash();
   await createSession(user, userAgent);
   await logAuthEvent("login_success", { email: addr, userId: user._id.toHexString() });
   redirect(next);

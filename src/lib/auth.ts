@@ -20,7 +20,8 @@ const SCRYPT_N = 131072;
 const SCRYPT_R = 8;
 const SCRYPT_P = 1;
 const LEGACY_PARAMS = { N: 32768, r: 8, p: 1 };
-const scryptOpts = (p: { N: number; r: number; p: number }) => ({ ...p, maxmem: 256 * 1024 * 1024 });
+const SCRYPT_MAXMEM = 256 * 1024 * 1024;
+const scryptOpts = (p: { N: number; r: number; p: number }) => ({ ...p, maxmem: SCRYPT_MAXMEM });
 
 export { SESSION_COOKIE, PENDING_2FA_COOKIE };
 const SESSION_DAYS = 30;
@@ -62,6 +63,7 @@ function parseHash(stored: string) {
   // Bound the cost so a corrupted stored value can't make a login allocate gigabytes.
   const { N, r, p } = params;
   if (N < 1024 || N > 1 << 18 || (N & (N - 1)) !== 0 || r < 1 || r > 16 || p < 1 || p > 4) return null;
+  if (128 * N * r > SCRYPT_MAXMEM) return null;
   return { params, salt: Buffer.from(rest[0], "base64"), key: Buffer.from(rest[1], "base64") };
 }
 
@@ -69,6 +71,9 @@ export async function verifyPassword(password: string, stored: string): Promise<
   const h = parseHash(stored);
   if (!h) return false;
   const actual = await scrypt(password.normalize("NFKC"), h.salt, h.key.length, scryptOpts(h.params));
+  // A legacy hash is cheaper to check than the dummy hash used for unknown emails; pay the difference so latency
+  // doesn't reveal which accounts exist.
+  if (h.params.N < SCRYPT_N) await scrypt(password.normalize("NFKC"), h.salt, h.key.length, scryptOpts({ N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P }));
   return timingSafeEqual(actual, h.key);
 }
 
@@ -84,11 +89,11 @@ export const getDummyHash = () => (dummyHash ??= hashPassword(randomToken()));
 
 // ---------- Sessions ----------
 
-export async function createSession(user: Pick<UserDoc, "_id" | "sessionVersion" | "role">, userAgent?: string, opts: { createdAt?: Date; expiresAt?: Date } = {}) {
+export async function createSession(user: Pick<UserDoc, "_id" | "sessionVersion" | "role">, userAgent?: string) {
   const token = randomToken(32);
   const now = new Date();
   const lifetime = user.role === "admin" ? ADMIN_SESSION_MS : SESSION_DAYS * 86_400_000;
-  const expiresAt = opts.expiresAt ?? new Date(now.getTime() + lifetime);
+  const expiresAt = new Date(now.getTime() + lifetime);
   const db = await getDb();
   const jar = await cookies();
   // A fresh login replaces whatever session this browser still holds, so old tokens don't pile up.
@@ -98,7 +103,7 @@ export async function createSession(user: Pick<UserDoc, "_id" | "sessionVersion"
     tokenHash: sha256(token),
     userId: user._id,
     sessionVersion: user.sessionVersion ?? 0,
-    createdAt: opts.createdAt ?? now,
+    createdAt: now,
     lastSeenAt: now,
     expiresAt,
     userAgent: userAgent?.slice(0, 200),
@@ -137,7 +142,10 @@ export async function destroySession() {
   const token = jar.get(SESSION_COOKIE)?.value;
   if (token) {
     const db = await getDb();
-    await db.collection("sessions").deleteOne({ tokenHash: sha256(token) });
+    const sessions = db.collection<SessionDoc>("sessions");
+    const own = await sessions.findOne({ tokenHash: sha256(token) });
+    // Rotation leaves the predecessor valid for a minute; remove it with the current record.
+    if (own) await sessions.deleteMany({ userId: own.userId, createdAt: own.createdAt });
   }
   jar.delete(SESSION_COOKIE);
 }

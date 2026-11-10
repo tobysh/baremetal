@@ -76,11 +76,11 @@ export function levelFor(xp: number): LevelInfo {
 export const USERNAME_RE = /^[a-z0-9](?:[a-z0-9_-]{1,18}[a-z0-9])?$/;
 const RESERVED = new Set([
   "admin", "administrator", "root", "support", "help", "api", "settings", "dashboard", "login", "signup", "learn",
-  "leaderboard", "privacy", "terms", "cookies", "baremetal", "moderator", "staff", "system", "null", "undefined", "me", "you",
+  "leaderboard", "official", "security", "privacy", "terms", "cookies", "baremetal", "moderator", "staff", "system", "null", "undefined", "me", "you",
 ]);
 
 /** Words that must not appear anywhere in a username, even with digits or symbols swapped for letters. */
-const RESERVED_SUBSTRINGS = ["admin", "moderator", "support", "baremetal", "staff", "official", "security", "sysop", "webmaster"];
+const RESERVED_SUBSTRINGS = ["moderator", "baremetal", "sysop", "webmaster"];
 const LOOKALIKES: Record<string, string> = { "0": "o", "3": "e", "4": "a", "5": "s", "7": "t", "8": "b", "9": "g", "@": "a", "$": "s", "!": "i" };
 
 /** Spellings a lookalike could be read as: separators dropped, digits mapped to letters (1 can be i or l), rn read as m. */
@@ -94,7 +94,11 @@ function lookalikeForms(name: string): string[] {
 export function isReservedUsername(name: string): boolean {
   const lower = name.toLowerCase();
   if (RESERVED.has(lower)) return true;
-  return lookalikeForms(lower).some((f) => RESERVED.has(f) || RESERVED_SUBSTRINGS.some((w) => f.includes(w)));
+  // Long distinctive words are blocked anywhere; short common ones (admin, staff, support) only as a whole name or
+  // a whole -/_ separated part, ignoring digits at the ends, so "badminton" and "staffan" stay available.
+  if (lookalikeForms(lower).some((f) => RESERVED_SUBSTRINGS.some((w) => f.includes(w)))) return true;
+  const parts = [lower, ...lower.split(/[-_]/)].filter(Boolean);
+  return parts.some((part) => [part, part.replace(/^\d+|\d+$/g, "")].filter(Boolean).some((x) => lookalikeForms(x).some((f) => RESERVED.has(f))));
 }
 
 /** Returns an error message, or null if the username is acceptable. Expects a lowercased value. */

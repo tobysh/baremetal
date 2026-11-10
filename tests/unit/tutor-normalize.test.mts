@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeCode, normalizeMessage, normalizeOutput } from "../../src/lib/tutor-normalize";
+import { normalizeQuestion } from "../../src/lib/tutor-cache";
 
 test("code: comments and whitespace do not change the key", () => {
   const a = "int main(void) {\n  // hi\n  return 0; /* x */\n}\n";
@@ -25,6 +26,12 @@ test("code: asm treats # as a comment, C does not", () => {
 test("code: Go raw strings and Rust lifetimes", () => {
   assert.ok(normalizeCode("s := `a // b`", "go").includes("`a // b`"));
   assert.equal(normalizeCode("fn f<'a>(x: &'a str) {} // c", "rust"), normalizeCode("fn f<'a>(x: &'a str) {}", "rust"));
+});
+
+test("questions: C, C++ and C# keep separate cache keys", () => {
+  assert.notEqual(normalizeQuestion("what is c++?"), normalizeQuestion("what is c?"));
+  assert.notEqual(normalizeQuestion("what is c#?"), normalizeQuestion("what is c?"));
+  assert.notEqual(normalizeQuestion("what is c#?"), normalizeQuestion("what is c++?"));
 });
 
 test("code: language-distinct questions are not conflated by the normaliser (known limitation of the +/# plan item)", () => {

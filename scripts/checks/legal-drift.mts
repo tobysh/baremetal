@@ -78,6 +78,8 @@ for (const [i, text] of source.entries()) {
 const cookieNames = new Set<string>();
 for (const text of source) for (const m of text.matchAll(/["'`](bm_[a-z0-9_]+)["'`]/g)) cookieNames.add(m[1]);
 const NOT_COOKIES = /^(bm_base|bm_init|bm_test|bm_nonce|bm_hook|bm_take|bm_main|bm_tests?)\b/;
+// Names built as `${prefix}bm_session` have no quote right before bm_.
+for (const text of source) for (const m of text.matchAll(/\$\{[a-zA-Z]+\}(bm_[a-z0-9_]+)`/g)) cookieNames.add(m[1]);
 for (const name of [...cookieNames].sort()) {
   if (NOT_COOKIES.test(name) || name.endsWith("_")) continue;
   if (!cookies.includes(name)) problems.push(`"${name}" looks like a cookie but cookies.md does not list it`);

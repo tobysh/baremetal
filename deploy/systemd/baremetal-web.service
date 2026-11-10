@@ -35,7 +35,6 @@ ProtectControlGroups=yes
 ProtectClock=yes
 ProtectHostname=yes
 ProtectProc=invisible
-ProcSubset=pid
 # Not verified on a real host: run `systemd-analyze security baremetal-web` and watch the journal for EPERM after the first start.
 # Next.js reaches MongoDB and the SMTP/Anthropic APIs over IP, the runner over a Unix socket.
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
