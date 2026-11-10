@@ -8,6 +8,9 @@ export default defineConfig({
   retries: 0,
   reporter: "list",
   use: {
+    // These tests mock API responses; service-worker fetches can bypass page.route.
+    // The separate production CSP suite validates real service-worker registration.
+    serviceWorkers: "block",
     baseURL: process.env.TEST_BASE_URL ?? "http://127.0.0.1:3100",
     browserName: "chromium",
     trace: "retain-on-failure",

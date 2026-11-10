@@ -20,6 +20,8 @@ const server = http.createServer((req, res) => {
 await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
 process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 process.env.ANTHROPIC_API_KEY = "test";
+// This fixture always exercises its local fake Anthropic endpoint, regardless of the app provider.
+process.env.TUTOR_PROVIDER = "anthropic";
 process.env.TUTOR_BUDGET_USER_DAY_USD = "1";
 process.env.TUTOR_BUDGET_GLOBAL_DAY_USD = "10";
 
