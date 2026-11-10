@@ -1080,6 +1080,9 @@ async function testStdout(dir: string, ex: Exercise, code: string): Promise<Test
   let timedOut = false;
   // `prog` is rebuilt in place for each `set` case; a plain case that follows must run the learner's own code again.
   let variantBuilt = false;
+  // Only the first failing case shows its expected output. Showing every one would hand over the answers to the
+  // hidden `set` variants and stdin cases, which a learner could then hard-code (docs/security.md).
+  let revealed = false;
   for (const tc of ex.cases ?? []) {
     if (!tc.set && variantBuilt) {
       const again = await compile(dir, ex.language, code);
@@ -1108,11 +1111,18 @@ async function testStdout(dir: string, ex: Exercise, code: string): Promise<Test
     if (crash) error = crash;
     if (r.timedOut) timedOut = true;
     const passed = !crash && normalizeOut(r.stdout) === normalizeOut(tc.expected);
+    const reveal = !passed && !crash && !revealed;
+    if (reveal) revealed = true;
     results.push({
       name: tc.name,
       passed,
-      message: passed ? undefined : crash ?? `Expected output:\n${tc.expected}\n\nYour output:\n${r.stdout || "(nothing)"}`,
-      ...(!passed && !crash ? { expected: tc.expected, actual: r.stdout } : {}),
+      message: passed
+        ? undefined
+        : crash ??
+          (reveal
+            ? `Expected output:\n${tc.expected}\n\nYour output:\n${r.stdout || "(nothing)"}`
+            : `Your output:\n${r.stdout || "(nothing)"}\n\nThis output doesn't match what this case expects. The expected text is only shown for the first failing case; the program is tried with other values, so work the answer out from the task.`),
+      ...(reveal ? { expected: tc.expected, actual: r.stdout } : {}),
     });
   }
   return { compiled: true, compileOutput, results, allPassed: results.every((r) => r.passed), output, error, ...(timedOut ? { timedOut } : {}) };

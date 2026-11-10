@@ -122,6 +122,7 @@ if (base) {
         const harnessHit = harnessLines.filter((l) => text.includes(JSON.stringify(l).slice(1, -1))).length;
         const solutionHit = solutionOnly.filter((l) => text.includes(JSON.stringify(l).slice(1, -1))).length;
         console.log(`info [${e.language}/${e.mode}] ${e.id} ${user === undefined ? "anon   " : "session"} cases=${e.cases?.length ?? "-"} results=${body.results?.length ?? 0} expected-returned=${withExpected} set-variant-answers-returned=${setLeaked}/${setCases.length} stdin-values-echoed=${stdinLeaked}/${stdinCases.length} harness-lines=${harnessHit}/${harnessLines.length} solution-lines=${solutionHit}/${solutionOnly.length}`);
+        check(withExpected <= 1, `[${e.id}] at most one failing case returns its expected output (got ${withExpected})`);
         check(harnessHit === 0 && solutionHit === 0, `[${e.id}] failure response (${user === undefined ? "anonymous" : "session"}) contains no harness or solution line`);
       }
     }
