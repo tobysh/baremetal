@@ -1,6 +1,7 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { SITE } from "./site";
+import { sameSiteOrigin } from "./origin";
 
 /**
  * CSRF defence in depth for route handlers (server actions already check
@@ -15,7 +16,7 @@ export function sameOrigin(req: Request): boolean {
     // Production compares against the configured site only: forwarded headers
     // are client-controlled unless every proxy overwrites them. Development
     // keeps the Host comparison so LAN and phone testing works.
-    if (process.env.NODE_ENV === "production") return o.host === new URL(SITE.url).host;
+    if (process.env.NODE_ENV === "production") return sameSiteOrigin(origin, SITE.url);
     return o.host === req.headers.get("host") || origin === SITE.url;
   } catch {
     return false;
