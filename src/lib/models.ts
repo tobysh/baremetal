@@ -95,7 +95,7 @@ export type ProgressDoc = {
   /** Snapshots taken on first pass; they decide the Unaided seal and some achievements. */
   hintsUsedAtPass?: number;
   attemptsAtPass?: number;
-  /** Passed without hints or the tutor, after at least one failed run (or on a hard lesson). Cosmetic. */
+  /** Passed without hints or the tutor; independent of difficulty and attempt count. Cosmetic. */
   unaided?: boolean;
 };
 

@@ -247,14 +247,14 @@ try {
     };
     for (const [path, ok] of [["/api/hint", 400], ["/api/analytics", 204]] as const) {
       const t0 = Date.now();
-      const big = await fetch(BASE + path, { method: "POST", headers: { Origin: ORIGIN, "Content-Type": "application/json", "X-Forwarded-For": u.ip, Cookie: "bm_consent=" + encodeURIComponent(JSON.stringify({ v: 1, analytics: true, at: new Date().toISOString() })) }, body: chunked(5 * 1024 * 1024), duplex: "half" } as RequestInit).catch(() => null);
+      const big = await fetch(BASE + path, { method: "POST", headers: { Origin: ORIGIN, Connection: "close", "Content-Type": "application/json", "X-Forwarded-For": u.ip, Cookie: "bm_consent=" + encodeURIComponent(JSON.stringify({ v: 1, analytics: true, at: new Date().toISOString() })) }, body: chunked(5 * 1024 * 1024), duplex: "half" } as RequestInit).catch(() => null);
       check(`5 MB chunked body to ${path} is refused promptly`, !big || big.status === ok, `${big?.status} in ${Date.now() - t0} ms`);
-      await big?.body?.cancel();
+      await big?.arrayBuffer();
     }
     // 4097 bytes of multi-byte characters is under 4096 UTF-16 units but over 4096 bytes.
     const multi = JSON.stringify({ type: "pageview", path: "é".repeat(2049) });
     const rawBefore = await db.collection("events").countDocuments();
-    await fetch(BASE + "/api/analytics", { method: "POST", headers: { Origin: ORIGIN, "Content-Type": "application/json", "X-Forwarded-For": u.ip, Cookie: "bm_consent=" + encodeURIComponent(JSON.stringify({ v: 1, analytics: true, at: new Date().toISOString() })) }, body: multi }).then((response) => response.body?.cancel()).catch((error: unknown) => {
+    await fetch(BASE + "/api/analytics", { method: "POST", headers: { Origin: ORIGIN, Connection: "close", "Content-Type": "application/json", "X-Forwarded-For": u.ip, Cookie: "bm_consent=" + encodeURIComponent(JSON.stringify({ v: 1, analytics: true, at: new Date().toISOString() })) }, body: multi }).then((response) => response.arrayBuffer()).catch((error: unknown) => {
       // Cancelling an oversized request body may close the HTTP connection before a response arrives.
       const code = (error as { cause?: { code?: string } }).cause?.code;
       if (code !== "ECONNRESET" && code !== "UND_ERR_SOCKET") throw error;

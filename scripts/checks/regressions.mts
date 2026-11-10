@@ -1,6 +1,6 @@
 // Uses a unique scratch database, temporary secrets and a separate runner process.
 import { execFile, spawn, type ChildProcess } from "node:child_process";
-import { cp, mkdir, mkdtemp, readFile, rm, stat, symlink } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink } from "node:fs/promises";
 import { createServer as createNetServer } from "node:net";
 import { createServer as createHttpsServer, type Server as HttpsServer } from "node:https";
 import { request as httpRequest } from "node:http";
@@ -12,6 +12,8 @@ import { setTimeout as delay } from "node:timers/promises";
 import { MongoClient } from "mongodb";
 
 const workspace = process.cwd();
+// Allow a clean lockfile install in /tmp without replacing the developer's active dependencies.
+const dependencies = path.resolve(process.env.REGRESSION_NODE_MODULES ?? path.join(workspace, "node_modules"));
 const temp = await mkdtemp(path.join(tmpdir(), "bm-regression-"));
 const app = path.join(temp, "app");
 const socket = path.join(temp, "runner.sock");
@@ -64,15 +66,19 @@ try {
     "-out", certificate, "-days", "1", "-subj", "/CN=127.0.0.1", "-addext", "subjectAltName=IP:127.0.0.1"], { timeout: 30_000 });
   env.BM_REGRESSION_TLS_SPKI = createHash("sha256").update(new X509Certificate(await readFile(certificate)).publicKey.export({ type: "spki", format: "der" })).digest("base64");
   // Snapshot source without secrets, Git state, local databases or shared build output.
-  for (const entry of ["src", "content", "data", "public", "scripts", "next.config.ts", "tsconfig.json", "postcss.config.mjs", "package.json", "package-lock.json", "playwright.config.ts"]) {
+  for (const entry of ["src", "content", "data", "public", "scripts", "tests", "eslint.config.mjs", "next.config.ts", "tsconfig.json", "postcss.config.mjs", "package.json", "package-lock.json", "playwright.config.ts"]) {
     await cp(path.join(workspace, entry), path.join(app, entry), { recursive: true });
   }
-  await symlink(path.join(workspace, "node_modules"), path.join(app, "node_modules"), "dir");
+  await symlink(dependencies, path.join(app, "node_modules"), "dir");
   await mongo.connect();
   console.log("Building an isolated production snapshot...");
   await run(["node_modules/next/dist/bin/next", "build", "--webpack"]);
+  await run(["node_modules/eslint/bin/eslint.js"]);
+  // Run against the snapshot's dependency install too, including any clean lockfile override.
+  const unitFiles = (await readdir(path.join(app, "tests/unit"))).filter((file) => file.endsWith(".test.mts")).sort();
+  await run(["--conditions=react-server", "--import", "tsx", "--test", ...unitFiles.map((file) => path.join("tests/unit", file))]);
   // Tests requiring no web server still use the same isolated database.
-  for (const script of ["scripts/auth-crypto-regression.mts", "scripts/tutor/cost-checks.mts", "scripts/tutor/reservation-checks.mts", "scripts/tutor/abort-checks.mts", "scripts/tutor/stream-guard-checks.mts", "scripts/checks/review.mts", "scripts/security/seals.mts", "scripts/security/quick-fixes.mts", "scripts/security/xp-atomic.mts"]) {
+  for (const script of ["scripts/auth-crypto-regression.mts", "scripts/tutor/cost-checks.mts", "scripts/tutor/reservation-checks.mts", "scripts/tutor/abort-checks.mts", "scripts/tutor/stream-guard-checks.mts", "scripts/checks/review.mts", "scripts/security/seals.mts", "scripts/security/accounting-health.mts", "scripts/security/backup-restore.mts", "scripts/security/integrity/assembly-driver.mts", "scripts/security/quick-fixes.mts", "scripts/security/xp-atomic.mts"]) {
     await run(["--conditions=react-server", "--import", "tsx", script]);
   }
   await run(["--import", "tsx", "scripts/security/markdown.mts"]);
@@ -83,6 +89,8 @@ try {
   const web = start(["node_modules/next/dist/bin/next", "start", "-p", appPort, "-H", "127.0.0.1"]);
   tlsProxy = createHttpsServer({ key: await readFile(privateKey), cert: await readFile(certificate) }, (req, res) => {
     const upstream = httpRequest(internalBase, {
+      // Body-limit probes intentionally abort uploads; never reuse their upstream sockets.
+      agent: false,
       path: req.url ?? "/",
       method: req.method,
       headers: { ...req.headers, "x-forwarded-proto": "https", "x-forwarded-for": req.headers["x-forwarded-for"] ?? "127.0.0.1" },
@@ -90,7 +98,9 @@ try {
       res.writeHead(reply.statusCode ?? 502, reply.headers);
       reply.pipe(res);
     });
-    upstream.on("error", () => { if (!res.headersSent) res.writeHead(502); res.end(); });
+    // Preserve upstream connection cancellation (including bounded-body rejection)
+    // as a transport failure instead of inventing an application 502 response.
+    upstream.on("error", (error) => res.destroy(error));
     req.on("aborted", () => upstream.destroy());
     res.on("close", () => { if (!res.writableFinished) upstream.destroy(); });
     req.pipe(upstream);
