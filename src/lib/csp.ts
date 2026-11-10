@@ -63,8 +63,3 @@ export function contentSecurityPolicy({ nonce, scriptHashes = [], dev = false }:
     ...(dev ? [] : ["upgrade-insecure-requests"]),
   ].join("; ");
 }
-
-/** The pre-migration policy, used only if no prerendered shells can be read (see the proxy). */
-export function legacyContentSecurityPolicy(): string {
-  return contentSecurityPolicy().replace("script-src 'self'", "script-src 'self' 'unsafe-inline'");
-}
