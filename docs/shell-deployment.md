@@ -67,6 +67,7 @@ Read from `scripts/shell-launcher.mts` and `scripts/shell-broker.mts`; the units
 | `SHELL_MAX_VMS` | launcher | `16` | hard VM cap; **must equal `SHELL_MAX_SESSIONS`** (a smaller value refuses sessions as `busy`, a larger one lets the launcher exceed the slice sizing) |
 | `SHELL_VM_MAX_SECONDS` | launcher | `2100` | lifetime backstop, above the broker's `SHELL_MAX_SECONDS` |
 | `SHELL_BROKER_SOCKET` | broker, web | `/run/baremetal-shell-broker/broker.sock` | the web drop-in sets the same value |
+| `SHELL_HOST_VERIFIED` | web | unset | Set to `1` only after the host-only and hostile-workload validations below pass and their evidence is recorded. Production web endpoints otherwise remain disabled, even with a broker socket configured. Do not add this flag to the default installation template |
 | `SHELL_MAX_SESSIONS` | broker | `16` | sized with the slice below |
 | `SHELL_IDLE_SECONDS`, `SHELL_MAX_SECONDS` | broker | `300`, `1800` | per session |
 | `SHELL_DAILY_SECONDS` | broker | `7200` | VM time per account per UTC day; in memory, so a broker restart (which ends all sessions) resets it |

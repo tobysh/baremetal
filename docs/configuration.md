@@ -72,6 +72,7 @@ Set on the broker/launcher units; names and status are in [shell-deployment.md](
 | Variable | Default | Meaning |
 |---|---|---|
 | `SHELL_BROKER_SOCKET` | none | Broker socket; also read by the web app to find it |
+| `SHELL_HOST_VERIFIED` | unset | Production web shell access remains disabled unless this is exactly `1`. Set only after completing and recording the host validation in `docs/shell-deployment.md`; configuring a socket alone does not enable it. This is an operator attestation, not an automated proof of isolation |
 | `SHELL_LAUNCHER_SOCKET` | none | Launcher socket the broker talks to |
 | `SHELL_MAX_SESSIONS` | `4` | Concurrent sessions (the unit sets 16; keep equal to `SHELL_MAX_VMS`) |
 | `SHELL_IDLE_SECONDS`, `SHELL_MAX_SECONDS` | `300`, `1800` | Idle and absolute session limits |
