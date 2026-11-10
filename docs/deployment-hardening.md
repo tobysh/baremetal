@@ -11,7 +11,7 @@ This is the single place for everything that must happen before Baremetal is exp
 5. **Runner isolation:** required separate runner service/uid, systemd cgroup limits and a delegated `RUNNER_CGROUP_ROOT` subtree tested with a memory bomb on a disposable deployment host. For a public site consider disposable hosts or VMs (Firecracker, gVisor) so a kernel exploit cannot reach the web server.
 6. **Legal:** set `LEGAL_ENTITY_NAME`, `LEGAL_ADDRESS`, `LEGAL_CONTACT_EMAIL`, `LEGAL_JURISDICTION` (the footer shows "operator name to be confirmed" until then). The Terms, Privacy Notice and Cookie Policy are drafts written from what the code does; have a lawyer review them.
 7. Use `npm ci` so the lockfile controls versions; re-run `npm audit --omit=dev`.
-8. On an existing database after upgrading: `npm run recompute-xp` (site stopped), then `npm run backfill-achievements`.
+8. On an existing database after upgrading: `npm run recompute-xp -- --confirm-backup` (site stopped, backup taken), then `npm run backfill-achievements`.
 
 ## Required production environment
 
@@ -77,6 +77,7 @@ normal compiler performance on the intended machine before exposing the runner.
 
 Per-IP limits (anonymous runs, tutor IP quota, CAPTCHA, auth endpoints) read the entry of `X-Forwarded-For` that *your* proxy added. For that to be safe:
 
+- A ready-made template is in `deploy/nginx/baremetal.conf`.
 - The proxy **overwrites** `X-Forwarded-For` with the peer address (nginx: `proxy_set_header X-Forwarded-For $remote_addr;`). `$proxy_add_x_forwarded_for` appends, which keeps the client's own entries.
 - The proxy drops any client-supplied `X-Forwarded-Host` (`proxy_set_header X-Forwarded-Host "";`).
 - Use `TRUSTED_PROXY_HOPS=1` when nginx overwrites the header with its direct peer address. With a CDN, either validate its signed/client-IP header against trusted CDN ranges and overwrite with the verified client address (still one hop), or explicitly configure every trusted hop to preserve an authenticated chain and set the matching hop count. Do not combine an overwritten one-entry header with a two-hop setting.
@@ -95,7 +96,7 @@ Start `mongod` with `--auth --bind_ip 127.0.0.1` (or a Unix socket), then set
 
 ## Maintenance scripts
 
-`npm run recompute-xp` rewrites XP from progress. Run it with the site **stopped**, or a pass recorded during the run can be lost or counted twice.
+`npm run recompute-xp -- --confirm-backup` rewrites XP from progress and refuses to run without the flag; take `npm run backup-db -- --verify` first. Run it with the site **stopped**, or a pass recorded during the run can be lost or counted twice.
 
 ## Per-job cgroup v2 limits
 

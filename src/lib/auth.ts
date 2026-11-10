@@ -11,35 +11,71 @@ import { getDb } from "./db";
 import { randomToken, sha256 } from "./crypto";
 import type { ExperienceLevel, SessionDoc, UserDoc } from "./models";
 import { isSuspended } from "./suspension";
+import { PENDING_2FA_COOKIE, SECURE_COOKIES, SESSION_COOKIE } from "./session-cookie";
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number, opts: object) => Promise<Buffer>;
-// N=2^15, r=8: ~32 MiB and ~50ms per hash on a desktop CPU.
-const SCRYPT_OPTS = { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
+// New hashes: N=2^17, r=8 (128 MiB, a few hundred ms). The parameters are stored in the hash so they can be raised
+// later; hashes without them (`scrypt$salt$key`) were made with N=2^15 and still verify, then are rehashed on login.
+const SCRYPT_N = 131072;
+const SCRYPT_R = 8;
+const SCRYPT_P = 1;
+const LEGACY_PARAMS = { N: 32768, r: 8, p: 1 };
+const scryptOpts = (p: { N: number; r: number; p: number }) => ({ ...p, maxmem: 256 * 1024 * 1024 });
 
-export const SESSION_COOKIE = "bm_session";
-export const PENDING_2FA_COOKIE = "bm_2fa_pending";
+export { SESSION_COOKIE, PENDING_2FA_COOKIE };
 const SESSION_DAYS = 30;
+/** A session unused for this long is dead, even if it has not reached its expiry. */
+const IDLE_MS = 14 * 86_400_000;
+const ADMIN_SESSION_MS = 12 * 3_600_000;
+const ADMIN_IDLE_MS = 2 * 3_600_000;
+/** The token is replaced when it is older than this; the previous one stays valid briefly for parallel requests. */
+const ROTATE_AFTER_MS = 24 * 3_600_000;
+const ROTATE_GRACE_MS = 60_000;
+const TOUCH_EVERY_MS = 5 * 60_000;
 const PENDING_2FA_MINUTES = 10;
 
 const cookieBase = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  secure: SECURE_COOKIES,
   sameSite: "strict" as const,
   path: "/",
 };
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
-  const key = await scrypt(password.normalize("NFKC"), salt, 64, SCRYPT_OPTS);
-  return `scrypt$${salt.toString("base64")}$${key.toString("base64")}`;
+  const key = await scrypt(password.normalize("NFKC"), salt, 64, scryptOpts({ N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P }));
+  return `scrypt$N=${SCRYPT_N},r=${SCRYPT_R},p=${SCRYPT_P}$${salt.toString("base64")}$${key.toString("base64")}`;
+}
+
+function parseHash(stored: string) {
+  const parts = stored.split("$");
+  if (parts[0] !== "scrypt") return null;
+  let params = LEGACY_PARAMS;
+  let rest = parts.slice(1);
+  if (rest.length === 3) {
+    const m = /^N=(\d+),r=(\d+),p=(\d+)$/.exec(rest[0]);
+    if (!m) return null;
+    params = { N: Number(m[1]), r: Number(m[2]), p: Number(m[3]) };
+    rest = rest.slice(1);
+  }
+  if (rest.length !== 2 || !rest[0] || !rest[1]) return null;
+  // Bound the cost so a corrupted stored value can't make a login allocate gigabytes.
+  const { N, r, p } = params;
+  if (N < 1024 || N > 1 << 18 || (N & (N - 1)) !== 0 || r < 1 || r > 16 || p < 1 || p > 4) return null;
+  return { params, salt: Buffer.from(rest[0], "base64"), key: Buffer.from(rest[1], "base64") };
 }
 
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
-  const [scheme, saltB64, keyB64] = stored.split("$");
-  if (scheme !== "scrypt" || !saltB64 || !keyB64) return false;
-  const expected = Buffer.from(keyB64, "base64");
-  const actual = await scrypt(password.normalize("NFKC"), Buffer.from(saltB64, "base64"), expected.length, SCRYPT_OPTS);
-  return timingSafeEqual(actual, expected);
+  const h = parseHash(stored);
+  if (!h) return false;
+  const actual = await scrypt(password.normalize("NFKC"), h.salt, h.key.length, scryptOpts(h.params));
+  return timingSafeEqual(actual, h.key);
+}
+
+/** True when a stored hash uses weaker parameters than the current ones (call after a successful verify). */
+export function passwordNeedsRehash(stored: string): boolean {
+  const h = parseHash(stored);
+  return !h || h.params.N < SCRYPT_N || h.params.r < SCRYPT_R || h.params.p < SCRYPT_P;
 }
 
 /** A real hash to compare against when the email is unknown, so timing doesn't reveal which accounts exist. */
@@ -48,20 +84,52 @@ export const getDummyHash = () => (dummyHash ??= hashPassword(randomToken()));
 
 // ---------- Sessions ----------
 
-export async function createSession(user: Pick<UserDoc, "_id" | "sessionVersion">, userAgent?: string) {
+export async function createSession(user: Pick<UserDoc, "_id" | "sessionVersion" | "role">, userAgent?: string, opts: { createdAt?: Date; expiresAt?: Date } = {}) {
   const token = randomToken(32);
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + SESSION_DAYS * 86_400_000);
+  const lifetime = user.role === "admin" ? ADMIN_SESSION_MS : SESSION_DAYS * 86_400_000;
+  const expiresAt = opts.expiresAt ?? new Date(now.getTime() + lifetime);
   const db = await getDb();
+  const jar = await cookies();
+  // A fresh login replaces whatever session this browser still holds, so old tokens don't pile up.
+  const old = jar.get(SESSION_COOKIE)?.value;
+  if (old) await db.collection("sessions").deleteOne({ tokenHash: sha256(old) });
   await db.collection<Omit<SessionDoc, "_id">>("sessions").insertOne({
     tokenHash: sha256(token),
     userId: user._id,
     sessionVersion: user.sessionVersion ?? 0,
-    createdAt: now,
+    createdAt: opts.createdAt ?? now,
+    lastSeenAt: now,
     expiresAt,
     userAgent: userAgent?.slice(0, 200),
   });
-  (await cookies()).set(SESSION_COOKIE, token, { ...cookieBase, expires: expiresAt });
+  jar.set(SESSION_COOKIE, token, { ...cookieBase, expires: expiresAt });
+}
+
+/**
+ * Replaces the session token once it is older than a day. Needs a context that may set cookies (a server action or
+ * route handler), so it is called from those rather than from `loadUser`. The old record survives for a minute so
+ * parallel requests that still carry the old token are not signed out. Only one of two racing calls wins.
+ */
+export async function rotateSessionIfDue(): Promise<void> {
+  const jar = await cookies();
+  const token = jar.get(SESSION_COOKIE)?.value;
+  if (!token) return;
+  const db = await getDb();
+  const sessions = db.collection<SessionDoc>("sessions");
+  const now = new Date();
+  const cut = new Date(now.getTime() - ROTATE_AFTER_MS);
+  const before = await sessions.findOneAndUpdate(
+    { tokenHash: sha256(token), retired: { $ne: true }, expiresAt: { $gt: now }, $or: [{ rotatedAt: { $lt: cut } }, { rotatedAt: { $exists: false }, createdAt: { $lt: cut } }] },
+    { $set: { retired: true, expiresAt: new Date(now.getTime() + ROTATE_GRACE_MS) } },
+    { returnDocument: "before" },
+  );
+  if (!before) return;
+  const next = randomToken(32);
+  const { _id, ...rest } = before;
+  void _id;
+  await db.collection<Omit<SessionDoc, "_id">>("sessions").insertOne({ ...rest, tokenHash: sha256(next), lastSeenAt: now, rotatedAt: now, retired: false });
+  jar.set(SESSION_COOKIE, next, { ...cookieBase, expires: before.expiresAt });
 }
 
 export async function destroySession() {
@@ -114,12 +182,18 @@ async function loadUser(): Promise<UserDoc | null> {
   // captured into a prerendered shell.
   await io();
   const db = await getDb();
-  const session = await db
-    .collection<SessionDoc>("sessions")
-    .findOne({ tokenHash: sha256(token), expiresAt: { $gt: new Date() } });
+  const now = new Date();
+  const sessions = db.collection<SessionDoc>("sessions");
+  const session = await sessions.findOne({ tokenHash: sha256(token), expiresAt: { $gt: now } });
   if (!session) return null;
   const user = await db.collection<UserDoc>("users").findOne({ _id: session.userId });
   if (!user || (user.sessionVersion ?? 0) !== session.sessionVersion || isSuspended(user)) return null;
+  // Admin limits apply by current role, so an older, longer session of a newly promoted admin is cut short too.
+  const admin = user.role === "admin";
+  const lastSeen = (session.lastSeenAt ?? session.createdAt).getTime();
+  if (now.getTime() - lastSeen > (admin ? ADMIN_IDLE_MS : IDLE_MS)) return null;
+  if (admin && now.getTime() - session.createdAt.getTime() > ADMIN_SESSION_MS) return null;
+  if (now.getTime() - lastSeen > TOUCH_EVERY_MS) await sessions.updateOne({ _id: session._id }, { $set: { lastSeenAt: now } });
   return user;
 }
 

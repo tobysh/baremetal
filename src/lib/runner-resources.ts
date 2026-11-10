@@ -33,6 +33,8 @@ export async function runnerResources(compiling: boolean): Promise<{ command: st
     await Promise.all([
       writeFile(path.join(group, "memory.max"), compiling ? "2147483648" : "536870912"),
       writeFile(path.join(group, "memory.swap.max"), "0"),
+      // An OOM kill takes the whole job, not one process, so a half-killed sandbox can't linger.
+      writeFile(path.join(group, "memory.oom.group"), "1"),
       writeFile(path.join(group, "pids.max"), compiling ? "512" : "128"),
       writeFile(path.join(group, "cpu.max"), "200000 100000"),
       writeFile(path.join(group, "io.weight"), "default 100"),

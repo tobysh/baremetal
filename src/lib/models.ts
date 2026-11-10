@@ -55,6 +55,12 @@ export type SessionDoc = {
   createdAt: Date;
   expiresAt: Date;
   userAgent?: string;
+  /** Last time the session was used (updated at most every few minutes); drives the idle timeout. */
+  lastSeenAt?: Date;
+  /** Set on the old record when its token was replaced; it then lives only a short grace period. */
+  retired?: boolean;
+  /** When the token was last replaced. */
+  rotatedAt?: Date;
 };
 
 export type ProgressDoc = {

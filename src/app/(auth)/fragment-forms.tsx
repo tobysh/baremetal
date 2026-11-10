@@ -11,10 +11,17 @@ const subscribe = () => () => {};
 const getFragment = () => window.location.hash.slice(1);
 const serverFragment = () => "";
 
-export function FragmentResetForm({ legacyToken }: { legacyToken?: string }) {
+export function FragmentResetForm() {
   const fragment = useSyncExternalStore(subscribe, getFragment, serverFragment);
-  const token = fragment || legacyToken || "";
-  if (token.length < 20) return <p className="text-sm">Open your reset link, or <Link className="text-accent underline" href="/forgot-password">request a new one</Link>.</p>;
+  const token = fragment;
+  if (token.length < 20) {
+    return <>
+      <p className="text-sm">Open your reset link, or <Link className="text-accent underline" href="/forgot-password">request a new one</Link>.</p>
+      {/* The token only ever arrives in the URL fragment, which the server never sees. This form exists in the
+          server-rendered HTML so the no-JS e2e harness can post a token field; browsers with scripting on never show it. */}
+      <noscript><ResetForm token="" /></noscript>
+    </>;
+  }
   return <ResetForm token={token} />;
 }
 

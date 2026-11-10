@@ -61,7 +61,7 @@ export function normalizeQuestion(message: string): string {
   return normalizeMessage(message)
     .replace(/['’]s\b/g, " is")
     .replace(/['’]/g, "")
-    .replace(/[^a-z0-9 ]+/g, " ")
+    .replace(/[^a-z0-9 +#]+/g, " ") // keep + and #, so C, C++ and C# questions stay distinct
     .replace(/\s+/g, " ")
     .trim()
     .replace(FILLER_PREFIX, "")

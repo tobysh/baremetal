@@ -111,7 +111,7 @@ export async function lockAccount(_prev: FormState, formData: FormData): Promise
   const g = await gate(formData);
   if (!g.ok) return g.state;
   const duration = String(formData.get("duration") ?? "");
-  if (!(duration in LOCK_HOURS)) return { errors: { duration: ["Choose how long to lock the account."] } };
+  if (!Object.hasOwn(LOCK_HOURS, duration)) return { errors: { duration: ["Choose how long to lock the account."] } };
   const hours = LOCK_HOURS[duration];
   const reason = reasonOf(formData);
   const now = new Date();

@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { ObjectId } from "mongodb";
 import { getDb } from "../../src/lib/db";
-import { recordAttempt, saveCode } from "../../src/lib/progress";
+import { reconcilePendingXp, recordAttempt, saveCode } from "../../src/lib/progress";
 
 const db = await getDb();
 const userId = new ObjectId(), id = userId.toHexString();
@@ -45,6 +45,28 @@ try {
   const fast = await attempt("fixture/fast");
   assert.equal(fast.xpAwarded, 0);
   assert.equal((await db.collection("progress").findOne({ userId, exerciseId: "fixture/fast" }))?.xpFlag, "too-fast");
+
+  // A crash after the claim leaves xpPending; the reconciler settles each shape of it.
+  await db.collection("progress").deleteMany({ userId });
+  await db.collection("xp_events").deleteMany({ userId });
+  const old = new Date(Date.now() - 3_600_000), ancient = new Date(Date.now() - 3 * 86_400_000);
+  const pending = (exerciseId: string, passedAt: Date) => db.collection("progress").insertOne({ userId, exerciseId, trackSlug: "fixture", status: "passed", passedAt, xpPending: true, xpAwarded: 0, code: "", attempts: 1 });
+  await users.updateOne({ _id: userId }, { $set: { xp: 5, xpQuota: [{ ref: "fixture/decided", at: old, xp: 5 }] } });
+  await pending("fixture/decided", old);
+  await pending("fixture/undecided", old);
+  await pending("fixture/ancient", ancient);
+  const rec = await reconcilePendingXp(60_000);
+  assert.deepEqual(rec, { finished: 1, reverted: 1, unresolved: 1 });
+  const decided = await db.collection("progress").findOne({ userId, exerciseId: "fixture/decided" });
+  assert.equal(decided?.xpPending, undefined);
+  assert.equal(decided?.xpAwarded, 5);
+  assert.equal(await db.collection("xp_events").countDocuments({ userId, ref: "fixture/decided", xp: 5 }), 1);
+  assert.equal((await users.findOne({ _id: userId }))?.xp, 5, "reconciling must not award twice");
+  const undecided = await db.collection("progress").findOne({ userId, exerciseId: "fixture/undecided" });
+  assert.equal(undecided?.status, "started");
+  assert.equal(undecided?.xpPending, undefined);
+  assert.equal((await db.collection("progress").findOne({ userId, exerciseId: "fixture/ancient" }))?.xpPending, true);
+  assert.deepEqual(await reconcilePendingXp(60_000), { finished: 0, reverted: 0, unresolved: 1 }, "second run is idempotent");
   console.log("XP atomicity regressions passed.");
 } finally {
   await Promise.all([users.deleteOne({ _id: userId }), db.collection("progress").deleteMany({ userId }), db.collection("xp_events").deleteMany({ userId }), db.collection("reviews").deleteMany({ userId })]);

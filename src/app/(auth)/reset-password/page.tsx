@@ -12,17 +12,12 @@ export const metadata: Metadata = {
   referrer: "no-referrer",
 };
 
-export default function ResetPasswordPage({ searchParams }: PageProps<"/reset-password">) {
+export default function ResetPasswordPage() {
   return (
     <AuthShell title="Choose a new password" intro="After this, you'll be signed out everywhere and can sign in with the new password.">
       <Suspense fallback={<Skeleton className="h-64" />}>
-        <ResetBody searchParams={searchParams} />
+        <FragmentResetForm />
       </Suspense>
     </AuthShell>
   );
-}
-
-async function ResetBody({ searchParams }: { searchParams: PageProps<"/reset-password">["searchParams"] }) {
-  const { token } = await searchParams;
-  return <FragmentResetForm legacyToken={typeof token === "string" ? token : undefined} />;
 }

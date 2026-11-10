@@ -4,10 +4,26 @@ import { getDb } from "@/lib/db";
 import { hmac } from "@/lib/crypto";
 import { CONSENT_COOKIE, parseConsent } from "@/lib/consent";
 import { readJson, sameOrigin } from "@/lib/http";
+import { getLesson, getTrack } from "@/lib/curriculum";
 import { clientIp, ipLimit, rateLimit } from "@/lib/rate-limit";
 
 type Body = { type?: string; path?: string; ref?: string; name?: string };
 const ALLOWED_EVENTS = new Set(["pageview", "signup_cta", "run", "test_passed", "tutor_open", "hint_open"]);
+
+const STATIC_PATHS = new Set([
+  "/", "/cookies", "/privacy", "/terms", "/leaderboard", "/learn", "/offline", "/review", "/shell", "/dashboard", "/dashboard/codex", "/dashboard/stats",
+  "/settings", "/settings/security", "/login", "/login/verify", "/signup", "/forgot-password", "/reset-password", "/verify-email", "/admin", "/admin/users", "/admin/security", "/admin/stuck",
+]);
+
+/** True only for pages that exist, so a client can't write arbitrary strings into the events collection. */
+function knownPath(path: string): boolean {
+  if (STATIC_PATHS.has(path)) return true;
+  const parts = path.split("/").filter(Boolean);
+  if (parts[0] === "learn" && parts.length === 2) return !!getTrack(parts[1]);
+  if (parts[0] === "learn" && parts.length === 3) return !!getLesson(parts[1], parts[2]);
+  if (parts[0] === "u" && parts.length === 2) return /^[a-z0-9_-]{3,20}$/.test(parts[1]);
+  return false;
+}
 
 /**
  * First-party, consent-gated analytics. Stores no IP and no cookie: the visitor
@@ -35,7 +51,8 @@ export async function POST(req: Request) {
   try {
     refHost = body.ref ? new URL(body.ref).host : null;
   } catch {}
-  const path = typeof body.path === "string" ? body.path.split("?")[0].slice(0, 200) : "/";
+  const path = typeof body.path === "string" ? body.path.split("?")[0].split("#")[0].slice(0, 200) : "/";
+  if (!knownPath(path)) return empty;
 
   const db = await getDb();
   await db.collection("events").insertOne({

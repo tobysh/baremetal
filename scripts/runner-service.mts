@@ -3,6 +3,7 @@ import { chmod, lstat, unlink } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { findExercise, getTracks } from "../src/lib/curriculum";
 import { validateLearningPaths } from "../src/lib/learning";
+import { cleanupStaleCgroups } from "../src/lib/runner-resources";
 import { cleanupStaleWorkdirs, runnerStatus, runProgram, testExercise, withRunnerRequest } from "../src/lib/runner-engine";
 import { RunnerBusyError, RUNNER_REQUEST_BYTES, RUNNER_RESPONSE_BYTES, RUNNER_REQUEST_TIMEOUT_MS, runnerRequestSchema, runResultSchema, testResultSchema } from "../src/lib/runner-protocol";
 
@@ -16,7 +17,7 @@ export async function startRunner(socket: string): Promise<Server> {
   const existing = await lstat(socket).catch((error: NodeJS.ErrnoException) => { if (error.code !== "ENOENT") throw error; return null; });
   if (existing) throw new Error("Runner socket already exists; stop the owner or remove the verified stale socket.");
   validateLearningPaths(getTracks());
-  await cleanupStaleWorkdirs();
+  await Promise.all([cleanupStaleWorkdirs(), cleanupStaleCgroups()]);
   const active = new Set<AbortController>();
   const server = createServer(async (req, res) => {
     const id = randomUUID();

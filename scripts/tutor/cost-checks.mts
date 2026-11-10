@@ -116,5 +116,12 @@ const t0 = Date.parse("2026-10-29T00:00:00Z");
 assert.equal(Math.round((expiryFor(1, t0).getTime() - t0) / 86_400_000), 30);
 assert.equal(Math.round((expiryFor(POPULAR_HITS, t0).getTime() - t0) / 86_400_000), 90);
 
+// --- client-supplied output cannot vouch for words in comments
+assert.equal(plan("I'm stuck", fa, "the sum is wrong").candidates.find((c) => c.kind === "failure")!.storable, false, "words from lastOutput do not vet comments");
+
+// --- C, C++ and C# questions do not share an entry
+assert.notEqual(normalizeQuestion("what is a template in C++?"), normalizeQuestion("what is a template in C?"));
+assert.notEqual(normalizeQuestion("what is a struct in C#"), normalizeQuestion("what is a struct in C"));
+
 // --- hits cost nothing: budget helpers only ever spend through recordSpend (never called for cache hits in the route)
 console.log("Tutor cache-key, context-size and budget checks passed.");

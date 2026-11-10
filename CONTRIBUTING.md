@@ -56,7 +56,9 @@ Then whatever your change touches:
 |---|---|
 | Lessons, tracks, or anything under `content/` | `npm run verify:content -- <track>`, then `npm run check:ids`, `npm run check:learning`, `npm run check:curriculum` |
 | A lesson's difficulty or `LEVEL_FLOORS` | `npm run recompute-xp` against any database with real learners (site stopped) |
-| Runner, sandbox, harness scanning | `npm run test:runner`, `node --import tsx scripts/security/integrity/fixtures-forgery.mts`, `node --import tsx scripts/security/runner-cancellation.mts` |
+| Runner, sandbox, harness scanning | `npm run test:runner`, `node --import tsx scripts/security/integrity/fixtures-forgery.mts`, `node --import tsx scripts/security/runner-cancellation.mts`, `npm run test:sandbox` |
+| Pure helpers (`redirects`, `totp`, `crypto`, `rate-limit`, `tutor-normalize`) | `npm run test:unit` |
+| Anything stored (collections, cookies, localStorage keys) or `content/legal/` | `npm run check:legal`; update `content/legal/` and bump `SITE.legal.lastUpdated` |
 | Auth, API routes, rate limits | `npm run build && npx next start -p 3100` then `npm run test:e2e -- http://localhost:3100` |
 | Tutor | `scripts/tutor/*.mts` (stream guard, cost, reservations) |
 | Workspace/UI behaviour | `npm run test:browser` (Playwright; `npx playwright install chromium`) |

@@ -5,6 +5,7 @@ export function productionConfigProblems(env: NodeJS.ProcessEnv): string[] {
   for (const name of ["LEGAL_ENTITY_NAME", "LEGAL_ADDRESS", "LEGAL_CONTACT_EMAIL", "SMTP_URL", "EMAIL_FROM"]) {
     if (!env[name]?.trim()) problems.push(`${name} is not set`);
   }
+  if (!env.MONGODB_URI?.trim()) problems.push("MONGODB_URI is not set (the localhost fallback is for development only)");
   if ((env.AUTH_SECRET ?? "").length < 32) problems.push("AUTH_SECRET must be at least 32 characters");
   return problems;
 }
@@ -30,5 +31,10 @@ export async function register() {
     const { cleanupStaleCgroups } = await import("./lib/runner-resources");
     await Promise.all([cleanupStaleWorkdirs(), cleanupStaleCgroups()]);
   }
+  // Settle first passes whose XP decision was interrupted by a crash (see reconcilePendingXp).
+  const { reconcilePendingXp } = await import("./lib/progress");
+  const settle = () => reconcilePendingXp().catch((error) => console.error("[xp] pending-XP reconciliation failed", error));
+  void settle();
+  setInterval(settle, 10 * 60_000).unref();
   console.log(`[boot] TRUSTED_PROXY_HOPS=${process.env.TRUSTED_PROXY_HOPS ?? "(unset, dev)"}`);
 }

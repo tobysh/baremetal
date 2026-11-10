@@ -315,7 +315,8 @@ export function planCache(p: { lessonCtx: string; message: string; code: string;
   const cls = classifyQuestion(p.message);
   if (cls === "concept")
     return { omitContext: true, candidates: [{ kind: "concept", key: conceptCacheKey(p.lessonCtx, p.message), question: normalizeQuestion(p.message).slice(0, 200), priv: new Set(), storable: true }] };
-  const publicWords = wordsOf(`${p.lessonCtx}\n${p.starter}\n${p.lastOutput}`);
+  // lastOutput comes from the client, so it is not trusted to vouch for words in the code's comments.
+  const publicWords = wordsOf(`${p.lessonCtx}\n${p.starter}`);
   const vetted = !hasUnvettedComments(p.code, p.language, publicWords);
   const candidates: CacheCandidate[] = [];
   const exactKey = responseCacheKey(p);

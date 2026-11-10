@@ -11,7 +11,7 @@ export async function GET() {
   if (!user) return jsonError(401, "Sign in to export your data.");
   if (!(await rateLimit(`export:${user._id.toHexString()}`, 5, 3600))) return jsonError(429, "Too many exports — try again later.");
   const db = await getDb();
-  const [progress, tutor, sessions, securityLog, xpEvents, achievements, reviews, reviewEvents, pendingEmail, verification, tutorSpend, adminActions] = await Promise.all([
+  const [progress, tutor, sessions, securityLog, xpEvents, achievements, reviews, reviewEvents, pendingEmail, verification, tutorSpend, adminActions, pending2fa] = await Promise.all([
     db.collection("progress").find({ userId: user._id }, { projection: { _id: 0, userId: 0 } }).toArray(),
     db.collection("tutor_threads").find({ userId: user._id }, { projection: { _id: 0, userId: 0 } }).toArray(),
     db.collection("sessions").find({ userId: user._id }, { projection: { _id: 0, createdAt: 1, expiresAt: 1, userAgent: 1 } }).toArray(),
@@ -27,6 +27,7 @@ export async function GET() {
     db.collection("email_verifications").find({ userId: user._id }, { projection: { _id: 0, expiresAt: 1 } }).toArray(),
     db.collection("tutor_spend").find({ key: { $regex: `^u:${user._id.toHexString()}:` } }, { projection: { _id: 0, key: 1, micro: 1, createdAt: 1 } }).toArray(),
     db.collection("admin_audit").find({ targetId: user._id.toHexString() }, { projection: { _id: 0, action: 1, note: 1, ts: 1 } }).toArray(),
+    db.collection("pending_2fa").find({ userId: user._id }, { projection: { _id: 0, expiresAt: 1, attempts: 1, next: 1 } }).toArray(),
   ]);
   const data = {
     exportedAt: new Date().toISOString(),
@@ -48,7 +49,7 @@ export async function GET() {
       passwordChangedAt: user.passwordChangedAt,
       twoFactorEnabled: !!user.twoFactor?.enabled,
       unusedBackupCodes: user.twoFactor?.backupCodeHashes.length ?? 0,
-      note: "Your password, 2FA secret and backup codes are stored only in hashed/encrypted form and are not included.",
+      note: "Your password, 2FA secret and backup codes are stored only in hashed/encrypted form and are not included. Tutor token-usage logs, shared tutor replies, rate-limit counters, sign-in failure counters and analytics events are not linked to your account (they hold keyed hashes or no identity), so they cannot be exported.",
     },
     progress,
     xpLedger: xpEvents,
@@ -62,6 +63,7 @@ export async function GET() {
     pendingEmailVerification: verification,
     tutorSpend,
     administratorActions: adminActions,
+    pendingTwoFactorSignIns: pending2fa,
   };
   return new NextResponse(JSON.stringify(data, null, 2), {
     headers: {

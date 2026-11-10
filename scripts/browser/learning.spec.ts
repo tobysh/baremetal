@@ -1,3 +1,4 @@
+import { SESSION_COOKIE } from "../../src/lib/session-cookie";
 import { test, expect, type Page } from "@playwright/test";
 import { MongoClient, ObjectId } from "mongodb";
 import { createHash, randomBytes } from "node:crypto";
@@ -13,7 +14,7 @@ const userToken = randomBytes(32).toString("hex"), adminToken = randomBytes(32).
 const tracks = getTracks();
 const zero = tracks.find((track) => track.slug === "first-steps")!;
 const go = tracks.find((track) => track.slug === "go-foundations")!;
-const login = async (page: Page, admin = false) => page.context().addCookies([{ name: "bm_session", value: admin ? adminToken : userToken, url: base, httpOnly: true, sameSite: "Strict" }]);
+const login = async (page: Page, admin = false) => page.context().addCookies([{ name: SESSION_COOKIE, value: admin ? adminToken : userToken, url: base, httpOnly: true, sameSite: "Strict" }]);
 const edit = async (page: Page, code: string) => {
   const editor = page.getByRole("textbox", { name: /code editor/ });
   await editor.click();

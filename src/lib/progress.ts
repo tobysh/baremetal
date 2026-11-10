@@ -5,7 +5,7 @@ import { getDb } from "./db";
 import { REVIEW_INTERVALS_DAYS } from "./progress-constants";
 import { dueAfter } from "./review-math";
 import { codingRating, logReviewEvent } from "./review-events";
-import { challengeXpFor, practiceXpFor, xpFor, type Difficulty } from "./gamification";
+import { challengeXpFor, isChallengeId, isPracticeId, practiceXpFor, xpFor, type Difficulty } from "./gamification";
 import type { ProgressDoc, ReviewDoc, TutorThreadDoc, XpEventDoc } from "./models";
 
 const col = async () => (await getDb()).collection<ProgressDoc>("progress");
@@ -129,6 +129,52 @@ export async function recordAttempt(o: AttemptInput): Promise<AttemptOutcome> {
   if (!o.challenge && !o.practice) await scheduleFirstReview(userId, o.exerciseId, now);
   await c.updateOne(filter, { $set: { xpAwarded: award, ...(flag ? { xpWithheld: true, xpFlag: flag } : {}) }, $unset: { xpPending: "" } });
   return { firstPass: true, xpAwarded: award, totalXp: award ? updated.xp ?? award : null, ...(flag ? { paced: true } : {}), unaided };
+}
+
+export type PendingXpReport = { finished: number; reverted: number; unresolved: number };
+
+/**
+ * Settles first passes that crashed between claiming the pass and recording the XP decision
+ * (`xpPending`). Standalone MongoDB has no transactions, so recordAttempt is a sequence of
+ * idempotent steps and this finishes whichever were missed. For each pass older than `olderThanMs`:
+ *  - the account's `xpQuota` (24 h) or the ledger already holds the decision: the award was applied
+ *    to `users.xp`, so only the ledger row, the first review and the progress fields are completed;
+ *  - no decision and the pass is under 24 h old: nothing was awarded, so the claim is reverted and
+ *    the learner's next passing run awards it normally;
+ *  - no decision and older than the quota window: left pending and counted as unresolved, because
+ *    the outcome can no longer be told (`npm run flagged-accounts` lists these).
+ */
+export async function reconcilePendingXp(olderThanMs = 10 * 60_000): Promise<PendingXpReport> {
+  const report: PendingXpReport = { finished: 0, reverted: 0, unresolved: 0 };
+  const db = await getDb();
+  const c = await col();
+  const now = Date.now();
+  const stale = c.find({ status: "passed", xpPending: true, passedAt: { $lt: new Date(now - olderThanMs) } }).project({ code: 0 });
+  for await (const p of stale) {
+    const users = db.collection("users");
+    const events = db.collection<XpEventDoc>("xp_events");
+    const user = await users.findOne({ _id: p.userId }, { projection: { xpQuota: 1 } });
+    const decision = (user?.xpQuota ?? []).find((e: { ref?: string }) => e.ref === p.exerciseId) as { xp?: number; flag?: XpFlag | null } | undefined;
+    const source = isPracticeId(p.exerciseId) ? "practice" : isChallengeId(p.exerciseId) ? "challenge" : "lesson";
+    const event = await events.findOne({ userId: p.userId, source, ref: p.exerciseId });
+    if (decision || event) {
+      const award = decision ? decision.xp ?? 0 : event!.xp;
+      const flag = decision?.flag ?? null;
+      if (award > 0 && !event) {
+        await events.updateOne({ userId: p.userId, source, ref: p.exerciseId }, { $setOnInsert: { xp: award, at: p.passedAt ?? new Date() } }, { upsert: true });
+      }
+      if (source === "lesson") await scheduleFirstReview(p.userId, p.exerciseId, p.passedAt ?? new Date());
+      await c.updateOne({ _id: p._id, xpPending: true }, { $set: { xpAwarded: award, ...(flag ? { xpWithheld: true, xpFlag: flag } : {}) }, $unset: { xpPending: "" } });
+      report.finished++;
+    } else if (p.passedAt && now - p.passedAt.getTime() < 24 * 3_600_000) {
+      const res = await c.updateOne({ _id: p._id, xpPending: true }, { $set: { status: "started", startKnown: true }, $unset: { xpPending: "", passedAt: "", xpAwarded: "" } });
+      if (res.modifiedCount === 1) report.reverted++;
+    } else {
+      report.unresolved++;
+    }
+  }
+  if (report.unresolved) console.error(`[xp] ${report.unresolved} pending pass(es) older than 24 h have no recorded decision; review them with npm run flagged-accounts.`);
+  return report;
 }
 
 /** Records that the learner opened hint number `index` (0-based). Only ever moves the count up. */

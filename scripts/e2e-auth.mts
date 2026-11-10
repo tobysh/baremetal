@@ -8,9 +8,10 @@
 // Creates throwaway accounts (e2e-*@example.test) and deletes them afterwards.
 // Each phase sends a different simulated client IP (X-Forwarded-For), as a
 // reverse proxy would, so IP-based limits don't interfere between phases.
-import { createHash, createHmac, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes, scryptSync } from "node:crypto";
 import { MongoClient, type ObjectId } from "mongodb";
 import { encrypt, hmac, randomToken, sha256 } from "../src/lib/crypto";
+import { PENDING_2FA_COOKIE, SESSION_COOKIE } from "../src/lib/session-cookie";
 import { hashBackupCode, legacyBackupCodeHash, newBackupCodes } from "../src/lib/totp";
 import { accountFailureDocKey, clearLoginFailures, finishLoginFailure, refundLoginAttempt, reserveLoginAttempt } from "../src/lib/security";
 
@@ -143,12 +144,12 @@ try {
     check("at least 10 sign-ups from one IP are not throttled", blockedAt === 0 || blockedAt > 10, `blocked at attempt ${blockedAt}`);
     b.ip = ip(13); // a different network
     r = await b.submit("/signup", { ...base, password: PASSWORD, confirm: PASSWORD, captcha: await solveCaptcha(b, "signup") });
-    check("valid sign-up gives generic confirmation without a session", r.status === 200 && /check your email/i.test(text(r.html)) && !b.cookies.has("bm_session"));
+    check("valid sign-up gives generic confirmation without a session", r.status === 200 && /check your email/i.test(text(r.html)) && !b.cookies.has(SESSION_COOKIE));
     const stored = await users.findOne({ email });
     check("new account requires email verification", stored?.emailVerified === false);
     check("password stored only as a scrypt hash", !!stored?.passwordHash.startsWith("scrypt$") && !stored.passwordHash.includes(PASSWORD));
     r = await b.submit("/login", { email, password: PASSWORD });
-    check("unverified account cannot sign in", !b.cookies.has("bm_session") && /verify your email/i.test(text(r.html)));
+    check("unverified account cannot sign in", !b.cookies.has(SESSION_COOKIE) && /verify your email/i.test(text(r.html)));
     const verifyToken = randomBytes(32).toString("base64url");
     await db.collection("email_verifications").insertOne({ tokenHash: sha256(verifyToken), userId: stored!._id, expiresAt: new Date(Date.now() + 60000) });
     r = await b.submit("/verify-email", { token: verifyToken, password: PASSWORD, confirm: PASSWORD });
@@ -156,20 +157,44 @@ try {
     r = await b.submit("/verify-email", { token: verifyToken, password: PASSWORD, confirm: PASSWORD });
     check("verification token is single-use", /invalid|already used/i.test(text(r.html)));
     r = await b.submit("/login", { email, password: PASSWORD });
-    check("verified account can sign in", r.status === 303 && b.cookies.has("bm_session"));
-    const sc = b.setCookieHeaders.find((c) => c.startsWith("bm_session=")) ?? "";
+    check("verified account can sign in", r.status === 303 && b.cookies.has(SESSION_COOKIE));
+    const sc = b.setCookieHeaders.find((c) => c.startsWith(`${SESSION_COOKIE}=`)) ?? "";
     check("session cookie is HttpOnly", /HttpOnly/i.test(sc), sc);
     check("session cookie is SameSite=Strict", /SameSite=Strict/i.test(sc), sc);
     const session = stored && (await db.collection("sessions").findOne({ userId: stored._id }));
-    check("session token stored hashed, not raw", !!session && session.tokenHash === sha256(b.cookies.get("bm_session")!));
+    check("session token stored hashed, not raw", !!session && session.tokenHash === sha256(b.cookies.get(SESSION_COOKIE)!));
     await users.updateOne({ email }, { $unset: { emailVerified: "" } });
     const legacy = new Browser(ip(18));
     const legacyResult = await legacy.submit("/login", { email, password: PASSWORD });
-    check("legacy account without a verification flag can sign in", legacyResult.status === 303 && legacy.cookies.has("bm_session"));
+    check("legacy account without a verification flag can sign in", legacyResult.status === 303 && legacy.cookies.has(SESSION_COOKIE));
     await users.updateOne({ email }, { $set: { emailVerified: true } });
+
+    // Phase 3: cookie hardening, scrypt parameters, re-login, idle timeout.
+    const hostPrefixed = SESSION_COOKIE.startsWith("__Host-");
+    check("session cookie uses the __Host- prefix with Secure and Path=/, no Domain", hostPrefixed === /Secure/i.test(sc) && (!hostPrefixed || (/Path=\//.test(sc) && !/Domain=/i.test(sc))), sc);
+    check("new password hashes carry their scrypt parameters (N=2^17)", !!stored && (await users.findOne({ email }))!.passwordHash.startsWith("scrypt$N=131072,r=8,p=1$"));
+    const legacySalt = randomBytes(16);
+    const legacyKey = scryptSync(PASSWORD.normalize("NFKC"), legacySalt, 64, { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
+    await users.updateOne({ email }, { $set: { passwordHash: `scrypt$${legacySalt.toString("base64")}$${legacyKey.toString("base64")}` } });
+    const relogin = new Browser(ip(31));
+    let rr = await relogin.submit("/login", { email, password: PASSWORD });
+    check("an old-parameter hash still verifies", rr.status === 303 && relogin.cookies.has(SESSION_COOKIE));
+    check("...and is rehashed with the current parameters on login", (await users.findOne({ email }))!.passwordHash.startsWith("scrypt$N=131072,r=8,p=1$"));
+    const firstToken = relogin.cookies.get(SESSION_COOKIE)!;
+    rr = await relogin.submit("/login", { email, password: PASSWORD });
+    check("signing in again deletes the browser's previous session", rr.status === 303 && relogin.cookies.get(SESSION_COOKIE) !== firstToken && (await db.collection("sessions").countDocuments({ tokenHash: sha256(firstToken) })) === 0);
+    await db.collection("sessions").updateOne({ tokenHash: sha256(relogin.cookies.get(SESSION_COOKIE)!) }, { $set: { lastSeenAt: new Date(Date.now() - 15 * 86_400_000) } });
+    const idle = await relogin.get("/dashboard");
+    check("a session idle for more than 14 days is refused", idle.status !== 200 || !idle.html.includes("E2E Tester"));
+    const lookalike = new Browser(ip(32));
+    rr = await lookalike.submit("/signup", { ...base, username: "adm1n-team", email: `e2e-${run}-look@example.test`, password: PASSWORD, confirm: PASSWORD, captcha: await solveCaptcha(lookalike, "signup") });
+    check("usernames imitating reserved words are rejected", /reserved/i.test(text(rr.html)), text(rr.html).slice(0, 200));
+    const legacyToken = randomBytes(32).toString("base64url");
+    const oldLink = await lookalike.get(`/reset-password?token=${legacyToken}`);
+    check("legacy ?token= reset links are no longer read", !oldLink.html.includes(`value="${legacyToken}"`));
     const duplicate = new Browser(ip(14));
     r = await duplicate.submit("/signup", { ...base, password: PASSWORD, confirm: PASSWORD, captcha: await solveCaptcha(duplicate, "signup") });
-    check("existing signup gives the same generic response", r.status === 200 && /check your email/i.test(text(r.html)) && !duplicate.cookies.has("bm_session"));
+    check("existing signup gives the same generic response", r.status === 200 && /check your email/i.test(text(r.html)) && !duplicate.cookies.has(SESSION_COOKIE));
     const dash = await b.get("/dashboard");
     check("dashboard loads when signed in", dash.status === 200 && dash.html.includes("E2E Tester"));
     const exported = await (await b.fetch("/api/account/export")).json() as { account: { emailVerified?: boolean }, pendingEmailDelivery?: Record<string, unknown>[] };
@@ -188,7 +213,7 @@ try {
     const res = await b.fetch("/api/admin/stats");
     check("signed-out /api/admin/stats is 403", res.status === 403);
     // Forged cookie
-    b.cookies.set("bm_session", randomBytes(32).toString("base64url"));
+    b.cookies.set(SESSION_COOKIE, randomBytes(32).toString("base64url"));
     r = await b.get("/dashboard");
     check("a forged session cookie isn't accepted", !r.html.includes("E2E Tester"));
     // Signed in as a normal user
@@ -302,31 +327,31 @@ try {
     );
     const b = new Browser(ip(4));
     let r = await b.submit("/login", { email, password: PASSWORD });
-    check("password step redirects to /login/verify, not a session", r.status === 303 && !!r.location?.includes("/login/verify") && !b.cookies.has("bm_session"));
-    const pend = b.setCookieHeaders.find((c) => c.startsWith("bm_2fa_pending=")) ?? "";
+    check("password step redirects to /login/verify, not a session", r.status === 303 && !!r.location?.includes("/login/verify") && !b.cookies.has(SESSION_COOKIE));
+    const pend = b.setCookieHeaders.find((c) => c.startsWith(`${PENDING_2FA_COOKIE}=`)) ?? "";
     check("pending-2FA cookie is HttpOnly + SameSite=Strict", /HttpOnly/i.test(pend) && /SameSite=Strict/i.test(pend), pend);
     r = await b.submit("/login/verify", { code: "000000" });
-    check("wrong code is rejected", /didn.t work/.test(text(r.html)) && !b.cookies.has("bm_session"));
+    check("wrong code is rejected", /didn.t work/.test(text(r.html)) && !b.cookies.has(SESSION_COOKIE));
     const code = totp(secret);
     r = await b.submit("/login/verify", { code });
-    check("correct TOTP signs in", r.status === 303 && b.cookies.has("bm_session"), `${r.status} ${r.location}`);
+    check("correct TOTP signs in", r.status === 303 && b.cookies.has(SESSION_COOKIE), `${r.status} ${r.location}`);
     // Replay the same code in a fresh login
     const b2 = new Browser(ip(5));
     await b2.submit("/login", { email, password: PASSWORD });
     r = await b2.submit("/login/verify", { code });
-    check("the same TOTP code can't be replayed", !b2.cookies.has("bm_session"));
+    check("the same TOTP code can't be replayed", !b2.cookies.has(SESSION_COOKIE));
     r = await b2.submit("/login/verify", { code: codes[0] });
-    check("a backup code signs in", b2.cookies.has("bm_session"));
+    check("a backup code signs in", b2.cookies.has(SESSION_COOKIE));
     const b3 = new Browser(ip(6));
     await b3.submit("/login", { email, password: PASSWORD });
     await b3.submit("/login/verify", { code: codes[0] });
-    check("a backup code works only once", !b3.cookies.has("bm_session"));
+    check("a backup code works only once", !b3.cookies.has(SESSION_COOKIE));
     const legacy = "k3f9-x2mq";
     await users.updateOne({ email }, { $push: { "twoFactor.backupCodeHashes": legacyBackupCodeHash(legacy) } } as never);
     const old = new Browser(ip(15));
     await old.submit("/login", { email, password: PASSWORD });
     await old.submit("/login/verify", { code: legacy });
-    check("legacy backup code remains valid once", old.cookies.has("bm_session"));
+    check("legacy backup code remains valid once", old.cookies.has(SESSION_COOKIE));
     // Too many wrong codes ends the attempt
     let after = null;
     for (let i = 0; i < 4; i++) after = await b3.submit("/login/verify", { code: "111111" });
@@ -339,7 +364,7 @@ try {
     for (const [peer, count] of [[peers[0], 2], [peers[1], 2], [peers[2], 1]] as const)
       for (let i = 0; i < count; i++) await peer.submit("/login/verify", { code: "wrong-code" });
     const blocked = await peers[0].submit("/login/verify", { code: codes[1] });
-    check("OTP backoff follows the account across pending sessions", /Too many verification attempts/i.test(text(blocked.html)) && !peers[0].cookies.has("bm_session"));
+    check("OTP backoff follows the account across pending sessions", /Too many verification attempts/i.test(text(blocked.html)) && !peers[0].cookies.has(SESSION_COOKIE));
     await db.collection("login_failures").deleteOne({ key: `otp:${hmac("login-otp", user!._id.toHexString())}` });
     // Admin with 2FA
     await users.updateOne({ email }, { $set: { role: "admin" } });
@@ -348,7 +373,7 @@ try {
     await stale.submit("/login", { email, password: PASSWORD });
     await users.updateOne({ email }, { $inc: { sessionVersion: 1 } });
     const staleResult = await stale.submit("/login/verify", { code: codes[2] });
-    check("revoking sessions also revokes pending 2FA", staleResult.status === 303 && !stale.cookies.has("bm_session"));
+    check("revoking sessions also revokes pending 2FA", staleResult.status === 303 && !stale.cookies.has(SESSION_COOKIE));
     await users.updateOne({ email }, { $set: { role: "user" }, $unset: { twoFactor: "" } });
   }
 
@@ -454,7 +479,7 @@ try {
     await db.collection("sessions").insertOne({ tokenHash: sha256(token), userId: sfId, sessionVersion: (rest as { sessionVersion?: number }).sessionVersion ?? 0, createdAt: new Date(), expiresAt: new Date(Date.now() + 3600_000) });
     const session = (addr: number) => {
       const b = new Browser(ip(addr));
-      b.cookies.set("bm_session", token);
+      b.cookies.set(SESSION_COOKIE, token);
       return b;
     };
     const NEWPW = "Marble-Kettle-Sunrise-58";
@@ -505,7 +530,7 @@ try {
     await rb.submit(`/reset-password?token=${resetToken}`, { token: resetToken, password: NEWPW, confirm: NEWPW });
     const lb = new Browser(ip(31));
     const lr = await lb.submit("/login", { email: unverifiedEmail, password: NEWPW });
-    check("reset marks an unverified account verified, and login then succeeds", (await users.findOne({ _id: unverifiedId }))?.emailVerified === true && lr.status === 303 && lb.cookies.has("bm_session"), `${lr.status} ${lr.location}`);
+    check("reset marks an unverified account verified, and login then succeeds", (await users.findOne({ _id: unverifiedId }))?.emailVerified === true && lr.status === 303 && lb.cookies.has(SESSION_COOKIE), `${lr.status} ${lr.location}`);
 
     // S5: deleting an account leaves nothing behind and refuses late writes.
     const delId = await clone("delete", { emailVerified: true });

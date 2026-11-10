@@ -79,10 +79,28 @@ const RESERVED = new Set([
   "leaderboard", "privacy", "terms", "cookies", "baremetal", "moderator", "staff", "system", "null", "undefined", "me", "you",
 ]);
 
+/** Words that must not appear anywhere in a username, even with digits or symbols swapped for letters. */
+const RESERVED_SUBSTRINGS = ["admin", "moderator", "support", "baremetal", "staff", "official", "security", "sysop", "webmaster"];
+const LOOKALIKES: Record<string, string> = { "0": "o", "3": "e", "4": "a", "5": "s", "7": "t", "8": "b", "9": "g", "@": "a", "$": "s", "!": "i" };
+
+/** Spellings a lookalike could be read as: separators dropped, digits mapped to letters (1 can be i or l), rn read as m. */
+function lookalikeForms(name: string): string[] {
+  const base = [...name.replace(/[-_]/g, "")].map((c) => LOOKALIKES[c] ?? c).join("");
+  const forms = [base.replaceAll("1", "i"), base.replaceAll("1", "l")];
+  return forms.flatMap((f) => [f, f.replaceAll("rn", "m"), f.replaceAll("vv", "w")]);
+}
+
+/** True if the name is, or imitates, a reserved word. Exported for tests. */
+export function isReservedUsername(name: string): boolean {
+  const lower = name.toLowerCase();
+  if (RESERVED.has(lower)) return true;
+  return lookalikeForms(lower).some((f) => RESERVED.has(f) || RESERVED_SUBSTRINGS.some((w) => f.includes(w)));
+}
+
 /** Returns an error message, or null if the username is acceptable. Expects a lowercased value. */
 export function usernameProblem(name: string): string | null {
   if (name.length < 3 || name.length > 20) return "Usernames are 3–20 characters";
   if (!USERNAME_RE.test(name)) return "Use lowercase letters, numbers, - and _ (starting and ending with a letter or number)";
-  if (RESERVED.has(name)) return "That username is reserved";
+  if (isReservedUsername(name)) return "That username is reserved";
   return null;
 }

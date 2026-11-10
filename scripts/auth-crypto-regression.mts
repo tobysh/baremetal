@@ -1,6 +1,7 @@
 // Run: npx tsx --conditions=react-server --env-file=.env.local scripts/auth-crypto-regression.mts
 import assert from "node:assert/strict";
 import { createHash, createHmac } from "node:crypto";
+import { isReservedUsername, usernameProblem } from "../src/lib/gamification";
 import { hashBackupCode, legacyBackupCodeHash, newBackupCodes, verifyTotp } from "../src/lib/totp";
 
 const codes = newBackupCodes(100);
@@ -25,4 +26,10 @@ const value = (((digest[o] & 127) << 24) | (digest[o + 1] << 16) | (digest[o + 2
 const token = String(value).padStart(6, "0");
 assert.equal(verifyTotp(secret, token), step);
 assert.equal(verifyTotp(secret, token, step), null);
+for (const bad of ["admin", "adm1n", "4dmin", "a_d-min", "xx-admin-xx", "r00t", "he1p", "baremetal", "barernetal", "support99", "m0derator", "0fficial"]) {
+  assert.ok(isReservedUsername(bad), `${bad} should be reserved`);
+}
+for (const ok of ["alice", "tobyt", "james", "rootsy", "cadmium7", "grace_h"]) {
+  assert.equal(usernameProblem(ok), null, `${ok} should be allowed`);
+}
 console.log("Auth crypto regressions passed.");

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import QRCode from "qrcode";
 import { getDb } from "@/lib/db";
-import { destroySession, getUserDoc, hashPassword, revokeAllSessions, verifyPassword } from "@/lib/auth";
+import { destroySession, getUserDoc, rotateSessionIfDue, hashPassword, revokeAllSessions, verifyPassword } from "@/lib/auth";
 import { deleteUserData } from "@/lib/account-ops";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { queueEmail, scheduleEmailDelivery } from "@/lib/email";
@@ -16,11 +16,13 @@ import { checkPassword } from "@/lib/password";
 import { authRateLimit, finishOtpFailure, logAuthEvent, otpGuard, refundOtpAttempt, requestContext, reserveOtpAttempt } from "@/lib/security";
 import { hashBackupCode, legacyBackupCodeHash, newBackupCodes, newTotpSecret, otpauthUrl, verifyTotp } from "@/lib/totp";
 import { SITE } from "@/lib/site";
+import { rateLimit } from "@/lib/rate-limit";
 import { validTimezone, WEEKLY_GOALS } from "@/lib/rhythm";
 
 async function mustUser(): Promise<UserDoc> {
   const user = await getUserDoc();
   if (!user) redirect("/login?next=/settings");
+  await rotateSessionIfDue();
   return user;
 }
 
@@ -79,6 +81,7 @@ const profileSchema = z.object({
 
 export async function updateProfile(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await mustUser();
+  if (!(await rateLimit(`profile:${user._id.toHexString()}`, 20, 600))) return { message: "Too many changes. Please wait a few minutes." };
   const values = formValues(formData, ["name", "username", "experience", "profilePublic"]);
   const parsed = profileSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values };
@@ -97,6 +100,7 @@ export async function updateProfile(_prev: FormState, formData: FormData): Promi
 
 export async function updateRhythm(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await mustUser();
+  if (!(await rateLimit(`rhythm:${user._id.toHexString()}`, 30, 600))) return { message: "Too many changes. Please wait a few minutes." };
   const goal = Number(formData.get("weeklyGoal"));
   const timezone = String(formData.get("timezone") ?? "");
   if (goal !== 0 && !(WEEKLY_GOALS as readonly number[]).includes(goal)) return { errors: { weeklyGoal: ["Pick one of the options"] } };
@@ -110,6 +114,7 @@ export async function updateRhythm(_prev: FormState, formData: FormData): Promis
 /** Called silently by the dashboard the first time we see a learner, so weeks start on their own Monday. */
 export async function rememberTimezone(timezone: string): Promise<void> {
   const user = await getUserDoc();
+  if (user) await rotateSessionIfDue();
   if (!user || user.timezone || !validTimezone(timezone)) return;
   await (await users()).updateOne({ _id: user._id, timezone: { $exists: false } }, { $set: { timezone } });
 }

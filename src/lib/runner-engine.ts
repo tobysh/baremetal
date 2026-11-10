@@ -393,21 +393,26 @@ const HIDDEN_NOTE = "(a diagnostic inside the hidden tests was hidden)";
  */
 export function redactHarnessDiagnostics(output: string, language: Language, learnerLines: number): string {
   if (language === "rust") {
+    // A diagnostic can point at harness code from a primary span (`-->`), a secondary span (`:::`)
+    // or only through a quoted source line, so every location and every numbered gutter line counts.
+    const beyond = (block: string) =>
+      [...block.matchAll(/(?:-->|:::)\s*(?:\S*\/)?main\.rs:(\d+)/g)].some((m) => Number(m[1]) > learnerLines) ||
+      [...block.matchAll(/^\s*(\d+)\s+\|/gm)].some((m) => Number(m[1]) > learnerLines) ||
+      /__bm_tests/.test(block);
     return output
       .split(/\n\s*\n/)
-      .map((block) => {
-        const at = block.match(/-->\s*main\.rs:(\d+)/);
-        return at && Number(at[1]) > learnerLines ? HIDDEN_NOTE : block;
-      })
+      .map((block) => (beyond(block) ? HIDDEN_NOTE : block))
       .join("\n\n");
   }
-  const harnessFiles = new Set(language === "go" ? ["bm_test.go"] : ["tests.c"]);
+  const harnessFile = language === "go" ? "bm_test.go" : "tests.c";
+  const names = (line: string) => line.includes(harnessFile);
   const out: string[] = [];
   let hidden = false;
   for (const line of output.split("\n")) {
-    const head = line.match(/^(?:In file included from )?(?:\.\/)?([^\s:]+\.[a-z]+):(?:\d+|\s+In )/);
-    if (head) hidden = harnessFiles.has(head[1]);
-    if (!hidden) out.push(line);
+    const head = line.match(/^(?:vet: |In file included from )?(\S+?\.[a-z]+):(?:\d+|\s+In )/);
+    if (head) hidden = head[1].split("/").pop() === harnessFile;
+    // A learner-file diagnostic can still name harness lines ("other declaration of ...").
+    if (!hidden && !(language === "go" && names(line) && /bm_test\.go:\d+/.test(line))) out.push(line);
     else if (out[out.length - 1] !== HIDDEN_NOTE) out.push(HIDDEN_NOTE);
   }
   return out.join("\n");
@@ -831,7 +836,7 @@ const TAMPER_PATTERNS_BY_LANGUAGE: Partial<Record<Language, RegExp[]>> = {
   kernel: [/#\s*embed\b|__has_embed/],
 };
 
-function harnessTampering(code: string, language: Language): string | null {
+export function harnessTampering(code: string, language: Language): string | null {
   const patterns = [...TAMPER_PATTERNS, ...(TAMPER_PATTERNS_BY_LANGUAGE[language] ?? [])];
   if (!patterns.some((re) => re.test(code))) return null;
   return "Your code contains text that belongs to the test harness (its result lines, internal names, load-time hooks or a read of /proc). Tests can't be checked while it's there. Remove it and run the tests again.";
@@ -842,20 +847,21 @@ function harnessTampering(code: string, language: Language): string | null {
  * share `//`, `/* *\/`, `"..."`, `'x'` and Go's raw backtick strings). Lifetimes such as `'a`
  * are not char literals, so a quote only opens one when a closing quote follows promptly.
  */
-function literalMask(code: string): boolean[] {
+function scanLiterals(code: string): { mask: boolean[]; comments: boolean[] } {
   const mask = new Array<boolean>(code.length).fill(false);
-  const fill = (from: number, to: number) => { for (let k = from; k < Math.min(to, code.length); k++) mask[k] = true; };
+  const comments = new Array<boolean>(code.length).fill(false);
+  const fill = (from: number, to: number, into = mask) => { for (let k = from; k < Math.min(to, code.length); k++) into[k] = true; };
   let i = 0;
   while (i < code.length) {
     const c = code[i], n = code[i + 1];
     if (c === "/" && n === "/") {
       const end = code.indexOf("\n", i);
       const to = end < 0 ? code.length : end;
-      fill(i, to); i = to;
+      fill(i, to); fill(i, to, comments); i = to;
     } else if (c === "/" && n === "*") {
       const end = code.indexOf("*/", i + 2);
       const to = end < 0 ? code.length : end + 2;
-      fill(i, to); i = to;
+      fill(i, to); fill(i, to, comments); i = to;
     } else if (c === "`") {
       const end = code.indexOf("`", i + 1);
       const to = end < 0 ? code.length : end + 1;
@@ -870,7 +876,7 @@ function literalMask(code: string): boolean[] {
       if (m) { fill(i, i + m[0].length); i += m[0].length; } else i++;
     } else i++;
   }
-  return mask;
+  return { mask, comments };
 }
 
 /**
@@ -880,15 +886,18 @@ function literalMask(code: string): boolean[] {
 export function setInitialValues(code: string, set: Record<string, string>): string | null {
   let out = code;
   for (const [name, value] of Object.entries(set)) {
-    const re = new RegExp(`(\\b${name}\\b[^=;\\n]*?:?=\\s*)("[^"\\n]*"|'[^'\\n]*'|[^;\\n,]+)`, "g");
-    const mask = literalMask(out);
+    // The declaration is bounded to 200 characters and searched with comments blanked out first, so a
+    // huge comment or one very long line can't make the scan quadratic.
+    const re = new RegExp(`(\\b${name}\\b[^=;\\n]{0,200}?:?=\\s*)("[^"\\n]*"|'[^'\\n]*'|[^;\\n,]+)`, "g");
+    const { mask, comments } = scanLiterals(out);
+    const scan = out.replace(/[^\n]/g, (ch, k: number) => (comments[k] ? " " : ch));
     let hit: RegExpExecArray | null = null;
-    for (let m = re.exec(out); m; m = re.exec(out)) {
+    for (let m = re.exec(scan); m; m = re.exec(scan)) {
       if (!mask[m.index]) { hit = m; break; }
       re.lastIndex = m.index + 1;
     }
     if (!hit) return null;
-    out = out.slice(0, hit.index) + hit[1] + value + out.slice(hit.index + hit[0].length);
+    out = out.slice(0, hit.index) + out.slice(hit.index, hit.index + hit[1].length) + value + out.slice(hit.index + hit[0].length);
   }
   return out;
 }

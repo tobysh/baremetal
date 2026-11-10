@@ -1,3 +1,4 @@
+import { SESSION_COOKIE } from "../../src/lib/session-cookie";
 import assert from "node:assert/strict";
 import {createHash, randomBytes} from "node:crypto";
 import {readFile} from "node:fs/promises";
@@ -9,7 +10,7 @@ const id = new ObjectId(), token = randomBytes(32).toString("hex");
 const tokenHash = createHash("sha256").update(token).digest("hex");
 const exerciseId = "first-steps/logical-operators";
 const code = await readFile("content/first-steps/10-logical-operators/solution.c","utf8");
-const headers = {Origin:base,"Content-Type":"application/json",Cookie:`bm_session=${token}`};
+const headers = {Origin:base,"Content-Type":"application/json",Cookie:`${SESSION_COOKIE}=${token}`};
 async function json(path: string, method: string, body?: unknown) {
  const res = await fetch(base+path,{method,headers,body:body ? JSON.stringify(body) : undefined});
  const data = await res.json(); assert(res.ok,JSON.stringify(data)); return data;

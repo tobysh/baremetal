@@ -81,7 +81,7 @@ export async function POST(req: Request) {
     db.collection("tutor_usage").insertOne({ ...usage, exerciseId: found.exercise.id, ts: new Date() });
 
   const encoder = new TextEncoder();
-  const headers: Record<string, string> = { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-Tutor-Cache": cached ? "hit" : "miss" };
+  const headers: Record<string, string> = { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" };
   const kindOf = (k: CacheKind | undefined) => k ?? "none";
 
   if (cached) {

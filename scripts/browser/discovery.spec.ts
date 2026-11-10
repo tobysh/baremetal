@@ -1,3 +1,4 @@
+import { SESSION_COOKIE } from "../../src/lib/session-cookie";
 import { test, expect, type Page } from "@playwright/test";
 import { MongoClient, ObjectId } from "mongodb";
 import { createHash, randomBytes } from "node:crypto";
@@ -60,7 +61,7 @@ test.describe("search", () => {
 });
 
 test("the next unfinished lesson is marked Up next with text and aria-current", async ({ page }) => {
-  await page.context().addCookies([{ name: "bm_session", value: token, url: base, httpOnly: true, sameSite: "Strict" }]);
+  await page.context().addCookies([{ name: SESSION_COOKIE, value: token, url: base, httpOnly: true, sameSite: "Strict" }]);
   await db.collection("progress").deleteMany({ userId });
   await db.collection("progress").insertOne({ userId, exerciseId: first.lessons[0].exercise.id, trackSlug: first.slug, status: "passed", code: "", attempts: 1, startedAt: new Date(), passedAt: new Date(), updatedAt: new Date() });
   await page.goto(`/learn/${first.slug}`);

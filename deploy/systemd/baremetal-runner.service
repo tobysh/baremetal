@@ -22,7 +22,7 @@ KillMode=control-group
 Delegate=memory pids cpu io
 MemoryMax=6G
 MemorySwapMax=0
-TasksMax=1024
+TasksMax=2048
 CPUQuota=400%
 PrivateTmp=yes
 TemporaryFileSystem=/tmp:size=2G

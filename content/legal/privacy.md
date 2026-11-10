@@ -4,7 +4,7 @@ This policy explains what personal data {{entity}} collects when you use Baremet
 
 ## Who we are
 
-{{entity}} runs Baremetal, the site where you learn C and Rust. For the personal data described here, we are the controller. That means we decide why and how it is used.
+{{entity}} runs Baremetal, the site where you learn C, Rust, Go, x86-64 assembly and operating-system development. For the personal data described here, we are the controller. That means we decide why and how it is used.
 
 - Address: {{address}}
 - Contact: {{contactEmail}}
@@ -32,15 +32,19 @@ We rely on one of three legal reasons, called lawful bases, for each kind of dat
 |---|---|---|---|
 | Account: name, email, password, experience level, date and version of Terms you accepted | To give you an account | Contract | Until you delete your account |
 | Two-factor authentication (optional, required for admins): authenticator secret and backup codes | To keep your account safe when you sign in | Contract; legitimate interest in security | Until you turn it off or delete your account |
-| Sessions: a session token and its creation and expiry times | To keep you signed in | Contract | 30 days, then automatically deleted |
+| Sessions: a hashed session token, its creation and expiry times and your browser's user agent (shortened to 200 characters) | To keep you signed in and let you recognise your devices | Contract | 30 days, then automatically deleted |
+| Pending two-factor sign-ins: a hashed one-time token, your account ID, the page you were going to and a count of code attempts | To finish signing you in after your password when two-factor authentication is on | Contract; legitimate interest in security | 10 minutes, then automatically deleted |
+| Sign-in failure counters: keyed hashes of your IP address and email address, with a failure count and time | To slow down password guessing | Legitimate interest in security | About 1 hour after the last failure, plus the database expiry cleanup delay |
+| Interactive shell sessions (where offered): a temporary session token held in server memory, tied to your account and used to run a short-lived isolated virtual machine; the terminal content is never logged or stored | To give you a practice shell | Contract | Until you close it or it times out; nothing is kept afterwards |
 | Learning progress: code you write in exercises, whether you passed, number of attempts, how many hints you opened, whether you used the tutor before passing (to award the Unaided seal), timestamps | To track your progress through the course | Contract | Until you delete your account |
 | XP history, achievements and review schedule: when each XP award, achievement and review happened, plus a log of each review answer (which lesson, whether it was right, how late it was, how long the gap was) | To show your level, your achievements and the lessons due for review, and to tune when reviews come back | Contract | Until you delete your account |
 | Learning rhythm: your weekly lesson goal and the time zone your browser reports | To work out your weeks (Monday to Sunday) and your weekly rhythm. You can change both in [Settings](/settings) | Contract | Until you delete your account |
 | Public profile: username, level, XP, completed lessons, seals, achievements and your best weekly rhythm | To show your progress on the [leaderboard](/leaderboard) and your public profile page (/u/your-username). Visible to anyone unless you hide your profile with the toggle in [Settings](/settings) | Contract | Until you delete your account or hide your profile |
 | AI tutor daily spend totals | To enforce per-account and site-wide tutor allowances | Legitimate interest in controlling service costs | 60 days |
+| AI tutor usage log (tutor_usage): lesson, token counts, estimated cost, whether the reply was reused and its kind, with the time. It holds no account ID, name or email, so it cannot be linked back to you or exported or deleted with your account | To manage tutor costs | Legitimate interest in controlling service costs | 180 days |
 | AI tutor conversations | To answer your questions | Contract | Until you clear them or delete your account |
 | Code you run | To compile and run your code | Contract | Deleted straight after the run (only code saved as progress is kept) |
-| Security logs | To spot and stop attacks on accounts | Legitimate interest | 90 days |
+| Security logs (auth_events) | To spot and stop attacks on accounts | Legitimate interest | 90 days from each entry. Deleting your account does not remove them earlier: entries that name your account or email are kept until their 90 days are up, then expire automatically |
 | Administrator action log | To keep a record of who locked, banned, deleted or helped an account | Legitimate interest in security and accountability | 1 year |
 | Rate limiting counters | To slow down abuse | Legitimate interest | Up to 24 hours, plus the database expiry cleanup delay |
 | Password breach check | To check new passwords against known data breaches | Legitimate interest | See the password section below |
