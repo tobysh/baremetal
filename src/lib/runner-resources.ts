@@ -3,14 +3,30 @@ import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
+function cgroupRoot(root: string): string {
+  const resolved = path.resolve(root);
+  if (!resolved.startsWith("/sys/fs/cgroup/") || resolved === "/sys/fs/cgroup") throw new Error("RUNNER_CGROUP_ROOT must be a delegated cgroup-v2 subtree.");
+  return resolved;
+}
+
+function resourceFailure(event: string, group: string, error: unknown, killError?: unknown) {
+  // Log operational metadata only, never learner code, request keys or environment values.
+  console.error(JSON.stringify({ event, group: path.basename(group),
+    errorCode: (error as NodeJS.ErrnoException | undefined)?.code ?? "unknown",
+    ...(killError ? { killErrorCode: (killError as NodeJS.ErrnoException)?.code ?? "unknown" } : {}),
+  }));
+}
+
 /** Requires an empty cgroup-v2 subtree delegated to the runner service uid. */
 export async function runnerResources(compiling: boolean): Promise<{ command: string; prefix: string[]; cleanup: () => Promise<void> }> {
   const root = process.env.RUNNER_CGROUP_ROOT;
   if (!root) return { command: "bwrap", prefix: [], cleanup: async () => {} };
-  const resolved = path.resolve(root);
-  if (!resolved.startsWith("/sys/fs/cgroup/") || resolved === "/sys/fs/cgroup") throw new Error("RUNNER_CGROUP_ROOT must be a delegated cgroup-v2 subtree.");
+  const resolved = cgroupRoot(root);
   const group = path.join(resolved, `job-${process.pid}-${randomBytes(8).toString("hex")}`);
-  await mkdir(group);
+  await mkdir(group).catch((error) => {
+    resourceFailure("runner_cgroup_setup_failed", group, error);
+    throw error;
+  });
   const cleanup = async () => {
     // Kill descendants even when the sandbox leader exited before them.
     let killError: unknown;
@@ -22,7 +38,7 @@ export async function runnerResources(compiling: boolean): Promise<{ command: st
         const code = (error as NodeJS.ErrnoException).code;
         if (code === "ENOENT") return;
         if ((code !== "EBUSY" && code !== "ENOTEMPTY") || attempt === 19) {
-          console.error("[runner] cgroup cleanup failed", { group, killError, error });
+          resourceFailure("runner_cgroup_cleanup_failed", group, error, killError);
           return;
         }
         await delay(25);
@@ -47,6 +63,7 @@ export async function runnerResources(compiling: boolean): Promise<{ command: st
       cleanup,
     };
   } catch (error) {
+    resourceFailure("runner_cgroup_setup_failed", group, error);
     await cleanup();
     throw error;
   }
@@ -55,23 +72,31 @@ export async function runnerResources(compiling: boolean): Promise<{ command: st
 export async function cleanupStaleCgroups() {
   const root = process.env.RUNNER_CGROUP_ROOT;
   if (!root) return;
-  const resolved = path.resolve(root);
-  const entries = await readdir(resolved).catch(() => [] as string[]);
+  const resolved = cgroupRoot(root);
+  // A configured but unreadable subtree must be visible at startup, not reported as empty.
+  const entries = await readdir(resolved).catch((error) => {
+    resourceFailure("runner_cgroup_scan_failed", resolved, error);
+    throw error;
+  });
   const cutoff = Date.now() - 15 * 60_000;
   await Promise.all(entries.filter((e) => e.startsWith("job-")).map(async (e) => {
     const group = path.join(resolved, e);
     try {
       const info = await stat(group);
       if (info.mtimeMs >= cutoff) return;
-    } catch { return; }
-    try { await writeFile(path.join(group, "cgroup.kill"), "1"); } catch { /* Already empty or gone. */ }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") resourceFailure("runner_stale_cgroup_stat_failed", group, error);
+      return;
+    }
+    let killError: unknown;
+    try { await writeFile(path.join(group, "cgroup.kill"), "1"); } catch (error) { killError = error; }
     for (let attempt = 0; attempt < 20; attempt++) {
       try { await rmdir(group); return; }
       catch (error) {
         const code = (error as NodeJS.ErrnoException).code;
         if (code === "ENOENT") return;
         if ((code !== "EBUSY" && code !== "ENOTEMPTY") || attempt === 19) {
-          console.error("[runner] stale cgroup cleanup failed", { group, error });
+          resourceFailure("runner_stale_cgroup_cleanup_failed", group, error, killError);
           return;
         }
         await delay(25);

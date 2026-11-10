@@ -16,6 +16,13 @@ import { VERDICT_PRELUDE, compareTranscripts, parseTranscript, type Transcript }
 
 const MAX_OUTPUT = 64 * 1024;
 const MAX_RECORDS = 4 * 1024 * 1024;
+function runnerFailure(event: string, error: unknown, phase?: "compile" | "run") {
+  // Error messages, paths and command arguments may contain source or secrets.
+  // Restrict operational logs to the event, errno and execution phase.
+  const code = (error as NodeJS.ErrnoException | undefined)?.code;
+  console.error(JSON.stringify({ event, errorCode: typeof code === "string" ? code : "unknown", ...(phase ? { phase } : {}) }));
+}
+
 const COMPILE_TIMEOUT_MS = 20_000;
 // Go has no precompiled standard library in this toolchain, so the first build in a fresh
 // sandbox compiles what it imports (about 3 s wall, 25 s CPU across cores). Give it its own budget.
@@ -368,6 +375,7 @@ async function execUnslotted(work: string, cmd: string[], opts: ExecOpts): Promi
         settled = true;
         clearTimeout(timer);
         signal?.removeEventListener("abort", abort);
+        runnerFailure("runner_sandbox_start_failed", error, opts.artifact ? "compile" : "run");
         stderr += `Sandbox could not start: ${error.message}`;
         resolve({ stdout, stderr, code: 1, signal: null, timedOut, truncated, ms: Date.now() - started });
       });
@@ -378,7 +386,10 @@ async function execUnslotted(work: string, cmd: string[], opts: ExecOpts): Promi
         signal?.removeEventListener("abort", abort);
         if (opts.artifact && code === 0 && binarySize <= 64 * MB) {
           try { await writeFile(path.join(work, opts.artifact), Buffer.concat(binary), { mode: 0o700 }); }
-          catch (error) { stderr += String(error); code = 1; }
+          catch (error) {
+            runnerFailure("runner_artifact_write_failed", error, "compile");
+            stderr += String(error); code = 1;
+          }
         }
         resolve({ stdout, stderr, code, signal: childSignal, timedOut, truncated, ms: Date.now() - started, ...(opts.seed ? { records } : {}) });
       });
@@ -597,11 +608,17 @@ function kernelCrash(r: KernelRun): string | null {
 
 
 async function withWorkdir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
-  const dir = await mkdtemp(path.join(tmpdir(), "bm-run-"));
+  const dir = await mkdtemp(path.join(tmpdir(), "bm-run-")).catch((error) => {
+    runnerFailure("runner_workdir_create_failed", error);
+    throw error;
+  });
   try {
     return await fn(dir);
   } finally {
-    await rm(dir, { recursive: true, force: true });
+    await rm(dir, { recursive: true, force: true }).catch((error) => {
+      runnerFailure("runner_workdir_cleanup_failed", error);
+      throw error;
+    });
   }
 }
 
@@ -1375,12 +1392,18 @@ async function testRustHarness(dir: string, ex: Exercise, code: string): Promise
 }
 
 export async function cleanupStaleWorkdirs() {
-  const entries = await readdir(tmpdir()).catch(() => [] as string[]);
+  const entries = await readdir(tmpdir()).catch((error) => {
+    runnerFailure("runner_workdir_scan_failed", error);
+    return [] as string[];
+  });
   const cutoff = Date.now() - 15 * 60_000;
   await Promise.all(entries.filter((e) => e.startsWith("bm-run-")).map(async (e) => {
     const dir = path.join(tmpdir(), e);
     try {
       if (statSync(dir).mtimeMs < cutoff) await rm(dir, { recursive: true, force: true });
-    } catch { /* Another server may already have cleaned this directory. */ }
+    } catch (error) {
+      // Another worker may have already removed it; other failures need recovery.
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") runnerFailure("runner_stale_workdir_cleanup_failed", error);
+    }
   }));
 }

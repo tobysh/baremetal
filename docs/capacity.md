@@ -2,6 +2,25 @@
 
 Rough numbers for a single runner host. Measure again on the real host before relying on them.
 
+## Resource enforcement validation
+
+Run `node --import tsx scripts/runner/host-checks.mts --disposable` as root only
+on an otherwise idle disposable deployment host. It requires the installed runner
+service, root-owned mode-0600 web environment and a reachable host MongoDB, then
+checks that the runner UID cannot reach either the web secrets or database.
+Bounded native probes verify OOM enforcement, fork rejection with a recorded
+`pids.events` limit event, CPU throttling counters, and cancellation of a learner
+parent plus a `setsid` child and grandchild. It checks that observed descendants
+stop before the ordinary execution timeout, all job cgroups disappear and a
+subsequent healthy job succeeds. Requests and polling have explicit deadlines.
+
+The CPU probe needs at least three effective CPUs to exceed the configured
+two-CPU job quota. A smaller host, a more restrictive ancestor quota or heavy
+contention cannot establish that leaf's throttling; a failed check must be
+reported as missing validation evidence, not a pass. This script has not yet
+been exercised on the intended deployment host. Record the host/kernel/systemd
+configuration and complete output before treating isolation as production-verified.
+
 ## Model (from the code)
 
 One runner process, two compile slots and three run slots (`RUNNER_COMPILE_SLOTS`, `RUNNER_RUN_SLOTS`), up to 24 waiting jobs per pool, 30 s queue timeout. A job holds a compile slot only while its compiler runs. Memory arithmetic: `docs/deployment-hardening.md`, "Runner slots and memory".
