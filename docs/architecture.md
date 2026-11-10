@@ -93,7 +93,7 @@ Everything a learner sees comes from files under `content/<track>/`. `src/lib/cu
 
 ### Inside the runner (`runner-engine.ts`)
 
-- Two slot pools: compile (`RUNNER_COMPILE_SLOTS`, default 2) and run (`RUNNER_RUN_SLOTS`, default 3), each with a queue of up to 24 waiters and a 30 s wait limit; beyond that callers get 503 (`RunnerBusyError`). A job holds a compile slot only while its compiler runs. Aborting the HTTP request cancels the job.
+- Two slot pools: compile (`RUNNER_COMPILE_SLOTS`, default 2) and run (`RUNNER_RUN_SLOTS`, default 3), each with a queue of up to 24 waiters and a 30 s wait limit; beyond that callers get 503 (`RunnerBusyError`). A job holds a compile slot only while its compiler runs. Free slots go to the waiting owner served least recently, not first come first served; a signed-in account holds at most one compile slot at a time and each compile (including `set`-case recompiles) is charged to `RUNNER_COMPILE_BUDGET` (default 60 per minute). Aborting the HTTP request cancels the job.
 - Every compiler and every learner program runs under **bubblewrap**: no network, read-only system, `--disable-userns`, an x86-64 seccomp denylist, rlimits, a 5 s timeout, output caps. Compilation uses size-capped private tmpfs with read-only sources; only the executable returns, over a capped pipe. With `RUNNER_CGROUP_ROOT` each job also gets its own cgroup-v2 limits.
 - Per language:
   - **C**: `gcc` builds the learner's `main.c` with the hidden harness appended.
@@ -136,6 +136,7 @@ MongoDB, database `MONGODB_DB` (default `baremetal`). Indexes are created on fir
 | `progress` | One doc per `(userId, exerciseId)`: status, code, hints used, snapshots at first pass. Challenges use `<id>#challenge` | Until deletion |
 | `xp_events` | XP ledger | Until deletion |
 | `achievements`, `reviews` | Codex unlocks; spaced-review schedule | Until deletion |
+| `review_events` | One row per schedule change, skip or retry (source, correct, rating, days late, intervals); index `(userId, at)` | Until deletion |
 | `tutor_threads`, `tutor_usage`, `tutor_spend` | Conversations; per-question usage records (feed the admin stuck report); daily dollar reservations | Spend rows expire after 60 days |
 | `tutor_cache` | Shared, privacy-checked answers | TTL |
 | `rate_limits`, `login_failures`, `pending_2fa` | Counters and short-lived auth state | TTL |

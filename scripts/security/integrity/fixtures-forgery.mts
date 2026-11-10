@@ -1,6 +1,6 @@
 // Regression fixtures for Phase 1 of docs/security.md (R1, R3).
 // Each fixture is a learner submission that must NOT pass; the script exits 1 if one does.
-// Usage: npx tsx scripts/security/integrity/fixtures-forgery.mts [c|rust|go|asm]
+// Usage: npx tsx scripts/security/integrity/fixtures-forgery.mts [c|rust|go|asm|kernel]
 import { getTracks } from "../../../src/lib/curriculum/index";
 import { testExercise } from "../../../src/lib/runner";
 import type { Exercise } from "../../../src/lib/curriculum/types";
@@ -11,7 +11,9 @@ const pick = (lang: string): Exercise | null => {
   return null;
 };
 
-type Fixture = { lang: string; name: string; build: (ex: Exercise) => string };
+// `expect`: the rejection must come from this specific check, not from the starter merely failing.
+type Fixture = { lang: string; name: string; build: (ex: Exercise) => string; expect?: RegExp };
+const REACH = /could reach the hidden tests/;
 
 // One real test's worth of output, then a clean exit: before R1 this passed a lesson.
 const fixtures: Fixture[] = [
@@ -44,6 +46,45 @@ const fixtures: Fixture[] = [
     lang: "asm",
     name: ".incbin of the hidden tests (R3)",
     build: (ex) => `${ex.starter}\n.section .rodata\nleak: .incbin "tests.c"\n`,
+  },
+  {
+    lang: "c",
+    name: "split-string .incbin of the combined source (R3 spelling variant)",
+    build: (ex) => `${ex.starter}\n__asm__(".section .rodata\\nleak: .inc" "bin \\"main.c\\"\\n.text");\n`,
+    expect: REACH,
+  },
+  {
+    lang: "kernel",
+    name: "split-string .incbin of the combined kernel source (nonce leak)",
+    build: (ex) => `${ex.starter}\n__asm__(".section .rodata\\nleak: .inc" "bin \\"kernel.c\\"\\n.text");\n`,
+    expect: REACH,
+  },
+  {
+    lang: "c",
+    name: "#include through a macro that names the combined source",
+    build: (ex) => `${ex.starter}\n#define F "main.c"\n#include F\n`,
+    expect: REACH,
+  },
+  {
+    lang: "kernel",
+    name: "#include through a macro that names the combined kernel source",
+    build: (ex) => `${ex.starter}\n#define F "kernel.c"\n#include F\n`,
+    expect: REACH,
+  },
+  {
+    lang: "c",
+    name: "#define if(c) if(1) makes every CHECK pass",
+    build: (ex) => `${ex.starter}\n#define if(c) if (1)\n`,
+  },
+  {
+    lang: "kernel",
+    name: "#define if(c) if(1) makes every CHECK pass",
+    build: (ex) => `${ex.starter}\n#define if(c) if (1)\n`,
+  },
+  {
+    lang: "kernel",
+    name: "#define else makes the failing branch vanish",
+    build: (ex) => `${ex.starter}\n#define else if (0)\n`,
   },
   {
     lang: "rust",
@@ -88,7 +129,7 @@ for (const f of fixtures) {
   const ex = pick(f.lang);
   if (!ex) { console.log(`skip  [${f.lang}] no harness exercise`); continue; }
   const r = await testExercise(ex, f.build(ex));
-  const bad = r.allPassed;
+  const bad = r.allPassed || (f.expect ? !f.expect.test(r.error ?? "") : false);
   if (bad) leaked++;
   console.log(`${bad ? "FAIL" : "ok  "} [${f.lang}] ${f.name} -> allPassed=${r.allPassed} compiled=${r.compiled} error=${r.error ?? "-"} ${r.compiled ? "" : r.compileOutput.slice(0, 700)}`);
 }

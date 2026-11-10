@@ -5,6 +5,7 @@ import type { PublicExercise } from "@/lib/curriculum/types";
 import type { PublicPractice } from "@/lib/curriculum/practice";
 import { PracticePanel } from "../practice/practice-panel";
 import { TaskStrip } from "./task-strip";
+import { PreviousVersion } from "./previous-version";
 import { MiniMarkdown } from "./mini-markdown";
 import type { ChatMessage } from "./tutor-chat";
 import { Workspace, type Variant } from "./workspace";
@@ -19,6 +20,8 @@ export type ReviewInfo = { due: boolean; dueOn: string };
 export function LessonWorkspace(props: {
   lesson: PublicExercise;
   lessonCode: string | null;
+  /** The learner's code from before the lesson was rewritten, if any. */
+  previousCode?: string | null;
   lessonPassed: boolean;
   initialHints: number;
   challenge: ChallengeInfo | null;
@@ -79,6 +82,9 @@ export function LessonWorkspace(props: {
         <PracticePanel key={practice.id} practice={practice} language={lesson.language} passed={!!props.practicePassed} signedIn={signedIn} loginHref={props.loginHref} />
       )}
       <div hidden={practiceOpen} className="min-w-0 lg:h-full">
+      {variant === "lesson" && (lesson.revision ?? 1) > 1 && (
+        <PreviousVersion exerciseId={lesson.id} serverCode={props.previousCode ?? null} signedIn={signedIn} draftOwner={props.draftOwner} />
+      )}
       {variant !== "challenge" && (
         // The task lives in the reading pane (another view on small screens); keep the objective pinned above the editor.
         <TaskStrip task={lesson.task} />

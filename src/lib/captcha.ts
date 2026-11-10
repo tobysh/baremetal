@@ -1,6 +1,8 @@
 import "server-only";
 import { randomBytes, randomInt } from "node:crypto";
+import { headers } from "next/headers";
 import { getDb } from "./db";
+import { clientIp } from "./rate-limit";
 import { hmac, safeEqual, sha256 } from "./crypto";
 
 // Self-hosted proof-of-work CAPTCHA (same idea as ALTCHA). The browser must
@@ -9,21 +11,31 @@ import { hmac, safeEqual, sha256 } from "./crypto";
 // cookies, so it needs no consent. It slows bots down; it does not prove the
 // visitor is human.
 
-const MAX_NUMBER = 150_000;
+// Expected ~200k SHA-256 hashes in the browser (about a second on a phone).
+const MAX_NUMBER = 400_000;
 const TTL_SECONDS = 600;
 
 export type CaptchaChallenge = { salt: string; challenge: string; max: number; signature: string };
 
-export function createChallenge(): CaptchaChallenge {
+/** Forms that may ask for a CAPTCHA. A challenge is only accepted on the form and from the IP it was issued for. */
+export const CAPTCHA_FORMS = ["login", "signup", "forgot-password"] as const;
+export type CaptchaForm = (typeof CAPTCHA_FORMS)[number];
+export const parseCaptchaForm = (v: string | null): CaptchaForm | null => (CAPTCHA_FORMS as readonly string[]).includes(v ?? "") ? (v as CaptchaForm) : null;
+
+const binding = (form: string, ip: string) => `${form}|${hmac("captcha-ip", ip)}`;
+const sign = (salt: string, challenge: string, form: string, ip: string) => hmac("captcha", `${salt}|${challenge}|${binding(form, ip)}`);
+
+export function createChallenge(form: CaptchaForm, ip: string): CaptchaChallenge {
   const expires = Math.floor(Date.now() / 1000) + TTL_SECONDS;
   const salt = `${randomBytes(12).toString("hex")}.${expires}`;
   const challenge = sha256(`${salt}${randomInt(MAX_NUMBER)}`);
-  return { salt, challenge, max: MAX_NUMBER, signature: hmac("captcha", `${salt}|${challenge}`) };
+  return { salt, challenge, max: MAX_NUMBER, signature: sign(salt, challenge, form, ip) };
 }
 
 /** `solution` is the JSON the client widget submits. Single use. */
-export async function verifyCaptcha(solution: string | null | undefined): Promise<boolean> {
+export async function verifyCaptcha(solution: string | null | undefined, form: CaptchaForm): Promise<boolean> {
   if (!solution) return false;
+  const ip = clientIp(await headers());
   let parsed: { salt?: string; challenge?: string; number?: number; signature?: string };
   try {
     parsed = JSON.parse(solution);
@@ -32,7 +44,7 @@ export async function verifyCaptcha(solution: string | null | undefined): Promis
   }
   const { salt, challenge, number, signature } = parsed;
   if (typeof salt !== "string" || typeof challenge !== "string" || typeof signature !== "string" || !Number.isInteger(number)) return false;
-  if (!safeEqual(signature, hmac("captcha", `${salt}|${challenge}`))) return false;
+  if (!safeEqual(signature, sign(salt, challenge, form, ip))) return false;
   const expires = Number(salt.split(".")[1]);
   if (!expires || expires < Date.now() / 1000) return false;
   if (sha256(`${salt}${number}`) !== challenge) return false;

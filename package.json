@@ -23,6 +23,7 @@
     "check:stdout-order": "tsx scripts/checks/stdout-order.mts",
     "test:concurrent-go": "tsx scripts/runner/concurrent-go.mts",
     "load:run-mix": "tsx scripts/load/run-mix.mts",
+    "check:review": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/checks/review.mts",
     "check:learning": "tsx scripts/checks/learning.mts",
     "check:curriculum": "tsx scripts/checks/curriculum-drafts.mts",
     "test:regressions": "tsx scripts/checks/regressions.mts",

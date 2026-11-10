@@ -13,7 +13,7 @@ import { fieldErrors, formValues, type FormState } from "@/lib/forms";
 import { usernameProblem } from "@/lib/gamification";
 import { EXPERIENCE_LEVELS, type UserDoc } from "@/lib/models";
 import { checkPassword } from "@/lib/password";
-import { authRateLimit, logAuthEvent, requestContext } from "@/lib/security";
+import { authRateLimit, finishOtpFailure, logAuthEvent, otpGuard, refundOtpAttempt, requestContext, reserveOtpAttempt } from "@/lib/security";
 import { hashBackupCode, legacyBackupCodeHash, newBackupCodes, newTotpSecret, otpauthUrl, verifyTotp } from "@/lib/totp";
 import { SITE } from "@/lib/site";
 import { validTimezone, WEEKLY_GOALS } from "@/lib/rhythm";
@@ -26,16 +26,39 @@ async function mustUser(): Promise<UserDoc> {
 
 const users = async () => (await getDb()).collection<UserDoc>("users");
 
-/** Re-check a second factor for sensitive changes when 2FA is on. */
-async function checkSecondFactor(user: UserDoc, code: string): Promise<boolean> {
-  if (!user.twoFactor?.enabled) return true;
+/**
+ * Re-check a second factor for sensitive changes when 2FA is on. Goes through the same per-user OTP guard as
+ * sign-in, so a stolen session cannot guess codes without limit however many addresses it uses.
+ */
+type FactorResult = "ok" | "bad" | "locked";
+async function checkSecondFactor(user: UserDoc, code: string): Promise<FactorResult> {
+  if (!user.twoFactor?.enabled) return "ok";
+  const id = user._id.toHexString();
+  if ((await otpGuard(id)).locked || !(await reserveOtpAttempt(id))) return "locked";
+  let ok = false;
   const step = verifyTotp(decrypt(user.twoFactor.secretEnc), code, user.twoFactor.lastStep);
   if (step !== null) {
     const res = await (await users()).updateOne({ _id: user._id, "twoFactor.lastStep": { $lt: step } }, { $set: { "twoFactor.lastStep": step } });
-    return res.modifiedCount === 1;
+    ok = res.modifiedCount === 1;
+  } else {
+    const res = await (await users()).updateOne({ _id: user._id }, { $pull: { "twoFactor.backupCodeHashes": { $in: [hashBackupCode(code), legacyBackupCodeHash(code)] } } });
+    ok = res.modifiedCount === 1;
   }
-  const res = await (await users()).updateOne({ _id: user._id }, { $pull: { "twoFactor.backupCodeHashes": { $in: [hashBackupCode(code), legacyBackupCodeHash(code)] } } });
-  return res.modifiedCount === 1;
+  if (ok) {
+    await refundOtpAttempt(id);
+    return "ok";
+  }
+  await finishOtpFailure(id);
+  await logAuthEvent("otp_failed", { email: user.email, userId: id, reason: "settings" });
+  return "bad";
+}
+
+const FACTOR_LOCKED = "Too many wrong codes. Please wait and try again.";
+/** Form state for a failed second-factor check, or null when it passed. */
+async function secondFactorProblem(user: UserDoc, formData: FormData): Promise<FormState | null> {
+  const result = await checkSecondFactor(user, String(formData.get("code") ?? "").trim());
+  if (result === "ok") return null;
+  return result === "locked" ? { message: FACTOR_LOCKED } : { errors: { code: ["That code didn't work"] } };
 }
 
 // ---------- Profile ----------
@@ -108,6 +131,8 @@ export async function changePassword(_prev: FormState, formData: FormData): Prom
   }
   const pwError = await checkPassword(parsed.data.password, [user.email, user.name]);
   if (pwError) return { errors: { password: [pwError] } };
+  const factorProblem = await secondFactorProblem(user, formData);
+  if (factorProblem) return factorProblem;
   await (await users()).updateOne({ _id: user._id }, { $set: { passwordHash: await hashPassword(parsed.data.password), passwordChangedAt: new Date() } });
   const { userAgent } = await requestContext();
   await revokeAllSessions(user._id, { userAgent });
@@ -139,7 +164,7 @@ export async function beginTwoFactorSetup(_prev: FormState, formData: FormData):
 /** Step 2: confirm with a code from the app, enable 2FA, and show backup codes once. */
 export async function confirmTwoFactor(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await mustUser();
-  if (!(await authRateLimit("verify-otp", 10))) return { message: "Too many attempts. Please wait 15 minutes." };
+  if (!(await authRateLimit("settings-2fa", 10))) return { message: "Too many attempts. Please wait 15 minutes." };
   if (!user.twoFactor || user.twoFactor.enabled) return { message: "Start setup again." };
   const code = String(formData.get("code") ?? "");
   const step = verifyTotp(decrypt(user.twoFactor.secretEnc), code);
@@ -171,8 +196,9 @@ export async function confirmTwoFactor(_prev: FormState, formData: FormData): Pr
 export async function regenerateBackupCodes(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await mustUser();
   if (!user.twoFactor?.enabled) return { message: "Turn on two-factor authentication first." };
-  if (!(await authRateLimit("verify-otp", 10))) return { message: "Too many attempts. Please wait 15 minutes." };
-  if (!(await checkSecondFactor(user, String(formData.get("code") ?? "")))) return { errors: { code: ["That code didn't work"] } };
+  if (!(await authRateLimit("settings-2fa", 10))) return { message: "Too many attempts. Please wait 15 minutes." };
+  const factorProblem = await secondFactorProblem(user, formData);
+  if (factorProblem) return factorProblem;
   const codes = newBackupCodes();
   await (await users()).updateOne({ _id: user._id }, { $set: { "twoFactor.backupCodeHashes": codes.map(hashBackupCode) } });
   return { ok: true, message: "New backup codes created. Your old codes no longer work.", data: { backupCodes: codes } };
@@ -182,9 +208,10 @@ export async function disableTwoFactor(_prev: FormState, formData: FormData): Pr
   const user = await mustUser();
   if (user.role === "admin") return { message: "Admin accounts must keep two-factor authentication on." };
   if (!user.twoFactor?.enabled) return { message: "Two-factor authentication is already off." };
-  if (!(await authRateLimit("verify-otp", 10))) return { message: "Too many attempts. Please wait 15 minutes." };
+  if (!(await authRateLimit("settings-2fa", 10))) return { message: "Too many attempts. Please wait 15 minutes." };
   if (!(await verifyPassword(String(formData.get("password") ?? ""), user.passwordHash))) return { errors: { password: ["Incorrect password"] } };
-  if (!(await checkSecondFactor(user, String(formData.get("code") ?? "")))) return { errors: { code: ["That code didn't work"] } };
+  const factorProblem = await secondFactorProblem(user, formData);
+  if (factorProblem) return factorProblem;
   await (await users()).updateOne({ _id: user._id }, { $unset: { twoFactor: "" } });
   const { userAgent } = await requestContext();
   await revokeAllSessions(user._id, { userAgent });
@@ -202,7 +229,8 @@ export async function deleteAccount(_prev: FormState, formData: FormData): Promi
   if (String(formData.get("confirm") ?? "").trim().toLowerCase() !== "delete my account")
     return { errors: { confirm: ['Type "delete my account" to confirm'] } };
   if (!(await verifyPassword(String(formData.get("password") ?? ""), user.passwordHash))) return { errors: { password: ["Incorrect password"] } };
-  if (!(await checkSecondFactor(user, String(formData.get("code") ?? "")))) return { errors: { code: ["That code didn't work"] } };
+  const factorProblem = await secondFactorProblem(user, formData);
+  if (factorProblem) return factorProblem;
 
   await deleteUserData(user);
   // Security log entries are kept for their 90-day retention (legitimate interest), not linked to an account any more.

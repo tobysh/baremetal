@@ -74,7 +74,8 @@ import type { RunResult, TestResult, TestCaseResult } from "./runner-types";
 export type { RunResult, TestResult, TestCaseResult } from "./runner-types";
 const MAX_QUEUED = 24;
 const QUEUE_TIMEOUT_MS = 30_000;
-const requestContext = new AsyncLocalStorage<{ signal: AbortSignal }>();
+type Owner = { key: string; kind: "user" | "ip" };
+const requestContext = new AsyncLocalStorage<{ signal: AbortSignal; owner?: Owner }>();
 const inFlight = new Map<string, number>();
 
 /** Count queued and running requests per account and network, independently. */
@@ -90,9 +91,10 @@ export async function withRunnerRequest<T>(keys: string[], signal: AbortSignal, 
   const unique = [...new Set(keys)];
   if (unique.some((key) => (inFlight.get(key) ?? 0) >= (limitFor.get(key) ?? INFLIGHT_LIMIT.user))) throw new RunnerBusyError("You already have runs in progress. Wait for one to finish.");
   signal.throwIfAborted();
+  const owner: Owner | undefined = keys[0] ? { key: keys[0], kind: kinds[0] ?? "user" } : undefined;
   for (const key of unique) inFlight.set(key, (inFlight.get(key) ?? 0) + 1);
   try {
-    return await requestContext.run({ signal }, fn);
+    return await requestContext.run({ signal, owner }, fn);
   } finally {
     for (const key of unique) {
       const count = (inFlight.get(key) ?? 1) - 1;
@@ -102,7 +104,7 @@ export async function withRunnerRequest<T>(keys: string[], signal: AbortSignal, 
   }
 }
 
-type Waiter = { grant: () => void };
+type Waiter = { grant: () => void; owner?: Owner };
 type Pool = (typeof POOLS)[keyof typeof POOLS];
 export const runnerStatus = () => ({
   active: POOLS.compile.active + POOLS.run.active,
@@ -110,11 +112,63 @@ export const runnerStatus = () => ({
   compile: { active: POOLS.compile.active, queued: POOLS.compile.queue.length, slots: POOLS.compile.max },
   run: { active: POOLS.run.active, queued: POOLS.run.queue.length, slots: POOLS.run.max },
 });
+
+// Fair scheduling. Signed-in accounts hold at most one compile slot at a time (anonymous IP keys can share a
+// network, so they are only balanced, not capped). Free slots go to the waiting owner served least recently,
+// not to the oldest request. Every compile, including each `set`-case recompile, is one admission and counts
+// against a per-owner budget per minute.
+const COMPILE_BUDGET = { limit: envCount("RUNNER_COMPILE_BUDGET", 60), windowMs: 60_000 };
+const compileStarts = new Map<string, number[]>();
+let serveClock = 0;
+const lastServed = new Map<string, number>();
+const holds = new Map<string, number>();
+const poolKey = (pool: Pool, owner: Owner) => `${pool === POOLS.compile ? "c" : "r"}:${owner.key}`;
+const mayHold = (pool: Pool, owner?: Owner) => !owner || pool !== POOLS.compile || owner.kind !== "user" || !holds.get(poolKey(pool, owner));
+function chargeCompile(owner?: Owner) {
+  if (!owner) return;
+  const now = Date.now();
+  const recent = (compileStarts.get(owner.key) ?? []).filter((t) => now - t < COMPILE_BUDGET.windowMs);
+  if (recent.length >= COMPILE_BUDGET.limit) { compileStarts.set(owner.key, recent); throw new RunnerBusyError("You are compiling too often. Wait a minute and try again."); }
+  recent.push(now);
+  compileStarts.set(owner.key, recent);
+  if (compileStarts.size > 4096) for (const [k, v] of compileStarts) if (v.every((t) => now - t >= COMPILE_BUDGET.windowMs)) compileStarts.delete(k);
+}
+function take(pool: Pool, owner?: Owner) {
+  pool.active++;
+  if (!owner) return;
+  holds.set(poolKey(pool, owner), (holds.get(poolKey(pool, owner)) ?? 0) + 1);
+  lastServed.set(owner.key, ++serveClock);
+  if (lastServed.size > 4096) for (const k of lastServed.keys()) { if (lastServed.size <= 2048) break; lastServed.delete(k); }
+}
+function release(pool: Pool, owner?: Owner) {
+  pool.active--;
+  if (owner) {
+    const k = poolKey(pool, owner);
+    const n = (holds.get(k) ?? 1) - 1;
+    if (n) holds.set(k, n); else holds.delete(k);
+  }
+  // Pick the eligible waiter whose owner was served longest ago; ties keep arrival order.
+  let best = -1;
+  let bestServed = Infinity;
+  pool.queue.forEach((w, i) => {
+    if (!mayHold(pool, w.owner)) return;
+    const served = w.owner ? lastServed.get(w.owner.key) ?? 0 : 0;
+    if (served < bestServed) { best = i; bestServed = served; }
+  });
+  if (best >= 0 && pool.active < pool.max) {
+    const [next] = pool.queue.splice(best, 1);
+    take(pool, next.owner); // Occupy the slot on the waiter's behalf; new arrivals cannot steal it.
+    next.grant();
+  }
+}
 async function withSlot<T>(pool: Pool, fn: () => Promise<T>): Promise<T> {
   const { queue } = pool;
-  const signal = requestContext.getStore()?.signal;
+  const store = requestContext.getStore();
+  const signal = store?.signal;
+  const owner = store?.owner;
   signal?.throwIfAborted();
-  if (pool.active < pool.max) pool.active++;
+  if (pool === POOLS.compile) chargeCompile(owner);
+  if (pool.active < pool.max && mayHold(pool, owner) && !queue.some((w) => mayHold(pool, w.owner) && (w.owner ? lastServed.get(w.owner.key) ?? 0 : 0) < (owner ? lastServed.get(owner.key) ?? 0 : 0))) take(pool, owner);
   else {
     if (queue.length >= MAX_QUEUED) throw new RunnerBusyError("The code runner is busy.");
     await new Promise<void>((resolve, reject) => {
@@ -127,7 +181,7 @@ async function withSlot<T>(pool: Pool, fn: () => Promise<T>): Promise<T> {
         reject(error);
       };
       const abort = () => remove(new DOMException("Run cancelled", "AbortError"));
-      const waiter: Waiter = { grant: () => { clear(); resolve(); } };
+      const waiter: Waiter = { owner, grant: () => { clear(); resolve(); } };
       const timer = setTimeout(() => remove(new RunnerBusyError("The runner queue timed out.")), QUEUE_TIMEOUT_MS);
       queue.push(waiter);
       signal?.addEventListener("abort", abort, { once: true });
@@ -138,9 +192,7 @@ async function withSlot<T>(pool: Pool, fn: () => Promise<T>): Promise<T> {
     signal?.throwIfAborted();
     return await fn();
   } finally {
-    const next = queue.shift();
-    if (next) next.grant(); // Transfer the occupied slot directly; new arrivals cannot steal it.
-    else pool.active--;
+    release(pool, owner);
   }
 }
 
@@ -233,6 +285,9 @@ function sandboxArgs(work: string, extraEnv: Record<string, string> = {}, opts: 
   for (const [k, v] of Object.entries(extraEnv)) args.push("--setenv", k, v);
   return args;
 }
+
+/** Occupy a runner slot for the duration of `fn` under the current request's identity (exported for scheduler checks). */
+export const withRunnerSlot = <T,>(pool: "compile" | "run", fn: () => Promise<T>) => withSlot(POOLS[pool], fn);
 
 async function exec(work: string, cmd: string[], opts: { timeoutMs: number; stdin?: string; limits: string[]; env?: Record<string, string>; run?: boolean; tmpMb?: number; artifact?: string; goCache?: "overlay" | "seed" }): Promise<Exec> {
   // Builds (artifact jobs) take a compile slot, program runs a run slot, each only while the child lives.
@@ -414,12 +469,12 @@ __attribute__((section(".preinit_array"), used)) static void (*${hook})(int, cha
 `;
 };
 
-function cTestSource(student: string, harness: string) {
+function cTestSource(student: string, harness: string, undefs = "") {
   // Learners may keep their own main() for experimenting; rename it so the
   // test harness's main() is the entry point.
   // main is renamed with -Dmain=... on the command line rather than a #define
   // here, so main.c's line numbers and gcc's source excerpts stay exact.
-  return `${student}\n#undef main\n#line 1 "tests.c"\n${cTestPrelude()}\n${harness}\n`;
+  return `${student}\n${undefs}\n#undef main\n#line 1 "tests.c"\n${cTestPrelude()}\n${harness}\n`;
 }
 
 function rustTestSource(student: string, harness: string) {
@@ -453,9 +508,9 @@ static inline uint32_t bm_inl(uint16_t p) { uint32_t v; __asm__ volatile("inl %1
   else { bm_printf("\\n@@FAIL ${nonce} %s\\t", name); bm_printf(__VA_ARGS__); bm_printf("\\n"); } } while (0)
 `;
 
-function kernelTestSource(student: string, harness: string, nonce: string) {
+function kernelTestSource(student: string, harness: string, nonce: string, undefs = "") {
   // Same trick as the C harness: the learner may keep a kmain() to experiment, so rename it.
-  return `${student}\n#undef kmain\n#line 1 "tests.c"\n${kernelTestPrelude(nonce)}\n${harness}\n`;
+  return `${student}\n${undefs}\n#undef kmain\n#line 1 "tests.c"\n${kernelTestPrelude(nonce)}\n${harness}\n`;
 }
 
 async function compileKernel(dir: string, source: string, test: boolean) {
@@ -641,6 +696,7 @@ export function runProgram(language: Language, code: string, stdin = ""): Promis
           stdout: "",
           stderr: "",
           exitCode: c.code,
+          ...(c.timedOut ? { timedOut: true } : {}),
           error: noMain
             ? noMainText
             : c.timedOut
@@ -661,7 +717,7 @@ export function runProgram(language: Language, code: string, stdin = ""): Promis
         : r.truncated
           ? "Output was cut off at 64 KB — your program printed a lot (maybe an infinite loop?)."
           : (signalMessage(r.signal, r.code) ?? undefinedBehaviour(r.stderr));
-      return { ok: !error && r.code === 0, phase: "run", compileOutput, stdout: r.stdout, stderr: r.stderr, exitCode: r.code, error, durationMs: c.ms + r.ms };
+      return { ok: !error && r.code === 0, phase: "run", compileOutput, stdout: r.stdout, stderr: r.stderr, exitCode: r.code, error, ...(r.timedOut ? { timedOut: true } : {}), durationMs: c.ms + r.ms };
     })
   );
 }
@@ -673,6 +729,85 @@ export function runProgram(language: Language, code: string, stdin = ""): Promis
 async function keepOnlyProgram(dir: string) {
   for (const f of await readdir(dir)) if (f !== "prog") await rm(path.join(dir, f), { recursive: true, force: true });
 }
+
+
+// ---------- Shared translation unit guard (C and kernel) ----------
+
+// C and kernel tests are appended to the learner's file, so anything that can read or rewrite the
+// rest of that file defeats them. The plain-text TAMPER_PATTERNS miss spellings built at compile
+// time (asm(".inc" "bin \"kernel.c\""), `#define F "main.c"` then `#include F`), so the learner's
+// file is also preprocessed and compiled ALONE in an empty sandbox directory:
+//  - any include that actually opens a file fails (nothing else is there), and the end-of-file
+//    sentinel below errors if the file is entered a second time (a self-include);
+//  - the assembly gcc emits is scanned for directives that read files or generate directives;
+//  - every macro the learner's own text defines or changes is #undef'd before the harness, so
+//    `#define if(c) if(1)` can't rewrite the tests. Macros from system headers are restored to
+//    their header definitions. Names the lesson's own starter defines (COM1, ...) are left alone because
+//    harnesses use them.
+// Residual: the harness still shares a translation unit (docs/security.md L1/L2); the proper fix is
+// compiling it as a separate object, which struct-testing C harnesses would need type declarations for.
+const SENTINEL = "\n#ifdef BM_PREFLIGHT_END\n#error bm-self-include\n#endif\n#define BM_PREFLIGHT_END\n";
+const ASM_DIRECTIVES = /(?:^|[;:\n])[ \t]*\.(?:incbin|include|macro|altmacro|irpc?|rept|reptc?|init_array|preinit_array|fini_array|ctors|dtors)\b/i;
+const FEATURE_MACRO = /^[ \t]*#[ \t]*define[ \t]+(_GNU_SOURCE|_DEFAULT_SOURCE|_POSIX_C_SOURCE|_XOPEN_SOURCE|_ISOC11_SOURCE|__STDC_WANT_LIB_EXT1__)\b.*$/gm;
+const ANGLE_INCLUDE = /^[ \t]*#[ \t]*include[ \t]*<([\w./+-]+)>/gm;
+
+type SourceGuard = { ok: true; undefs: string } | { ok: false; result: TestResult };
+
+const macroTable = (text: string) => {
+  const table = new Map<string, string>();
+  for (const line of text.split("\n")) {
+    const m = /^#define ([A-Za-z_]\w*)/.exec(line);
+    if (m) table.set(m[1], line);
+  }
+  return table;
+};
+
+const macroNames = (text: string) => [...text.matchAll(/^[ \t]*#[ \t]*define[ \t]+([A-Za-z_]\w*)/gm)].map((m) => m[1]);
+
+async function guardSharedSource(language: "c" | "kernel", code: string, starter: string): Promise<SourceGuard> {
+  const reject = (error: string, compileOutput = "", compiled = true): SourceGuard => ({ ok: false, result: { compiled, compileOutput, results: [], allPassed: false, output: "", error } });
+  const file = language === "kernel" ? "kernel.c" : "main.c";
+  const rename = language === "kernel" ? "-Dkmain=__bm_student_kmain" : "-Dmain=__bm_student_main";
+  const flags = language === "kernel" ? `${KERNEL_CFLAGS} ${rename}` : `-std=c17 ${rename}`;
+  const baseHeaders = language === "kernel" ? ["stdint.h", "stddef.h"] : ["stdio.h", "string.h", "stdlib.h", "stdint.h", "stddef.h"];
+  const headers = [...new Set([...baseHeaders, ...[...code.matchAll(ANGLE_INCLUDE)].map((m) => m[1])])];
+  const base = [...(code.match(FEATURE_MACRO) ?? []), ...headers.map((h) => `#include <${h}>`)].join("\n") + "\n";
+  const out = await withWorkdir(async (dir) => {
+    await writeFile(path.join(dir, file), code + SENTINEL);
+    await writeFile(path.join(dir, "bm_base.c"), base);
+    const script = [
+      `echo '@@BM-1' > out`,
+      `gcc ${flags} -dM -E ${file} >> out`,
+      `echo '@@BM-2' >> out`,
+      `{ gcc ${flags} -dM -E bm_base.c >> out || true; }`,
+      `echo '@@BM-3' >> out`,
+      `gcc ${flags} -S ${file} -o - >> out`,
+    ].join(" && ");
+    const r = await exec(dir, ["sh", "-c", script], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "out" });
+    return { r, text: r.code === 0 ? await readFile(path.join(dir, "out"), "utf8") : "" };
+  });
+  const diagnostics = cleanCompilerOutput(out.r.stderr + out.r.stdout);
+  if (/bm-self-include/.test(diagnostics)) return reject(HARNESS_REACH_MESSAGE);
+  if (out.r.code !== 0) return reject("Your code didn't compile.", diagnostics, false);
+  const i1 = out.text.indexOf("@@BM-2\n"), i2 = out.text.indexOf("@@BM-3\n");
+  if (!out.text.startsWith("@@BM-1\n") || i1 < 0 || i2 < i1) return reject("Your code didn't compile.", diagnostics, false);
+  const macros = out.text.slice(7, i1), baseText = out.text.slice(i1 + 7, i2), asm = out.text.slice(i2 + 7);
+  if (ASM_DIRECTIVES.test(asm)) return reject(HARNESS_REACH_MESSAGE);
+  // Harnesses may rely on a macro the starter itself defines (COM1, a size constant), so those names
+  // stay as the learner left them; every other macro the learner's text defines or changes is removed.
+  const promised = new Set(macroNames(starter));
+  const mine = macroTable(macros), trusted = macroTable(baseText);
+  const lines: string[] = [];
+  for (const [name, line] of mine) {
+    if (name === "BM_PREFLIGHT_END" || promised.has(name) || trusted.get(name) === line) continue;
+    lines.push(`#undef ${name}`);
+    const original = trusted.get(name);
+    if (original) lines.push(original);
+  }
+  return { ok: true, undefs: lines.join("\n") };
+}
+
+const HARNESS_REACH_MESSAGE = "Your code reads files or builds assembler directives at compile time, which could reach the hidden tests. Tests can't be checked while it's there. Remove it and run the tests again.";
 
 /** Text with no honest use in a solution: the harness's result protocol, its internals, and load-time hooks. */
 const TAMPER_PATTERNS: RegExp[] = [
@@ -838,6 +973,7 @@ async function testStdout(dir: string, ex: Exercise, code: string): Promise<Test
   const results: TestCaseResult[] = [];
   let output = "";
   let error: string | null = null;
+  let timedOut = false;
   // `prog` is rebuilt in place for each `set` case; a plain case that follows must run the learner's own code again.
   let variantBuilt = false;
   for (const tc of ex.cases ?? []) {
@@ -866,6 +1002,7 @@ async function testStdout(dir: string, ex: Exercise, code: string): Promise<Test
     output = r.stdout + r.stderr;
     const crash = r.timedOut ? "Timed out." : (signalMessage(r.signal, r.code) ?? undefinedBehaviour(r.stderr));
     if (crash) error = crash;
+    if (r.timedOut) timedOut = true;
     const passed = !crash && normalizeOut(r.stdout) === normalizeOut(tc.expected);
     results.push({
       name: tc.name,
@@ -874,11 +1011,13 @@ async function testStdout(dir: string, ex: Exercise, code: string): Promise<Test
       ...(!passed && !crash ? { expected: tc.expected, actual: r.stdout } : {}),
     });
   }
-  return { compiled: true, compileOutput, results, allPassed: results.every((r) => r.passed), output, error };
+  return { compiled: true, compileOutput, results, allPassed: results.every((r) => r.passed), output, error, ...(timedOut ? { timedOut } : {}) };
 }
 
-function testCHarness(dir: string, ex: Exercise, code: string, nonce: string): Promise<TestResult> {
-  return runCHarness(dir, nonce, () => compile(dir, "c", cTestSource(code, ex.harness ?? ""), { test: true }));
+async function testCHarness(dir: string, ex: Exercise, code: string, nonce: string): Promise<TestResult> {
+  const guard = await guardSharedSource("c", code, ex.starter);
+  if (!guard.ok) return guard.result;
+  return runCHarness(dir, nonce, () => compile(dir, "c", cTestSource(code, ex.harness ?? "", guard.undefs), { test: true }));
 }
 
 function testAsmHarness(dir: string, ex: Exercise, code: string, nonce: string): Promise<TestResult> {
@@ -919,7 +1058,9 @@ function parseHarnessOutput(text: string, nonce: string) {
 }
 
 async function testKernelHarness(dir: string, ex: Exercise, code: string, nonce: string): Promise<TestResult> {
-  const c = await compile(dir, "kernel", kernelTestSource(code, ex.harness ?? "", nonce), { test: true });
+  const guard = await guardSharedSource("kernel", code, ex.starter);
+  if (!guard.ok) return guard.result;
+  const c = await compile(dir, "kernel", kernelTestSource(code, ex.harness ?? "", nonce, guard.undefs), { test: true });
   const compileOutput = redactHarnessDiagnostics(cleanCompilerOutput(c.stderr + c.stdout), "kernel", 0);
   if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: "Your code didn't compile." };
   const k = await bootKernel(dir);
@@ -927,7 +1068,7 @@ async function testKernelHarness(dir: string, ex: Exercise, code: string, nonce:
   const error = kernelCrash(k);
   if (running) results.push({ name: running, passed: false, message: error ?? "The kernel stopped during this test." });
   const allPassed = !error && valid && running === null && results.length > 0 && results.every((t) => t.passed);
-  return { compiled: true, compileOutput, results, allPassed, output: k.stdout.trim(), error: error ?? (!valid ? TESTS_INCOMPLETE : null) };
+  return { compiled: true, compileOutput, results, allPassed, output: k.stdout.trim(), error: error ?? (!valid ? TESTS_INCOMPLETE : null), ...(k.timedOut ? { timedOut: true } : {}) };
 }
 
 async function runCHarness(dir: string, nonce: string, build: () => ReturnType<typeof exec>): Promise<TestResult> {
@@ -941,13 +1082,13 @@ async function runCHarness(dir: string, nonce: string, build: () => ReturnType<t
   const error = crash ?? undefinedBehaviour(r.stderr) ?? (r.code !== 0 ? `The program exited with status ${r.code}.` : null);
   if (running) results.push({ name: running, passed: false, message: error ?? "The program stopped during this test." });
   const allPassed = !error && valid && running === null && results.length > 0 && results.every((t) => t.passed);
-  return { compiled: true, compileOutput, results, allPassed, output: [...userOutput, r.stderr.trim()].filter(Boolean).join("\n"), error: error ?? (!valid ? TESTS_INCOMPLETE : null) };
+  return { compiled: true, compileOutput, results, allPassed, output: [...userOutput, r.stderr.trim()].filter(Boolean).join("\n"), error: error ?? (!valid ? TESTS_INCOMPLETE : null), ...(r.timedOut ? { timedOut: true } : {}) };
 }
 
 async function testGoHarness(dir: string, ex: Exercise, code: string): Promise<TestResult> {
   const c = await compile(dir, "go", code, { test: true, harness: ex.harness ?? "" });
   const compileOutput = redactHarnessDiagnostics(cleanCompilerOutput(c.stderr + c.stdout), "go", 0);
-  if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: c.timedOut ? "Compilation took too long." : "Your code didn't compile." };
+  if (c.code !== 0) return { compiled: false, compileOutput, results: [], allPassed: false, output: "", error: c.timedOut ? "Compilation took too long." : "Your code didn't compile.", ...(c.timedOut ? { timedOut: true } : {}) };
   await keepOnlyProgram(dir);
   const r = await exec(dir, ["./prog", "-test.v", "-test.timeout=5s", "-test.count=1"], { run: true, timeoutMs: RUN_TIMEOUT_MS * 2, limits: goRunLimits(), env: runEnv });
   const results: TestCaseResult[] = [];
@@ -979,7 +1120,7 @@ async function testGoHarness(dir: string, ex: Exercise, code: string): Promise<T
   if (running && crash) results.push({ name: running, passed: false, message: crash });
   const userOutput = r.stderr.trim();
   const allPassed = !crash && r.code === 0 && results.length > 0 && results.every((t) => t.passed);
-  return { compiled: true, compileOutput, results, allPassed, output: userOutput, error: crash };
+  return { compiled: true, compileOutput, results, allPassed, output: userOutput, error: crash, ...(r.timedOut || timedOutInGo ? { timedOut: true } : {}) };
 }
 
 async function testRustHarness(dir: string, ex: Exercise, code: string): Promise<TestResult> {
@@ -1009,7 +1150,7 @@ async function testRustHarness(dir: string, ex: Exercise, code: string): Promise
   }
   const crash = r.timedOut ? "Timed out — is there a loop that never ends, or a connection that is never closed?" : r.signal ? signalMessage(r.signal, r.code) : null;
   const allPassed = !crash && r.code === 0 && results.length > 0 && results.every((t) => t.passed);
-  return { compiled: true, compileOutput, results, allPassed, output: "", error: crash };
+  return { compiled: true, compileOutput, results, allPassed, output: "", error: crash, ...(r.timedOut ? { timedOut: true } : {}) };
 }
 
 export async function cleanupStaleWorkdirs() {

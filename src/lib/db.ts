@@ -28,6 +28,8 @@ async function ensureIndexes(db: Db) {
     db.collection("achievements").createIndex({ userId: 1, id: 1 }, { unique: true }),
     db.collection("reviews").createIndex({ userId: 1, exerciseId: 1 }, { unique: true }),
     db.collection("reviews").createIndex({ userId: 1, dueAt: 1 }),
+    db.collection("review_events").createIndex({ userId: 1, at: 1 }),
+    db.collection("review_events").createIndex({ retryOf: 1 }, { unique: true, partialFilterExpression: { retryOf: { $type: "objectId" } } }),
     db.collection("tutor_threads").createIndex({ userId: 1, lessonId: 1 }, { unique: true }),
     db.collection("rate_limits").createIndex({ key: 1 }, { unique: true }),
     db.collection("rate_limits").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),

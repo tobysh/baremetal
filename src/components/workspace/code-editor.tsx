@@ -147,6 +147,7 @@ export default function CodeEditor({
   errorLines = NO_LINES,
   fontSize = 15,
   tabWidth = 4,
+  lineWrap = false,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -157,6 +158,7 @@ export default function CodeEditor({
   errorLines?: number[];
   fontSize?: number;
   tabWidth?: number;
+  lineWrap?: boolean;
 }) {
   const view = useRef<EditorView | null>(null);
   const [editor, setEditor] = useState<EditorView | null>(null);
@@ -179,6 +181,7 @@ export default function CodeEditor({
   const extensions = useMemo(
     () => [
       languageExt,
+      lineWrap ? EditorView.lineWrapping : [],
       syntaxHighlighting(highlight),
       activeLine,
       errorLineField,
@@ -199,7 +202,7 @@ export default function CodeEditor({
         ]),
       ),
     ],
-    [languageExt, label, onRun, onTest, tabWidth],
+    [languageExt, label, onRun, onTest, tabWidth, lineWrap],
   );
   useEffect(() => {
     view.current?.dispatch({ effects: setErrorLines.of(errorLines) });

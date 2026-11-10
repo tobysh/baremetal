@@ -103,7 +103,7 @@ export function wordsOf(text: string, minLength = 1): Set<string> {
   return out;
 }
 
-const KEYWORDS = new Set(
+export const KEYWORDS = new Set(
   (
     // C / kernel C
     "auto break case char const continue default do double else enum extern float for goto if inline int long register restrict return short signed sizeof static struct switch typedef union unsigned void volatile while bool true false null nullptr size_t ssize_t file uintptr_t intptr_t ptrdiff_t main asm " +

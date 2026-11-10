@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import type { Lesson, Track } from "./curriculum/types";
 import { normalizeCode, normalizeMessage, normalizeOutput } from "./tutor-normalize";
-import { classifyQuestion, codeShape, hasUnvettedComments, normalizeFailureOutput, normalizeQuestion, privateWords, wordsOf, type CacheKind } from "./tutor-cache";
+import { classifyQuestion, codeShape, KEYWORDS, hasUnvettedComments, normalizeFailureOutput, normalizeQuestion, privateWords, wordsOf, type CacheKind } from "./tutor-cache";
 import { EXPERIENCE_LEVELS, type ExperienceLevel, type TutorMessage } from "./models";
 
 // Which model answers tutor questions. "anthropic" (default) uses Claude via the API; "ollama" uses a local model, so code and questions never leave the machine running the site.
@@ -47,8 +47,9 @@ const LEVEL_GUIDANCE: Record<ExperienceLevel, string> = {
     "They're an experienced developer new to low-level programming. Be concise and technical; focus on memory, undefined behaviour, ownership and what the machine is actually doing.",
 };
 
-export function lessonContext(track: Track, lesson: Lesson, experience: ExperienceLevel): string {
+export function lessonContext(track: Track, lesson: Lesson, experience: ExperienceLevel, hintsUnlocked = 0): string {
   const ex = lesson.exercise;
+  const shown = ex.hints.slice(0, Math.max(0, hintsUnlocked));
   return `The learner's self-described experience: "${EXPERIENCE_LEVELS[experience]}". ${LEVEL_GUIDANCE[experience]}
 
 <lesson track="${track.title}" language="${ex.language}">
@@ -60,7 +61,7 @@ ${compact(lesson.body, MAX_LESSON_BODY_CHARS)}
 ${compact(ex.task, MAX_TASK_CHARS)}
 </task>
 <hints_shown_in_ui>
-${ex.hints.map((h, i) => `${i + 1}. ${compact(h, MAX_HINT_CHARS)}`).join("\n")}
+${shown.map((h, i) => `${i + 1}. ${compact(h, MAX_HINT_CHARS)}`).join("\n")}
 </hints_shown_in_ui>
 
 </lesson>`;
@@ -95,61 +96,144 @@ function clip(text: string, max: number) {
 
 const escapeContext = (text: string) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 
-/** Suppress substantial solution excerpts before any response is sent or cached. */
-export function exposesSolution(reply: string, solution: string, starter: string): boolean {
-  const tokens = (s: string) => s.match(/[A-Za-z_][A-Za-z_0-9]*|[0-9]+|[^\s\w]/g) ?? [];
-  const width = 24;
-  const windows = (s: string) => {
-    const t = tokens(s);
-    return new Set(Array.from({ length: Math.max(0, t.length - width + 1) }, (_, i) => t.slice(i, i + width).join(" ")));
-  };
-  const given = windows(starter);
-  const answer = windows(solution);
-  return [...windows(reply)].some((w) => answer.has(w) && !given.has(w));
+const MAX_WIDTH = 24;
+const MIN_WIDTH = 10;
+
+type Tok = { text: string; start: number; end: number };
+
+/**
+ * Tokens for comparing text with the reference solution. Compatibility forms are folded (NFKC), then
+ * every non-ASCII character (zero-width and soft hyphens included) is dropped, so it cannot split a
+ * token. Identifiers that are not language keywords all become the placeholder `$`, so renaming
+ * variables does not help. With `stripComments`, `/* *\/` and `//` comments are ignored too (a reply
+ * is also checked with comments kept, since a comment is still visible text). `start` and `end` are
+ * offsets into the original string; `end` is -1 when the token runs to the end of the text (it may still be growing).
+ */
+function leakTokens(raw: string, stripComments: boolean): Tok[] {
+  const src: string[] = [];
+  const at: number[] = [];
+  let pos = 0;
+  for (const unit of raw) {
+    // NFKC per character, so offsets stay mapped onto the original string.
+    for (const ch of unit.normalize("NFKC")) if (ch.charCodeAt(0) < 128) { src.push(ch); at.push(pos); }
+    pos += unit.length;
+  }
+  const out: Tok[] = [];
+  const end = (j: number) => (j > 0 ? at[j - 1] + 1 : 0);
+  let i = 0;
+  while (i < src.length) {
+    const c = src[i];
+    if (/\s/.test(c)) { i++; continue; }
+    if (stripComments && c === "/" && src[i + 1] === "*") {
+      let j = i + 2;
+      while (j < src.length && !(src[j] === "*" && src[j + 1] === "/")) j++;
+      i = j + 2;
+    } else if (stripComments && c === "/" && src[i + 1] === "/") {
+      while (i < src.length && src[i] !== "\n") i++;
+    } else if (/[A-Za-z_]/.test(c)) {
+      let j = i + 1;
+      while (j < src.length && /\w/.test(src[j])) j++;
+      const id = src.slice(i, j).join("");
+      out.push({ text: KEYWORDS.has(id.toLowerCase()) ? id : "$", start: at[i], end: j < src.length ? end(j) : -1 });
+      i = j;
+    } else if (/\d/.test(c)) {
+      let j = i + 1;
+      while (j < src.length && /\w/.test(src[j])) j++;
+      out.push({ text: src.slice(i, j).join(""), start: at[i], end: j < src.length ? end(j) : -1 });
+      i = j;
+    } else {
+      out.push({ text: c, start: at[i], end: at[i] + 1 });
+      i++;
+    }
+  }
+  return out;
+}
+
+/** The window width for a solution: 24 tokens, less for a very short solution so it is still covered. */
+function widthFor(solution: string): number {
+  const n = leakTokens(solution, true).length;
+  return n >= 2 * MAX_WIDTH ? MAX_WIDTH : Math.max(MIN_WIDTH, Math.ceil(n / 2));
+}
+
+function windowSet(toks: Tok[], width: number) {
+  const t = toks.map((x) => x.text);
+  return new Set(Array.from({ length: Math.max(0, t.length - width + 1) }, (_, i) => t.slice(i, i + width).join(" ")));
+}
+
+/** Solution and starter windows for one way of reading text (comments stripped or kept). */
+class LeakView {
+  private readonly answer: Set<string>;
+  private readonly given: Set<string>;
+  private priorTokens: number;
+  private prior: Tok[];
+  checked = 0;
+  constructor(readonly strip: boolean, readonly width: number, solution: string, starter: string, prior: string) {
+    this.answer = windowSet(leakTokens(solution, strip), width);
+    this.given = windowSet(leakTokens(starter, strip), width);
+    this.prior = leakTokens(prior, strip);
+    this.priorTokens = this.prior.length;
+    // Windows made only of earlier replies were checked when those replies were given.
+    this.checked = Math.max(0, this.priorTokens - width + 1);
+  }
+  /** Checks every new complete window of prior + reply; returns whether one matches, and where text is safe up to. */
+  scan(reply: string, final: boolean): { hit: boolean; safeTo: number } {
+    const own = leakTokens(reply, this.strip);
+    const all = [...this.prior, ...own];
+    // The last token may still be growing, so only count it once more text follows.
+    const complete = final || !own.length || own.at(-1)!.end >= 0 ? all.length : all.length - 1;
+    for (; this.checked + this.width <= complete; this.checked++) {
+      const w = all.slice(this.checked, this.checked + this.width).map((x) => x.text).join(" ");
+      if (this.answer.has(w) && !this.given.has(w)) return { hit: true, safeTo: 0 };
+    }
+    // Everything before the last `width` complete tokens has had all its windows checked.
+    const idx = complete - this.width;
+    const safeTo = idx >= this.priorTokens ? all[idx].start : 0;
+    return { hit: false, safeTo };
+  }
+}
+
+/**
+ * Suppress substantial solution excerpts before any response is sent or cached. `prior` holds earlier
+ * assistant replies in the same thread, so a solution split across turns is caught.
+ */
+export function exposesSolution(reply: string, solution: string, starter: string, prior: string[] = []): boolean {
+  const width = widthFor(solution);
+  return [true, false].some((strip) => new LeakView(strip, width, solution, starter, prior.join("\n")).scan(reply, true).hit);
 }
 
 /**
  * The incremental form of exposesSolution, so a reply can stream. A token can only be shown once
- * every 24-token window that contains it has been checked, so the last 24 tokens (and any partial
- * trailing token) are held back until more text arrives. On a match nothing further is released;
- * the caller appends its fallback sentence instead. Over a whole reply it flags exactly the
- * windows exposesSolution flags.
+ * every window that contains it has been checked, so the last window's worth of tokens (and any
+ * partial trailing token) is held back until more text arrives. On a match nothing further is
+ * released; the caller appends its fallback sentence instead. Over a whole reply it flags exactly
+ * the windows exposesSolution flags.
  */
 export class SolutionGuard {
-  static readonly WIDTH = 24;
-  private readonly answer: Set<string>;
-  private readonly given: Set<string>;
+  static readonly WIDTH = MAX_WIDTH;
+  private readonly views: LeakView[];
   private reply = "";
   private shown = 0;
-  private checked = 0;
   leaked = false;
-  constructor(solution: string, starter: string) {
-    this.answer = SolutionGuard.windowSet(solution);
-    this.given = SolutionGuard.windowSet(starter);
+  constructor(solution: string, starter: string, prior: string[] = []) {
+    const width = widthFor(solution);
+    const before = prior.join("\n");
+    this.views = [true, false].map((strip) => new LeakView(strip, width, solution, starter, before));
   }
-  private static tokens(s: string): { text: string; start: number }[] {
-    return [...s.matchAll(/[A-Za-z_][A-Za-z_0-9]*|[0-9]+|[^\s\w]/g)].map((m) => ({ text: m[0], start: m.index ?? 0 }));
-  }
-  private static windowSet(s: string) {
-    const t = SolutionGuard.tokens(s).map((x) => x.text);
-    return new Set(Array.from({ length: Math.max(0, t.length - SolutionGuard.WIDTH + 1) }, (_, i) => t.slice(i, i + SolutionGuard.WIDTH).join(" ")));
+  private scan(final: boolean): number {
+    let safe = Infinity;
+    for (const v of this.views) {
+      const r = v.scan(this.reply, final);
+      if (r.hit) { this.leaked = true; return 0; }
+      safe = Math.min(safe, r.safeTo);
+    }
+    return safe;
   }
   /** Adds streamed text; returns the part that is now safe to show. */
   push(text: string): string {
     if (this.leaked) return "";
     this.reply += text;
-    const tokens = SolutionGuard.tokens(this.reply);
-    // The final token may still be growing (an identifier cut mid-chunk), so only count it once more text follows.
-    const complete = this.reply.length > (tokens.at(-1)?.start ?? 0) + (tokens.at(-1)?.text.length ?? 0) ? tokens.length : tokens.length - 1;
-    for (; this.checked + SolutionGuard.WIDTH <= complete; this.checked++) {
-      const window = tokens.slice(this.checked, this.checked + SolutionGuard.WIDTH).map((x) => x.text).join(" ");
-      if (this.answer.has(window) && !this.given.has(window)) {
-        this.leaked = true;
-        return "";
-      }
-    }
-    // Everything before the last WIDTH complete tokens has had all its windows checked.
-    const holdFrom = complete > SolutionGuard.WIDTH ? tokens[complete - SolutionGuard.WIDTH].start : 0;
+    const holdFrom = this.scan(false);
+    if (this.leaked) return "";
     const out = this.reply.slice(this.shown, holdFrom);
     this.shown = Math.max(this.shown, holdFrom);
     return out;
@@ -157,14 +241,8 @@ export class SolutionGuard {
   /** Ends the stream: checks any last windows and returns the held-back remainder (empty if leaked). */
   finish(): string {
     if (this.leaked) return "";
-    const tokens = SolutionGuard.tokens(this.reply);
-    for (; this.checked + SolutionGuard.WIDTH <= tokens.length; this.checked++) {
-      const window = tokens.slice(this.checked, this.checked + SolutionGuard.WIDTH).map((x) => x.text).join(" ");
-      if (this.answer.has(window) && !this.given.has(window)) {
-        this.leaked = true;
-        return "";
-      }
-    }
+    this.scan(true);
+    if (this.leaked) return "";
     const rest = this.reply.slice(this.shown);
     this.shown = this.reply.length;
     return rest;
@@ -258,6 +336,12 @@ export type TutorUsage = {
   cacheWriteTokens: number;
 };
 
+/**
+ * `onUpstream` fires just before the request leaves for Anthropic (from then on the call may be billed).
+ * `onStart` fires on the stream's `message_start` event with the input-side usage the API has already counted.
+ */
+export type StreamHooks = { onUpstream?: () => void; onStart?: (usage: TutorUsage) => void };
+
 const REFUSAL_REPLY = "I can't help with that one. Let's get back to the exercise — what are you stuck on?";
 
 /**
@@ -269,11 +353,13 @@ export function streamTutor(
   messages: ChatTurn[],
   signal: AbortSignal,
   onDone: (usage: TutorUsage, cacheable: boolean) => void,
+  hooks: StreamHooks = {},
 ): AsyncGenerator<string> {
-  return TUTOR_PROVIDER === "ollama" ? streamOllama(lessonCtx, messages, signal, onDone) : streamClaude(lessonCtx, messages, signal, onDone);
+  return TUTOR_PROVIDER === "ollama" ? streamOllama(lessonCtx, messages, signal, onDone) : streamClaude(lessonCtx, messages, signal, onDone, hooks);
 }
 
-async function* streamClaude(lessonCtx: string, messages: ChatTurn[], signal: AbortSignal, onDone: (u: TutorUsage, cacheable: boolean) => void): AsyncGenerator<string> {
+async function* streamClaude(lessonCtx: string, messages: ChatTurn[], signal: AbortSignal, onDone: (u: TutorUsage, cacheable: boolean) => void, hooks: StreamHooks = {}): AsyncGenerator<string> {
+  hooks.onUpstream?.();
   const stream = anthropic().messages.stream(
     {
       model: TUTOR_MODEL,
@@ -291,6 +377,10 @@ async function* streamClaude(lessonCtx: string, messages: ChatTurn[], signal: Ab
   );
   try {
     for await (const event of stream) {
+      if (event.type === "message_start") {
+        const u = event.message.usage;
+        hooks.onStart?.({ provider: "anthropic", model: event.message.model, inputTokens: u.input_tokens, outputTokens: u.output_tokens ?? 0, cacheReadTokens: u.cache_read_input_tokens ?? 0, cacheWriteTokens: u.cache_creation_input_tokens ?? 0 });
+      }
       if (event.type === "content_block_delta" && event.delta.type === "text_delta") yield event.delta.text;
     }
     const final = await stream.finalMessage();
@@ -309,19 +399,31 @@ async function* streamClaude(lessonCtx: string, messages: ChatTurn[], signal: Ab
       !refused && final.stop_reason === "end_turn",
     );
   } catch (e) {
-    if (e instanceof Anthropic.AuthenticationError) throw new TutorUnavailableError("The tutor isn't configured correctly: the ANTHROPIC_API_KEY was rejected.");
+    if (e instanceof Anthropic.AuthenticationError) console.error("[tutor] Claude API key rejected");
+    if (e instanceof Anthropic.AuthenticationError) throw new TutorUnavailableError("The tutor isn't configured correctly: the tutor service rejected its credentials. Please tell the site owner.");
     // No credentials at all: the SDK raises a plain Error before sending anything.
     if (!(e instanceof Anthropic.APIError) && /Could not resolve authentication method/.test(String((e as Error)?.message)))
-      throw new TutorUnavailableError("The tutor isn't configured yet: set ANTHROPIC_API_KEY in .env.local, or TUTOR_PROVIDER=ollama to use a local model.");
+      { console.error("[tutor] No Anthropic credentials: set ANTHROPIC_API_KEY, or TUTOR_PROVIDER=ollama"); throw new TutorUnavailableError("The tutor isn't available yet. Please tell the site owner."); }
     if (e instanceof Anthropic.RateLimitError) throw new TutorUnavailableError("The tutor is very busy right now. Please try again in a minute.");
     if (e instanceof Anthropic.APIError) console.error(`[tutor] Claude API error ${e.status}`, e.message);
     throw e;
   }
 }
 
-// Ollama's /api/chat streams newline-delimited JSON objects.
+// Ollama's /api/chat streams newline-delimited JSON objects. Learners only ever see the generic
+// TUTOR_DOWN message; the cause (host, model, upstream error text) goes to the server log.
+const TUTOR_DOWN = "The tutor is unavailable right now. Please try again in a moment.";
+const OLLAMA_TIMEOUT_MS = Math.max(50, Number(process.env.OLLAMA_TIMEOUT_MS) || 120_000);
+
 async function* streamOllama(lessonCtx: string, messages: ChatTurn[], signal: AbortSignal, onDone: (u: TutorUsage, cacheable: boolean) => void): AsyncGenerator<string> {
-  let res: Response;
+  const down = (why: string, e?: unknown): never => {
+    if (!signal.aborted) console.error(`[tutor] Ollama: ${why}`, e instanceof Error ? e.message : (e ?? ""));
+    throw new TutorUnavailableError(TUTOR_DOWN);
+  };
+  // One deadline for the whole call, so a stalled server cannot hold the stream (and the learner) open.
+  const timeout = AbortSignal.timeout(OLLAMA_TIMEOUT_MS);
+  const both = AbortSignal.any([signal, timeout]);
+  let res: Response | undefined;
   try {
     res = await fetch(`${OLLAMA_HOST}/api/chat`, {
       method: "POST",
@@ -335,41 +437,54 @@ async function* streamOllama(lessonCtx: string, messages: ChatTurn[], signal: Ab
         options: { num_ctx: 16384, num_predict: MAX_REPLY_TOKENS },
         keep_alive: "30m",
       }),
-      signal,
+      signal: both,
     });
-  } catch {
-    throw new TutorUnavailableError(`The tutor can't reach Ollama at ${OLLAMA_HOST}. Is \`ollama serve\` running?`);
+  } catch (e) {
+    if (signal.aborted) throw e;
+    down(timeout.aborted ? "request timed out" : "cannot connect", e);
   }
-  if (res.status === 404) throw new TutorUnavailableError(`Ollama doesn't have the model "${OLLAMA_MODEL}". Run \`ollama pull ${OLLAMA_MODEL}\` first.`);
-  if (!res.ok || !res.body) throw new TutorUnavailableError(`Ollama returned an error (${res.status}).`);
+  if (!res) return down("no response");
+  if (res.status === 404) down(`model "${OLLAMA_MODEL}" not found (ollama pull ${OLLAMA_MODEL})`);
+  if (!res.ok || !res.body) down(`HTTP ${res.status}`);
 
-  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  const reader = res.body!.pipeThrough(new TextDecoderStream()).getReader();
   let buffer = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += value;
-    let nl: number;
-    while ((nl = buffer.indexOf("\n")) >= 0) {
-      const line = buffer.slice(0, nl).trim();
-      buffer = buffer.slice(nl + 1);
-      if (!line) continue;
-      const chunk = JSON.parse(line) as {
-        message?: { content?: string };
-        error?: string;
-        done?: boolean;
-        done_reason?: string;
-        prompt_eval_count?: number;
-        eval_count?: number;
-      };
-      if (chunk.error) throw new TutorUnavailableError(`Ollama: ${chunk.error}`);
-      if (chunk.message?.content) yield chunk.message.content;
-      if (chunk.done) {
-        onDone(
-          { provider: "ollama", model: OLLAMA_MODEL, inputTokens: chunk.prompt_eval_count ?? 0, outputTokens: chunk.eval_count ?? 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
-          chunk.done_reason === "stop",
-        );
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += value;
+      let nl: number;
+      while ((nl = buffer.indexOf("\n")) >= 0) {
+        const line = buffer.slice(0, nl).trim();
+        buffer = buffer.slice(nl + 1);
+        if (!line) continue;
+        let chunk: {
+          message?: { content?: string };
+          error?: string;
+          done?: boolean;
+          done_reason?: string;
+          prompt_eval_count?: number;
+          eval_count?: number;
+        };
+        try {
+          chunk = JSON.parse(line);
+        } catch {
+          return down("malformed response line");
+        }
+        if (!chunk || typeof chunk !== "object") return down("unexpected response line");
+        if (chunk.error) down("upstream error", chunk.error);
+        if (typeof chunk.message?.content === "string" && chunk.message.content) yield chunk.message.content;
+        if (chunk.done) {
+          onDone(
+            { provider: "ollama", model: OLLAMA_MODEL, inputTokens: Number(chunk.prompt_eval_count) || 0, outputTokens: Number(chunk.eval_count) || 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+            chunk.done_reason === "stop",
+          );
+        }
       }
     }
+  } catch (e) {
+    if (e instanceof TutorUnavailableError || signal.aborted) throw e;
+    down(timeout.aborted ? "stream timed out" : "stream failed", e);
   }
 }

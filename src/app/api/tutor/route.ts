@@ -6,7 +6,7 @@ import { getDb } from "@/lib/db";
 import { jsonError, readJson, sameOrigin } from "@/lib/http";
 import { hmac } from "@/lib/crypto";
 import type { TutorThreadDoc } from "@/lib/models";
-import { getTutorThread } from "@/lib/progress";
+import { getProgress, getTutorThread } from "@/lib/progress";
 import { clientIp, ipLimit, rateLimit, rateLimitHit } from "@/lib/rate-limit";
 import { checkBudget, estimateCostMicro, reserveBudget } from "@/lib/tutor-budget";
 import { HOUR, LIMITS } from "@/lib/tutor-limits";
@@ -38,7 +38,8 @@ export async function POST(req: Request) {
   const db = await getDb();
   const code = body.code ?? "";
   const lastOutput = body.lastOutput ?? "";
-  const lessonCtx = lessonContext(found.track, found.lesson, user.experience);
+  const unlocked = (await getProgress(user.id, found.exercise.id))?.hintsUsed ?? 0;
+  const lessonCtx = lessonContext(found.track, found.lesson, user.experience, unlocked);
   const thread = await getTutorThread(user.id, found.exercise.id);
   const firstTurn = !thread?.messages.length;
   // Only the first turn is cached: follow-ups depend on the conversation.
@@ -143,16 +144,20 @@ export async function POST(req: Request) {
   if (req.signal.aborted) disconnect();
   let usage: TutorUsage | null = null;
   let cacheable = false;
+  // Once the request has gone upstream Anthropic bills it whatever happens next, so the quota is never refunded
+  // and the budget keeps at least the input cost reported by message_start.
+  let upstreamCalled = false;
+  let started: TutorUsage | null = null;
   const chunks = streamTutor(lessonCtx, messages, abort.signal, (u, ok) => {
     usage = u;
     cacheable = ok;
-  });
+  }, { onUpstream: () => { upstreamCalled = true; }, onStart: (u) => { started = u; } });
 
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {
       let reply = "";
       // Text streams out as soon as it is certain no 24-token solution excerpt is forming (SolutionGuard).
-      const guard = new SolutionGuard(found.exercise.solution, found.exercise.starter);
+      const guard = new SolutionGuard(found.exercise.solution, found.exercise.starter, (thread?.messages ?? []).filter((m) => m.role === "assistant").map((m) => m.content));
       const send = (text: string) => { if (text && !abort.signal.aborted) controller.enqueue(encoder.encode(text)); };
       const FALLBACK = "Let's work through the idea one step at a time. Which part of the task is unclear?";
       try {
@@ -161,8 +166,9 @@ export async function POST(req: Request) {
           if (reply.length > 32 * 1024) throw new TutorUnavailableError("The tutor response was too long. Try a more specific question.");
           send(guard.push(text));
         }
-        // Spend is recorded as soon as the API reports usage, even if the client left.
-        await settleBudget(usage).catch((e) => console.error("[tutor] spend", e));
+        // Normal completion: spend is recorded as soon as the API reports final usage, even if the client left.
+        // (An abort or error never reaches this line; the finally block settles those with the message_start usage.)
+        await settleBudget(usage ?? started).catch((e) => console.error("[tutor] spend", e));
         if (abort.signal.aborted) return;
         const rest = guard.finish();
         let finalReply = reply;
@@ -191,12 +197,13 @@ export async function POST(req: Request) {
       } catch (e) {
         let msg = "The tutor is unavailable right now. Please try again in a moment.";
         if (e instanceof TutorUnavailableError) msg = e.message;
-        // Our failure, not theirs: give the question back.
-        if (!reply) await db.collection("rate_limits").updateMany({ key: { $in: [userHourKey, userDayKey] } }, { $inc: { count: -1 } });
+        // Give the question back only if the call failed before reaching Anthropic; a started call is billed.
+        if (!upstreamCalled) await db.collection("rate_limits").updateMany({ key: { $in: [userHourKey, userDayKey] } }, { $inc: { count: -1 } });
         else if (!abort.signal.aborted) console.error("[tutor]", e);
         if (!abort.signal.aborted) controller.enqueue(encoder.encode(`\n\n__TUTOR_ERROR__${msg}`));
       } finally {
-        await settleBudget(usage).catch((e) => console.error("[tutor] budget settlement", e));
+        // Abort or error mid-stream: charge what message_start reported (final usage when we have it).
+        await settleBudget(usage ?? started).catch((e) => console.error("[tutor] budget settlement", e));
         req.signal.removeEventListener("abort", disconnect);
         if (!cancelled) controller.close();
       }

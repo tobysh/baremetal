@@ -36,6 +36,8 @@ function loadLesson(trackDir: string, dirName: string, language: Track["language
   // missing files, so an accidental content regression cannot disappear silently.
   if (meta.draft === "true") return null;
   const mode = meta.mode === "stdout" ? "stdout" : "harness";
+  const revision = meta.revision === undefined ? 1 : Number(meta.revision);
+  if (!Number.isInteger(revision) || revision < 1) throw new Error(`Lesson ${dir}: revision must be a whole number from 1`);
   const exercise: Exercise = {
     id: meta.id,
     language,
@@ -43,6 +45,7 @@ function loadLesson(trackDir: string, dirName: string, language: Track["language
     starter: read(path.join(dir, `starter.${ext}`)),
     solution: read(path.join(dir, `solution.${ext}`)),
     mode,
+    ...(revision > 1 ? { revision } : {}),
     cases: mode === "stdout" ? JSON.parse(read(path.join(dir, "cases.json"))) : undefined,
     harness: mode === "harness" ? read(path.join(dir, `tests.${harnessExt}`)) : undefined,
     hints: read(path.join(dir, "hints.md"))

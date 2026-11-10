@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { findExercise } from "@/lib/curriculum";
+import { revisionOf } from "@/lib/curriculum/types";
 import { jsonError, readJson, sameOrigin } from "@/lib/http";
 import { recordHint, resetReview, saveCode } from "@/lib/progress";
 import { isChallengeId } from "@/lib/gamification";
@@ -17,7 +18,7 @@ export async function PUT(req: Request) {
   const found = findExercise(body.exerciseId);
   if (!found) return jsonError(404, "Unknown exercise.");
   if (!(await rateLimit(`autosave:${user.id}`, 120, 60))) return jsonError(429, "Saving too often.");
-  await saveCode(user.id, found.exercise.id, found.track.slug, body.code);
+  await saveCode(user.id, found.exercise.id, found.track.slug, body.code, revisionOf(found.exercise));
   return NextResponse.json({ ok: true });
 }
 

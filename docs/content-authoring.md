@@ -175,6 +175,17 @@ Learner progress is keyed by lesson id. Therefore:
 - Renumbering the `NN-` prefixes is safe and is how you insert a lesson mid-track.
 - `npm run check:ids` compares ids against `content/.lesson-ids.json` (and `origin/main` when available) and fails if one has disappeared. New ids are allowed; add them to the snapshot with `npm run check:ids -- --update` and confirm the diff only adds lines.
 
+## Rewriting a published lesson
+
+Saved code is a single field on the learner's progress record (and a draft in their browser). If you change a lesson so that code written for the old version no longer makes sense as a starting point, add `revision: 2` (then 3, and so on) to its `lesson.md` frontmatter. Keep the id and difficulty.
+
+- Learners whose saved code predates the revision open the **new starter**. Their old code is not lost: it is moved to `previousCode` on their progress record the first time they save or press Test, and the editor shows it in a collapsed "previous version" note with a copy button.
+- Browser drafts for a revised lesson use a separate key (`…:r2`), so an old draft never becomes the starting point. The note also shows the old local draft.
+- A lesson that was already **passed** stays passed, and its XP is unchanged. Review mode always starts from the starter, so it is unaffected.
+- The revision does not change the lesson's difficulty or id, and `recompute-xp` is not needed.
+
+Do not bump `revision` for wording changes, new diagrams or extra cases that the old solution still passes.
+
 ## Security content
 
 Security lessons use **synthetic data and simulated systems only**: fictional targets, fictional advisory ids, inert bytecode formats, in-memory state machines. They never connect to real hosts, and a lesson must not need broader sandbox privileges. State each lesson's model boundaries honestly in its `task.md` or the track `description` ("a model of control-flow overwrite, not a native exploit"). Per-track notes: [security-labs.md](security-labs.md), [offensive-infrastructure-lab.md](offensive-infrastructure-lab.md), [toy-maldev.md](toy-maldev.md).
@@ -194,6 +205,55 @@ npm run check:curriculum            # draft isolation and strict loading
 ```
 
 If `qemu-system-x86_64` is missing, `verify:content -- osdev` reports a bare "triple fault" for every lesson. Run it before a pull request, and run `npm run recompute-xp` (site stopped) if you changed a difficulty or removed a `practice.json` on a database with real learners.
+
+## Teaching rules for beginner courses
+
+These apply to `first-steps`, `c-data`, `c-memory` and any later beginner course. They exist so that learners practise designing programs and understanding the machine, not only filling in pre-designed functions.
+
+### Fading the scaffolding
+
+Split each course into thirds by lesson order. Review lessons do not count towards the final third.
+
+| Third | What the starter gives | Typical mode |
+|---|---|---|
+| First | The function signature **and** `main` | harness, or stdout with a filled-in `main` |
+| Middle | The signature only; the learner writes any `main` they want | harness |
+| Final | At least some **design** lessons (below) | stdout |
+
+A **design lesson** is `mode: stdout` with a prose spec. The starter holds `#include` lines and perhaps a comment; the learner chooses the functions and writes `main`. Edge cases must still be derivable from the spec, but the spec describes behaviour in prose ("an empty list prints nothing, not a blank line") rather than listing each case. Vary `stdin` per case (never `set`, because there are no declared inputs), include edge inputs and one long input, and tell the learner that other inputs are tried. Name the design-recipe steps the lesson expects them to use. Tag the lesson `design` (or `transfer`): `verify:content` then accepts a starter that fails only because it has no `main()` yet; any other compile failure in a starter is still an error.
+
+When an existing lesson is converted to a design lesson, keep its id and difficulty. If the learner's old code would no longer fit the new starter (a harness lesson becoming a stdout lesson, or a different program), bump the lesson's `revision` (see "Rewriting a published lesson"). If the expected output is unchanged and the old solution still passes the same cases, no bump is needed.
+
+### The notional machine
+
+Any lesson that introduces variables, function calls, arrays, pointers or the heap includes:
+
+1. A short **What's in memory** section: a text diagram of the stack frames and/or the heap at a named line of the example (addresses may be invented but must be consistent, and must say so).
+2. At least one **trace-style `predict` question** in `practice.json` (a `trace` of steps, each asking what a variable or slot holds after a line). If the lesson already has a `practice.json`, add the trace to `quiz.json` (it also gives review cards more variety). If it has none, create a `practice.json` for the trace, so the question appears in the lesson itself.
+
+Show the call stack explicitly at least once per course: a call, the new frame with its parameters and locals, and the return that discards it.
+
+### Design recipe
+
+Design lessons, and any lesson that asks the learner to plan, refer to these steps by name:
+
+1. **Understand the problem.** Say it back in your own words; what goes in, what comes out?
+2. **Write examples.** Two or three inputs with the output you expect, including an empty or extreme one.
+3. **Choose signatures.** Decide which functions you need, with their parameters and return types, before writing bodies.
+4. **Plan.** Pick the pattern (below) and sketch the steps in comments.
+5. **Code.** Fill in one function at a time.
+6. **Test.** Run your examples; change one thing at a time when something is wrong.
+
+### Named patterns
+
+Lessons refer to these by name and link the first lesson that introduces each. Do not invent synonyms.
+
+- **Accumulator:** a variable that starts at a neutral value (0, 1) and is updated once per item (sum, product, longest).
+- **Counter:** an accumulator that adds 1 when a condition holds.
+- **Search:** walk the items until one matches; report where, or that none did.
+- **Filter:** walk the items and keep, print or count only those that meet a condition.
+- **Sentinel loop:** repeat until a special value or the end of input says stop (`EOF`, `'\0'`, `NULL`, 0).
+- **Parse-validate-use:** read raw input, check it is well-formed (and say so if not), and only then compute with it.
 
 ## Design guidance
 

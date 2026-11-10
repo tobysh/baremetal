@@ -38,6 +38,7 @@ function readSplit() {
 // in-memory copy keeps the controls working when storage is blocked.
 const fontKey = "bm:editor:font-size";
 const tabKey = "bm:editor:tab-width";
+const wrapKey = "bm:editor:line-wrap";
 const tourKey = "bm:workspace:tour-done";
 const FONT_MIN = 12, FONT_MAX = 24, FONT_DEFAULT = 15;
 const TAB_WIDTHS = [2, 4, 8] as const;
@@ -65,6 +66,7 @@ const readTab = () => {
   const n = Number(readPref(tabKey));
   return (TAB_WIDTHS as readonly number[]).includes(n) ? n : TAB_DEFAULT;
 };
+const readWrap = () => readPref(wrapKey) === "1";
 const prefersReducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 const formatSeconds = (ms: number) => (ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1)} s`);
 
@@ -79,8 +81,8 @@ function readDraft(key: string): string | null {
 }
 
 // Matches the editor's colours so there's no flash while it loads.
-function CodeFallback({ code, fontSize = FONT_DEFAULT, tabWidth = TAB_DEFAULT }: { code: string; fontSize?: number; tabWidth?: number }) {
-  return <pre style={{ fontSize, tabSize: tabWidth }} className="h-full overflow-auto bg-[var(--code-bg)] p-4 pl-12 font-mono leading-[1.65] text-[var(--code-text)]">{code}</pre>;
+function CodeFallback({ code, fontSize = FONT_DEFAULT, tabWidth = TAB_DEFAULT, wrap = false }: { code: string; fontSize?: number; tabWidth?: number; wrap?: boolean }) {
+  return <pre style={{ fontSize, tabSize: tabWidth }} className={`h-full overflow-auto bg-[var(--code-bg)] p-4 pl-12 font-mono leading-[1.65] text-[var(--code-text)]${wrap ? " whitespace-pre-wrap break-words" : ""}`}>{code}</pre>;
 }
 
 const isMac = () => /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
@@ -92,7 +94,7 @@ function Kbd({ children }: { children: string }) {
 
 type TestCase = { name: string; passed: boolean; message?: string; expected?: string; actual?: string };
 type RunResponse =
-  | { kind: "run"; ok: boolean; phase: "compile" | "run"; compileOutput: string; stdout: string; stderr: string; exitCode: number | null; error: string | null; durationMs: number }
+  | { kind: "run"; ok: boolean; phase: "compile" | "run"; compileOutput: string; stdout: string; stderr: string; exitCode: number | null; error: string | null; timedOut?: boolean; durationMs: number }
   | {
       kind: "test";
       compiled: boolean;
@@ -101,6 +103,7 @@ type RunResponse =
       allPassed: boolean;
       output: string;
       error: string | null;
+      timedOut?: boolean;
       saved: boolean;
       reward: Reward | null;
       paced?: boolean;
@@ -114,6 +117,24 @@ type RunResponse =
 export type Variant = "lesson" | "challenge" | "review";
 
 type Tab = "output" | "hints" | "tutor";
+
+/** Why a Run/Test request produced no result. `retryable` is true only where trying again can change the outcome. */
+type RunFailure = { kind: "offline" | "network" | "busy" | "rate" | "rejected" | "server"; title: string; text: string; retryable: boolean; mode: "run" | "test" };
+class RunFailureError extends Error {
+  constructor(readonly failure: RunFailure) { super(failure.text); }
+}
+const DRAFT_SAFE = "Your draft is still here.";
+function classifyFailure(status: number | null, serverMessage: string | undefined, mode: "run" | "test"): RunFailure {
+  if (status === null) {
+    return typeof navigator !== "undefined" && navigator.onLine === false
+      ? { kind: "offline", mode, title: "You're offline", text: `Your code wasn't run. ${DRAFT_SAFE} Reconnect, then try again.`, retryable: true }
+      : { kind: "network", mode, title: "Couldn't reach Baremetal", text: `The request didn't get through, so your code wasn't run. ${DRAFT_SAFE} Check your connection, then try again.`, retryable: true };
+  }
+  if (status === 503) return { kind: "busy", mode, title: "Code runner busy or unavailable", text: `The runner can't take your code right now. ${DRAFT_SAFE} Try again in a few seconds.`, retryable: true };
+  if (status === 429) return { kind: "rate", mode, title: "Run limit reached", text: `${serverMessage ?? "You've sent a lot of runs in a short time."} ${DRAFT_SAFE} Trying again straight away won't help; wait a little first.`, retryable: false };
+  if (status >= 400 && status < 500) return { kind: "rejected", mode, title: "Request not accepted", text: `${serverMessage ?? `The server refused the request (HTTP ${status}).`} ${DRAFT_SAFE}`, retryable: false };
+  return { kind: "server", mode, title: "Server error", text: `Something went wrong on our side (HTTP ${status}), not in your code. ${DRAFT_SAFE} Try again.`, retryable: true };
+}
 
 export function Workspace({
   exercise,
@@ -143,7 +164,8 @@ export function Workspace({
   initialHints?: number;
   onPassed?: () => void;
 }) {
-  const storageKey = signedIn ? `bm:draft:${draftOwner}:${exercise.id}` : `bm:code:${exercise.id}`;
+  // A rewritten lesson (revision 2 and up) gets its own draft key, so an old draft never becomes its starting point.
+  const storageKey = (signedIn ? `bm:draft:${draftOwner}:${exercise.id}` : `bm:code:${exercise.id}`) + ((exercise.revision ?? 1) > 1 ? `:r${exercise.revision}` : "");
   // Signed-out visitors keep their code in this browser only.
   const localDraft = useSyncExternalStore(noop, () => (variant === "review" ? null : readDraft(storageKey)), () => null);
   const [edited, setCode] = useState<string | null>(null);
@@ -176,6 +198,7 @@ export function Workspace({
   }
   const fontSize = useSyncExternalStore(subscribePrefs, readFont, () => FONT_DEFAULT);
   const tabWidth = useSyncExternalStore(subscribePrefs, readTab, () => TAB_DEFAULT);
+  const lineWrap = useSyncExternalStore(subscribePrefs, readWrap, () => false);
   const tourDone = useSyncExternalStore(subscribePrefs, () => readPref(tourKey) === "1", () => true);
   const [tourStep, setTourStep] = useState(0);
   const showTour = isClient && !tourDone && variant === "lesson" && !alreadyPassed;
@@ -188,7 +211,7 @@ export function Workspace({
   const [busy, setBusy] = useState<null | "run" | "test">(null);
   const router = useRouter();
   const [result, setResult] = useState<RunResponse | null>(null);
-  const [requestError, setRequestError] = useState<string | null>(null);
+  const [requestError, setRequestError] = useState<RunFailure | null>(null);
   const [passed, setPassed] = useState(alreadyPassed);
   const [tab, setTab] = useState<Tab>("output");
   const [hints, setHints] = useState<string[]>([]);
@@ -196,11 +219,11 @@ export function Workspace({
   const [hintBusy, setHintBusy] = useState(false);
   const [hintError, setHintError] = useState<string | null>(null);
   const fetchHints = useCallback(async (index: number) => {
-    const res = await fetch("/api/hint", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ exerciseId: exercise.id, index }) });
+    const res = await fetch("/api/hint", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ exerciseId: exercise.id, index, review: variant === "review" }) });
     const body = await res.json().catch(() => { throw new Error(`The server could not complete the request (HTTP ${res.status}). Please try again.`); });
     if (!res.ok) throw new Error(body.error ?? "Could not load the hint. Try again.");
     return body.hints as string[];
-  }, [exercise.id]);
+  }, [exercise.id, variant]);
   useEffect(() => {
     if (variant !== "lesson" || initialHints <= 0) return;
     let cancelled = false;
@@ -338,9 +361,9 @@ export function Workspace({
           signal: controller.signal,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ exerciseId: exercise.id, code: codeRef.current, stdin: stdinRef.current, mode, review: variant === "review" }),
-        });
-        const body = await res.json().catch(() => { throw new Error(`The server could not run your code (HTTP ${res.status}). Please try again.`); });
-        if (!res.ok) throw new Error(res.status === 503 ? "The code runner is unavailable or busy. Your draft is still here; try again shortly." : body.error ?? "Something went wrong running your code.");
+        }).catch((error) => { throw controller.signal.aborted ? error : new RunFailureError(classifyFailure(null, undefined, mode)); });
+        const body = await res.json().catch(() => null);
+        if (!res.ok || !body) throw new RunFailureError(classifyFailure(res.ok ? 500 : res.status, typeof body?.error === "string" ? body.error : undefined, mode));
         if (!alive.current || controller.signal.aborted) return;
         setResult(body);
         setElapsedMs(performance.now() - startedAt);
@@ -356,7 +379,7 @@ export function Workspace({
           if (levelUp || body.trackComplete) setCelebration({ levelUp, trackComplete: body.trackComplete ?? null, returnFocus });
         }
       } catch (e) {
-        if (alive.current && !controller.signal.aborted) setRequestError((e as Error).message);
+        if (alive.current && !controller.signal.aborted) setRequestError(e instanceof RunFailureError ? e.failure : classifyFailure(500, undefined, mode));
       } finally {
         if (execution.current === controller) execution.current = null;
         if (alive.current) setBusy(null);
@@ -415,7 +438,7 @@ export function Workspace({
   }, [result, busy, exercise.language]);
   const lastOutput = describeResult(result);
   // One small live region announces the outcome; the big output panel and tutor list are not live themselves.
-  const announcement = cancelled ? "Cancelled." : requestError ? requestError : busy ? "" : summarize(result);
+  const announcement = cancelled ? "Cancelled." : requestError ? `${requestError.title}. ${requestError.text}` : busy ? "" : summarize(result);
   const getContext = useCallback(() => ({ code: codeRef.current, lastOutput }), [lastOutput]);
 
   const askTutor = (text: string) => {
@@ -446,7 +469,7 @@ export function Workspace({
         </span>
         {(saveState === "error" || recovered) && <button type="button" onClick={retrySave} className="min-h-11 rounded-md px-2 text-xs text-accent underline underline-offset-2">{recovered ? "Save recovered draft" : "Retry save"}</button>}
         <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-          <EditorMenu mod={mod} fontSize={fontSize} tabWidth={tabWidth} />
+          <EditorMenu mod={mod} fontSize={fontSize} tabWidth={tabWidth} lineWrap={lineWrap} />
           <button type="button" title="Replace your code with the starter. You can undo it for a few seconds." className="min-h-11 rounded-md px-2.5 text-sm text-muted hover:bg-surface-2 hover:text-text sm:min-h-9" onClick={resetCode}>
             Reset code
           </button>
@@ -507,11 +530,11 @@ export function Workspace({
 
       <div className="h-[22rem] min-h-0 lg:h-auto lg:min-h-[8rem] lg:shrink lg:grow-0 lg:basis-(--split)" style={{ "--split": `${split}%` } as CSSProperties}>
         {isClient ? (
-          <Suspense fallback={<CodeFallback code={code} fontSize={fontSize} tabWidth={tabWidth} />}>
-            <CodeEditor value={code} onChange={onChange} language={exercise.language} onRun={run} onTest={test} label={`${LANGUAGE_LABEL[exercise.language]} code editor`} errorLines={errorLinesOf} fontSize={fontSize} tabWidth={tabWidth} />
+          <Suspense fallback={<CodeFallback code={code} fontSize={fontSize} tabWidth={tabWidth} wrap={lineWrap} />}>
+            <CodeEditor value={code} onChange={onChange} language={exercise.language} onRun={run} onTest={test} label={`${LANGUAGE_LABEL[exercise.language]} code editor`} errorLines={errorLinesOf} fontSize={fontSize} tabWidth={tabWidth} lineWrap={lineWrap} />
           </Suspense>
         ) : (
-          <CodeFallback code={code} fontSize={fontSize} tabWidth={tabWidth} />
+          <CodeFallback code={code} fontSize={fontSize} tabWidth={tabWidth} wrap={lineWrap} />
         )}
       </div>
 
@@ -576,6 +599,7 @@ export function Workspace({
             result={result}
             busy={busy}
             requestError={requestError}
+            onRetry={() => void execute(requestError?.mode ?? "test")}
             cancelled={cancelled}
             passed={passed}
             nextHref={nextHref} nextLabel={nextLabel}
@@ -700,6 +724,7 @@ function OutputPanel({
   result,
   busy,
   requestError,
+  onRetry,
   cancelled,
   passed,
   nextHref,
@@ -711,7 +736,8 @@ function OutputPanel({
 }: {
   result: RunResponse | null;
   busy: null | "run" | "test";
-  requestError: string | null;
+  requestError: RunFailure | null;
+  onRetry: () => void;
   cancelled: boolean;
   passed: boolean;
   nextHref: string | null;
@@ -727,9 +753,11 @@ function OutputPanel({
   if (cancelled) return <p className="text-sm text-muted">Cancelled.</p>;
   if (requestError) {
     return (
-      <p role="alert" className="rounded-lg bg-err-soft p-3 text-sm text-err">
-        {requestError}
-      </p>
+      <div role="alert" className="rounded-lg border border-err bg-err-soft p-3 text-sm">
+        <p className="font-medium text-err"><span aria-hidden="true">⚠ </span>{requestError.title}</p>
+        <p className="mt-1 text-text-2">{requestError.text}</p>
+        {requestError.retryable && <button type="button" onClick={onRetry} className="mt-3 inline-flex min-h-11 items-center rounded-lg border border-border bg-surface px-3 text-sm font-medium hover:bg-surface-2 sm:min-h-9">Try {requestError.mode === "test" ? "testing" : "running"} again</button>}
+      </div>
     );
   }
   if (!result) {
@@ -749,8 +777,10 @@ function OutputPanel({
   const explanations = failed ? explain(result) : [];
   // With failures, show those first and fold the passing tests away.
   const failingFirst = result.kind === "test" && result.results.some((r) => !r.passed) && result.results.some((r) => r.passed);
+  const outcome = outcomeOf(result);
   return (
     <div className="space-y-4">
+      {failed && <h3 className={`text-sm font-semibold ${outcome.tone === "err" ? "text-err" : "text-text"}`}><span aria-hidden="true">{outcome.icon} </span>{outcome.label}</h3>}
       {result.kind === "test" && result.allPassed && <SuccessBanner nextHref={nextHref} nextLabel={nextLabel} signedIn={signedIn} reward={result.reward} paced={result.paced} unaided={result.unaided} reviewed={result.reviewed} variant={variant} />}
 
       {explanations.length > 0 && (
@@ -883,7 +913,7 @@ function Tour({ step, onStep, onClose }: { step: number; onStep: (n: number) => 
 }
 
 /** Editor preferences and the keyboard shortcuts, opened from one button (or with ?). Preferences keep their saved keys. */
-function EditorMenu({ mod, fontSize, tabWidth }: { mod: string; fontSize: number; tabWidth: number }) {
+function EditorMenu({ mod, fontSize, tabWidth, lineWrap }: { mod: string; fontSize: number; tabWidth: number; lineWrap: boolean }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const opener = useRef<HTMLButtonElement>(null);
@@ -899,7 +929,7 @@ function EditorMenu({ mod, fontSize, tabWidth }: { mod: string; fontSize: number
     window.addEventListener("mousedown", onDown);
     return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("mousedown", onDown); };
   }, [open]);
-  const atDefault = fontSize === FONT_DEFAULT && tabWidth === TAB_DEFAULT;
+  const atDefault = fontSize === FONT_DEFAULT && tabWidth === TAB_DEFAULT && !lineWrap;
   return (
     <>
       <button ref={opener} type="button" aria-expanded={open} aria-haspopup="dialog" title="Editor settings and keyboard shortcuts (?)" onClick={() => setOpen(!open)} className="min-h-11 rounded-md px-2.5 text-sm text-muted hover:bg-surface-2 hover:text-text sm:min-h-9">
@@ -920,7 +950,11 @@ function EditorMenu({ mod, fontSize, tabWidth }: { mod: string; fontSize: number
                 {TAB_WIDTHS.map((w) => <option key={w} value={w}>{w}</option>)}
               </select>
             </label>
-            <button type="button" onClick={() => { writePref(fontKey, null); writePref(tabKey, null); }} disabled={atDefault} className="min-h-9 rounded-md px-2 text-accent hover:bg-surface-2 disabled:text-muted disabled:opacity-60">Default view</button>
+            <label className="flex min-h-9 items-center gap-2">
+              <input type="checkbox" checked={lineWrap} onChange={(e) => writePref(wrapKey, e.target.checked ? "1" : null)} className="h-4 w-4 accent-[var(--accent)]" />
+              Wrap long lines
+            </label>
+            <button type="button" onClick={() => { writePref(fontKey, null); writePref(tabKey, null); writePref(wrapKey, null); }} disabled={atDefault} className="min-h-9 rounded-md px-2 text-accent hover:bg-surface-2 disabled:text-muted disabled:opacity-60">Default view</button>
           </div>
           <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted">Keyboard shortcuts</h3>
           <dl className="mt-2 grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-1.5 text-text-2">
@@ -966,13 +1000,25 @@ function UndoToast({ onUndo, onDismiss }: { onUndo: () => void; onDismiss: () =>
   );
 }
 
-function summarize(r: RunResponse | null): string {
-  if (!r) return "";
+/**
+ * One-line outcome, from fields the runner actually reports: `timedOut` (a time limit stopped it), the compile phase,
+ * `error` (the program was stopped abnormally) and the test results. Test mode cannot tell a crash from an
+ * incomplete test run, so it says "Tests did not finish" rather than claiming a runtime error.
+ */
+function outcomeOf(r: RunResponse): { label: string; tone: "ok" | "err" | "info"; icon: string } {
   const compileFailed = r.kind === "run" ? r.phase === "compile" && !r.ok : !r.compiled;
-  if (compileFailed) return "Compile error";
-  if (r.kind === "run") return r.ok ? "Program finished" : "Program failed";
+  if (r.timedOut) return { label: compileFailed ? "Compile timed out" : "Timed out", tone: "err", icon: "⏱" };
+  if (compileFailed) return { label: "Compile error", tone: "err", icon: "✕" };
+  if (r.kind === "run") {
+    if (r.ok) return { label: "Program finished", tone: "ok", icon: "✓" };
+    return { label: r.error || (r.exitCode ?? 0) !== 0 ? "Runtime error" : "Program failed", tone: "err", icon: "✕" };
+  }
   const passing = r.results.filter((t) => t.passed).length;
-  return `${passing} of ${r.results.length} tests passing`;
+  if (r.error && !r.allPassed) return { label: `Tests did not finish (${passing} of ${r.results.length} passing)`, tone: "err", icon: "✕" };
+  return { label: `${passing} of ${r.results.length} tests passing`, tone: r.allPassed ? "ok" : "err", icon: r.allPassed ? "✓" : "✕" };
+}
+function summarize(r: RunResponse | null): string {
+  return r ? outcomeOf(r).label : "";
 }
 
 function SuccessBanner({

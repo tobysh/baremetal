@@ -52,7 +52,7 @@ export async function startRunner(socket: string): Promise<Server> {
       if (!exercise) { reply(404, { error: "Unknown exercise" }); return; }
       const result = await withRunnerRequest(payload.keys, controller.signal, async () => payload.operation === "run"
         ? runResultSchema.parse(await runProgram(exercise.language, payload.code, payload.stdin))
-        : testResultSchema.parse(await testExercise(exercise, payload.code)));
+        : testResultSchema.parse(await testExercise(exercise, payload.code)), payload.kinds);
       reply(200, result);
     } catch (error) {
       if (controller.signal.aborted) { res.destroy(); return; }

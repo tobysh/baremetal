@@ -133,7 +133,7 @@ export default function PaletteDialog({ open, onClose, signedIn, username }: { o
           aria-controls={`${id}-list`}
           aria-activedescendant={results[active] ? `${id}-${active}` : undefined}
           aria-autocomplete="list"
-          aria-label="Search courses, lessons and pages"
+          aria-label="Search lessons, courses and pages"
           placeholder="Search a topic, language or lesson"
           autoComplete="off"
           spellCheck={false}

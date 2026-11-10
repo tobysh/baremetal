@@ -20,10 +20,10 @@ export type RunnerRequest = z.infer<typeof runnerRequestSchema>;
 const text = z.string().max(RUNNER_RESPONSE_BYTES);
 export const runResultSchema = z.object({
   ok: z.boolean(), phase: z.enum(["compile", "run"]), compileOutput: text,
-  stdout: text, stderr: text, exitCode: z.number().int().nullable(), error: text.nullable(), durationMs: z.number().nonnegative(),
+  stdout: text, stderr: text, exitCode: z.number().int().nullable(), error: text.nullable(), timedOut: z.boolean().optional(), durationMs: z.number().nonnegative(),
 }).strict();
 export const testResultSchema = z.object({
   compiled: z.boolean(), compileOutput: text,
   results: z.array(z.object({ name: text, passed: z.boolean(), message: text.optional(), expected: text.optional(), actual: text.optional() }).strict()).max(10_000),
-  allPassed: z.boolean(), output: text, error: text.nullable(),
+  allPassed: z.boolean(), output: text, error: text.nullable(), timedOut: z.boolean().optional(),
 }).strict();

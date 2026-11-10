@@ -37,6 +37,8 @@ try {
     assert.equal((await request("/api/tutor", { exerciseId: ex.id, ...body })).status, 400);
   }
   assert.equal(await quota(), 0, "invalid tutor inputs consume no quota");
+  const anonHint = await fetch(base + "/api/hint", { method: "POST", headers: { "Content-Type": "application/json", Origin: base }, body: JSON.stringify({ exerciseId: ex.id, index: 0 }) });
+  assert.equal(anonHint.status, 401, "hints are not served without a session");
   const hint = await request("/api/hint", { exerciseId: ex.id, index: 0 });
   assert.equal(hint.status, 200);
   assert.deepEqual((await hint.json()).hints, ex.hints.slice(0, 1));
@@ -81,7 +83,7 @@ try {
   assert.equal((await request(`/api/tutor?exerciseId=${encodeURIComponent(ex.id)}`, null, 0, "DELETE")).status, 429);
   console.log("Tutor conversation deletion rate limit passed.");
 } finally {
-  for (const name of ["users", "sessions", "progress", "tutor_threads", "xp_events", "achievements", "reviews"]) await db.collection(name).deleteMany(name === "users" ? { _id: { $in: ids } } : { userId: { $in: ids } });
+  for (const name of ["users", "sessions", "progress", "tutor_threads", "xp_events", "achievements", "reviews", "review_events"]) await db.collection(name).deleteMany(name === "users" ? { _id: { $in: ids } } : { userId: { $in: ids } });
   for (const id of ids) await db.collection("rate_limits").deleteMany({ key: { $regex: id.toHexString() } });
   await client.close();
 }

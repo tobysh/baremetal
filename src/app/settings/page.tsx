@@ -48,7 +48,7 @@ async function SettingsBody() {
         <h2 className="display-sm text-lg font-bold">Password</h2>
         <p className="mt-1 text-sm text-muted">Changing your password signs you out on every other device.</p>
         <div className="mt-5">
-          <PasswordForm email={user.email} name={user.name} />
+          <PasswordForm email={user.email} name={user.name} twoFactorEnabled={user.twoFactorEnabled} />
         </div>
       </Card>
       <Card as="section" className="p-6">

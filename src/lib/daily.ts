@@ -28,7 +28,7 @@ export function dailyPick(a: { tracks: Track[]; progress: Map<string, ProgressDo
 
   for (const r of a.reviews) {
     const hit = byId.get(r.exerciseId);
-    if (hit && r.dueAt <= a.now) out.push({ kind: "review", exerciseId: r.exerciseId, track: hit.t, lesson: hit.l, href: lessonHref(hit.t, hit.l, true), label: "Ready for a review" });
+    if (hit && r.dueAt <= a.now) out.push({ kind: "review", exerciseId: r.exerciseId, track: hit.t, lesson: hit.l, href: "/review", label: "Ready for a review" });
   }
 
   // The course the learner touched most recently comes first.

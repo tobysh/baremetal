@@ -30,7 +30,7 @@ export function LoginForm({ next }: { next: string }) {
         }
       />
       {/* key resets the widget so each attempt needs a fresh solution */}
-      <Captcha key={JSON.stringify(state)} required={!!state.captchaRequired} />
+      <Captcha key={JSON.stringify(state)} required={!!state.captchaRequired} form="login" />
       <SubmitButton pendingText="Signing in…" className="w-full">
         Sign in
       </SubmitButton>
@@ -97,7 +97,7 @@ export function SignupForm() {
         }
       />
       <Checkbox name="age" errors={state.errors?.age} label="I am 16 or older." />
-      <Captcha key={JSON.stringify(state)} required />
+      <Captcha key={JSON.stringify(state)} required form="signup" />
       <SubmitButton pendingText="Creating your account…" className="w-full">
         Create account
       </SubmitButton>
@@ -135,6 +135,7 @@ export function ForgotForm() {
     <form action={action} className="space-y-5" noValidate>
       <FormAlert state={state} />
       <Field label="Email" name="email" type="email" autoComplete="email" inputMode="email" required defaultValue={state.values?.email} errors={state.errors?.email} />
+      <Captcha key={JSON.stringify(state)} required form="forgot-password" />
       <SubmitButton pendingText="Sending…" className="w-full">
         Send reset link
       </SubmitButton>

@@ -36,7 +36,10 @@ for (const track of tracks) {
     if (sol.results.length === 0 && sol.compiled) problems.push("no test results were reported");
 
     const start = await testExercise(ex, ex.starter);
-    if (!start.compiled) problems.push(`starter does not compile (it should, so beginners start from a working state):\n${start.compileOutput}`);
+    // Transfer and design lessons start from an empty file, so the only acceptable failure is the missing main().
+    const emptyStart = (lesson.tags.includes("transfer") || lesson.tags.includes("design")) && /undefined reference to `main'/.test(start.compileOutput) && !/\.c:\d+:\d+: error/.test(start.compileOutput);
+    if (!start.compiled && emptyStart) { /* expected: the learner writes main */ }
+    else if (!start.compiled) problems.push(`starter does not compile (it should, so beginners start from a working state):\n${start.compileOutput}`);
     else if (start.allPassed) problems.push("starter already passes all tests");
 
     const ch = lesson.challenge?.exercise;

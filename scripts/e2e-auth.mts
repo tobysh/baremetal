@@ -85,8 +85,8 @@ class Browser {
 const decode = (s: string) => s.replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 const text = (html: string) => decode(html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ");
 
-async function solveCaptcha(b: Browser): Promise<string> {
-  const c = (await (await b.fetch("/api/captcha")).json()) as { salt: string; challenge: string; max: number; signature: string };
+async function solveCaptcha(b: Browser, form = "login"): Promise<string> {
+  const c = (await (await b.fetch(`/api/captcha?form=${form}`)).json()) as { salt: string; challenge: string; max: number; signature: string };
   for (let n = 0; n <= c.max; n++) {
     if (createHash("sha256").update(`${c.salt}${n}`).digest("hex") === c.challenge) return JSON.stringify({ ...c, number: n });
   }
@@ -121,28 +121,28 @@ try {
   {
     const b = new Browser(ip(1));
     const base = { name: "E2E Tester", username: `e2e${run}`.slice(0, 20), email, experience: "some", terms: "on", age: "on" };
-    let r = await b.submit("/signup", { ...base, password: "password123", confirm: "password123", captcha: await solveCaptcha(b) });
+    let r = await b.submit("/signup", { ...base, password: "password123", confirm: "password123", captcha: await solveCaptcha(b, "signup") });
     check('rejects "password123" (missing rules)', r.status === 200 && /needs:/.test(text(r.html)), text(r.html).slice(0, 200));
-    r = await b.submit("/signup", { ...base, password: "Password123!", confirm: "Password123!", captcha: await solveCaptcha(b) });
+    r = await b.submit("/signup", { ...base, password: "Password123!", confirm: "Password123!", captcha: await solveCaptcha(b, "signup") });
     check('rejects "Password123!" (common password, decorated)', /too common/.test(text(r.html)));
-    r = await b.submit("/signup", { ...base, password: "Tester-E2E-2026!x", confirm: "Tester-E2E-2026!x", captcha: await solveCaptcha(b) });
+    r = await b.submit("/signup", { ...base, password: "Tester-E2E-2026!x", confirm: "Tester-E2E-2026!x", captcha: await solveCaptcha(b, "signup") });
     check("rejects passwords containing the user's name", /name or email/.test(text(r.html)));
     r = await b.submit("/signup", { ...base, password: PASSWORD, confirm: PASSWORD, captcha: "" });
     check("sign-up requires the CAPTCHA", /security check/i.test(text(r.html)));
-    r = await b.submit("/signup", { ...base, terms: "", password: PASSWORD, confirm: PASSWORD, captcha: await solveCaptcha(b) });
+    r = await b.submit("/signup", { ...base, terms: "", password: PASSWORD, confirm: PASSWORD, captcha: await solveCaptcha(b, "signup") });
     check("sign-up requires accepting the Terms", /accept the Terms/.test(text(r.html)));
     // A class signing up together shares one address: many sign-ups pass, but the per-IP cap still exists.
     const signupLimit = Number(process.env.AUTH_LIMIT_SIGNUP_IP ?? 30);
     const crowd = new Browser(ip(40));
     let blockedAt = 0;
     for (let i = 1; i <= signupLimit + 2 && !blockedAt; i++) {
-      const attempt = await crowd.submit("/signup", { ...base, email: `e2e-${run}-crowd${i}@example.test`, username: `c${run}${i}`.slice(0, 20), password: "password123", confirm: "password123", captcha: await solveCaptcha(crowd) });
+      const attempt = await crowd.submit("/signup", { ...base, email: `e2e-${run}-crowd${i}@example.test`, username: `c${run}${i}`.slice(0, 20), password: "password123", confirm: "password123", captcha: await solveCaptcha(crowd, "signup") });
       if (/Too many attempts/.test(text(attempt.html))) blockedAt = i;
     }
     check(`sign-up is limited to ${signupLimit} attempts per 15 min per IP`, blockedAt === signupLimit + 1, `blocked at attempt ${blockedAt}`);
     check("at least 10 sign-ups from one IP are not throttled", blockedAt === 0 || blockedAt > 10, `blocked at attempt ${blockedAt}`);
     b.ip = ip(13); // a different network
-    r = await b.submit("/signup", { ...base, password: PASSWORD, confirm: PASSWORD, captcha: await solveCaptcha(b) });
+    r = await b.submit("/signup", { ...base, password: PASSWORD, confirm: PASSWORD, captcha: await solveCaptcha(b, "signup") });
     check("valid sign-up gives generic confirmation without a session", r.status === 200 && /check your email/i.test(text(r.html)) && !b.cookies.has("bm_session"));
     const stored = await users.findOne({ email });
     check("new account requires email verification", stored?.emailVerified === false);
@@ -168,7 +168,7 @@ try {
     check("legacy account without a verification flag can sign in", legacyResult.status === 303 && legacy.cookies.has("bm_session"));
     await users.updateOne({ email }, { $set: { emailVerified: true } });
     const duplicate = new Browser(ip(14));
-    r = await duplicate.submit("/signup", { ...base, password: PASSWORD, confirm: PASSWORD, captcha: await solveCaptcha(duplicate) });
+    r = await duplicate.submit("/signup", { ...base, password: PASSWORD, confirm: PASSWORD, captcha: await solveCaptcha(duplicate, "signup") });
     check("existing signup gives the same generic response", r.status === 200 && /check your email/i.test(text(r.html)) && !duplicate.cookies.has("bm_session"));
     const dash = await b.get("/dashboard");
     check("dashboard loads when signed in", dash.status === 200 && dash.html.includes("E2E Tester"));
@@ -378,7 +378,7 @@ try {
     const concurrentIp = ip(16);
     const concurrentEmail = `e2e-${run}-parallel@example.test`;
     const racers = Array.from({ length: 6 }, () => new Browser(concurrentIp));
-    const captchas = await Promise.all(racers.map(solveCaptcha));
+    const captchas = await Promise.all(racers.map((r) => solveCaptcha(r)));
     await Promise.all(racers.map((browser, i) => browser.submit("/login", { email: concurrentEmail, password: "wrong", captcha: captchas[i] })));
     const parallelDoc = await db.collection("login_failures").findOne({ key: `pair:${hmac("login-pair", `${concurrentEmail}\0${concurrentIp}`)}` });
     check("parallel guesses reserve at most five password checks", parallelDoc?.count === 5 && !!parallelDoc.lockedUntil, `count ${parallelDoc?.count}`);
@@ -413,6 +413,66 @@ try {
     const withCaptcha = await fresh.submit("/login", { email: target, password: "guess-12", captcha: await solveCaptcha(fresh) });
     check("…and with the CAPTCHA it is a normal failure, never a lockout", /Incorrect email or password/.test(text(withCaptcha.html)));
     await db.collection("rate_limits").deleteMany({ key: { $regex: `^${accountFailureDocKey(target).split(":").slice(0, 2).join(":")}` } });
+
+    // Per-account delay that does not depend on the IP: after 15 failures in an hour further tries wait.
+    for (let i = 12; i <= 15; i++) await fresh.submit("/login", { email: target, password: `guess-${i}`, captcha: await solveCaptcha(fresh) });
+    const delayed = await new Browser(ip(71)).submit("/login", { email: target, password: "guess-16" });
+    check("after 15 failures the account itself imposes a delay, from any address", /on this account/i.test(text(delayed.html)), text(delayed.html).slice(0, 200));
+    const delayedCaptcha = new Browser(ip(72));
+    const withSolved = await delayedCaptcha.submit("/login", { email: target, password: "guess-17", captcha: await solveCaptcha(delayedCaptcha) });
+    check("…and a solved CAPTCHA does not skip it", /on this account/i.test(text(withSolved.html)));
+    await db.collection("login_failures").deleteMany({ key: `acct:${hmac("login-acct", target.toLowerCase())}` });
+
+    // CAPTCHA challenges are bound to the requesting IP and to the form.
+    const cb = new Browser(ip(73));
+    const forSignup = await solveCaptcha(cb, "signup");
+    const other = new Browser(ip(74));
+    const captchaTarget = `e2e-${run}-bound@example.test`;
+    for (let i = 1; i <= 3; i++) await other.submit("/login", { email: captchaTarget, password: `wrong-${i}` });
+    let br = await other.submit("/login", { email: captchaTarget, password: "wrong-4", captcha: await solveCaptcha(cb, "login") });
+    check("a CAPTCHA solved for another IP is refused", /complete the security check/i.test(text(br.html)));
+    br = await other.submit("/login", { email: captchaTarget, password: "wrong-4", captcha: forSignup });
+    check("a sign-up CAPTCHA is refused on the sign-in form", /complete the security check/i.test(text(br.html)));
+    br = await other.submit("/login", { email: captchaTarget, password: "wrong-4", captcha: await solveCaptcha(other, "login") });
+    check("a CAPTCHA for this IP and form is accepted", /Incorrect email or password/.test(text(br.html)));
+    const ch = (await (await cb.fetch("/api/captcha?form=login")).json()) as { max: number };
+    check("CAPTCHA work factor is at least 300000", ch.max >= 300_000, String(ch.max));
+  }
+
+  // ---------- Settings second factor ----------
+  console.log("\nSettings second factor");
+  {
+    const base = await users.findOne({ email });
+    const secret = "JBSWY3DPEHPK3PXP";
+    const { _id, ...rest } = base! as typeof base & { username?: string };
+    void _id;
+    delete (rest as { username?: string }).username;
+    const sfEmail = `e2e-${run}-sf@example.test`;
+    const codes = newBackupCodes();
+    const sfId = (await users.insertOne({ ...rest, email: sfEmail, emailVerified: true, twoFactor: { enabled: true, secretEnc: encrypt(secret), backupCodeHashes: codes.map(hashBackupCode), lastStep: -1 } } as never)).insertedId;
+    const token = randomToken(32);
+    await db.collection("sessions").insertOne({ tokenHash: sha256(token), userId: sfId, sessionVersion: (rest as { sessionVersion?: number }).sessionVersion ?? 0, createdAt: new Date(), expiresAt: new Date(Date.now() + 3600_000) });
+    const session = (addr: number) => {
+      const b = new Browser(ip(addr));
+      b.cookies.set("bm_session", token);
+      return b;
+    };
+    const NEWPW = "Marble-Kettle-Sunrise-58";
+    const hashOf = async () => (await users.findOne({ _id: sfId }))?.passwordHash;
+    const before = await hashOf();
+    let r = await session(80).submit("/settings", { current: PASSWORD, password: NEWPW, confirm: NEWPW }, "Change password");
+    check("changePassword with 2FA on and no code is refused", (await hashOf()) === before, text(r.html).slice(0, 200));
+    r = await session(81).submit("/settings", { current: PASSWORD, password: NEWPW, confirm: NEWPW, code: "000000" }, "Change password");
+    check("changePassword with a wrong code is refused", (await hashOf()) === before);
+    // Wrong codes from many addresses count against the account's OTP guard (shared with login), not just per-IP.
+    for (let i = 0; i < 5; i++) await session(82 + i).submit("/settings", { current: PASSWORD, password: NEWPW, confirm: NEWPW, code: "111111" }, "Change password");
+    const otp = await db.collection("login_failures").findOne({ key: `otp:${hmac("login-otp", sfId.toHexString())}` });
+    check("Settings code checks are counted and lock through the per-user OTP guard", !!otp?.lockedUntil && otp.count >= 5, JSON.stringify(otp));
+    r = await session(90).submit("/settings", { current: PASSWORD, password: NEWPW, confirm: NEWPW, code: totp(secret) }, "Change password");
+    check("…and while locked even a valid code is refused", (await hashOf()) === before);
+    await db.collection("login_failures").deleteMany({ key: `otp:${hmac("login-otp", sfId.toHexString())}` });
+    r = await session(91).submit("/settings", { current: PASSWORD, password: NEWPW, confirm: NEWPW, code: totp(secret) }, "Change password");
+    check("changePassword with a valid code succeeds", (await hashOf()) !== before, text(r.html).slice(0, 200));
   }
 
   // ---------- IP rate limiting ----------
@@ -420,7 +480,7 @@ try {
   {
     const b = new Browser(ip(10));
     let last;
-    for (let i = 0; i < 6; i++) last = await b.submit("/forgot-password", { email: `rl-${i}-${run}@example.test` });
+    for (let i = 0; i < 6; i++) last = await b.submit("/forgot-password", { email: `rl-${i}-${run}@example.test`, captcha: await solveCaptcha(b, "forgot-password") });
     check("forgot-password limited to 5 per 15 min per IP", /Too many attempts/.test(text(last!.html)));
   }
 
@@ -459,7 +519,7 @@ try {
     const del = await b.submit("/settings", { confirm: "delete my account", password: PASSWORD }, "Permanently delete account");
     void del;
     const counts = await Promise.all(
-      ["users", "sessions", "progress", "tutor_threads", "xp_events", "achievements", "reviews", "password_resets", "email_verifications", "pending_2fa"].map(async (c) => [c, await db.collection(c).countDocuments(c === "users" ? { _id: delId } : { userId: delId })] as const),
+      ["users", "sessions", "progress", "tutor_threads", "xp_events", "achievements", "reviews", "review_events", "password_resets", "email_verifications", "pending_2fa"].map(async (c) => [c, await db.collection(c).countDocuments(c === "users" ? { _id: delId } : { userId: delId })] as const),
     );
     const spend = await db.collection("tutor_spend").countDocuments({ key: { $regex: `^u:${delId.toHexString()}:` } });
     check("the first autosave worked (precondition)", first.status === 200, String(first.status));
@@ -473,9 +533,9 @@ try {
   console.log("\nPassword reset");
   {
     const b = new Browser(ip(11));
-    let r = await b.submit("/forgot-password", { email });
+    let r = await b.submit("/forgot-password", { email, captcha: await solveCaptcha(b, "forgot-password") });
     check("reset request gives the same message for any email", /If an account exists/.test(text(r.html)));
-    r = await b.submit("/forgot-password", { email: `nobody-${run}@example.test` });
+    r = await b.submit("/forgot-password", { email: `nobody-${run}@example.test`, captcha: await solveCaptcha(b, "forgot-password") });
     check("…including unknown emails", /If an account exists/.test(text(r.html)));
     const user = await users.findOne({ email });
     // Our server can't send email here, so plant a known token the way the action does.

@@ -111,7 +111,7 @@ Compilation now happens entirely on size-capped private tmpfs, with read-only in
 
 Signup now requires email verification; new users choose their final password using the verification email. Existing accounts without the verification field remain accepted. Verification tokens expire after 24 hours. Reset links use a fragment so the token is not sent in the initial page request; existing query links remain valid until they expire. SMTP is required for production signup and recovery.
 
-Account emails are queued with encrypted payloads, leased for delivery, and removed on success or after seven days. Requests trigger delivery after their response. Schedule this command every minute under the app uid with the same database and `AUTH_SECRET` settings, so failures and restarts are retried:
+Account emails are queued with encrypted payloads, leased for delivery, and removed on success or after seven days. Requests trigger delivery after their response. Install `deploy/systemd/baremetal-email.service` and `baremetal-email.timer` (`systemctl enable --now baremetal-email.timer`); the timer runs the command below every minute under the web uid with the web environment file, so failures and restarts are retried. Without it, reset and verification mail stops after a restart. Only one drainer runs at a time (a process flag plus a 15 minute database lease in `locks`), so the timer and in-request delivery do not overlap. SMTP uses one pooled transport with connect, greeting, socket and DNS timeouts, and `queueEmail` refuses more than 10 messages per recipient per hour.
 
 ```sh
 node --conditions=react-server --env-file=.env.local --import tsx scripts/deliver-email.mts
@@ -212,7 +212,7 @@ there as the release installer, not the service user. The runner uses the `tsx`
 runtime, so retain development dependencies. Keep both releases root-owned and
 unwritable by service users. Do not copy the web working directory wholesale.
 
-Install the two unit files and run `systemctl daemon-reload`, then start the
+Install the unit files and run `systemctl daemon-reload`, then start the
 runner followed by the web unit. The runner host entrypoint moves its supervisor
 into a child cgroup and enables the delegated `memory`, `pids`, `cpu` and `io`
 controllers in the empty jobs subtree. Every execution joins its own job cgroup

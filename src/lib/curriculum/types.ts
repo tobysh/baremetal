@@ -21,6 +21,8 @@ export type Exercise = {
   solution: string;
   /** "stdout": compare program output. "harness": hidden tests call the learner's functions. */
   mode: "stdout" | "harness";
+  /** Bumped (from 1) when a lesson's starter changes shape so that code saved against the old one no longer fits. From `revision:` in the frontmatter. */
+  revision?: number;
   cases?: StdoutCase[];
   /** C: code using CHECK(name, cond, fmt, ...) with its own main(). Rust: #[test] functions. asm: C file (tests.c) declaring the learner's functions extern. Go: a bm_test.go file (package main, with its own imports) of TestXxx functions. */
   harness?: string;
@@ -67,8 +69,11 @@ export type Track = {
 };
 
 /** What the browser is allowed to see of an exercise. */
-export type PublicExercise = Pick<Exercise, "id" | "language" | "task" | "starter" | "mode"> & { hintCount: number };
+export type PublicExercise = Pick<Exercise, "id" | "language" | "task" | "starter" | "mode" | "revision"> & { hintCount: number };
 
-export const toPublicExercise = ({ id, language, task, starter, hints, mode }: Exercise): PublicExercise => ({
-  id, language, task, starter, hintCount: hints.length, mode,
+export const toPublicExercise = ({ id, language, task, starter, hints, mode, revision }: Exercise): PublicExercise => ({
+  id, language, task, starter, hintCount: hints.length, mode, ...(revision && revision > 1 ? { revision } : {}),
 });
+
+/** The revision of an exercise; 1 unless its lesson says otherwise. */
+export const revisionOf = (e: { revision?: number }) => e.revision ?? 1;

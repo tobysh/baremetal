@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { findExercise } from "@/lib/curriculum";
 import { jsonError, readJson, sameOrigin } from "@/lib/http";
-import { recordHint } from "@/lib/progress";
+import { recordHint, recordReviewHint } from "@/lib/progress";
 import { clientIp, ipLimit, rateLimit } from "@/lib/rate-limit";
 import { hmac } from "@/lib/crypto";
 
@@ -13,12 +13,15 @@ export async function POST(req: Request) {
   const ip = clientIp(req.headers);
   if (!(await rateLimit(user ? `hint:user:${user.id}` : `hint:ip:${hmac("rate-ip", ip)}`, user ? 120 : ipLimit(ip, 60), 60))) return jsonError(429, "Too many requests.");
 
-  const body = await readJson<{ exerciseId?: string; index?: number }>(req, 4096);
+  const body = await readJson<{ exerciseId?: string; index?: number; review?: boolean }>(req, 4096);
   if (!body || typeof body.exerciseId !== "string" || !Number.isInteger(body.index)) return jsonError(400, "Invalid request.");
   const found = findExercise(body.exerciseId);
   if (!found || found.isChallenge) return jsonError(404, "Unknown exercise.");
   const index = body.index!;
   if (index < 0 || index >= found.exercise.hints.length) return jsonError(400, "Unknown hint.");
-  if (user) await recordHint(user.id, found.exercise.id, found.track.slug, index);
+  // Hints are only served against a session so every disclosure is recorded; otherwise dropping the cookie would keep the "unaided" seal.
+  if (!user) return jsonError(401, "Sign in to see hints.");
+  await recordHint(user.id, found.exercise.id, found.track.slug, index);
+  if (body.review === true) await recordReviewHint(user.id, found.exercise.id, index);
   return NextResponse.json({ hints: found.exercise.hints.slice(0, index + 1) }, { headers: { "Cache-Control": "no-store" } });
 }

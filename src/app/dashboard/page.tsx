@@ -42,7 +42,7 @@ async function DashboardBody() {
   const lessonOf = new Map(tracks.flatMap((t) => t.lessons.map((l) => [l.exercise.id, { t, l }] as const)));
   const dueReviews: DueReview[] = reviews
     .filter((r) => r.dueAt <= now && lessonOf.has(r.exerciseId))
-    .map((r) => ({ href: `/learn/${lessonOf.get(r.exerciseId)!.t.slug}/${lessonOf.get(r.exerciseId)!.l.slug}?review=1`, title: lessonOf.get(r.exerciseId)!.l.title, trackTitle: lessonOf.get(r.exerciseId)!.t.title }));
+    .map((r) => ({ href: "/review", title: lessonOf.get(r.exerciseId)!.l.title, trackTitle: lessonOf.get(r.exerciseId)!.t.title }));
   const unlocked = new Map(unlockedRows.map((r) => [r.id, r.unlockedAt]));
   const allLessons = tracks.flatMap((track) => track.lessons.map((lesson) => ({ track, lesson })));
   const passedCount = allLessons.filter(({ lesson }) => progress.get(lesson.exercise.id)?.status === "passed").length;
@@ -78,7 +78,7 @@ async function DashboardBody() {
       {!user.timezone && <TimezoneSync />}
 
       {/* Row 1: the next action plus a compact level summary. Rows size to their content, nothing is stretched to match a neighbour. */}
-      <div className="grid items-start gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)]">
+      <div className="grid items-stretch gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)]">
         {nextUp ? (
           <section aria-label="Resume course" className="panel flex min-w-0 flex-col gap-5 p-5 sm:p-8">
             <div className="flex flex-col">

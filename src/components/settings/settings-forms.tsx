@@ -130,7 +130,7 @@ function zoneListKey(saved: string | null): string {
   return zones.join("|");
 }
 
-export function PasswordForm({ email, name }: { email: string; name: string }) {
+export function PasswordForm({ email, name, twoFactorEnabled = false }: { email: string; name: string; twoFactorEnabled?: boolean }) {
   const [state, action] = useActionState(changePassword, initialFormState);
   return (
     <form action={action} className="space-y-5" noValidate key={state.ok ? "done" : "form"}>
@@ -138,6 +138,7 @@ export function PasswordForm({ email, name }: { email: string; name: string }) {
       <Field label="Current password" name="current" type="password" autoComplete="current-password" required errors={state.errors?.current} />
       <PasswordField name="password" label="New password" errors={state.errors?.password} userInputs={[email, name]} />
       <Field label="Confirm new password" name="confirm" type="password" autoComplete="new-password" required errors={state.errors?.confirm} />
+      {twoFactorEnabled && <Field label="Authenticator or backup code" name="code" autoComplete="one-time-code" inputMode="numeric" required errors={state.errors?.code} />}
       <SubmitButton pendingText="Changing…">Change password</SubmitButton>
     </form>
   );

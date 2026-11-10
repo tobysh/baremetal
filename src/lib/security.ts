@@ -58,10 +58,38 @@ const accountFailureKey = (email: string) => `acct-fail:${hmac("login-acct", ema
 export const accountFailureDocKey = (email: string, at = Date.now()) => `${accountFailureKey(email)}:${Math.floor(at / 3_600_000)}`;
 export async function recordAccountFailure(email: string) {
   await rateLimitHit(accountFailureKey(email), ACCOUNT_CAPTCHA_AFTER, 3600);
+  await recordAccountDelay(email);
 }
 export async function accountCaptchaRequired(email: string): Promise<boolean> {
   const doc = await (await getDb()).collection<{ key: string; count: number }>("rate_limits").findOne({ key: accountFailureDocKey(email) });
   return (doc?.count ?? 0) >= ACCOUNT_CAPTCHA_AFTER;
+}
+
+// Increasing delay per account, from any IP. Unlike the hourly counter above this one can pause sign-in, so it
+// starts late (15 failures in an hour) and is capped at 15 minutes: a stranger can slow the owner but not shut them out.
+const ACCOUNT_DELAY_AFTER = 15;
+const ACCOUNT_DELAY_BASE_SECONDS = 30;
+const ACCOUNT_DELAY_MAX_SECONDS = 900;
+const acctDelayKey = (email: string) => `acct:${hmac("login-acct", email.toLowerCase())}`;
+async function recordAccountDelay(email: string) {
+  const now = new Date();
+  const col = (await getDb()).collection<FailureDoc>("login_failures");
+  const key = acctDelayKey(email);
+  try {
+    await col.updateOne({ key }, { $setOnInsert: { count: 0, lastFailure: now, expiresAt: now } }, { upsert: true });
+  } catch (e) { if ((e as { code?: number }).code !== 11000) throw e; }
+  await col.updateOne({ key }, [
+    // Counts restart when the last failure is over an hour old.
+    { $set: { count: { $add: [{ $cond: [{ $lt: ["$lastFailure", new Date(now.getTime() - 3600_000)] }, 0, "$count"] }, 1] }, lastFailure: now, expiresAt: new Date(now.getTime() + 3600_000) } },
+    { $set: { lockedUntil: { $cond: [ { $gte: ["$count", ACCOUNT_DELAY_AFTER] }, { $dateAdd: { startDate: now, unit: "second", amount: { $min: [ACCOUNT_DELAY_MAX_SECONDS, { $multiply: [ACCOUNT_DELAY_BASE_SECONDS, { $pow: [2, { $subtract: ["$count", ACCOUNT_DELAY_AFTER] }] }] }] } } }, "$$REMOVE" ] } } },
+  ]);
+}
+/** Seconds this account is paused for, or 0. Same answer whether or not the account exists. */
+export async function accountDelay(email: string): Promise<number> {
+  return (await guardKey(acctDelayKey(email))).retryAfterSeconds;
+}
+export async function clearAccountDelay(email: string) {
+  await (await getDb()).collection("login_failures").deleteOne({ key: acctDelayKey(email) });
 }
 export const loginGuard = (email: string, ip: string) => guardKey(pairKey(email, ip));
 export const otpGuard = (userId: string) => guardKey(otpKey(userId));

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { findExercise } from "@/lib/curriculum";
+import { revisionOf } from "@/lib/curriculum/types";
 import { levelFor, titleBlurb } from "@/lib/gamification";
 import { jsonError, readJson, sameOrigin } from "@/lib/http";
 import { getProgress, recordAttempt, recordReviewPass } from "@/lib/progress";
@@ -56,6 +57,7 @@ export async function POST(req: Request) {
           exerciseId: found.exercise.id,
           trackSlug: found.track.slug,
           code: body.code,
+          rev: revisionOf(found.exercise),
           passed: result.allPassed,
           difficulty: found.lesson.difficulty,
           challenge: found.isChallenge,

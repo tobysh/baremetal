@@ -193,14 +193,14 @@ export function PasswordField({ name, label, errors, userInputs = [], autoComple
 
 // ---------- Proof-of-work CAPTCHA ----------
 
-export function Captcha({ required }: { required: boolean }) {
+export function Captcha({ required, form }: { required: boolean; form: "login" | "signup" | "forgot-password" }) {
   const [status, setStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [solution, setSolution] = useState("");
 
   async function solve() {
     setStatus("working");
     try {
-      const res = await fetch("/api/captcha", { cache: "no-store" });
+      const res = await fetch(`/api/captcha?form=${form}`, { cache: "no-store" });
       if (!res.ok) throw new Error();
       const c = (await res.json()) as { salt: string; challenge: string; max: number; signature: string };
       // Plain-JS hashing in short slices: works without crypto.subtle (non-HTTPS pages) and keeps the phone responsive.

@@ -3,15 +3,31 @@ import { ObjectId } from "mongodb";
 
 import { getDb } from "./db";
 import { REVIEW_INTERVALS_DAYS } from "./progress-constants";
+import { dueAfter } from "./review-math";
+import { codingRating, logReviewEvent } from "./review-events";
 import { challengeXpFor, practiceXpFor, xpFor, type Difficulty } from "./gamification";
 import type { ProgressDoc, ReviewDoc, TutorThreadDoc, XpEventDoc } from "./models";
 
 const col = async () => (await getDb()).collection<ProgressDoc>("progress");
 
-export async function saveCode(userId: string, exerciseId: string, trackSlug: string, code: string) {
+/**
+ * When a lesson's starter changes shape (its `revision` goes up), code saved against the older
+ * shape must not become the new starting point. The first write at the new revision moves the
+ * old code to `previousCode`; later writes leave it alone. Lessons still at revision 1 skip this.
+ */
+async function archiveOlderRevision(userId: string, exerciseId: string, rev: number) {
+  if (rev <= 1) return;
+  await (await col()).updateOne(
+    { userId: new ObjectId(userId), exerciseId, $or: [{ rev: { $exists: false } }, { rev: { $lt: rev } }] },
+    [{ $set: { previousCode: { $ifNull: ["$code", ""] }, rev } }],
+  );
+}
+
+export async function saveCode(userId: string, exerciseId: string, trackSlug: string, code: string, rev = 1) {
+  await archiveOlderRevision(userId, exerciseId, rev);
   await (await col()).updateOne(
     { userId: new ObjectId(userId), exerciseId },
-    { $set: { code, updatedAt: new Date(), trackSlug }, $setOnInsert: { status: "started", attempts: 0, startedAt: new Date(), startKnown: true } },
+    { $set: { code, updatedAt: new Date(), trackSlug, ...(rev > 1 ? { rev } : {}) }, $setOnInsert: { status: "started", attempts: 0, startedAt: new Date(), startKnown: true } },
     { upsert: true },
   );
 }
@@ -42,6 +58,8 @@ type AttemptInput = {
   difficulty: Difficulty;
   /** True for a lesson's optional challenge (half XP, no seals, no review). */
   challenge?: boolean;
+  /** The lesson revision the code was written against (see saveCode). */
+  rev?: number;
   /** True for a lesson's tap-and-drag practice (a quarter of the XP, no seals, no review, no Codex credit). The exerciseId is the practice id. */
   practice?: boolean;
 };
@@ -56,9 +74,10 @@ export async function recordAttempt(o: AttemptInput): Promise<AttemptOutcome> {
   const c = await col();
   const userId = new ObjectId(o.userId);
   const filter = { userId, exerciseId: o.exerciseId };
+  await archiveOlderRevision(o.userId, o.exerciseId, o.rev ?? 1);
   const attemptUpdate = await c.findOneAndUpdate(
     filter,
-    { $set: { code: o.code, updatedAt: now, trackSlug: o.trackSlug }, $inc: { attempts: 1 }, $setOnInsert: { status: "started", startedAt: now, startKnown: false } },
+    { $set: { code: o.code, updatedAt: now, trackSlug: o.trackSlug, ...(o.rev && o.rev > 1 ? { rev: o.rev } : {}) }, $inc: { attempts: 1 }, $setOnInsert: { status: "started", startedAt: now, startKnown: false } },
     { upsert: true, returnDocument: "after", projection: { code: 0 }, includeResultMetadata: true },
   );
   const after = attemptUpdate.value;
@@ -123,13 +142,11 @@ export async function recordHint(userId: string, exerciseId: string, trackSlug: 
 
 // ---------- Reviews (spaced repetition of passed lessons; never any XP) ----------
 
-const DAY = 86_400_000;
-
 async function scheduleFirstReview(userId: ObjectId, exerciseId: string, now: Date) {
   const db = await getDb();
   await db
     .collection<ReviewDoc>("reviews")
-    .updateOne({ userId, exerciseId }, { $setOnInsert: { dueAt: new Date(now.getTime() + REVIEW_INTERVALS_DAYS[0] * DAY), interval: REVIEW_INTERVALS_DAYS[0], lastAt: now, count: 0 } }, { upsert: true });
+    .updateOne({ userId, exerciseId }, { $setOnInsert: { dueAt: dueAfter(now, REVIEW_INTERVALS_DAYS[0]), interval: REVIEW_INTERVALS_DAYS[0], lastAt: now, count: 0 } }, { upsert: true });
 }
 
 /** A passed review moves the next one further out. Only counts when the review was actually due, so it cannot be farmed. */
@@ -141,9 +158,11 @@ export async function recordReviewPass(userId: string, exerciseId: string): Prom
   const next = REVIEW_INTERVALS_DAYS[Math.min(REVIEW_INTERVALS_DAYS.indexOf(doc.interval) + 1, REVIEW_INTERVALS_DAYS.length - 1)] ?? REVIEW_INTERVALS_DAYS[0];
   const res = await reviews.updateOne(
     { _id: doc._id, dueAt: { $lte: now } },
-    { $set: { interval: next, dueAt: new Date(now.getTime() + next * DAY), lastAt: now }, $inc: { count: 1 } },
+    { $set: { interval: next, dueAt: dueAfter(now, next), lastAt: now }, $inc: { count: 1 }, $unset: { hintsInReview: "" } },
   );
-  return res.modifiedCount === 1;
+  if (res.modifiedCount !== 1) return false;
+  await logReviewEvent({ userId: doc.userId, exerciseId, source: "coding", before: doc, intervalAfter: next, now, correct: true, rating: codingRating(doc.hintsInReview) });
+  return true;
 }
 
 /** "I need a refresher": start the schedule again from the shortest interval. */
@@ -151,7 +170,12 @@ export async function resetReview(userId: string, exerciseId: string) {
   const now = new Date();
   await (await getDb())
     .collection<ReviewDoc>("reviews")
-    .updateOne({ userId: new ObjectId(userId), exerciseId }, { $set: { interval: REVIEW_INTERVALS_DAYS[0], dueAt: new Date(now.getTime() + REVIEW_INTERVALS_DAYS[0] * DAY), lastAt: now } });
+    .updateOne({ userId: new ObjectId(userId), exerciseId }, { $set: { interval: REVIEW_INTERVALS_DAYS[0], dueAt: dueAfter(now, REVIEW_INTERVALS_DAYS[0]), lastAt: now }, $unset: { hintsInReview: "" } });
+}
+
+/** Notes that the learner opened hint `index` (0-based) during a coding review. Only a review that exists is touched. */
+export async function recordReviewHint(userId: string, exerciseId: string, index: number) {
+  await (await getDb()).collection<ReviewDoc>("reviews").updateOne({ userId: new ObjectId(userId), exerciseId }, { $max: { hintsInReview: index + 1 } });
 }
 
 export async function getReviewFor(userId: string, exerciseId: string): Promise<ReviewDoc | null> {

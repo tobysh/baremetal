@@ -14,7 +14,7 @@ import { LessonJump } from "@/components/workspace/lesson-jump";
 import { LessonLayout } from "@/components/workspace/lesson-layout";
 import { getCurrentUser } from "@/lib/auth";
 import { getLesson, getTracks, lessonPath } from "@/lib/curriculum";
-import { toPublicExercise } from "@/lib/curriculum/types";
+import { revisionOf, toPublicExercise } from "@/lib/curriculum/types";
 import { toPublicPractice } from "@/lib/curriculum/practice";
 import { challengeIdOf, challengeXpFor, practiceIdOf } from "@/lib/gamification";
 import { sealsFor } from "@/lib/rewards-context";
@@ -197,11 +197,15 @@ async function WorkspaceLoader({ exerciseId, path, trackSlug, lessonSlug, search
   const continuation = recommendLearning(tracks, continuationProgress, { track, afterPass: exerciseId });
   const continuationHref = continuation ? lessonPath(continuation.track.slug, continuation.lesson.slug) : "/learn";
   const continuationLabel = continuation ? continuation.track.slug === trackSlug ? "Next lesson →" : `Next course: ${continuation.track.title} →` : "Choose another path →";
+  // Code saved against an older revision of the lesson is not offered as the starting point. It is kept as "previous version".
+  const stale = !!progress && (progress.rev ?? 1) < revisionOf(lesson.exercise);
+  const previousCode = (stale ? progress?.code : progress?.previousCode) || null;
   return (
     <LessonWorkspace
       key={exerciseId}
       lesson={toPublicExercise(lesson.exercise)}
-      lessonCode={progress?.code ?? null}
+      lessonCode={stale ? null : (progress?.code ?? null)}
+      previousCode={previousCode}
       lessonPassed={progress?.status === "passed"}
       initialHints={progress?.hintsUsed ?? 0}
       challenge={lesson.challenge ? { exercise: toPublicExercise(lesson.challenge.exercise), code: challengeProgress?.code ?? null, passed: challengeProgress?.status === "passed", xp: challengeXpFor(lesson.difficulty) } : null}

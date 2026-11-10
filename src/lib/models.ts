@@ -63,6 +63,10 @@ export type ProgressDoc = {
   exerciseId: string;
   trackSlug: string;
   code: string;
+  /** The lesson revision `code` was written against (absent means 1). See `revision:` in docs/content-authoring.md. */
+  rev?: number;
+  /** The learner's code from before the lesson's last revision, kept so the editor can show it as "previous version". */
+  previousCode?: string;
   status: "started" | "passed";
   attempts: number;
   /** XP granted when the lesson was first passed. */
@@ -95,7 +99,31 @@ export type XpEventDoc = { _id: ObjectId; userId: ObjectId; source: "lesson" | "
 export type AchievementDoc = { _id: ObjectId; userId: ObjectId; id: string; unlockedAt: Date };
 
 /** Spaced review of a passed lesson. Reviews never award XP. */
-export type ReviewDoc = { _id: ObjectId; userId: ObjectId; exerciseId: string; dueAt: Date; interval: number; lastAt: Date; count: number };
+export type ReviewDoc = {
+  _id: ObjectId; userId: ObjectId; exerciseId: string; dueAt: Date; interval: number; lastAt: Date; count: number;
+  /** Highest hint number opened during the current coding review (reset when the review settles). */
+  hintsInReview?: number;
+};
+
+export type ReviewRating = "again" | "hard" | "good" | "easy";
+
+/** One row per change to the review schedule (or retry attempt). Used to fit the scheduler later. */
+export type ReviewEventDoc = {
+  _id: ObjectId; userId: ObjectId; exerciseId: string; at: Date;
+  source: "card" | "coding" | "skip" | "retry";
+  questionIndex?: number;
+  correct: boolean | null;
+  /** e.g. "3 of 5", from the practice check. */
+  partial?: string;
+  rating?: ReviewRating;
+  daysLate: number;
+  /** Days since the previous review, or since the first pass. */
+  elapsedDays: number;
+  intervalBefore: number;
+  intervalAfter: number;
+  /** For retries: the missed card event this retry belongs to (unique, so a retry is logged once). */
+  retryOf?: ObjectId;
+};
 
 export type TutorMessage = { role: "user" | "assistant"; content: string; at: Date };
 

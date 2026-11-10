@@ -206,6 +206,8 @@ export type PracticeCheck =
       /** Whether a non-canonical submission may still be accepted by running `code` against the lesson's hidden tests. */
       testable: boolean;
       feedback?: string;
+      /** For answers that can be partly right: how many parts were right. Absent for single-answer kinds. */
+      partial?: { right: number; total: number };
     };
 
 const sameList = (a: readonly unknown[], b: readonly unknown[]) => a.length === b.length && a.every((x, i) => x === b[i]);
@@ -230,7 +232,7 @@ export function checkPractice(p: Practice, submission: unknown): PracticeCheck {
       if (submission.length > p.lines.length + p.distractors.length || !subMultiset(submission, [...p.lines, ...p.distractors])) return invalid("Those lines are not part of this exercise.");
       const exact = sameList(submission, p.lines);
       const placed = submission.filter((l, i) => l === p.lines[i]).length;
-      return { valid: true, exact, code: assembleParsons(p, submission), testable: p.runTests !== false, feedback: exact ? undefined : `${placed} of ${p.lines.length} lines are in the right place.` };
+      return { valid: true, exact, code: assembleParsons(p, submission), testable: p.runTests !== false, partial: { right: placed, total: p.lines.length }, feedback: exact ? undefined : `${placed} of ${p.lines.length} lines are in the right place.` };
     }
     case "blanks": {
       const n = p.answers.length;
@@ -238,14 +240,14 @@ export function checkPractice(p: Practice, submission: unknown): PracticeCheck {
       if (!subMultiset(submission, p.tokens)) return invalid("Those pieces are not part of this exercise.");
       const exact = sameList(submission, p.answers);
       const right = submission.filter((v, i) => v === p.answers[i]).length;
-      return { valid: true, exact, code: fillBlanks(p, submission), testable: p.runTests !== false, feedback: exact ? undefined : `${right} of ${n} blanks are right.` };
+      return { valid: true, exact, code: fillBlanks(p, submission), testable: p.runTests !== false, partial: { right, total: n }, feedback: exact ? undefined : `${right} of ${n} blanks are right.` };
     }
     case "predict": {
       if (p.trace) {
         if (!Array.isArray(submission) || submission.length !== p.trace.length || !submission.every((v, i) => isIndex(v, p.trace![i].choices.length))) return invalid("Answer every step.");
         const right = (submission as number[]).filter((v, i) => v === p.trace![i].answer).length;
         const exact = right === p.trace.length;
-        return { valid: true, exact, testable: false, feedback: exact ? undefined : `${right} of ${p.trace.length} steps are right.` };
+        return { valid: true, exact, testable: false, partial: { right, total: p.trace.length }, feedback: exact ? undefined : `${right} of ${p.trace.length} steps are right.` };
       }
       if (!isIndex(submission, p.choices!.length)) return invalid("Pick one of the choices.");
       return { valid: true, exact: submission === p.answer, testable: false, feedback: submission === p.answer ? undefined : "Not quite. Trace it again." };
@@ -272,7 +274,7 @@ export function checkPractice(p: Practice, submission: unknown): PracticeCheck {
       if (!strList(submission) || submission.length !== n) return invalid(`Match all ${n} items.`);
       if (!subMultiset(submission, p.pairs.map((x) => x.right))) return invalid("Those matches are not part of this exercise.");
       const right = submission.filter((v, i) => v === p.pairs[i].right).length;
-      return { valid: true, exact: right === n, testable: false, feedback: right === n ? undefined : `${right} of ${n} matches are right.` };
+      return { valid: true, exact: right === n, testable: false, partial: { right, total: n }, feedback: right === n ? undefined : `${right} of ${n} matches are right.` };
     }
   }
 }

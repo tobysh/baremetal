@@ -6,6 +6,8 @@ export type RunResult = {
   stderr: string;
   exitCode: number | null;
   error: string | null;
+  /** True when a time limit stopped the compiler or the program (as opposed to a crash or a wrong answer). */
+  timedOut?: boolean;
   durationMs: number;
 };
 
@@ -17,5 +19,7 @@ export type TestResult = {
   allPassed: boolean;
   output: string;
   error: string | null;
+  /** True when a time limit stopped the compiler or a test run. */
+  timedOut?: boolean;
 };
 

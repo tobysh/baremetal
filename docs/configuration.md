@@ -30,6 +30,7 @@ All configuration is through environment variables. In development put them in `
 | `TUTOR_PROVIDER` | `anthropic` | `ollama` switches to a local model |
 | `TUTOR_MODEL` | `claude-haiku-5-5` | Claude model id |
 | `OLLAMA_HOST`, `OLLAMA_MODEL` | `http://127.0.0.1:11434`, `qwen2.5-coder:7b` | Ollama endpoint and model |
+| `OLLAMA_TIMEOUT_MS` | `120000` | Deadline for one Ollama tutor call |
 | `TUTOR_BUDGET_USER_DAY_USD` | `0.25` | Per-user daily spend ceiling |
 | `TUTOR_BUDGET_GLOBAL_DAY_USD` | `20` | Site-wide daily spend ceiling |
 | `TUTOR_PRICE_IN_PER_MTOK`, `TUTOR_PRICE_OUT_PER_MTOK` | `1`, `5` | USD per million tokens used to estimate cost |
@@ -56,6 +57,7 @@ Per-IP limits are deliberately generous because schools and offices share addres
 |---|---|---|
 | `RUNNER_SOCKET` | none | Socket the service listens on (also required by the web app) |
 | `RUNNER_COMPILE_SLOTS`, `RUNNER_RUN_SLOTS` | `2`, `3` | Concurrent compiles / program runs. Size against the unit's `MemoryMax` |
+| `RUNNER_COMPILE_BUDGET` | `60` | Compiles per account or IP per minute, each `set`-case recompile counting as one |
 | `RUNNER_INFLIGHT_USER`, `RUNNER_INFLIGHT_IP` | `2`, `6` | Queued + running requests per account / per anonymous IP |
 | `RUNNER_REQUEST_BYTES`, `RUNNER_RESPONSE_BYTES`, `RUNNER_REQUEST_TIMEOUT_MS` | see `runner-protocol.ts` | Wire-protocol bounds |
 | `RUNNER_CGROUP_ROOT` | unset | Delegated cgroup-v2 subtree for per-job limits. **Required for the production runner** |

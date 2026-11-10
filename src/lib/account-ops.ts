@@ -47,6 +47,7 @@ export async function deleteUserData(user: Pick<UserDoc, "_id" | "email">) {
     db.collection("xp_events").deleteMany({ userId: id }),
     db.collection("achievements").deleteMany({ userId: id }),
     db.collection("reviews").deleteMany({ userId: id }),
+    db.collection("review_events").deleteMany({ userId: id }),
     db.collection("password_resets").deleteMany({ userId: id }),
     db.collection("email_verifications").deleteMany({ userId: id }),
     db.collection("email_queue").deleteMany({ recipientHash: hmac("email-queue-recipient", user.email.toLowerCase()) }),

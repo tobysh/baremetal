@@ -4,7 +4,7 @@
 import { MongoClient } from "mongodb";
 
 const apply = process.argv.includes("--apply");
-const COLLECTIONS = ["progress", "tutor_threads", "xp_events", "achievements", "reviews"];
+const COLLECTIONS = ["progress", "tutor_threads", "xp_events", "achievements", "reviews", "review_events"];
 const client = await new MongoClient(process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27017").connect();
 const db = client.db(process.env.MONGODB_DB ?? "baremetal");
 

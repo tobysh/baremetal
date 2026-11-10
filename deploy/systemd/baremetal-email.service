@@ -1,0 +1,29 @@
+[Unit]
+Description=Baremetal email queue delivery
+After=network-online.target mongod.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=baremetal-web
+Group=baremetal-web
+WorkingDirectory=/opt/baremetal-web
+# Same secrets as the web unit (AUTH_SECRET decrypts the queue, SMTP_URL, EMAIL_FROM, MONGODB_*).
+EnvironmentFile=/etc/baremetal/web.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/env node --import tsx --conditions=react-server scripts/deliver-email.mts
+TimeoutStartSec=10min
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+SystemCallFilter=@system-service

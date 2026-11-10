@@ -23,7 +23,7 @@ import { fieldErrors, formValues, type FormState } from "@/lib/forms";
 import { usernameProblem } from "@/lib/gamification";
 import { EXPERIENCE_LEVELS, TERMS_VERSION, type UserDoc } from "@/lib/models";
 import { checkPassword } from "@/lib/password";
-import { accountCaptchaRequired, authRateLimit, envLimit, recordAccountFailure, clearLoginFailures, finishLoginFailure, finishOtpFailure, formatWait, logAuthEvent, loginGuard, otpGuard, refundLoginAttempt, refundOtpAttempt, reserveLoginAttempt, reserveOtpAttempt, requestContext } from "@/lib/security";
+import { accountCaptchaRequired, accountDelay, authRateLimit, envLimit, recordAccountFailure, clearAccountDelay, clearLoginFailures, finishLoginFailure, finishOtpFailure, formatWait, logAuthEvent, loginGuard, otpGuard, refundLoginAttempt, refundOtpAttempt, reserveLoginAttempt, reserveOtpAttempt, requestContext } from "@/lib/security";
 import { hashBackupCode, legacyBackupCodeHash, verifyTotp } from "@/lib/totp";
 import { absoluteUrl } from "@/lib/site";
 import { isSuspended } from "@/lib/suspension";
@@ -61,7 +61,7 @@ const signupSchema = z
 export async function signup(_prev: FormState, formData: FormData): Promise<FormState> {
   const values = formValues(formData, ["name", "username", "email", "experience"]);
   if (!(await authRateLimit("signup", envLimit("AUTH_LIMIT_SIGNUP_IP", 30)))) return { message: TOO_MANY, values };
-  if (!(await verifyCaptcha(formData.get("captcha") as string | null))) {
+  if (!(await verifyCaptcha(formData.get("captcha") as string | null, "signup"))) {
     await logAuthEvent("captcha_failed", { reason: "signup" });
     return { message: "Please complete the security check.", values, captchaRequired: true };
   }
@@ -130,8 +130,13 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
       captchaRequired: true,
     };
   }
+  const delay = await accountDelay(addr);
+  if (delay > 0) {
+    await logAuthEvent("login_locked", { email: addr, reason: "account_delay" });
+    return { message: `Too many sign-in attempts on this account. Please try again in ${formatWait(delay)}, or reset your password.`, values, captchaRequired: true };
+  }
   const accountCaptcha = await accountCaptchaRequired(addr);
-  if ((guard.captchaRequired || accountCaptcha) && !(await verifyCaptcha(formData.get("captcha") as string | null))) {
+  if ((guard.captchaRequired || accountCaptcha) && !(await verifyCaptcha(formData.get("captcha") as string | null, "login"))) {
     await logAuthEvent("captcha_failed", { email: addr, reason: "login" });
     return { message: "Please complete the security check, then sign in again.", values, captchaRequired: true };
   }
@@ -150,6 +155,7 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   }
 
   await refundLoginAttempt(addr, ip);
+  await clearAccountDelay(addr);
   if (isSuspended(user)) {
     await logAuthEvent("login_blocked", { email: addr, userId: user._id.toHexString(), reason: user.suspension?.kind });
     return { message: user.suspension?.kind === "banned" ? "This account has been closed." : "This account is temporarily locked. Contact support if you think this is a mistake.", values };
@@ -229,6 +235,10 @@ export async function verifySecondFactor(_prev: FormState, formData: FormData): 
 export async function requestPasswordReset(_prev: FormState, formData: FormData): Promise<FormState> {
   const values = formValues(formData, ["email"]);
   if (!(await authRateLimit("forgot-password", 5))) return { message: TOO_MANY, values };
+  if (!(await verifyCaptcha(formData.get("captcha") as string | null, "forgot-password"))) {
+    await logAuthEvent("captcha_failed", { reason: "forgot-password" });
+    return { message: "Please complete the security check.", values };
+  }
   const parsed = z.object({ email }).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values };
   const addr = parsed.data.email;
