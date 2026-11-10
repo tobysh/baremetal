@@ -87,9 +87,15 @@ try {
     assert.equal((await request("/api/progress", { exerciseId: ex.id, code: `// ${secret}\nint main(void){return 0;}` }, 1, "PUT")).status, 200);
     assert.ok(await db.collection("progress").findOne({ userId: ids[1], exerciseId: ex.id, code: new RegExp(secret) }), "user 1 progress saved");
     await db.collection("tutor_threads").updateOne({ userId: ids[1], lessonId: ex.id }, { $set: { messages: [{ role: "user", content: secret, at: new Date() }], updatedAt: new Date() } }, { upsert: true });
+    const ownReservation = new ObjectId();
+    await db.collection("tutor_reservations").insertMany([
+      { _id: ownReservation, userId: ids[0].toHexString(), amount: 1, keys: [], state: "settled", createdAt: new Date() },
+      { userId: ids[1].toHexString(), amount: 1, keys: [secret], state: "settled", createdAt: new Date() },
+    ]);
     const asZero = (path: string, init: RequestInit = {}) => fetch(base + path, { ...init, headers: { Origin: base, "X-Forwarded-For": ips[0], Cookie: `${SESSION_COOKIE}=${tokens[0]}`, ...(init.headers ?? {}) } });
     const exported = await (await asZero("/api/account/export")).text();
     assert.ok(!exported.includes(secret) && !exported.includes(`-${suffix}-1@example.test`), "export contains only the caller's data");
+    assert.ok(JSON.parse(exported).tutorReservations.some((row: { _id: string }) => row._id === ownReservation.toHexString()), "export includes the caller's accounting journal");
     for (const path of ["/api/tutor/quota", `/api/tutor?exerciseId=${encodeURIComponent(ex.id)}`, "/api/account/export"]) {
       assert.ok(!(await (await asZero(path)).text()).includes(secret), `${path} leaks no data of another account`);
     }
@@ -161,5 +167,6 @@ try {
 } finally {
   for (const name of ["users", "sessions", "progress", "tutor_threads", "xp_events", "achievements", "reviews", "review_events"]) await db.collection(name).deleteMany(name === "users" ? { _id: { $in: ids } } : { userId: { $in: ids } });
   for (const id of ids) await db.collection("rate_limits").deleteMany({ key: { $regex: id.toHexString() } });
+  await db.collection("tutor_reservations").deleteMany({ userId: { $in: ids.map((id) => id.toHexString()) } });
   await client.close();
 }

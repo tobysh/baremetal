@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 
 const server = http.createServer((req, res) => {
   req.resume();
@@ -31,7 +31,9 @@ const db = client.db(`bm_abort_check_${process.pid}_${Date.now()}`);
 try {
   await client.connect();
   await db.collection("tutor_spend").createIndex({ key: 1 }, { unique: true });
-  const settle = await reserveBudget(db, "u1", 500_000);
+  const userId = new ObjectId();
+  await db.collection("users").insertOne({ _id: userId });
+  const settle = await reserveBudget(db, userId.toHexString(), 500_000);
   assert(settle, "reservation granted");
 
   const abort = new AbortController();
@@ -47,7 +49,7 @@ try {
   assert.equal(seen.started?.inputTokens, 1000, "input_tokens read from message_start");
 
   await settle(seen.started); // what the route's finally block does
-  const row = await db.collection("tutor_spend").findOne({ key: /^u:u1:/ });
+  const row = await db.collection("tutor_spend").findOne({ key: new RegExp(`^u:${userId.toHexString()}:`) });
   assert(row && row.micro > 0, `aborted call still costs its input tokens (held ${row?.micro})`);
   console.log("Tutor abort checks passed: message_start input charged, upstream flagged.");
 } finally {

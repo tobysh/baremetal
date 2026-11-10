@@ -29,6 +29,7 @@ const COLLECTIONS: Record<string, { privacy: string } | { exempt: string }> = {
   events: { privacy: "Analytics (only if you say yes)" },
   tutor_threads: { privacy: "AI tutor conversations" },
   tutor_spend: { privacy: "AI tutor daily spend totals" },
+  tutor_reservations: { privacy: "tutor_reservations" },
   tutor_usage: { privacy: "tutor_usage" },
   tutor_cache: { privacy: "Saved replies are stored under a one-way fingerprint" },
   admin_audit: { privacy: "Administrator action log" },

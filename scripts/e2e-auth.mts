@@ -540,6 +540,7 @@ try {
     const save = () => b.fetch("/api/progress", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ exerciseId: "first-steps/hello-world", code: "x" }) });
     const first = await save();
     await db.collection("tutor_spend").insertOne({ key: `u:${delId.toHexString()}:2099-01-01`, micro: 5, createdAt: new Date() });
+    await db.collection("tutor_reservations").insertOne({ userId: delId.toHexString(), amount: 5, keys: [], state: "settled", createdAt: new Date() });
     await db.collection("xp_events").insertOne({ userId: delId, exerciseId: "x", xp: 1 });
     const del = await b.submit("/settings", { confirm: "delete my account", password: PASSWORD }, "Permanently delete account");
     void del;
@@ -547,8 +548,9 @@ try {
       ["users", "sessions", "progress", "tutor_threads", "xp_events", "achievements", "reviews", "review_events", "password_resets", "email_verifications", "pending_2fa"].map(async (c) => [c, await db.collection(c).countDocuments(c === "users" ? { _id: delId } : { userId: delId })] as const),
     );
     const spend = await db.collection("tutor_spend").countDocuments({ key: { $regex: `^u:${delId.toHexString()}:` } });
+    const reservations = await db.collection("tutor_reservations").countDocuments({ userId: delId.toHexString() });
     check("the first autosave worked (precondition)", first.status === 200, String(first.status));
-    check("account deletion leaves no rows for the user, including tutor_spend", counts.every(([, n]) => n === 0) && spend === 0, JSON.stringify(counts.filter(([, n]) => n)) + ` spend=${spend}`);
+    check("account deletion leaves no rows for the user, including tutor accounting", counts.every(([, n]) => n === 0) && spend === 0 && reservations === 0, JSON.stringify(counts.filter(([, n]) => n)) + ` spend=${spend} reservations=${reservations}`);
     const late = await save();
     check("a late autosave with the old cookie is refused (401)", late.status === 401, String(late.status));
     check("…and recreates no progress row", (await db.collection("progress").countDocuments({ userId: delId })) === 0);

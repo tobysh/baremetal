@@ -9,6 +9,7 @@
 //   TUTOR_PRICE_IN_PER_MTOK / TUTOR_PRICE_OUT_PER_MTOK   USD per million tokens (default 1 / 5)
 //   TUTOR_PRICE_CACHE_READ_MULT / TUTOR_PRICE_CACHE_WRITE_MULT  multiples of the input price (default 0.1 / 1.25)
 
+import { ObjectId, type Db } from "mongodb";
 import { hmac } from "./crypto";
 
 export type Usage = { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; provider?: string };
@@ -86,31 +87,156 @@ export async function recordSpend(db: SpendDb, userId: string, usage: Usage, now
   return micro;
 }
 
-/** Hold the maximum estimated call cost so concurrent calls cannot all pass the same balance check. */
-export async function reserveBudget(db: import("mongodb").Db, userId: string, amount: number, now = Date.now()) {
-  const c = budgetConfig(), day = budgetDay(now), col = db.collection("tutor_spend");
-  const held: string[] = [];
-  const adjust = (delta: number) => Promise.all(held.map((key) => col.updateOne({ key }, { $inc: { micro: delta } })));
-  try {
-    for (const [key, usd] of [[`u:${userId}:${day}`, c.userDayUsd], [`g:${day}`, c.globalDayUsd]] as const) {
-      if (!usd) continue;
-      let granted = false;
-      if (amount <= usd * 1e6) for (let retry = 0; retry < 2; retry++) {
-        try {
-          await col.updateOne({ key, micro: { $lte: Math.floor(usd * 1e6) - amount } }, { $inc: { micro: amount }, $setOnInsert: { createdAt: new Date(now) } }, { upsert: true });
-          granted = true; break;
-        } catch (e) { if ((e as { code?: number }).code !== 11000) throw e; }
-      }
-      if (!granted) { await adjust(-amount); return null; }
-      held.push(key);
+type Reservation = {
+  _id: ObjectId;
+  userId: string;
+  amount: number;
+  keys: string[];
+  state: "reserving" | "active" | "settling" | "settled";
+  createdAt: Date;
+  targetMicro?: number;
+  recovery?: "refund-unstarted" | "charge-unknown";
+  recoveryAttemptedAt?: Date;
+  expiresAt?: Date;
+};
+
+// Longer than the provider deadlines: recovery must not race ordinary live calls.
+const RESERVATION_STALE_MS = 60 * 60 * 1000;
+const RESERVATION_RETENTION_MS = 60 * 24 * 60 * 60 * 1000;
+
+async function reservationOwnerExists(db: Db, userId: string): Promise<boolean> {
+  return ObjectId.isValid(userId) && !!await db.collection("users").findOne({ _id: new ObjectId(userId) }, { projection: { _id: 1 } });
+}
+
+/** Account deletion removes its journal and personal totals. A worker that read
+ * the journal before deletion may finish afterwards: check after writing so it
+ * cannot resurrect personal rows. Anonymous site totals remain accurate. */
+async function cleanDeletedReservationOwner(db: Db, reservation: Reservation): Promise<void> {
+  if (await reservationOwnerExists(db, reservation.userId)) return;
+  for (const key of reservation.keys.filter((key) => key.startsWith("u:"))) await db.collection("tutor_spend").deleteOne({ key });
+  await db.collection<Reservation>("tutor_reservations").deleteOne({ _id: reservation._id });
+}
+
+/** Apply the durable target to both scopes. The marker and total change in one
+ * document write, so a lost acknowledgement or a partial multi-scope failure
+ * can be replayed without charging/refunding twice. Zero markers also fence a
+ * late hold write after an interrupted reservation was recovered. */
+async function finishReservation(db: Db, reservation: Reservation, now: number): Promise<void> {
+  if (reservation.state === "settled") { await cleanDeletedReservationOwner(db, reservation); return; }
+  if (reservation.state !== "settling" || reservation.targetMicro === undefined) throw new Error("Tutor reservation has no settlement decision");
+  const field = `reservations.${reservation._id.toHexString()}`;
+  for (const key of reservation.keys) {
+    const write = () => db.collection("tutor_spend").updateOne({ key }, [{ $set: {
+      micro: { $add: [{ $ifNull: ["$micro", 0] }, { $subtract: [reservation.targetMicro, { $ifNull: [`$${field}`, 0] }] }] },
+      [field]: reservation.targetMicro,
+      createdAt: { $ifNull: ["$createdAt", reservation.createdAt] },
+    } }], { upsert: true });
+    try { await write(); } catch (error) {
+      if ((error as { code?: number }).code !== 11000) throw error;
+      await write(); // Concurrent first use of this day/scope won the unique-key race.
     }
-  } catch (e) { await adjust(-amount); throw e; }
-  let settled = false;
+  }
+  // Keep the journal discoverable until owner cleanup succeeds too. Otherwise a
+  // cleanup outage after marking settled would leave personal rows unrecoverable.
+  await cleanDeletedReservationOwner(db, reservation);
+  await db.collection<Reservation>("tutor_reservations").updateOne(
+    { _id: reservation._id, state: "settling" },
+    { $set: { state: "settled", expiresAt: new Date(now + RESERVATION_RETENTION_MS) } },
+  );
+}
+
+async function decideSettlement(db: Db, id: ObjectId, targetMicro: number, now: number): Promise<void> {
+  const journal = db.collection<Reservation>("tutor_reservations");
+  // The first durable decision wins, including concurrent calls with different usage.
+  await journal.updateOne({ _id: id, state: { $in: ["active", "reserving"] } }, { $set: { state: "settling", targetMicro } });
+  const reservation = await journal.findOne({ _id: id });
+  if (!reservation) throw new Error("Tutor reservation journal is missing");
+  await finishReservation(db, reservation, now);
+}
+
+/** Hold the maximum estimated call cost so concurrent calls cannot all pass the
+ * same balance check. A durable journal survives errors and process restarts. */
+export async function reserveBudget(db: Db, userId: string, amount: number, now = Date.now()) {
+  if (!Number.isSafeInteger(amount) || amount < 0) throw new Error("Invalid tutor reservation amount");
+  if (amount === 0) return async (usage: Usage | null) => { void usage; }; // Local providers incur no cost.
+  if (!await reservationOwnerExists(db, userId)) throw new Error("Tutor reservation owner no longer exists");
+  const c = budgetConfig(), day = budgetDay(now);
+  const scopes = ([[`u:${userId}:${day}`, c.userDayUsd], [`g:${day}`, c.globalDayUsd]] as const).filter(([, usd]) => usd > 0);
+  if (scopes.some(([, usd]) => amount > Math.floor(usd * 1e6))) return null;
+  const reservation: Reservation = { _id: new ObjectId(), userId, amount, keys: scopes.map(([key]) => key), state: "reserving", createdAt: new Date(now) };
+  const journal = db.collection<Reservation>("tutor_reservations");
+  await journal.insertOne(reservation);
+  const field = `reservations.${reservation._id.toHexString()}`;
+  try {
+    for (const [key, usd] of scopes) {
+      let granted = false;
+      for (let retry = 0; retry < 2; retry++) {
+        try {
+          await db.collection("tutor_spend").updateOne(
+            { key, micro: { $lte: Math.floor(usd * 1e6) - amount }, [field]: { $exists: false } },
+            { $inc: { micro: amount }, $set: { [field]: amount }, $setOnInsert: { createdAt: new Date(now) } },
+            { upsert: true },
+          );
+          granted = true;
+          break;
+        } catch (error) { if ((error as { code?: number }).code !== 11000) throw error; }
+      }
+      if (!granted) { await decideSettlement(db, reservation._id, 0, now); return null; }
+    }
+    const activated = await journal.updateOne({ _id: reservation._id, state: "reserving" }, { $set: { state: "active" } });
+    if (!activated.modifiedCount) throw new Error("Tutor reservation expired before activation");
+    if (!await reservationOwnerExists(db, userId)) throw new Error("Tutor reservation owner no longer exists");
+  } catch (error) {
+    // If this write fails too, the journal remains discoverable for recovery.
+    await decideSettlement(db, reservation._id, 0, now).catch(() => {});
+    // Deletion can remove the journal before an in-flight hold write finishes.
+    // Activation then fails, but that late personal total still needs removal.
+    await cleanDeletedReservationOwner(db, reservation).catch((cleanupError) => {
+      console.error("[tutor-budget] reservation owner cleanup failed; inspect orphan personal totals if account deletion removed its journal", { event: "tutor_reservation_owner_cleanup_failed", error: cleanupError instanceof Error ? cleanupError.name : "Error" });
+    });
+    throw error;
+  }
   return async (usage: Usage | null) => {
-    if (settled) return;
-    settled = true;
-    await adjust((usage ? estimateCostMicro(usage) : 0) - amount);
+    const targetMicro = usage ? estimateCostMicro(usage) : 0;
+    if (!Number.isSafeInteger(targetMicro) || targetMicro < 0) throw new Error("Invalid tutor settlement amount");
+    await decideSettlement(db, reservation._id, targetMicro, Date.now());
   };
+}
+
+/** Replay partial settlements, refund unstarted abandoned reservations, and keep
+ * the full hold for abandoned active calls whose upstream bill is unknown.
+ * Unresolved journals have no TTL: persistence failures cannot erase recovery
+ * intent. Call at startup and periodically; safe across concurrent workers. */
+export async function reconcileTutorReservations(db: Db, now = Date.now(), limit = 100): Promise<{ settled: number; chargedConservatively: number; failed: number }> {
+  const journal = db.collection<Reservation>("tutor_reservations");
+  const rows = await journal.find({ $or: [
+    { state: "settling" },
+    { state: { $in: ["reserving", "active"] }, createdAt: { $lte: new Date(now - RESERVATION_STALE_MS) } },
+  ] }).sort({ recoveryAttemptedAt: 1, createdAt: 1, _id: 1 }).limit(limit).toArray();
+  let settled = 0, chargedConservatively = 0, failed = 0;
+  for (const row of rows) {
+    try {
+      // Rotate repeatedly failing rows behind work that has not been attempted;
+      // a bounded batch must not keep selecting the same broken oldest journal.
+      await journal.updateOne({ _id: row._id }, { $set: { recoveryAttemptedAt: new Date(now) } });
+      if (row.state !== "settling") {
+        await journal.updateOne({ _id: row._id, state: row.state }, { $set: {
+          state: "settling", targetMicro: row.state === "active" ? row.amount : 0,
+          recovery: row.state === "active" ? "charge-unknown" : "refund-unstarted",
+        } });
+      }
+      const current = await journal.findOne({ _id: row._id });
+      if (!current) continue; // Account deletion can remove a journal read by this worker.
+      await finishReservation(db, current, now);
+      settled++;
+      if (current.recovery === "charge-unknown") chargedConservatively++;
+    } catch (error) {
+      failed++;
+      // Do not put account ids, scope keys or upstream diagnostics in this log.
+      console.error("[tutor-budget] reservation recovery failed; journal retained for retry", { event: "tutor_reservation_recovery_failed", error: error instanceof Error ? error.name : "Error" });
+    }
+  }
+  return { settled, chargedConservatively, failed };
 }
 
 // Per-question usage records (`tutor_usage`). Each new row carries `owner`, a keyed HMAC of the user id
