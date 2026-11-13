@@ -42,7 +42,8 @@ export async function POST(req: Request) {
   try {
     if (body.mode === "test") {
       const result = await executeTest(found.exercise, body.code!, context);
-      const isReview = !!body.review && !found.isChallenge;
+      // Only a passed lesson can be reviewed; otherwise the run is an ordinary attempt and must be counted.
+      const isReview = !!body.review && !found.isChallenge && !!user && (await getProgress(user.id, found.exercise.id))?.status === "passed";
       let achievements: Unlocked[] = [];
       let trackComplete: TrackComplete | null = null;
       let reviewed = false;
