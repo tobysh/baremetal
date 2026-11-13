@@ -39,7 +39,9 @@ try {
   }
   assert.equal(await quota(), 0, "invalid tutor inputs consume no quota");
   const anonHint = await fetch(base + "/api/hint", { method: "POST", headers: { "Content-Type": "application/json", Origin: base }, body: JSON.stringify({ exerciseId: ex.id, index: 0 }) });
-  assert.equal(anonHint.status, 401, "hints are not served without a session");
+  assert.equal(anonHint.status, 200, "hints are free without a session");
+  assert.deepEqual((await anonHint.json()).hints, ex.hints.slice(0, 1));
+  assert.equal(await db.collection("progress").countDocuments({ exerciseId: ex.id, hintsUsed: { $gt: 0 }, userId: { $nin: ids } }), 0, "an anonymous hint writes no progress");
   const hint = await request("/api/hint", { exerciseId: ex.id, index: 0 });
   assert.equal(hint.status, 200);
   assert.deepEqual((await hint.json()).hints, ex.hints.slice(0, 1));
