@@ -25,6 +25,7 @@ process.env.TUTOR_BUDGET_GLOBAL_DAY_USD = "10";
 
 import type { TutorUsage } from "../../src/lib/tutor";
 const { streamTutor } = await import("../../src/lib/tutor");
+const { markTutorUsed } = await import("../../src/lib/tutor-used");
 const { reserveBudget } = await import("../../src/lib/tutor-budget");
 const client = new MongoClient(process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27017", { serverSelectionTimeoutMS: 5000 });
 const db = client.db(`bm_abort_check_${process.pid}_${Date.now()}`);
@@ -36,8 +37,9 @@ try {
 
   const abort = new AbortController();
   let upstream = false;
+  let pending: Promise<void> | undefined; // the route's onUpstream hook records tutorUsed
   const seen: { started: TutorUsage | null } = { started: null };
-  const chunks = streamTutor("ctx", [{ role: "user", content: "help" }], abort.signal, () => {}, { onUpstream: () => { upstream = true; }, onStart: (u) => { seen.started = u; } });
+  const chunks = streamTutor("ctx", [{ role: "user", content: "help" }], abort.signal, () => {}, { onUpstream: () => { upstream = true; pending = markTutorUsed(db, "0123456789abcdef01234567", { id: "c/x", trackSlug: "c" }, "int main(){}"); }, onStart: (u) => { seen.started = u; } });
   let got = "";
   try {
     for await (const t of chunks) { got += t; abort.abort(); }
@@ -49,7 +51,10 @@ try {
   await settle(seen.started); // what the route's finally block does
   const row = await db.collection("tutor_spend").findOne({ key: /^u:u1:/ });
   assert(row && row.micro > 0, `aborted call still costs its input tokens (held ${row?.micro})`);
-  console.log("Tutor abort checks passed: message_start input charged, upstream flagged.");
+  await pending;
+  const prog = await db.collection("progress").findOne({ exerciseId: "c/x" });
+  assert.equal(prog?.tutorUsed, true, "tutorUsed is set after an aborted request");
+  console.log("Tutor abort checks passed: message_start input charged, upstream flagged, tutorUsed set.");
 } finally {
   await db.dropDatabase();
   await client.close();
