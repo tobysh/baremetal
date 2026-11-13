@@ -195,6 +195,9 @@ try {
     const duplicate = new Browser(ip(14));
     r = await duplicate.submit("/signup", { ...base, password: PASSWORD, confirm: PASSWORD, captcha: await solveCaptcha(duplicate, "signup") });
     check("existing signup gives the same generic response", r.status === 200 && /check your email/i.test(text(r.html)) && !duplicate.cookies.has(SESSION_COOKIE));
+    const taken = new Browser(ip(33));
+    r = await taken.submit("/signup", { ...base, email: `e2e-${run}-taken@example.test`, password: PASSWORD, confirm: PASSWORD, captcha: await solveCaptcha(taken, "signup") });
+    check("a taken username is reported and no account is created", /username is taken/i.test(text(r.html)) && !/check your email/i.test(text(r.html)) && (await db.collection("users").countDocuments({ email: `e2e-${run}-taken@example.test` })) === 0);
     const dash = await b.get("/dashboard");
     check("dashboard loads when signed in", dash.status === 200 && dash.html.includes("E2E Tester"));
     const exported = await (await b.fetch("/api/account/export")).json() as { account: { emailVerified?: boolean }, pendingEmailDelivery?: Record<string, unknown>[] };
