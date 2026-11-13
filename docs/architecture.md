@@ -113,7 +113,7 @@ Everything a learner sees comes from files under `content/<track>/`. `src/lib/cu
 
 - The system prompt coaches rather than answers. **The model never receives the reference solution.** Learner text is tag-escaped, and replies stream through `SolutionGuard`, which withholds the last 24 tokens until every window has been compared with the solution; on a match the rest of the reply is replaced with a fallback sentence and not cached.
 - Cost control: atomic per-user and global daily dollar reservations in `tutor_spend` (`tutor-budget.ts`), hourly request quotas (`tutor-limits.ts`), and a privacy-checked shared answer cache with longer retention for popular answers (`tutor_cache`). Newcomers draw from a pool that reserves capacity for established users.
-- Conversations are stored per user and lesson (`tutor_threads`). Using the tutor before a pass affects the Unaided seal via a sticky progress flag.
+- Conversations are stored per user and lesson (`tutor_threads`). Using the tutor before a pass affects the Unaided seal via a sticky progress flag, set when the model call starts (an aborted reply still counts).
 
 ## Accounts and sessions
 

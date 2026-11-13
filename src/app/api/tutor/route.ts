@@ -10,6 +10,7 @@ import { getProgress, getTutorThread } from "@/lib/progress";
 import { clientIp, ipLimit, rateLimit, rateLimitHit } from "@/lib/rate-limit";
 import { checkBudget, estimateCostMicro, recordTutorUsage, reserveBudget } from "@/lib/tutor-budget";
 import { HOUR, LIMITS } from "@/lib/tutor-limits";
+import { markTutorUsed } from "@/lib/tutor-used";
 import { MAX_REPLY_TOKENS, TUTOR_PROVIDER, TUTOR_SYSTEM, TutorUnavailableError, exposesSolution, SolutionGuard, buildMessages, lessonContext, planCache, streamTutor, type TutorUsage } from "@/lib/tutor";
 import { POPULAR_HITS, expiryFor, replyLeaks, type CacheKind } from "@/lib/tutor-cache";
 
@@ -63,11 +64,7 @@ export async function POST(req: Request) {
 
   const saveTurn = async (reply: string) => {
     const now = new Date();
-    await db.collection("progress").updateOne(
-      { userId: new ObjectId(user.id), exerciseId: found.exercise.id },
-      { $set: { tutorUsed: true, updatedAt: now }, $setOnInsert: { trackSlug: found.track.slug, code, status: "started", attempts: 0, startedAt: now, startKnown: false } },
-      { upsert: true },
-    );
+    await markTutorUsed(db, user.id, { id: found.exercise.id, trackSlug: found.track.slug }, code);
     await db.collection<TutorThreadDoc>("tutor_threads").updateOne(
       { userId: new ObjectId(user.id), lessonId: found.exercise.id },
       {
@@ -151,7 +148,11 @@ export async function POST(req: Request) {
   const chunks = streamTutor(lessonCtx, messages, abort.signal, (u, ok) => {
     usage = u;
     cacheable = ok;
-  }, { onUpstream: () => { upstreamCalled = true; }, onStart: (u) => { started = u; } });
+  }, { onUpstream: () => {
+    upstreamCalled = true;
+    // The learner may read the answer even if they abort, so the Unaided seal is lost from here on.
+    markTutorUsed(db, user.id, { id: found.exercise.id, trackSlug: found.track.slug }, code).catch((e) => console.error("[tutor] tutorUsed", e));
+  }, onStart: (u) => { started = u; } });
 
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {
