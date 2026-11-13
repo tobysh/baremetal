@@ -106,7 +106,7 @@ export async function POST(req: Request) {
 
   // Dollar ceilings (per user and site-wide, per UTC day), checked before any quota is consumed.
   const budget = await checkBudget(db, user.id);
-  if (!budget.ok) return jsonError(budget.scope === "user" ? 429 : 503, budget.message);
+  if (!budget.ok) return jsonError(budget.scope === "user" ? 429 : 503, budget.message, "tutor_budget");
 
   // Only real model calls count against the quotas.
   const ip = clientIp(req.headers);
@@ -135,7 +135,7 @@ export async function POST(req: Request) {
   // UTF-8 bytes conservatively bound input tokens, including cache-write pricing.
   const inputBound = Buffer.byteLength(TUTOR_SYSTEM + lessonCtx + JSON.stringify(messages), "utf8") + 1024;
   const settleBudget = await reserveBudget(db, user.id, Math.max(...[false, true].map((cached) => estimateCostMicro({ provider: TUTOR_PROVIDER, inputTokens: cached ? 0 : inputBound, cacheReadTokens: 0, cacheWriteTokens: cached ? inputBound : 0, outputTokens: MAX_REPLY_TOKENS }))));
-  if (!settleBudget) return jsonError(429, "There is not enough tutor allowance left for another reply today. It resets at midnight UTC; the hints and What probably went wrong notes are still available.");
+  if (!settleBudget) return jsonError(429, "There is not enough tutor allowance left for another reply today. It resets at midnight UTC; the hints and What probably went wrong notes are still available.", "tutor_budget");
 
   const abort = new AbortController();
   let cancelled = false;
