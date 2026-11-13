@@ -47,6 +47,15 @@ try {
   assert.equal((await request("/api/hint", { exerciseId: ex.id, index: -1 })).status, 400);
   console.log("Tutor validation/quota and server-recorded hint disclosure passed.");
 
+  // `review: true` on an unpassed lesson is an ordinary attempt: it must be counted, not run for free.
+  const attemptsOf = async () => (await db.collection("progress").findOne({ userId: ids[0], exerciseId: ex.id }))?.attempts ?? 0;
+  const attemptsBefore = await attemptsOf();
+  const reviewRun = await request("/api/run", { exerciseId: ex.id, mode: "test", review: true, code: "int main(void){return 0;}" });
+  assert.equal(reviewRun.status, 200);
+  assert.equal((await reviewRun.json()).reviewed, false);
+  assert.equal(await attemptsOf(), attemptsBefore + 1, "review:true on an unpassed lesson still counts an attempt");
+  console.log("Review flag ignored on unpassed lessons passed.");
+
   const slow = { exerciseId: ex.id, mode: "run", code: "#include <unistd.h>\nint main(void) { sleep(2); return 0; }" };
   const flood = Array.from({ length: 30 }, () => request("/api/run", slow));
   const other = await request("/api/run", { exerciseId: ex.id, mode: "run", code: "#include <stdio.h>\nint main(void) { puts(\"available\"); return 0; }" }, 1);
