@@ -8,7 +8,7 @@ Baremetal teaches C, Rust, Go and x86-64 assembly: markdown lessons, an in-brows
 
 ## Commands
 
-- `npm run db` (MongoDB, data in `.data/db`) and `npm run dev` (port 3000) in two terminals. Settings are in `.env.local`.
+- `npm run db` (MongoDB, data in `.data/db`) and `npm run dev` (port 3000, bound to 127.0.0.1 only) in two terminals. `npm run dev:lan` binds 0.0.0.0 for phone testing; /api/run accepts anonymous code, so use it only on a trusted network. Settings are in `.env.local`.
 - `npm run build`, `npm run lint`, `npx tsc --noEmit`. After adding routes run `npx next typegen`, or `PageProps<"/route">` won't typecheck.
 - `npm run verify:content [-- <track>]` checks that every lesson's solution passes and its starter compiles but fails. It needs gcc, rustc, go, bubblewrap and `qemu-system-x86_64` (the `osdev` track boots a kernel per test, about 0.2 s each).
 - `npm run test:e2e -- http://localhost:3100` runs the auth and security checks (the expanded checks in `scripts/e2e-auth.mts`) against `npx next start -p 3100`. `npm run test:unit` runs the `node:test` suites in `tests/unit/` (pure helpers: tamper scan, `safeNext`, TOTP, crypto, rate limit, tutor normaliser); `npm run test:sandbox` runs the sandbox-escape suite (needs bubblewrap); `npm run check:legal` fails if the legal pages drift from the collections, storage keys and cookies in the code. Other checks are scripts under `scripts/` (see `CONTRIBUTING.md`); to run one case, edit the script.
