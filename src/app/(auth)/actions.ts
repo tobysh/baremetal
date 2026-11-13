@@ -76,7 +76,7 @@ export async function signup(_prev: FormState, formData: FormData): Promise<Form
 
   const db = await getDb();
   const now = new Date();
-  // The same visible response covers new, existing and unavailable usernames.
+  // New and existing emails get the same visible response. A taken username is reported (usernames are public).
   const done: FormState = { ok: true, message: "If your account can be created, check your email for a verification link. If you already have an account, you can sign in or reset your password." };
   try {
     const res = await db.collection<Omit<UserDoc, "_id">>("users").insertOne({
@@ -90,8 +90,11 @@ export async function signup(_prev: FormState, formData: FormData): Promise<Form
     await queueEmail(d.email, "Verify your Baremetal email", `Use this link within 24 hours to verify your email:\n\n${absoluteUrl("/verify-email")}#${token}\n\nIf you did not request this account, ignore this email.`);
     await logAuthEvent("signup", { email: d.email, userId: res.insertedId.toHexString() });
   } catch (e) {
-    if (!duplicateField(e)) throw e;
+    const field = duplicateField(e);
+    if (!field) throw e;
     const existing = await db.collection<UserDoc>("users").findOne({ email: d.email });
+    // Only a username clash with an email nobody has registered is reported; a known email keeps the generic answer.
+    if (field === "username" && !existing) return { errors: { username: ["That username is taken. Pick another."] }, values, captchaRequired: true };
     const { rateLimit } = await import("@/lib/rate-limit");
     if (existing && await rateLimit(`signup-email:${sha256(d.email)}`, 3, 3600)) {
       if (existing.emailVerified === false) {
