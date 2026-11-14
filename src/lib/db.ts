@@ -13,7 +13,8 @@ async function connect(client: MongoClient): Promise<Db> {
   return db;
 }
 
-async function ensureIndexes(db: Db) {
+/** Required indexes must exist before getDb exposes the connection to callers. */
+export async function ensureIndexes(db: Db) {
   await Promise.all([
     db.collection("users").createIndex({ email: 1 }, { unique: true }),
     db.collection("users").createIndex({ username: 1 }, { unique: true, partialFilterExpression: { username: { $type: "string" } } }),
@@ -61,8 +62,16 @@ async function ensureIndexes(db: Db) {
     db.collection("tutor_cache").createIndex({ popular: 1, hits: -1 }),
     db.collection("tutor_cache").createIndex({ exerciseId: 1, hits: -1 }),
     // One document per user/site and UTC day. Kept 60 days; only the current day is read.
-    db.collection("tutor_spend").createIndex({ key: 1 }, { unique: true }).catch((e) => console.warn("[db] tutor_spend unique index not created (duplicate keys?):", e?.message)),
+    // Budget reservations depend on duplicate-key rejection when a scope is full.
+    // Continuing without this index would let a capped upsert insert another balance.
+    db.collection("tutor_spend").createIndex({ key: 1 }, { unique: true }).catch((cause) => {
+      throw new Error("Required tutor_spend unique key index could not be created; database access is disabled. See docs/deployment-hardening.md for recovery.", { cause });
+    }),
     db.collection("tutor_spend").createIndex({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 60 }),
+    // Only terminal reservations have expiresAt. Unresolved accounting must remain recoverable.
+    db.collection("tutor_reservations").createIndex({ state: 1, recoveryAttemptedAt: 1, createdAt: 1 }),
+    db.collection("tutor_reservations").createIndex({ userId: 1 }),
+    db.collection("tutor_reservations").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
     // Admin audit trail: one year.
     db.collection("admin_audit").createIndex({ ts: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 365 }),
     db.collection("admin_audit").createIndex({ targetId: 1, ts: -1 }),

@@ -20,7 +20,7 @@ export const SITE = {
     address: process.env.LEGAL_ADDRESS ?? "Registered address to be confirmed",
     contactEmail: process.env.LEGAL_CONTACT_EMAIL ?? "privacy@example.com",
     jurisdiction: process.env.LEGAL_JURISDICTION ?? "England and Wales",
-    lastUpdated: "10 November 2026",
+    lastUpdated: "10 November 2026 (revised)",
   },
 } as const;
 

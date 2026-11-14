@@ -20,7 +20,7 @@ Current design of XP, levels, seals, challenges, reviews and the Codex. Implemen
 | XP | 5/10/20/40 by difficulty, granted once on first pass in `recordAttempt` (`src/lib/progress.ts`); ledger `xp_events`, unique `(userId, source, ref)`. Pace and 24 h caps: see `docs/security.md`. |
 | Levels | `LEVEL_FLOORS` in `src/lib/gamification.ts`: 8, 24, 60, 120, 210, 330, 500, 720, 1000. Level 10 (Archmage) is the cap; XP keeps counting. Novice to Archmage titles with flavour lines. |
 | Hints | Fetched via `/api/hint`, open to signed-out visitors; recorded for signed-in learners (`progress.hintsUsed`); `hintsUsedAtPass` and `attemptsAtPass` snapshotted on first pass. |
-| Seals | Passed (lesson XP), Unaided (no hints, no tutor before pass, and a failed run or hard+ difficulty; cosmetic), Challenge. |
+| Seals | Passed (lesson XP), Unaided (no hints or tutor before the first completion, at any difficulty or attempt count; cosmetic), Challenge. The separate Clean Strike achievement recognises first-attempt success on a medium-or-harder lesson. Assistance never reduces XP. Existing stored seals and achievements are preserved; this rule does not retroactively recalculate prior completions. |
 | Challenges | Optional harder variants, unlocked after the lesson pass, half XP. Stored as progress docs with id `<lesson id>#challenge`. Files: `challenge.md`, `challenge-starter.*`, `challenge-solution.*`, `challenge-tests.*` or `challenge-cases.json`. `verify:content` checks the solution passes and the plain lesson solution fails. Currently 22; list them with `ls content/*/*/challenge.md`. |
 | Practice | Optional tap-and-drag exercises (parsons, blanks, predict, bug) from a lesson's `practice.json`, a quarter of the lesson's XP with a minimum of 1 (easy 1, medium 2, hard 5, impossible 10; `practiceXpFor`). Stored as progress docs with id `<lesson id>#practice`, ledger source `practice`. Granted once, on first pass, through `recordAttempt` with `practice: true`, so the pace limit, the rolling 24 h cap and the minimum solve time (a flat 4 s for practice) apply like any pass. No seals, no review schedule, no Codex credit. A practice pass counts toward the weekly rhythm. It never blocks the lesson's own full XP. |
 | Codex | 20 achievements, no XP, defined in `src/lib/achievements.ts` (`id`, `name`, `description`, `check`). Adding one needs `npm run backfill-achievements`. |
@@ -34,6 +34,7 @@ Collections: `xp_events`, `achievements` (unique `(userId, id)`), `reviews` (uni
 
 - Changing `LEVEL_FLOORS`, a lesson's difficulty, challenge XP or practice XP, or adding or removing a `practice.json` (a removed one stops paying on recompute), needs `npm run recompute-xp` (rebuilds the ledger and review schedule per user). Run it only with the site stopped.
 - On an existing database, run `recompute-xp` then `backfill-achievements` once.
+- Assistance-only Unaided eligibility and coding-review achievement wording require no migration, XP recomputation or achievement backfill. Existing first-pass snapshots, seals and earned achievement dates stay unchanged.
 
 ## Not built (D5, deliberately)
 

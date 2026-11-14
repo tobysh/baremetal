@@ -480,19 +480,20 @@ export function Workspace({
               Cancel
             </button>
           )}
-          <button
-            type="button"
-            onClick={run}
-            disabled={!!busy}
-            title={`Compile and run your own main() (${mod}+Shift+Enter)`}
-            aria-keyshortcuts={mod === "⌘" ? "Meta+Shift+Enter" : "Control+Shift+Enter"}
-            className={`inline-flex h-11 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium hover:bg-surface-2 disabled:opacity-60 sm:h-9${ring("run")}`}
-          >
-            {busy === "run" ? "Running…" : "Run"}
-          </button>
-          {ready ? (
-            <>
+          <div role="group" aria-label="Run code and tests" className="inline-flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={run}
+              disabled={!!busy}
+              title={`Compile and run your own main() (${mod}+Shift+Enter)`}
+              aria-keyshortcuts={mod === "⌘" ? "Meta+Shift+Enter" : "Control+Shift+Enter"}
+              className={`inline-flex h-11 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium hover:bg-surface-2 disabled:opacity-60 sm:h-9${ring("run")}`}
+            >
+              {busy === "run" ? "Running…" : "Run"}
+            </button>
+            {ready ? (
               <button
+                key="retest"
                 type="button"
                 onClick={retest}
                 disabled={!!busy}
@@ -501,28 +502,31 @@ export function Workspace({
               >
                 {busy === "test" ? "Testing…" : "Re-test"}
               </button>
-              <Link
+            ) : (
+              <button
+                key="test"
                 data-primary-action
-                href={nextHref!}
-                title={`Go to the next lesson (${mod}+Enter)`}
+                type="button"
+                onClick={test}
+                disabled={!!busy}
+                title={`Check your solution against the tests (${mod}+Enter)`}
                 aria-keyshortcuts={mod === "⌘" ? "Meta+Enter" : "Control+Enter"}
-                className="inline-flex h-11 items-center gap-2 rounded-lg bg-accent px-3 text-sm font-medium text-accent-ink hover:brightness-110 sm:h-9"
+                className={`inline-flex h-11 items-center gap-2 rounded-lg bg-accent px-3 text-sm font-medium text-accent-ink hover:brightness-110 disabled:opacity-60 sm:h-9${ring("test")}`}
               >
-                {nextLabel ?? "Next lesson →"}
-              </Link>
-            </>
-          ) : (
-            <button
+                {busy === "test" ? "Testing…" : "Test"}
+              </button>
+            )}
+          </div>
+          {ready && (
+            <Link
               data-primary-action
-              type="button"
-              onClick={test}
-              disabled={!!busy}
-              title={`Check your solution against the tests (${mod}+Enter)`}
+              href={nextHref!}
+              title={`Go to the next lesson (${mod}+Enter)`}
               aria-keyshortcuts={mod === "⌘" ? "Meta+Enter" : "Control+Enter"}
-              className={`inline-flex h-11 items-center gap-2 rounded-lg bg-accent px-3 text-sm font-medium text-accent-ink hover:brightness-110 disabled:opacity-60 sm:h-9${ring("test")}`}
+              className="inline-flex h-11 items-center gap-2 rounded-lg bg-accent px-3 text-sm font-medium text-accent-ink hover:brightness-110 sm:h-9"
             >
-              {busy === "test" ? "Testing…" : "Test"}
-            </button>
+              {nextLabel ?? "Next lesson →"}
+            </Link>
           )}
         </div>
         {showTour && <Tour step={tourStep} onStep={setTourStep} onClose={() => writePref(tourKey, "1")} />}

@@ -250,13 +250,18 @@ try {
     };
     for (const [path, ok] of [["/api/hint", 400], ["/api/analytics", 204]] as const) {
       const t0 = Date.now();
-      const big = await fetch(BASE + path, { method: "POST", headers: { Origin: ORIGIN, "Content-Type": "application/json", "X-Forwarded-For": u.ip, Cookie: "bm_consent=" + encodeURIComponent(JSON.stringify({ v: 1, analytics: true, at: new Date().toISOString() })) }, body: chunked(5 * 1024 * 1024), duplex: "half" } as RequestInit).catch(() => null);
+      const big = await fetch(BASE + path, { method: "POST", headers: { Origin: ORIGIN, Connection: "close", "Content-Type": "application/json", "X-Forwarded-For": u.ip, Cookie: "bm_consent=" + encodeURIComponent(JSON.stringify({ v: 1, analytics: true, at: new Date().toISOString() })) }, body: chunked(5 * 1024 * 1024), duplex: "half" } as RequestInit).catch(() => null);
       check(`5 MB chunked body to ${path} is refused promptly`, !big || big.status === ok, `${big?.status} in ${Date.now() - t0} ms`);
+      await big?.arrayBuffer();
     }
     // 4097 bytes of multi-byte characters is under 4096 UTF-16 units but over 4096 bytes.
     const multi = JSON.stringify({ type: "pageview", path: "é".repeat(2049) });
     const rawBefore = await db.collection("events").countDocuments();
-    await fetch(BASE + "/api/analytics", { method: "POST", headers: { Origin: ORIGIN, "Content-Type": "application/json", "X-Forwarded-For": u.ip, Cookie: "bm_consent=" + encodeURIComponent(JSON.stringify({ v: 1, analytics: true, at: new Date().toISOString() })) }, body: multi });
+    await fetch(BASE + "/api/analytics", { method: "POST", headers: { Origin: ORIGIN, Connection: "close", "Content-Type": "application/json", "X-Forwarded-For": u.ip, Cookie: "bm_consent=" + encodeURIComponent(JSON.stringify({ v: 1, analytics: true, at: new Date().toISOString() })) }, body: multi }).then((response) => response.arrayBuffer()).catch((error: unknown) => {
+      // Cancelling an oversized request body may close the HTTP connection before a response arrives.
+      const code = (error as { cause?: { code?: string } }).cause?.code;
+      if (code !== "ECONNRESET" && code !== "UND_ERR_SOCKET") throw error;
+    });
     check("analytics body is capped in bytes, not characters", (await db.collection("events").countDocuments()) === rawBefore && Buffer.byteLength(multi) > 4096);
   }
 
@@ -543,6 +548,7 @@ try {
     const save = () => b.fetch("/api/progress", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ exerciseId: "first-steps/hello-world", code: "x" }) });
     const first = await save();
     await db.collection("tutor_spend").insertOne({ key: `u:${delId.toHexString()}:2099-01-01`, micro: 5, createdAt: new Date() });
+    await db.collection("tutor_reservations").insertOne({ userId: delId.toHexString(), amount: 5, keys: [], state: "settled", createdAt: new Date() });
     await db.collection("xp_events").insertOne({ userId: delId, exerciseId: "x", xp: 1 });
     const del = await b.submit("/settings", { confirm: "delete my account", password: PASSWORD }, "Permanently delete account");
     void del;
@@ -550,8 +556,9 @@ try {
       ["users", "sessions", "progress", "tutor_threads", "xp_events", "achievements", "reviews", "review_events", "password_resets", "email_verifications", "pending_2fa"].map(async (c) => [c, await db.collection(c).countDocuments(c === "users" ? { _id: delId } : { userId: delId })] as const),
     );
     const spend = await db.collection("tutor_spend").countDocuments({ key: { $regex: `^u:${delId.toHexString()}:` } });
+    const reservations = await db.collection("tutor_reservations").countDocuments({ userId: delId.toHexString() });
     check("the first autosave worked (precondition)", first.status === 200, String(first.status));
-    check("account deletion leaves no rows for the user, including tutor_spend", counts.every(([, n]) => n === 0) && spend === 0, JSON.stringify(counts.filter(([, n]) => n)) + ` spend=${spend}`);
+    check("account deletion leaves no rows for the user, including tutor accounting", counts.every(([, n]) => n === 0) && spend === 0 && reservations === 0, JSON.stringify(counts.filter(([, n]) => n)) + ` spend=${spend} reservations=${reservations}`);
     const late = await save();
     check("a late autosave with the old cookie is refused (401)", late.status === 401, String(late.status));
     check("…and recreates no progress row", (await db.collection("progress").countDocuments({ userId: delId })) === 0);

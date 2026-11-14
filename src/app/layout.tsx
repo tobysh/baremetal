@@ -7,6 +7,7 @@ import { InlineScript } from "@/components/inline-script";
 import { ServiceWorker } from "@/components/service-worker";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { THEME_COLORS } from "@/lib/theme-colors";
 import { themeInitScript } from "@/components/theme-toggle";
 import { SITE } from "@/lib/site";
 import { Suspense } from "react";
@@ -52,8 +53,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0e1013" },
-    { media: "(prefers-color-scheme: light)", color: "#fbfaf7" },
+    { media: "(prefers-color-scheme: dark)", color: THEME_COLORS.dark.bg },
+    { media: "(prefers-color-scheme: light)", color: THEME_COLORS.light.bg },
   ],
 };
 

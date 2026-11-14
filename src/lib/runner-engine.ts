@@ -12,10 +12,17 @@ import { tmpdir, homedir, userInfo } from "node:os";
 import path from "node:path";
 import type { Exercise, Language } from "./curriculum/types";
 import { runnerResources } from "./runner-resources";
-import { VERDICT_PRELUDE, compareTranscripts, parseTranscript, type Transcript } from "./verdict";
+import { VERDICT_PRELUDE, compareTranscripts, parseTranscript, verdictReferenceKey, type Transcript } from "./verdict";
 
 const MAX_OUTPUT = 64 * 1024;
 const MAX_RECORDS = 4 * 1024 * 1024;
+function runnerFailure(event: string, error: unknown, phase?: "compile" | "run") {
+  // Error messages, paths and command arguments may contain source or secrets.
+  // Restrict operational logs to the event, errno and execution phase.
+  const code = (error as NodeJS.ErrnoException | undefined)?.code;
+  console.error(JSON.stringify({ event, errorCode: typeof code === "string" ? code : "unknown", ...(phase ? { phase } : {}) }));
+}
+
 const COMPILE_TIMEOUT_MS = 20_000;
 // Go has no precompiled standard library in this toolchain, so the first build in a fresh
 // sandbox compiles what it imports (about 3 s wall, 25 s CPU across cores). Give it its own budget.
@@ -368,6 +375,7 @@ async function execUnslotted(work: string, cmd: string[], opts: ExecOpts): Promi
         settled = true;
         clearTimeout(timer);
         signal?.removeEventListener("abort", abort);
+        runnerFailure("runner_sandbox_start_failed", error, opts.artifact ? "compile" : "run");
         stderr += `Sandbox could not start: ${error.message}`;
         resolve({ stdout, stderr, code: 1, signal: null, timedOut, truncated, ms: Date.now() - started });
       });
@@ -378,7 +386,10 @@ async function execUnslotted(work: string, cmd: string[], opts: ExecOpts): Promi
         signal?.removeEventListener("abort", abort);
         if (opts.artifact && code === 0 && binarySize <= 64 * MB) {
           try { await writeFile(path.join(work, opts.artifact), Buffer.concat(binary), { mode: 0o700 }); }
-          catch (error) { stderr += String(error); code = 1; }
+          catch (error) {
+            runnerFailure("runner_artifact_write_failed", error, "compile");
+            stderr += String(error); code = 1;
+          }
         }
         resolve({ stdout, stderr, code, signal: childSignal, timedOut, truncated, ms: Date.now() - started, ...(opts.seed ? { records } : {}) });
       });
@@ -597,11 +608,17 @@ function kernelCrash(r: KernelRun): string | null {
 
 
 async function withWorkdir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
-  const dir = await mkdtemp(path.join(tmpdir(), "bm-run-"));
+  const dir = await mkdtemp(path.join(tmpdir(), "bm-run-")).catch((error) => {
+    runnerFailure("runner_workdir_create_failed", error);
+    throw error;
+  });
   try {
     return await fn(dir);
   } finally {
-    await rm(dir, { recursive: true, force: true });
+    await rm(dir, { recursive: true, force: true }).catch((error) => {
+      runnerFailure("runner_workdir_cleanup_failed", error);
+      throw error;
+    });
   }
 }
 
@@ -1005,7 +1022,7 @@ export function testExercise(exercise: Exercise, code: string, opts: { seed?: Bu
       if (exercise.mode === "stdout") return testStdout(dir, exercise, code);
       const tampering = harnessTampering(code, exercise.language);
       if (tampering) return { compiled: true, compileOutput: "", results: [], allPassed: false, output: "", error: tampering };
-      if (exercise.driver && exercise.language === "c") return testVerdict(dir, exercise, code, opts.seed ?? randomBytes(16));
+      if (exercise.driver && (exercise.language === "c" || exercise.language === "asm")) return testVerdict(dir, exercise, code, opts.seed ?? randomBytes(16));
       const result = await runHarness(dir, exercise, code);
       if (!result.allPassed) return result;
       // Every reported result must match what the harness really emits, so one forged PASS
@@ -1203,7 +1220,7 @@ async function runCHarness(dir: string, nonce: string, build: () => ReturnType<t
   return { compiled: true, compileOutput, results, allPassed, output: [...userOutput, r.stderr.trim()].filter(Boolean).join("\n"), error: error ?? (!valid ? TESTS_INCOMPLETE : null), ...(r.timedOut ? { timedOut: true } : {}) };
 }
 
-// ---------- Out-of-process verdict (C lessons with a driver.c) ----------
+// ---------- Out-of-process verdict (C/assembly lessons with a driver.c) ----------
 
 // The learner's file is compiled alone, in a directory holding nothing else, to an object; the
 // driver (VERDICT_PRELUDE + driver.c) is its own translation unit, built once per lesson together
@@ -1218,7 +1235,8 @@ const DRIVER_FLAGS = ["-std=c17", "-Wall", "-Wextra", "-O1", "-fno-builtin", "-f
 const driverSource = (driver: string) => `${VERDICT_PRELUDE}\n#line 1 "driver.c"\n${driver}\n`;
 
 function verdictReference(ex: Exercise): Promise<VerdictReference> {
-  const key = createHash("sha256").update(VERDICT_PRELUDE).update("\0").update(ex.driver ?? "").update("\0").update(ex.solution).digest("hex");
+  if (ex.language !== "c" && ex.language !== "asm") return Promise.resolve({ ok: false, reason: "Independent drivers are supported only for C and assembly." });
+  const key = verdictReferenceKey(ex);
   let hit = referenceCache.get(key);
   if (hit) {
     referenceCache.delete(key);
@@ -1229,8 +1247,9 @@ function verdictReference(ex: Exercise): Promise<VerdictReference> {
     await writeFile(path.join(dir, "driver.c"), driverSource(ex.driver ?? ""));
     const d = await exec(dir, ["gcc", ...DRIVER_FLAGS, "-c", "driver.c", "-o", "driver.o"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "driver.o" });
     if (d.code !== 0) return { ok: false, reason: `driver.c does not compile:\n${cleanCompilerOutput(d.stderr + d.stdout)}` };
-    await writeFile(path.join(dir, "main.c"), ex.solution);
-    const p = await exec(dir, ["sh", "-c", `gcc ${C_FLAGS.join(" ")} -Dmain=__bm_student_main -c main.c -o main.o && gcc -fsanitize=undefined main.o driver.o -o prog -lm`], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "prog" });
+    const object = await compileVerdictObject(dir, ex.language, ex.solution);
+    if (object.code !== 0) return { ok: false, reason: `the reference solution does not compile:\n${cleanCompilerOutput(object.stderr + object.stdout)}` };
+    const p = await linkVerdictProgram(dir, ex.language);
     if (p.code !== 0) return { ok: false, reason: `the reference solution does not build with the driver:\n${cleanCompilerOutput(p.stderr + p.stdout)}` };
     return { ok: true, driverObject: await readFile(path.join(dir, "driver.o")), program: await readFile(path.join(dir, "prog")) };
   })).catch((error: unknown): VerdictReference => ({ ok: false, reason: String(error) }));
@@ -1270,20 +1289,34 @@ export async function referenceTranscript(ex: Exercise, seed: Buffer): Promise<{
 
 const REFERENCE_UNAVAILABLE = "This lesson's checks could not be prepared right now, so your code wasn't judged. Try again in a moment.";
 
+/** The learner's source is compiled before the work directory contains any driver material. */
+async function compileVerdictObject(dir: string, language: Language, code: string): Promise<Exec> {
+  const source = language === "asm" ? "starter.s" : "main.c";
+  await writeFile(path.join(dir, source), code);
+  const flags = language === "asm" ? ["-Wa,--noexecstack"] : [...C_FLAGS, "-Dmain=__bm_student_main"];
+  return exec(dir, ["gcc", ...flags, "-c", source, "-o", "main.o"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "main.o" });
+}
+
+async function linkVerdictProgram(dir: string, language: Language): Promise<Exec> {
+  // Assembly may use absolute references. UBSan instruments C code only; it cannot instrument assembly.
+  const flags = language === "asm" ? ["-no-pie", "-Wl,-z,noexecstack"] : ["-fsanitize=undefined"];
+  return exec(dir, ["gcc", ...flags, "main.o", "driver.o", "-o", "prog", "-lm"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "prog" });
+}
+
 async function testVerdict(dir: string, ex: Exercise, code: string, seed: Buffer): Promise<TestResult> {
   const fail = (compiled: boolean, compileOutput: string, error: string): TestResult => ({ compiled, compileOutput, results: [], allPassed: false, output: "", error });
+  if (ex.language !== "c" && ex.language !== "asm") return fail(true, "", REFERENCE_UNAVAILABLE);
   // 1. The learner's object, built where nothing but main.c exists (no driver, no solution).
-  await writeFile(path.join(dir, "main.c"), code);
-  const c = await exec(dir, ["gcc", ...C_FLAGS, "-Dmain=__bm_student_main", "-c", "main.c", "-o", "main.o"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "main.o" });
+  const c = await compileVerdictObject(dir, ex.language, code);
   let compileOutput = cleanCompilerOutput(c.stderr + c.stdout);
   if (c.code !== 0) return fail(false, compileOutput, c.timedOut ? "Compilation took too long." : "Your code didn't compile.");
   // 2. The driver object and the reference program (cached per lesson content).
   const ref = await verdictReference(ex);
   if (!ref.ok) return fail(true, compileOutput, REFERENCE_UNAVAILABLE);
   // 3. Link. Only objects are present, so learner text can't read the driver source here either.
-  await rm(path.join(dir, "main.c"), { force: true });
+  await rm(path.join(dir, ex.language === "asm" ? "starter.s" : "main.c"), { force: true });
   await writeFile(path.join(dir, "driver.o"), ref.driverObject);
-  const l = await exec(dir, ["gcc", "-fsanitize=undefined", "main.o", "driver.o", "-o", "prog", "-lm"], { timeoutMs: COMPILE_TIMEOUT_MS, limits: compileLimits(), artifact: "prog" });
+  const l = await linkVerdictProgram(dir, ex.language);
   compileOutput = [compileOutput, cleanCompilerOutput(l.stderr + l.stdout).replace(/^.*\bin function `bm_driver_':\n?/gm, "")].filter(Boolean).join("\n");
   if (l.code !== 0) {
     const missing = [...compileOutput.matchAll(/undefined reference to `(\w+)'/g)].map((m) => m[1]);
@@ -1375,12 +1408,18 @@ async function testRustHarness(dir: string, ex: Exercise, code: string): Promise
 }
 
 export async function cleanupStaleWorkdirs() {
-  const entries = await readdir(tmpdir()).catch(() => [] as string[]);
+  const entries = await readdir(tmpdir()).catch((error) => {
+    runnerFailure("runner_workdir_scan_failed", error);
+    return [] as string[];
+  });
   const cutoff = Date.now() - 15 * 60_000;
   await Promise.all(entries.filter((e) => e.startsWith("bm-run-")).map(async (e) => {
     const dir = path.join(tmpdir(), e);
     try {
       if (statSync(dir).mtimeMs < cutoff) await rm(dir, { recursive: true, force: true });
-    } catch { /* Another server may already have cleaned this directory. */ }
+    } catch (error) {
+      // Another worker may have already removed it; other failures need recovery.
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") runnerFailure("runner_stale_workdir_cleanup_failed", error);
+    }
   }));
 }

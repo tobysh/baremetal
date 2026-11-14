@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { SITE } from "@/lib/site";
+import { THEME_COLORS } from "@/lib/theme-colors";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -12,8 +13,8 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "any",
     categories: ["education"],
     display: "standalone",
-    background_color: "#0e1013",
-    theme_color: "#0e1013",
+    background_color: THEME_COLORS.dark.bg,
+    theme_color: THEME_COLORS.dark.bg,
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icon-512.png", sizes: "512x512", type: "image/png" },

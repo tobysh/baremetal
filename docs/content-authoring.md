@@ -10,12 +10,13 @@ content/
     track.json              course metadata
     <NN>-<slug>/            lesson folders, ordered by the NN prefix
       lesson.md             frontmatter + the lesson body (markdown)
+      learning.json         optional authored objectives, prior knowledge and concept IDs
       task.md               what the learner must write
       hints.md              progressive hints, separated by lines containing only ===
       starter.<ext>         what the editor starts with
       solution.<ext>        reference solution (server-only)
       tests.<ext>           hidden harness  — or —  cases.json for stdout lessons
-                            — or —  driver.c (C only; out-of-process verdict, see below)
+                            — or —  driver.c (C/assembly; external transcript verdict, see below)
       challenge.md          optional harder variant (see below)
       challenge-starter.<ext>, challenge-solution.<ext>, challenge-tests.<ext> | challenge-cases.json
   legal/                    Terms, Privacy and Cookie notices (rendered at /terms, /privacy, /cookies)
@@ -65,6 +66,55 @@ Lesson body in markdown…
 - `id` is `<track>/<slug>` by convention, where the slug is the folder name without its `NN-` prefix. It is the progress key, so treat it as permanent.
 - A **review** lesson consolidates earlier material: no new concepts, familiar ideas combined with small twists, usually `easy` or `medium`, titled `Review: …`.
 - Teach before you test: the body explains the idea with small examples before the task asks for anything. Use second person, short paragraphs, and runnable snippets.
+
+## Optional `learning.json`
+
+A lesson may add `learning.json` beside `lesson.md` to make its teaching intent
+explicit without changing its exercise or saved-code format:
+
+```json
+{
+  "objectives": ["Trace the value reached through a pointer after an assignment."],
+  "prerequisites": ["Declare an integer variable and call a function."],
+  "concepts": ["c.pointer-addresses", "c.pointer-dereference"]
+}
+```
+
+Each field is optional, but the file must contain at least one. Present fields
+must be non-empty arrays of non-blank, distinct strings. Surrounding whitespace
+is trimmed; unknown fields, malformed JSON and invalid concept IDs fail loading
+for published lessons. Draft lessons and courses remain excluded before their
+metadata is loaded. Existing lessons need no sidecar and retain their current
+shape. No lesson IDs, difficulty, XP or progress records change.
+
+- **Objectives** describe observable things the learner should be able to do.
+  Prefer "trace", "predict", "debug" or "implement" over "understand". A coding
+  pass does not establish an explanation objective unless that explanation is
+  assessed separately.
+- **Prerequisites** name prior knowledge in plain language. They are authoring
+  guidance, not access restrictions or assumptions that a learner has mastered
+  an earlier lesson.
+- **Concepts** map the lesson to stable, lowercase namespaced IDs. Use periods
+  between namespace segments and hyphens within words, for example
+  `c.pointer-addresses`; a single tag such as `pointers` is not a concept ID.
+  Reuse an existing concept's ID rather than inventing a synonym. Do not rename
+  an ID when changing a lesson title. These mappings are not persisted mastery
+  scores or evidence that a learner has retained or transferred a skill.
+
+The first mappings define `c.pointer-addresses` (pointer values as addresses),
+`c.pointer-dereference` (reading or writing through a pointer), `c.pass-by-value`
+(copied arguments), `c.array-indexing` (locating contiguous elements),
+`c.array-decay` (array expressions becoming element pointers), and
+`c.array-bounds` (keeping accesses within the available elements).
+
+When authoring or revising a lesson, review objectives and prerequisites alongside
+the explanation, real-world relevance, worked example, guided and independent
+practice, common misconceptions, retrieval question and optional transfer task.
+Use the parts that help teach this lesson; there are no mandatory word counts
+or requirements to repeat sections a short lesson does not need. Prioritise
+advanced lessons that assume unexplained knowledge before adding more content.
+Review the resulting teaching with learners; metadata alone does not validate
+educational quality or learning outcomes.
 
 ## `task.md` and `hints.md`
 
@@ -116,11 +166,11 @@ Write harnesses so that:
 - **Expected values are independent.** Prefer fixed vectors or a separate reference over comparing two things the learner wrote.
 - The starter must **compile but fail**; the solution must pass every test.
 
-### Drivers: out-of-process verdict (C)
+### Drivers: external transcript verdict (C and assembly)
 
-A C harness lesson can ship `driver.c` instead of `tests.c`. Prefer it for new C lessons and when you rewrite one: a `tests.c` decides pass or fail inside the learner's process, which a determined learner can forge (`docs/security.md`, L1); a driver never decides anything. It calls the learner's functions and records what went in and what came out; the runner links the same driver with `solution.c`, runs both with the same fresh random seed in separate sandboxes, and compares the two record streams. A check passes when the learner's records equal the reference's. You never write expected values.
+A C or assembly harness lesson can ship `driver.c` instead of `tests.c`. Prefer it for new C/assembly function exercises and when you rewrite one: a `tests.c` decides pass or fail inside the learner's process, which a determined learner can forge (`docs/security.md`, L1); a driver never decides anything. It calls the learner's functions and records what went in and what came out; the runner links the same driver with the reference solution, runs learner and reference programs with the same fresh random seed in separate sandboxes, and compares the two record streams. A check passes when the learner's records equal the reference's. You never write expected values.
 
-The driver is its own translation unit, linked with the learner's object (their `main` is renamed). It can't see the learner's declarations, so it declares the functions it calls, and any struct it passes, itself, exactly as the starter does. The runner prepends a prelude (`VERDICT_PRELUDE` in `src/lib/verdict.ts`) that provides:
+The driver is its own C translation unit, linked with the learner's object (C `main` is renamed). It can't see the learner's declarations, so it declares the functions it calls, and any struct it passes, itself, exactly as the starter does. For assembly it declares the existing exported System V function ABI with `extern`; the assembly source is assembled alone before driver material is placed in its directory. Assembly links without PIE so existing absolute references remain valid. UBSan can instrument C learner code, but does not instrument assembly. This is external verification of recorded behavior, not memory isolation between the adapter and learner functions. The runner prepends a prelude (`VERDICT_PRELUDE` in `src/lib/verdict.ts`) that provides:
 
 | Macro | Meaning |
 |---|---|

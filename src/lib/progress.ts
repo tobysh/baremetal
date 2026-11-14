@@ -4,7 +4,7 @@ import { ObjectId } from "mongodb";
 import { getDb } from "./db";
 import { REVIEW_INTERVALS_DAYS } from "./progress-constants";
 import { dueAfter } from "./review-math";
-import { codingRating, logReviewEvent } from "./review-events";
+import { codingRating, reviewEvent, reviewWithRecoveredEvent, updateReviewWithEvent } from "./review-events";
 import { challengeXpFor, isChallengeId, isPracticeId, practiceXpFor, xpFor, type Difficulty } from "./gamification";
 import type { ProgressDoc, ReviewDoc, TutorThreadDoc, XpEventDoc } from "./models";
 
@@ -92,7 +92,9 @@ export async function recordAttempt(o: AttemptInput): Promise<AttemptOutcome> {
   if (!o.challenge && !o.practice) {
     const thread = await db.collection<TutorThreadDoc>("tutor_threads").findOne({ userId, lessonId: o.exerciseId }, { projection: { messages: 1 } });
     const askedTutor = after?.tutorUsed || (thread?.messages ?? []).some((m) => m.role === "user");
-    unaided = hintsUsed === 0 && !askedTutor && (attempts >= 2 || o.difficulty === "hard" || o.difficulty === "impossible");
+    // Unaided records assistance, not speed or number of submissions. First-try
+    // recognition uses attemptsAtPass separately; deliberate failure earns no advantage.
+    unaided = hintsUsed === 0 && !askedTutor;
   }
   const flipped = await c.updateOne(
     { ...filter, status: { $ne: "passed" } },
@@ -198,17 +200,14 @@ async function scheduleFirstReview(userId: ObjectId, exerciseId: string, now: Da
 /** A passed review moves the next one further out. Only counts when the review was actually due, so it cannot be farmed. */
 export async function recordReviewPass(userId: string, exerciseId: string): Promise<boolean> {
   const now = new Date();
-  const reviews = (await getDb()).collection<ReviewDoc>("reviews");
-  const doc = await reviews.findOne({ userId: new ObjectId(userId), exerciseId });
+  const db = await getDb();
+  const doc = await reviewWithRecoveredEvent(db, new ObjectId(userId), exerciseId);
   if (!doc || doc.dueAt > now) return false;
   const next = REVIEW_INTERVALS_DAYS[Math.min(REVIEW_INTERVALS_DAYS.indexOf(doc.interval) + 1, REVIEW_INTERVALS_DAYS.length - 1)] ?? REVIEW_INTERVALS_DAYS[0];
-  const res = await reviews.updateOne(
-    { _id: doc._id, dueAt: { $lte: now } },
+  const event = reviewEvent({ userId: doc.userId, exerciseId, source: "coding", before: doc, intervalAfter: next, now, correct: true, rating: codingRating(doc.hintsInReview) });
+  return updateReviewWithEvent(db, doc, event,
     { $set: { interval: next, dueAt: dueAfter(now, next), lastAt: now }, $inc: { count: 1 }, $unset: { hintsInReview: "" } },
   );
-  if (res.modifiedCount !== 1) return false;
-  await logReviewEvent({ userId: doc.userId, exerciseId, source: "coding", before: doc, intervalAfter: next, now, correct: true, rating: codingRating(doc.hintsInReview) });
-  return true;
 }
 
 /** "I need a refresher": start the schedule again from the shortest interval. */

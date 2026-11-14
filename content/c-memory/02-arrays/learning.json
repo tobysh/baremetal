@@ -1,0 +1,12 @@
+{
+  "objectives": [
+    "Trace array indexing and pointer arithmetic through contiguous elements.",
+    "Pass an array's length separately from its pointer when calling a function.",
+    "Use bounded loops to compute an array's sum and maximum without accessing past its end."
+  ],
+  "prerequisites": [
+    "Use a loop and a conditional to inspect multiple values.",
+    "Distinguish a pointer from the value it points to."
+  ],
+  "concepts": ["c.array-indexing", "c.array-decay", "c.array-bounds"]
+}

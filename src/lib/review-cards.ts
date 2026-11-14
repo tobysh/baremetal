@@ -4,7 +4,7 @@ import { getDb } from "./db";
 import type { Lesson } from "./curriculum/types";
 import type { ReviewDoc, ReviewEventDoc } from "./models";
 import { REVIEW_INTERVALS_DAYS } from "./progress-constants";
-import { cardRating, logReviewEvent } from "./review-events";
+import { cardRating, logReviewEvent, reviewEvent, reviewWithRecoveredEvent, updateReviewWithEvent } from "./review-events";
 import { DAY, dueAfter, startOfLocalDay } from "./review-math";
 
 
@@ -28,18 +28,18 @@ export type CardOutcome = { correct: boolean; partial?: { right: number; total: 
  */
 export async function settleReviewCard(userId: string, exerciseId: string, outcome: CardOutcome): Promise<ObjectId | null> {
   const now = new Date();
-  const reviews = (await getDb()).collection<ReviewDoc>("reviews");
-  const doc = await reviews.findOne({ userId: new ObjectId(userId), exerciseId });
+  const db = await getDb();
+  const doc = await reviewWithRecoveredEvent(db, new ObjectId(userId), exerciseId);
   if (!doc || doc.dueAt > now) return null;
   const next = outcome.correct
     ? REVIEW_INTERVALS_DAYS[Math.min(REVIEW_INTERVALS_DAYS.indexOf(doc.interval) + 1, REVIEW_INTERVALS_DAYS.length - 1)] ?? REVIEW_INTERVALS_DAYS[0]
     : REVIEW_INTERVALS_DAYS[0];
-  const res = await reviews.updateOne({ _id: doc._id, dueAt: { $lte: now } }, { $set: { interval: next, dueAt: dueAfter(now, next), lastAt: now } });
-  if (res.modifiedCount !== 1) return null;
-  return logReviewEvent({
+  const event = reviewEvent({
     userId: doc.userId, exerciseId, source: "card", before: doc, intervalAfter: next, now,
     correct: outcome.correct, partial: outcome.partial, rating: cardRating(outcome.correct, outcome.partial), questionIndex: outcome.questionIndex,
   });
+  const moved = await updateReviewWithEvent(db, doc, event, { $set: { interval: next, dueAt: dueAfter(now, next), lastAt: now } });
+  return moved ? event._id : null;
 }
 
 /**
@@ -48,13 +48,11 @@ export async function settleReviewCard(userId: string, exerciseId: string, outco
  */
 export async function skipReview(userId: string, exerciseId: string, timeZone: string | null | undefined): Promise<boolean> {
   const now = new Date();
-  const reviews = (await getDb()).collection<ReviewDoc>("reviews");
-  const doc = await reviews.findOne({ userId: new ObjectId(userId), exerciseId });
+  const db = await getDb();
+  const doc = await reviewWithRecoveredEvent(db, new ObjectId(userId), exerciseId);
   if (!doc || doc.dueAt > now) return false;
-  const res = await reviews.updateOne({ _id: doc._id, dueAt: { $lte: now } }, { $set: { dueAt: startOfLocalDay(now, timeZone ?? undefined, 1) } });
-  if (res.modifiedCount !== 1) return false;
-  await logReviewEvent({ userId: doc.userId, exerciseId, source: "skip", before: doc, intervalAfter: doc.interval, now, correct: null });
-  return true;
+  const event = reviewEvent({ userId: doc.userId, exerciseId, source: "skip", before: doc, intervalAfter: doc.interval, now, correct: null });
+  return updateReviewWithEvent(db, doc, event, { $set: { dueAt: startOfLocalDay(now, timeZone ?? undefined, 1) } });
 }
 
 /** How long after a missed card its retry can still be answered. */
@@ -69,6 +67,8 @@ export async function logRetry(userId: string, exerciseId: string, deckSize: num
   const now = new Date();
   const db = await getDb();
   const uid = new ObjectId(userId);
+  // A missed card may have moved its schedule before history insertion failed.
+  await reviewWithRecoveredEvent(db, uid, exerciseId);
   const miss = await db.collection<ReviewEventDoc>("review_events").findOne(
     { userId: uid, exerciseId, source: "card", correct: false, at: { $gte: new Date(now.getTime() - RETRY_WINDOW_MS) } },
     { sort: { at: -1 } },

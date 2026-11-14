@@ -95,7 +95,7 @@ export type ProgressDoc = {
   /** Snapshots taken on first pass; they decide the Unaided seal and some achievements. */
   hintsUsedAtPass?: number;
   attemptsAtPass?: number;
-  /** Passed without hints or the tutor, after at least one failed run (or on a hard lesson). Cosmetic. */
+  /** Passed without hints or the tutor; independent of difficulty and attempt count. Cosmetic. */
   unaided?: boolean;
 };
 
@@ -109,6 +109,8 @@ export type ReviewDoc = {
   _id: ObjectId; userId: ObjectId; exerciseId: string; dueAt: Date; interval: number; lastAt: Date; count: number;
   /** Highest hint number opened during the current coding review (reset when the review settles). */
   hintsInReview?: number;
+  /** Durable event outbox written atomically with a schedule change; removed after history persistence. */
+  pendingEvent?: ReviewEventDoc;
 };
 
 export type ReviewRating = "again" | "hard" | "good" | "easy";

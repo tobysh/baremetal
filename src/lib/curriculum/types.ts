@@ -1,5 +1,6 @@
 import type { Difficulty } from "../gamification";
 import type { Practice } from "./practice";
+import type { LessonLearning } from "./learning-metadata";
 
 export type Language = "c" | "rust" | "asm" | "go" | "kernel";
 
@@ -26,7 +27,7 @@ export type Exercise = {
   cases?: StdoutCase[];
   /** C: code using CHECK(name, cond, fmt, ...) with its own main(). Rust: #[test] functions. asm: C file (tests.c) declaring the learner's functions extern. Go: a bm_test.go file (package main, with its own imports) of TestXxx functions. */
   harness?: string;
-  /** C only: a `driver.c` (src/lib/verdict.ts) that replaces `harness`. It calls the learner's functions with fixed and seeded inputs and the runner compares its records with the reference solution's. Server-only, like `solution`. */
+  /** C/assembly: a `driver.c` (src/lib/verdict.ts) that replaces `harness`. It calls the learner's functions with fixed and seeded inputs and the runner compares its records with the reference solution's. Server-only, like `solution`. */
   driver?: string;
   hints: string[];
 };
@@ -42,6 +43,8 @@ export type Lesson = {
   kind: "lesson" | "review";
   /** Lowercase kebab-case topic tags, from `tags:` in the frontmatter (comma-separated). */
   tags: string[];
+  /** Optional authored objectives, prior knowledge and concept mappings; not learner mastery. */
+  learning?: LessonLearning;
   /** Lesson body (markdown). */
   body: string;
   exercise: Exercise;

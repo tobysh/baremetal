@@ -23,6 +23,9 @@ export async function register() {
     if (missing.length) {
       throw new Error(`Production configuration is incomplete:\n - ${missing.join("\n - ")}\nSee docs/deployment-hardening.md.`);
     }
+    if (process.env.SHELL_BROKER_SOCKET && process.env.SHELL_HOST_VERIFIED !== "1") {
+      console.warn("[shell] production access disabled: complete host validation before setting SHELL_HOST_VERIFIED=1 (docs/shell-deployment.md).");
+    }
   }
   const { assertRunnerConfiguration } = await import("./lib/runner-client");
   assertRunnerConfiguration();
@@ -36,5 +39,23 @@ export async function register() {
   const settle = () => reconcilePendingXp().catch((error) => console.error("[xp] pending-XP reconciliation failed", error));
   void settle();
   setInterval(settle, 10 * 60_000).unref();
+  // Schedule changes retain their history event until its independent write succeeds.
+  const { reconcilePendingReviewEvents } = await import("./lib/review-events");
+  const recoverReviews = () => reconcilePendingReviewEvents().then((report) => {
+    if (report.recovered || report.failed) console.log(JSON.stringify({ event: "review_event_reconciliation", ...report }));
+  }).catch((error) => console.error("[review] event reconciliation failed", error));
+  void recoverReviews();
+  setInterval(recoverReviews, 10 * 60_000).unref();
+  const { getDb } = await import("./lib/db");
+  const { reconcileTutorReservations } = await import("./lib/tutor-budget");
+  const recoverTutorBudget = async () => {
+    try {
+      const report = await reconcileTutorReservations(await getDb());
+      if (report.settled || report.failed) console.log(JSON.stringify({ event: "tutor_budget_reconciliation", ...report }));
+    }
+    catch (error) { console.error("[tutor-budget] reservation reconciliation failed", error); }
+  };
+  void recoverTutorBudget();
+  setInterval(recoverTutorBudget, 10 * 60_000).unref();
   console.log(`[boot] TRUSTED_PROXY_HOPS=${process.env.TRUSTED_PROXY_HOPS ?? "(unset, dev)"}`);
 }

@@ -3,10 +3,10 @@
 //   npm run restore-db -- <backup-dir> --verify
 // Refuses to restore into a database that already contains documents unless --force
 // is given (--force drops the collections present in the backup first). Stop the site first.
-// --verify restores into a throwaway database, compares per-collection counts, drops it.
+// --verify restores into a throwaway database, compares counts and available content digests, drops it.
 import path from "node:path";
 import type { MongoClient } from "mongodb";
-import { compareCounts, connect, countAll, dbName, loadInto, readManifest, verifyBackup } from "./lib/backup.mjs";
+import { compareCounts, connect, countAll, dbName, loadInto, readManifest, validateBackup, verifyBackup } from "./lib/backup.mjs";
 
 const args = process.argv.slice(2);
 const di = args.indexOf("--db");
@@ -21,6 +21,7 @@ const src = path.resolve(dir);
 let client: MongoClient | undefined;
 try {
   const manifest = await readManifest(src);
+  await validateBackup(src, manifest); // Includes gzip/JSON checks for legacy backups, before any target drops.
   client = await connect();
   if (args.includes("--verify")) {
     const { problems, table } = await verifyBackup(client, src);
@@ -28,7 +29,7 @@ try {
     if (problems.length) {
       console.error("VERIFY FAILED:\n  " + problems.join("\n  "));
       process.exitCode = 1;
-    } else console.log("Verify OK: counts match (throwaway database dropped).");
+    } else console.log(`Verify OK: counts${Object.values(manifest.collections).every((info) => info.documentsSha256) ? " and BSON content digests" : " (legacy backup; content digests unavailable)"} match (throwaway database dropped). This does not establish snapshot consistency.`);
   } else {
     const db = client.db(target);
     const existing = await countAll(db);

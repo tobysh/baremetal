@@ -57,5 +57,6 @@ export async function deleteUserData(user: Pick<UserDoc, "_id" | "email">) {
     db.collection("pending_2fa").deleteMany({ userId: id }),
     deleteTutorUsage(db, id.toHexString()),
     db.collection("tutor_spend").deleteMany({ key: { $regex: `^u:${id.toHexString()}:` } }),
+    db.collection("tutor_reservations").deleteMany({ userId: id.toHexString() }),
   ]);
 }

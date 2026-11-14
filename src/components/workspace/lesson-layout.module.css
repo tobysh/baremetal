@@ -7,6 +7,10 @@
 .panes { display: grid; gap: 1.5rem; }
 .reading, .workspace { min-width: 0; }
 .layout[data-view="lesson"] .workspace, .layout[data-view="code"] .reading { display: none; }
+@media (max-width: 1023.98px) {
+  .toolbar { position: sticky; top: calc(4rem + 1px); z-index: 30; background: var(--bg); }
+  .reading :global(#task) { scroll-margin-top: 9rem; }
+}
 @media (min-width: 1024px) {
   .views { display: none; }
   .desktopControls { display: flex; gap: 1.5rem; align-items: center; margin-left: auto; }

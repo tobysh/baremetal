@@ -1,7 +1,7 @@
-import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse, type NextRequest } from "next/server";
-import { contentSecurityPolicy, inlineScripts, legacyContentSecurityPolicy, scriptHash } from "@/lib/csp";
+import { contentSecurityPolicy } from "@/lib/csp";
+import { loadShellScriptHashes } from "@/lib/csp-shells";
 import { SESSION_COOKIE } from "@/lib/session-cookie";
 
 const isDev = process.env.NODE_ENV === "development";
@@ -15,23 +15,15 @@ const PROTECTED = /^\/(dashboard|settings|admin)(\/|$)/;
 let shellHashes: Promise<string[]> | undefined;
 async function inlineScriptHashes(): Promise<string[]> {
   const root = path.join(process.cwd(), ".next", "server", "app");
-  const hashes = new Set<string>();
-  const walk = async (dir: string): Promise<void> => {
-    for (const entry of await readdir(dir, { withFileTypes: true })) {
-      const file = path.join(dir, entry.name);
-      if (entry.isDirectory()) await walk(file);
-      else if (entry.name.endsWith(".html")) for (const body of inlineScripts(await readFile(file, "utf8"))) hashes.add(scriptHash(body));
-    }
-  };
-  await walk(root).catch((error) => console.error("[csp] could not read the prerendered shells", error));
-  if (!hashes.size) console.error("[csp] no prerendered shells found: falling back to script-src 'unsafe-inline'");
-  return [...hashes].sort();
+  return loadShellScriptHashes(root).catch((error) => {
+    console.error("[csp] prerendered shell validation failed; page serving disabled. Restore the complete .next build and restart the server.", error);
+    throw error;
+  });
 }
 
 async function pagePolicy(): Promise<{ policy: string; nonce?: string }> {
   if (isDev) return { policy: contentSecurityPolicy({ dev: true }) };
   const hashes = await (shellHashes ??= inlineScriptHashes());
-  if (!hashes.length) return { policy: legacyContentSecurityPolicy() };
   const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(18))).toString("base64");
   return { policy: contentSecurityPolicy({ nonce, scriptHashes: hashes }), nonce };
 }
@@ -48,7 +40,19 @@ export async function proxy(req: NextRequest) {
   }
   // Per-request CSP. Next reads the nonce from the request's Content-Security-Policy header and
   // puts it on the scripts it streams for this request.
-  const { policy } = await pagePolicy();
+  let policy: string;
+  try {
+    ({ policy } = await pagePolicy());
+  } catch {
+    return new NextResponse("Temporarily unavailable", {
+      status: 503,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": contentSecurityPolicy(),
+      },
+    });
+  }
   const headers = new Headers(req.headers);
   headers.set("Content-Security-Policy", policy);
   const res = NextResponse.next({ request: { headers } });

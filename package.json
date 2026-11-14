@@ -12,6 +12,8 @@
     "db": "mongod --dbpath .data/db --bind_ip 127.0.0.1 --port 27017 --quiet",
     "make-admin": "tsx --env-file=.env.local scripts/make-admin.mts",
     "test:unit": "node --conditions=react-server --import tsx --test tests/unit/*.test.mts",
+    "audit:grading": "tsx scripts/security/integrity/inventory.mts",
+    "check:accounting": "node --env-file-if-exists=.env.local --import tsx scripts/accounting-health.mts",
     "check:legal": "tsx scripts/checks/legal-drift.mts",
     "test:sessions": "node --conditions=react-server --experimental-test-module-mocks --import tsx --test scripts/security/sessions.mts",
     "test:rate-limits": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/security/rate-limits.mts",

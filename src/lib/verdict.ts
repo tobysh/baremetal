@@ -1,4 +1,4 @@
-// Out-of-process verdict for C lessons that ship a `driver.c` (docs/security.md L1).
+// External transcript verdict for C/assembly lessons that ship a `driver.c` (docs/security.md L1).
 //
 // The driver is compiled as its own translation unit and linked with the learner's object. It
 // calls the learner's functions with fixed and seeded inputs and writes typed records to fd 3.
@@ -15,6 +15,8 @@
 //   E                         the driver finished
 // Types: i (signed decimal), u (unsigned decimal), f (IEEE-754 double as 16 hex digits),
 // s (`<len>:<hex>` or `-` for NULL), b (`<len>:<hex>`), ai / au (`<n>:v1,v2,...`).
+import { createHash } from "node:crypto";
+import type { Exercise } from "./curriculum/types";
 import type { TestCaseResult } from "./runner-types";
 
 /**
@@ -142,6 +144,12 @@ static BM_UNUSED_ void bm_rec_b_(char d, const char *type, const char *l, const 
 static void bm_driver_(void);
 int main(void) { bm_driver_(); bm_len_ = 0; bm_ch_('E'); bm_flush_(); return 0; }
 `;
+
+/** Language changes object compilation and linking even when source text happens to match. */
+export function verdictReferenceKey(ex: Pick<Exercise, "language" | "driver" | "solution">): string {
+  return createHash("sha256").update(ex.language).update("\0").update(VERDICT_PRELUDE).update("\0")
+    .update(ex.driver ?? "").update("\0").update(ex.solution).digest("hex");
+}
 
 export type VerdictRecord = { dir: "I" | "O"; type: string; label: string; value: string };
 export type VerdictCase = { name: string; fixed: boolean; records: VerdictRecord[] };

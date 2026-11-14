@@ -4,6 +4,7 @@ import { clientIp, ipLimit, rateLimit } from "@/lib/rate-limit";
 import { hmac } from "@/lib/crypto";
 import { sameOrigin } from "@/lib/http";
 import { createShellHandlers, type ShellHandlers } from "./web";
+import { shellBrokerSocket } from "./config";
 
 const g = globalThis as typeof globalThis & { __bmShell?: ShellHandlers };
 
@@ -20,6 +21,6 @@ export const shell = (g.__bmShell ??= createShellHandlers({
   hash: hmac,
   clientIp,
   ipLimit,
-  socketPath: () => process.env.SHELL_BROKER_SOCKET || undefined,
+  socketPath: () => shellBrokerSocket(),
   sessionCurrent: liveSessionHash,
 }));

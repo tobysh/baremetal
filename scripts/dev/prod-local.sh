@@ -39,7 +39,7 @@ export TRUSTED_PROXY_HOPS=1
 export LEGAL_ENTITY_NAME="Local Test Ltd" LEGAL_ADDRESS="1 Test Street, Testville" LEGAL_CONTACT_EMAIL="legal@example.test"
 export SMTP_URL="smtp://u:p@127.0.0.1:9/" EMAIL_FROM="Baremetal <no-reply@example.test>"
 export RUNNER_SOCKET="$SOCK"
-export E2E_ORIGIN="http://localhost:$PORT"
+export E2E_ORIGIN="https://localhost:$PORT"
 
 (echo > /dev/tcp/127.0.0.1/27017) 2>/dev/null || { echo "mongod is not running on 27017 (npm run db)" >&2; exit 1; }
 if [ "$BUILD" = 1 ]; then NODE_ENV=production npx next build; fi

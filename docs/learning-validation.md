@@ -11,6 +11,20 @@ and runner on a temporary socket, disables external tutor/email delivery, and
 cleans up processes and data. Do not point the browser suite directly at a live
 site; it only accepts the harness's scratch database names.
 
+Production regressions use an HTTPS loopback proxy with a short-lived, locally
+generated certificate (`openssl` is required). This preserves the browser's
+real Origin header and the application's production origin checks. Only the
+test subprocesses trust this certificate; the harness enables its browser
+certificate exception explicitly and removes the certificate with its scratch
+directory. The suite includes production CSP header, hydration and navigation
+checks before authenticated browser journeys.
+
+The snapshot also runs unit tests against its dependency install. By default it
+uses the workspace's `node_modules`; use `REGRESSION_NODE_MODULES=/absolute/path/to/node_modules`
+to validate a separate clean `npm ci` install without replacing a running
+developer server's dependencies. Check the reported Next.js version against the
+lockfile when interpreting a successful build.
+
 ## Observe five beginners
 
 This needs real learners and has not been performed by automated checks. Ask each

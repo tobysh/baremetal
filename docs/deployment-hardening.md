@@ -17,7 +17,7 @@ This is the single place for everything that must happen before Baremetal is exp
 
 In production (`NODE_ENV=production`) `src/instrumentation.ts` refuses to boot, and lists every problem at once, unless all of these are set: `NEXT_PUBLIC_SITE_URL` (must be `https://`; it is inlined at build time, so set it for `npm run build` too), `LEGAL_ENTITY_NAME`, `LEGAL_ADDRESS`, `LEGAL_CONTACT_EMAIL`, `SMTP_URL`, `EMAIL_FROM`, and an `AUTH_SECRET` of at least 32 characters. `TRUSTED_PROXY_HOPS` and `RUNNER_SOCKET` are enforced the same way. The hook does not run during `next build`, so CI builds need no placeholders.
 
-The same-origin check on API routes compares `Origin` only against the host of `NEXT_PUBLIC_SITE_URL` in production and never reads `X-Forwarded-Host`. Development keeps the `Host` comparison so phone and LAN testing works.
+The same-origin check on API routes compares the complete `Origin` (scheme, hostname and port) against `NEXT_PUBLIC_SITE_URL` in production and never reads `X-Forwarded-Host`. Development keeps the `Host` comparison so phone and LAN testing works.
 
 ## Per-IP limits (shared addresses)
 
@@ -94,6 +94,24 @@ db.createUser({ user: "baremetal", pwd: passwordPrompt(), roles: [{ role: "readW
 Start `mongod` with `--auth --bind_ip 127.0.0.1` (or a Unix socket), then set
 `MONGODB_URI=mongodb://baremetal:<password>@127.0.0.1:27017/baremetal?authSource=baremetal` in the root-owned environment file.
 
+### Required tutor budget index
+
+Database initialization requires the unique `tutor_spend.key` index. Tutor
+reservations use capped upserts and rely on duplicate-key rejection when a
+balance is exhausted; without uniqueness a second document could bypass the
+ceiling. If index creation fails, database initialization now rejects instead
+of exposing a connection with unenforced budget limits.
+
+On failure, check the underlying error for database permissions, availability,
+an incompatible existing index, or duplicate keys. Do not suppress the error or
+drop spend records to bring the application online. If duplicate balances exist,
+stop application writes, take and verify a backup, and inspect the affected keys
+and their recorded amounts. Reconcile them into one balance per key while
+preserving all recorded spend conservatively; choosing an arbitrary duplicate
+or resetting the amount could grant extra allowance. Keep the backup and a
+record of the repair. Recreate the unique index, verify it is unique, and only
+then restart the application. No automatic data repair or migration is performed.
+
 ## Maintenance scripts
 
 `npm run recompute-xp -- --confirm-backup` rewrites XP from progress and refuses to run without the flag; take `npm run backup-db -- --verify` first. Run it with the site **stopped**, or a pass recorded during the run can be lost or counted twice.
@@ -124,13 +142,13 @@ Delivery is at least once, so a crash after SMTP accepts a message may cause a d
 
 `src/proxy.ts` sets a per-request policy on every page: a fresh nonce plus the SHA-256 hashes of the inline scripts in the prerendered shells, with no `script-src 'unsafe-inline'` (details and the reasoning in `docs/security.md`). Deployment consequences:
 
-- Run `next start` from the project directory: the proxy reads the shells from `.next/server/app` on its first request. If it cannot, it logs `[csp] no prerendered shells found` and serves the old `'unsafe-inline'` policy; treat that log line as a deployment error.
+- Run `next start` from the project directory: the proxy reads the shells from `.next/server/app` on its first request. If a read fails or no executable shell scripts are found, pages return uncached 503 responses with a strict policy. The `[csp] prerendered shell validation failed` log includes recovery instructions. Restore the complete build and restart; production never falls back to allowing arbitrary inline scripts.
 - Do not add a `Content-Security-Policy` header in nginx (`deploy/nginx/baremetal.conf` has none; a second header is enforced as well) and do not cache HTML pages in nginx or a CDN, because a cached page would carry a stale nonce.
 - After each build, run `npx tsx scripts/security/csp-check.mts https://<site>` (add `--no-browser` where Chromium is not installed). It fails if any inline script is not covered, which is how a Next or React upgrade that adds a shell script would show up.
 
 ## Database backup and restore
 
-`npm run backup-db` writes `<BACKUP_DIR>/<db>-<UTC timestamp>/` with `manifest.json` (per-collection counts and index definitions) and one `<collection>.jsonl.gz` per collection (canonical Extended JSON, so ObjectId, Date, Long and Double types survive). It is pure Node on the `mongodb` driver, so it works where `mongodump` is not installed (it is not installed on the dev machine). It reads `MONGODB_URI` and `MONGODB_DB` exactly as the app does, never prints credentials, and refuses a `BACKUP_DIR` inside the repository. Files are mode 0600 in a 0700 directory, and a backup directory only appears once it is complete.
+`npm run backup-db` writes `<BACKUP_DIR>/<db>-<UTC timestamp>/` with a format-2 `manifest.json` (per-collection counts, index definitions, compressed-file and canonical-document SHA-256 digests) and one `<collection>.jsonl.gz` per collection. Canonical Extended JSON and disabled BSON numeric promotion preserve ObjectId, Date, Long and Double types, including explicit small Long/Double values. Index definitions also use canonical Extended JSON. It is pure Node on the `mongodb` driver, so it works where `mongodump` is not installed. It reads `MONGODB_URI` and `MONGODB_DB` exactly as the app does, never prints credentials, and refuses a `BACKUP_DIR` inside the repository. Files are mode 0600 in a 0700 directory, and a backup directory only appears once it is complete. Current readers accept existing format-1 backups; older readers reject format 2 before any restore writes, so use the current restore command for new backups.
 
 | Setting | Default |
 | --- | --- |
@@ -145,7 +163,9 @@ npm run restore-db -- <dir> --force                 # replace the backed-up coll
 npm run restore-db -- <dir> --db baremetal_copy     # restore somewhere else
 ```
 
-`--verify` restores into a throwaway database named `<db>_verify_<id>`, compares per-collection document counts with the manifest, and drops it. Restore refuses to touch a database that already holds documents unless `--force` is given. Stop the site before a real restore. Consistency note: the dump reads collections one after another without a snapshot, so it is a fuzzy point-in-time copy; fine for this app (progress and the XP ledger are idempotent upserts), but for a stricter copy run it during a quiet period or use `mongodump --oplog` on a replica set. TTL collections (`sessions`, `events`, ...) are restored with their indexes, so expired rows disappear again on their own.
+Before restore drops or writes collections, every artifact is checked for safe paths, gzip/EJSON validity, document counts and available digests. `--verify` restores into a uniquely named throwaway database, compares counts and available canonical-document digests, then drops it. Legacy format-1 backups without digests retain count-based verification; content types already lost in an old export cannot be reconstructed. Digests detect corruption, not an attacker who can also modify the manifest. Custom collection options, validators and default collations are not captured; this format is scoped to Baremetal's standard collections. TTL indexes are restored, so already-expired rows may disappear during verification.
+
+Restore refuses to touch a database that already holds documents unless `--force` is given. Stop all application, email and maintenance writers before a real restore. The export reads collections sequentially without a snapshot: an integrity check does not prove cross-collection consistency. For an authoritative standalone recovery copy, pause all writers for the backup too; a quiet period alone is not a consistency guarantee. A replica-set snapshot/oplog backup strategy is an alternative to validate separately. Preserve off-host backups and test recovery against a separate database before relying on them.
 
 **Scheduling (systemd timer).** `/etc/systemd/system/baremetal-backup.service`:
 
@@ -261,6 +281,33 @@ do not restore in-process production execution. Monitor structured runner logs
 for `runner_busy`/`runner_failure`, request duration, active/queued jobs and
 cancellations. Logs intentionally omit code, secrets and admission identities.
 
+
+## Accounting health and recovery alerts
+
+Run `npm run check:accounting` under the web environment to inspect aggregate
+accounting health. This command uses a direct database connection without index
+initialization or repair writes. It emits counts only, with no account IDs,
+emails, code or reservation keys, and exits with status 1 when attention is
+needed. Schedule it in your existing monitoring system and alert on a nonzero
+exit; a successful command does not prove that earlier history was complete.
+
+Live work is counted without triggering an alert. Attention is needed for review
+events or pending XP older than ten minutes, unfinished tutor calls older than
+one hour, settlements older than ten minutes, malformed recovery timestamps or
+states, personal spend documents whose owner no longer exists, or spend
+documents at least 8 MiB in size. Counts are observed across separate reads and
+may change during a concurrent request or account deletion; recheck before a
+manual intervention. Each database operation has a 30-second server deadline.
+
+For queued review events, fix database connectivity/permissions and allow the
+startup or periodic recovery worker to replay them; do not clear `pendingEvent`
+to hide an error. For tutor reservations, preserve the journal and markers so
+settlement remains idempotent. Unknown abandoned active calls retain their
+maximum hold conservatively; do not refund them unless upstream accounting
+establishes the actual charge. For orphaned personal balances, verify the owner
+was deleted and take a backup before targeted cleanup; retain anonymous global
+totals. Investigate document growth before raising request quotas further.
+Pending XP uses the existing `flagged-accounts` and reconciliation procedure.
 
 ## Scaling beyond one runner host (design note, not implemented)
 

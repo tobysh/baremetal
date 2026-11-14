@@ -60,7 +60,11 @@ async function headerChecks() {
 
 async function browserChecks() {
   const { chromium } = await import("playwright");
-  const b = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {});
+  const b = await chromium.launch({
+    ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {}),
+    args: process.env.BM_REGRESSION_HTTPS === "1" && process.env.BM_REGRESSION_TLS_SPKI
+      ? [`--ignore-certificate-errors-spki-list=${process.env.BM_REGRESSION_TLS_SPKI}`] : [],
+  });
   try {
     const context = await b.newContext({ baseURL: base });
     const url = new URL(base);

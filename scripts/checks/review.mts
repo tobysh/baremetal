@@ -2,7 +2,7 @@
 //   npm run check:review      (needs local MongoDB: npm run db)
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
-import { ObjectId } from "mongodb";
+import { ObjectId, type MongoClient } from "mongodb";
 
 process.env.MONGODB_DB = `bm_review_${randomBytes(6).toString("hex")}`;
 const { DAY, jitterDays, startOfLocalDay } = await import("../../src/lib/review-math");
@@ -36,6 +36,8 @@ const reviews = db.collection("reviews"), events = db.collection("review_events"
 try {
   assert.ok((await events.indexes()).some((i) => i.key.userId === 1 && i.key.at === 1), "index on { userId, at }");
   const userId = new ObjectId();
+  // Recovery must not recreate history for a deleted account.
+  await db.collection("users").insertOne({ _id: userId, email: "review-fixture@example.test" });
   const uid = userId.toHexString();
   const seed = async (exerciseId: string, interval = 7, extra = {}) => {
     const past = new Date(Date.now() - 2 * DAY);
@@ -111,5 +113,7 @@ try {
   console.log("review checks passed");
 } finally {
   await db.dropDatabase();
-  process.exit(0);
+  // Close the shared test client without overriding a failed assertion's exit status.
+  const cache = globalThis as unknown as { __mongo?: { client: MongoClient } };
+  await cache.__mongo?.client.close();
 }
