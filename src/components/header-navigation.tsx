@@ -20,6 +20,7 @@ export function HeaderNavigation({ user, rhythm = null }: { user: NavigationUser
   const links = [
     ...(user ? [{ href: "/dashboard", label: "Dashboard" }] : []),
     { href: "/learn", label: "Courses" },
+    ...(user ? [{ href: "/review", label: "Review" }] : []),
     { href: "/leaderboard", label: "Leaderboard" },
   ];
 
@@ -91,6 +92,7 @@ function RhythmDots({ goal, done }: { goal: number; done: number }) {
       {Array.from({ length: goal }, (_, i) => (
         <span key={i} aria-hidden="true" className={`h-2 w-2 rounded-full border ${i < done ? "border-accent bg-accent" : "border-muted"}`} />
       ))}
+      <span aria-hidden="true" className="ml-1 text-xs tabular-nums text-muted">{Math.min(done, goal)}/{goal}</span>
     </Link>
   );
 }
