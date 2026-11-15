@@ -152,6 +152,19 @@ export async function signOutEverywhere(_prev: FormState, formData: FormData): P
   return done(g.target, "user.revoke_sessions", "Signed out on every device.");
 }
 
+export async function revokeOneSession(_prev: FormState, formData: FormData): Promise<FormState> {
+  const g = await gate(formData);
+  if (!g.ok) return g.state;
+  const sid = String(formData.get("sessionId") ?? "");
+  if (!/^[0-9a-f]{24}$/i.test(sid)) return { message: "Unknown session." };
+  const col = (await getDb()).collection("sessions");
+  const s = await col.findOne({ _id: new ObjectId(sid), userId: g.target.user._id });
+  if (!s) return { message: "That session has already ended." };
+  // A rotated token keeps the original createdAt, so this also removes its retired predecessors.
+  await col.deleteMany({ userId: g.target.user._id, createdAt: s.createdAt });
+  return done(g.target, "user.revoke_session", "Session signed out.");
+}
+
 export async function deleteAccountAsAdmin(_prev: FormState, formData: FormData): Promise<FormState> {
   const g = await gate(formData);
   if (!g.ok) return g.state;

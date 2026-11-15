@@ -7,7 +7,7 @@ import { Card, Container, Skeleton } from "@/components/ui";
 import { getAdminUser, listAdminAudit } from "@/lib/admin";
 import { requireAdmin } from "@/lib/auth";
 import { fmt, StatusBadge } from "../../admin-ui";
-import { UserActions } from "../../user-forms";
+import { RevokeSessionForm, UserActions } from "../../user-forms";
 
 export const metadata: Metadata = { title: "Admin: account", description: "Account details and actions.", robots: { index: false, follow: false } };
 
@@ -35,7 +35,6 @@ async function UserBody({ params }: { params: PageProps<"/admin/users/[id]">["pa
     ["Joined", fmt(u.createdAt)],
     ["Last sign-in", fmt(u.lastLogin)],
     ["Two-factor", u.twoFactor ? "On" : "Off"],
-    ["Active sessions", String(u.activeSessions)],
     ["XP", u.xp.toLocaleString("en-GB")],
     ["Lessons passed", String(u.passed)],
     ["Experience", u.experience],
@@ -67,6 +66,52 @@ async function UserBody({ params }: { params: PageProps<"/admin/users/[id]">["pa
         </dl>
       </Card>
 
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card as="section" className="p-6">
+          <h2 className="display-sm font-semibold">Progress</h2>
+          {u.progress.tracks.length === 0 ? <p className="mt-3 text-sm text-muted">No track started yet.</p> : (
+            <ul className="mt-3 space-y-1 text-sm">
+              {u.progress.tracks.map((t) => (
+                <li key={t.slug} className="flex justify-between gap-4"><span>{t.title}</span><span className="text-muted">{t.passed} / {t.total} passed</span></li>
+              ))}
+            </ul>
+          )}
+          {u.progress.recent.length > 0 && (
+            <>
+              <h3 className="mt-4 text-sm font-medium">Latest activity</h3>
+              <ul className="mt-2 space-y-2 text-sm">
+                {u.progress.recent.map((r, i) => (
+                  <li key={i} className="flex flex-wrap justify-between gap-2 border-t border-border pt-2">
+                    <span><Link href={r.href} className="text-accent underline underline-offset-2">{r.title}</Link> <span className="text-muted">({r.status === "passed" ? "passed" : "attempted"})</span></span>
+                    <span className="text-muted">{fmt(r.at)}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <p className="mt-4 text-sm text-muted">Tutor questions: {u.progress.tutorQuestions}</p>
+          {u.profilePublic && u.username && <p className="mt-2 text-sm"><Link href={`/u/${u.username}`} className="text-accent underline underline-offset-2">Public profile</Link></p>}
+        </Card>
+
+        <Card as="section" className="p-6">
+          <h2 className="display-sm font-semibold">Active sessions ({u.activeSessions})</h2>
+          {u.sessions.length === 0 ? <p className="mt-3 text-sm text-muted">No active sessions.</p> : (
+            <ul className="mt-3 space-y-3 text-sm">
+              {u.sessions.map((s) => (
+                <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+                  <div>
+                    <div className="font-medium">{s.device}</div>
+                    <div className="text-muted">Signed in {fmt(s.createdAt)} · last seen {fmt(s.lastSeenAt)}</div>
+                  </div>
+                  {editable && <RevokeSessionForm userId={u.id} sessionId={s.id} />}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-3 text-xs text-muted">IP addresses are not stored with sessions; see security events for hashed addresses.</p>
+        </Card>
+      </div>
+
       <Card as="section" className="p-6">
         <h2 className="display-sm font-semibold">Actions</h2>
         <div className="mt-4">
@@ -77,6 +122,7 @@ async function UserBody({ params }: { params: PageProps<"/admin/users/[id]">["pa
       <div className="grid gap-6 lg:grid-cols-2">
         <Card as="section" className="p-6">
           <h2 className="display-sm font-semibold">Recent security events</h2>
+          <p className="mt-1 text-sm"><Link href={`/admin/security?q=${encodeURIComponent(u.email)}`} className="text-accent underline underline-offset-2">All events for this user</Link></p>
           {u.events.length === 0 ? <p className="mt-3 text-sm text-muted">Nothing in the last 90 days.</p> : (
             <ul className="mt-3 space-y-2 text-sm">
               {u.events.map((e, i) => (
@@ -90,6 +136,7 @@ async function UserBody({ params }: { params: PageProps<"/admin/users/[id]">["pa
         </Card>
         <Card as="section" className="p-6">
           <h2 className="display-sm font-semibold">Admin actions on this account</h2>
+          <p className="mt-1 text-sm"><Link href={`/admin/security?q=${encodeURIComponent(u.email)}`} className="text-accent underline underline-offset-2">All events for this user</Link></p>
           {audit.length === 0 ? <p className="mt-3 text-sm text-muted">None recorded.</p> : (
             <ul className="mt-3 space-y-2 text-sm">
               {audit.map((a, i) => (

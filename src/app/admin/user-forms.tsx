@@ -3,7 +3,7 @@
 import { useActionState, type ReactNode } from "react";
 import { Field, FormAlert, SubmitButton } from "@/components/forms";
 import { initialFormState, type FormState } from "@/lib/forms";
-import { banAccount, createAccount, deleteAccountAsAdmin, liftSuspension, lockAccount, resendVerification, sendResetLink, signOutEverywhere } from "./actions";
+import { banAccount, createAccount, deleteAccountAsAdmin, liftSuspension, lockAccount, resendVerification, revokeOneSession, sendResetLink, signOutEverywhere } from "./actions";
 
 type Act = (prev: FormState, fd: FormData) => Promise<FormState>;
 
@@ -15,6 +15,18 @@ function ActionForm({ action, userId, children, label, pending, variant = "prima
       <input type="hidden" name="userId" value={userId} />
       {children?.(state)}
       <SubmitButton pendingText={pending} variant={variant}>{label}</SubmitButton>
+    </form>
+  );
+}
+
+export function RevokeSessionForm({ userId, sessionId }: { userId: string; sessionId: string }) {
+  const [state, run] = useActionState(revokeOneSession, initialFormState);
+  return (
+    <form action={run} className="flex items-center gap-2">
+      <input type="hidden" name="userId" value={userId} />
+      <input type="hidden" name="sessionId" value={sessionId} />
+      {state.message && <span role="status" className={`text-sm ${state.ok ? "text-muted" : "text-err"}`}>{state.message}</span>}
+      <SubmitButton pendingText="Revoking…" variant="danger">Revoke</SubmitButton>
     </form>
   );
 }

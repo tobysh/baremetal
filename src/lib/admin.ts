@@ -232,6 +232,7 @@ export type AdminUserDetail = AdminUserRow & {
   lastLogin: Date | null;
   activeSessions: number;
   sessions: AdminSessionRow[];
+  profilePublic: boolean;
   progress: AdminProgress;
   pendingReset: boolean;
   pendingVerification: boolean;
@@ -279,6 +280,7 @@ export async function getAdminUser(id: string): Promise<AdminUserDetail | null> 
     passed,
     lastLogin: lastLogin[0]?.ts ?? null,
     activeSessions: sessionDocs.length,
+    profilePublic: user.profilePublic !== false,
     sessions: sessionDocs.map((d) => ({ id: d._id.toHexString(), createdAt: d.createdAt, lastSeenAt: d.lastSeenAt ?? d.createdAt, device: summariseUserAgent(d.userAgent) })),
     progress: { tracks, recent, tutorQuestions },
     pendingReset: reset > 0,
