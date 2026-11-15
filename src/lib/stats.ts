@@ -15,6 +15,35 @@ export type SiteStats = {
   tutor: { requests: number; responseCacheHits: number; inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number };
 };
 
+export type HeadlineTrend = {
+  /** Totals for the window immediately before the current one, of equal length. */
+  prior: { pageviews: number; visitors: number; signups: number; testPasses: number };
+  /** Per-day series for the current window (days with no events are absent). */
+  signupsDaily: { day: string; n: number }[];
+  passesDaily: { day: string; n: number }[];
+};
+
+export async function getHeadlineTrend(days: number): Promise<HeadlineTrend> {
+  await io();
+  const db = await getDb();
+  const now = Date.now();
+  const since = new Date(now - days * 86_400_000);
+  const prior = { $gte: new Date(now - 2 * days * 86_400_000), $lt: since };
+  const perDay = (field: string) => ({ $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: `$${field}` } }, n: { $sum: 1 } } });
+  const [totals, signups, passes, signupsDaily, passesDaily] = await Promise.all([
+    db.collection("events").aggregate([{ $match: { type: "pageview", ts: prior } }, { $group: { _id: null, views: { $sum: 1 }, visitors: { $addToSet: "$visitor" } } }]).toArray(),
+    db.collection("auth_events").countDocuments({ type: "signup", ts: prior }),
+    db.collection("progress").countDocuments({ status: "passed", passedAt: prior }),
+    db.collection("auth_events").aggregate([{ $match: { type: "signup", ts: { $gte: since } } }, perDay("ts"), { $sort: { _id: 1 } }]).toArray(),
+    db.collection("progress").aggregate([{ $match: { status: "passed", passedAt: { $gte: since } } }, perDay("passedAt"), { $sort: { _id: 1 } }]).toArray(),
+  ]);
+  return {
+    prior: { pageviews: totals[0]?.views ?? 0, visitors: totals[0]?.visitors.length ?? 0, signups, testPasses: passes },
+    signupsDaily: signupsDaily.map((d) => ({ day: d._id, n: d.n })),
+    passesDaily: passesDaily.map((d) => ({ day: d._id, n: d.n })),
+  };
+}
+
 export async function getSiteStats(days = 30): Promise<SiteStats> {
   await io();
   const db = await getDb();

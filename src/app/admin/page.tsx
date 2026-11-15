@@ -6,7 +6,8 @@ import { Card, Container, Skeleton } from "@/components/ui";
 import { getSystemHealth, getTutorCost, type Health } from "@/lib/admin";
 import { requireAdmin } from "@/lib/auth";
 import { getPopularTutorAnswers } from "@/lib/tutor-popular";
-import { getSiteStats } from "@/lib/stats";
+import { failingChecks, healthItems } from "@/lib/admin-health";
+import { getHeadlineTrend, getSiteStats } from "@/lib/stats";
 import { purgeTutorAnswer } from "./actions";
 import { first, usd } from "./admin-ui";
 
@@ -35,8 +36,21 @@ async function AdminBody({ searchParams }: { searchParams: PageProps<"/admin">["
   await requireAdmin();
   const requested = Number(first((await searchParams).days));
   const days = RANGES.includes(requested) ? requested : 30;
-  const [s, popular, health, cost] = await Promise.all([getSiteStats(days), getPopularTutorAnswers(20), getSystemHealth(), getTutorCost(days)]);
+  const [s, popular, health, cost, trend] = await Promise.all([getSiteStats(days), getPopularTutorAnswers(20), getSystemHealth(), getTutorCost(days), getHeadlineTrend(days)]);
+  const checkedAt = new Date();
   const maxDaily = Math.max(1, ...s.daily.map((d) => d.views));
+  const dayKeys = lastDays(days);
+  const series = (rows: { day: string; n: number }[]) => {
+    const m = new Map(rows.map((r) => [r.day, r.n]));
+    return dayKeys.map((k) => m.get(k) ?? 0);
+  };
+  const dailyMap = new Map(s.daily.map((d) => [d.day, d]));
+  const headline: { label: string; value: number; prior: number; spark: number[] }[] = [
+    { label: "Pageviews", value: s.pageviews, prior: trend.prior.pageviews, spark: dayKeys.map((k) => dailyMap.get(k)?.views ?? 0) },
+    { label: "Unique visitors (daily)", value: s.visitors, prior: trend.prior.visitors, spark: dayKeys.map((k) => dailyMap.get(k)?.visitors ?? 0) },
+    { label: "Sign-ups", value: s.funnel.signups, prior: trend.prior.signups, spark: series(trend.signupsDaily) },
+    { label: "Lessons passed", value: s.funnel.testPasses, prior: trend.prior.testPasses, spark: series(trend.passesDaily) },
+  ];
   return (
     <div className="mt-4 space-y-6">
       <div className="flex flex-wrap items-center gap-3">
@@ -51,18 +65,15 @@ async function AdminBody({ searchParams }: { searchParams: PageProps<"/admin">["
         <a href={`/api/admin/stats?days=${days}&format=csv`} className="text-sm text-accent underline underline-offset-2">Download daily CSV</a>
       </div>
 
-      <HealthPanel h={health} />
+      <HealthPanel h={health} checkedAt={checkedAt} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          ["Pageviews", s.pageviews],
-          ["Unique visitors (daily)", s.visitors],
-          ["Sign-ups", s.funnel.signups],
-          ["Lessons passed", s.funnel.testPasses],
-        ].map(([label, value]) => (
-          <Card key={label} className="p-5">
-            <p className="text-sm text-muted">{label}</p>
-            <p className="mt-1 text-3xl font-semibold tabular-nums">{Number(value).toLocaleString("en-GB")}</p>
+        {headline.map((c) => (
+          <Card key={c.label} className="p-5">
+            <p className="text-sm text-muted">{c.label}</p>
+            <p className="mt-1 text-3xl font-semibold tabular-nums">{c.value.toLocaleString("en-GB")}</p>
+            <Delta value={c.value} prior={c.prior} days={days} />
+            <Sparkline values={c.spark} label={c.label} />
           </Card>
         ))}
       </div>
@@ -89,11 +100,46 @@ async function AdminBody({ searchParams }: { searchParams: PageProps<"/admin">["
         {s.daily.length === 0 ? (
           <p className="mt-3 text-sm text-muted">No data yet.</p>
         ) : (
-          <div className="mt-4 flex h-40 items-end gap-1" role="img" aria-label={`Daily pageviews, ${s.daily.length} days`}>
-            {s.daily.map((d) => (
-              <div key={d.day} className="flex-1 rounded-t bg-accent" style={{ height: `${(d.views / maxDaily) * 100}%` }} title={`${d.day}: ${d.views} views, ${d.visitors} visitors`} />
-            ))}
-          </div>
+          <>
+            <p className="mt-2 flex flex-wrap gap-x-4 text-xs text-muted">
+              <span><span aria-hidden="true" className="mr-1 inline-block size-2 rounded-sm bg-accent" />Pageviews</span>
+              <span><span aria-hidden="true" className="mr-1 inline-block size-2 rounded-sm bg-text" />Unique visitors</span>
+              <span>Peak: {maxDaily.toLocaleString("en-GB")} views</span>
+            </p>
+            <div className="mt-3 flex">
+              <div className="flex h-40 w-10 shrink-0 flex-col justify-between pr-2 text-right text-xs tabular-nums text-muted" aria-hidden="true">
+                <span>{maxDaily.toLocaleString("en-GB")}</span>
+                <span>0</span>
+              </div>
+              <div className="flex h-40 flex-1 items-end gap-1 border-b border-border" role="img" aria-label={`Daily pageviews and unique visitors, ${s.daily.length} days with data, peak ${maxDaily} views`}>
+                {s.daily.map((d) => (
+                  <div key={d.day} className="relative flex h-full flex-1 items-end" title={`${d.day}: ${d.views} views, ${d.visitors} visitors`}>
+                    <div className="relative w-full rounded-t bg-accent" style={{ height: `${(d.views / maxDaily) * 100}%` }}>
+                      <div className="absolute inset-x-1/4 bottom-0 rounded-t bg-text" style={{ height: `${d.views ? Math.min(100, (d.visitors / d.views) * 100) : 0}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <p className="mt-1 flex justify-between pl-10 text-xs text-muted">
+              <span>{s.daily[0].day}</span>
+              <span>{s.daily[s.daily.length - 1].day}</span>
+            </p>
+            <details className="mt-3 text-sm">
+              <summary className="cursor-pointer text-muted">Show data table</summary>
+              <div className="mt-2 max-h-72 overflow-auto">
+                <table className="w-full text-sm">
+                  <caption className="sr-only">Daily pageviews and unique visitors</caption>
+                  <thead><tr className="text-left text-muted"><th scope="col" className="py-1 font-medium">Day</th><th scope="col" className="py-1 text-right font-medium">Pageviews</th><th scope="col" className="py-1 text-right font-medium">Visitors</th></tr></thead>
+                  <tbody>
+                    {s.daily.map((d) => (
+                      <tr key={d.day} className="border-t border-border"><th scope="row" className="py-1 text-left font-mono text-xs font-normal">{d.day}</th><td className="py-1 text-right tabular-nums">{d.views.toLocaleString("en-GB")}</td><td className="py-1 text-right tabular-nums">{d.visitors.toLocaleString("en-GB")}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </>
         )}
       </Card>
 
@@ -139,19 +185,16 @@ async function AdminBody({ searchParams }: { searchParams: PageProps<"/admin">["
   );
 }
 
-function HealthPanel({ h }: { h: Health }) {
-  const items: { label: string; ok: boolean; value: string; detail: string }[] = [
-    { label: "Database", ok: h.db.ok, value: h.db.ok ? `OK (${h.db.pingMs} ms)` : "Unreachable", detail: "MongoDB ping" },
-    { label: "Email (SMTP)", ok: h.smtp.configured, value: h.smtp.configured ? "Configured" : "Not set up", detail: h.smtp.configured ? `${h.smtp.host} · from ${h.smtp.from ?? "default"}` : "Set SMTP_URL and EMAIL_FROM. Verification and reset emails are not delivered." },
-    { label: "Email queue", ok: h.queue.retrying === 0 && (h.queue.oldestMinutes ?? 0) < 15, value: `${h.queue.pending} waiting`, detail: h.queue.retrying ? `${h.queue.retrying} failing and retrying. Oldest ${h.queue.oldestMinutes} min.` : h.queue.pending ? `Oldest ${h.queue.oldestMinutes} min` : "Empty" },
-    { label: "Code runner", ok: h.runner.mode === "local" || h.runner.reachable === true, value: h.runner.mode === "socket" ? (h.runner.reachable ? "Service reachable" : "Service down") : "Local (dev)", detail: h.runner.mode === "socket" ? "RUNNER_SOCKET" : "No RUNNER_SOCKET. Production requires one." },
-    { label: "AI tutor", ok: h.tutor.configured, value: h.tutor.configured ? `Ready (${h.tutor.provider})` : "No API key", detail: h.tutor.provider === "claude" ? "ANTHROPIC_API_KEY" : "Local Ollama model" },
-    { label: "Auth secret", ok: h.secret.ok, value: h.secret.ok ? "Set" : "Too short or missing", detail: "AUTH_SECRET, 32+ characters" },
-    { label: "Accounts", ok: h.accounts.adminsWithout2fa === 0, value: `${h.accounts.total} total`, detail: `${h.accounts.unverified} unverified · ${h.accounts.suspended} locked or banned${h.accounts.adminsWithout2fa ? ` · ${h.accounts.adminsWithout2fa} admin without 2FA` : ""}` },
-  ];
+function HealthPanel({ h, checkedAt }: { h: Health; checkedAt: Date }) {
+  const items = healthItems(h);
+  const failing = failingChecks(h).length;
   return (
     <section aria-labelledby="health">
-      <h2 id="health" className="display-sm font-semibold">System health</h2>
+      <div className="flex flex-wrap items-baseline gap-x-3">
+        <h2 id="health" className="display-sm font-semibold">System health</h2>
+        <p className={`text-sm font-medium ${failing ? "text-err" : "text-ok"}`}>{failing ? `${failing} ${failing === 1 ? "check" : "checks"} failing` : "All checks passing"}</p>
+        <p className="text-xs text-muted">Last checked <time dateTime={checkedAt.toISOString()}>{checkedAt.toISOString().slice(11, 19)} UTC</time></p>
+      </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {items.map((i) => (
           <Card key={i.label} className="p-4">
@@ -162,6 +205,42 @@ function HealthPanel({ h }: { h: Health }) {
         ))}
       </div>
     </section>
+  );
+}
+
+function lastDays(n: number): string[] {
+  const out: string[] = [];
+  const now = Date.now();
+  for (let i = n - 1; i >= 0; i--) out.push(new Date(now - i * 86_400_000).toISOString().slice(0, 10));
+  return out;
+}
+
+function Delta({ value, prior, days }: { value: number; prior: number; days: number }) {
+  const vs = `vs prior ${days}d`;
+  if (prior === 0) {
+    return <p className="mt-1 text-xs text-muted">{value === 0 ? `No change ${vs}` : `New, none ${vs}`}</p>;
+  }
+  const pct = Math.round(((value - prior) / prior) * 100);
+  if (pct === 0) return <p className="mt-1 text-xs text-muted">{`No change ${vs} (${prior.toLocaleString("en-GB")})`}</p>;
+  const up = pct > 0;
+  return (
+    <p className={`mt-1 text-xs font-medium ${up ? "text-ok" : "text-err"}`}>
+      <span aria-hidden="true">{up ? "▲" : "▼"} </span>
+      {up ? "+" : "−"}{Math.abs(pct).toLocaleString("en-GB")}% {vs}
+      <span className="sr-only"> ({up ? "increase" : "decrease"} from {prior.toLocaleString("en-GB")})</span>
+    </p>
+  );
+}
+
+function Sparkline({ values, label }: { values: number[]; label: string }) {
+  if (values.length < 2 || values.every((v) => v === 0)) return null;
+  const w = 100, h = 24;
+  const max = Math.max(...values);
+  const pts = values.map((v, i) => `${((i / (values.length - 1)) * w).toFixed(1)},${(h - 2 - (v / max) * (h - 4)).toFixed(1)}`).join(" ");
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="mt-3 h-6 w-full text-accent" role="img" aria-label={`${label} daily trend, peak ${max.toLocaleString("en-GB")}`}>
+      <polyline points={pts} fill="none" stroke="currentColor" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+    </svg>
   );
 }
 
