@@ -2,6 +2,9 @@
 // starter code must compile but not pass. Usage:
 //   npm run verify:content            (all tracks)
 //   npm run verify:content -- c-memory (one track)
+//   npm run verify:content -- --shard=go:0/3   (Go tracks, shard 0 of 3, balanced by lesson count)
+//   npm run verify:content -- --shard=other    (every non-Go track)
+// CI shards the Go tracks because each Go compile can be slow without a warm build cache.
 import { getTracks } from "../src/lib/curriculum/index";
 import { assembleParsons, canonicalSubmission, checkPractice, fillBlanks, toPublicPractice } from "../src/lib/curriculum/practice";
 import { practiceIdOf } from "../src/lib/gamification";
@@ -11,7 +14,9 @@ import { toPublicExercise } from "../src/lib/curriculum/types";
 import { validateLearningPaths } from "../src/lib/learning";
 
 validateLearningPaths(getTracks());
-const only = process.argv[2];
+const arg = process.argv[2];
+const shard = arg?.startsWith("--shard=") ? arg.slice("--shard=".length) : undefined;
+const only = shard ? undefined : arg;
 let failed = 0;
 const ids = new Set<string>();
 
@@ -39,8 +44,24 @@ function zeroStub(solution: string, language: string): string {
   return out.join("\n");
 }
 
-const tracks = getTracks(only);
-if (only && tracks.length === 0) throw new Error(`Unknown track: ${only}`);
+function selectShard(all: ReturnType<typeof getTracks>, spec: string) {
+  if (spec === "other") return all.filter((t) => t.language !== "go");
+  const m = /^go:(\d+)\/(\d+)$/.exec(spec);
+  if (!m || Number(m[2]) < 1 || Number(m[1]) >= Number(m[2])) throw new Error(`Bad --shard value: ${spec} (use go:K/N with K < N, or other)`);
+  const [k, n] = [Number(m[1]), Number(m[2])];
+  // Greedy: biggest track first onto the lightest shard, so shards finish at about the same time.
+  const load = Array<number>(n).fill(0);
+  const mine: string[] = [];
+  for (const t of all.filter((t) => t.language === "go").sort((a, b) => b.lessons.length - a.lessons.length || a.slug.localeCompare(b.slug))) {
+    const i = load.indexOf(Math.min(...load));
+    load[i] += t.lessons.length;
+    if (i === k) mine.push(t.slug);
+  }
+  return all.filter((t) => mine.includes(t.slug));
+}
+
+const tracks = shard ? selectShard(getTracks(), shard) : getTracks(only);
+if ((only || shard) && tracks.length === 0) throw new Error(`Unknown track or empty shard: ${only ?? shard}`);
 for (const track of tracks) {
   if (only && track.slug !== only) continue;
   console.log(`\n${track.title} (${track.slug}) — ${track.lessons.length} lessons`);

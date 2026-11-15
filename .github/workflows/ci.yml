@@ -74,8 +74,14 @@ jobs:
           ./gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1
 
   verify-content:
-    name: Verify lesson content (compilers, bubblewrap, qemu)
+    name: Verify lesson content (${{ matrix.shard }})
     runs-on: ubuntu-24.04
+    # Go compiles dominate (about 90% of the time) because ubuntu-24.04's bubblewrap has no --tmp-overlay, so the Go
+    # build cache can't be warmed. The Go tracks are therefore split across parallel jobs, balanced by lesson count.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ["other", "go:0/3", "go:1/3", "go:2/3"]
     # The content verifier is required; enable user namespaces below for bubblewrap.
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -94,18 +100,25 @@ jobs:
           else
             echo "bubblewrap lacks --tmp-overlay; Go compiles run without a warm cache"
           fi
-      - run: npm run verify:content
-      - run: npm run check:stdout-order
+      - run: npm run verify:content -- --shard=${{ matrix.shard }}
+      # The remaining checks are not per-track, so they run once, on the shard that also holds the non-Go tracks.
+      - if: matrix.shard == 'other'
+        run: npm run check:stdout-order
 
-      - name: Reject forged verdicts and harness disclosure
+      - if: matrix.shard == 'other'
+        name: Reject forged verdicts and harness disclosure
         run: node --import tsx scripts/security/integrity/fixtures-forgery.mts
-      - name: Sandbox escape regressions (fork bomb, memory bomb, egress, /proc, includes, build scripts, cgo)
+      - if: matrix.shard == 'other'
+        name: Sandbox escape regressions (fork bomb, memory bomb, egress, /proc, includes, build scripts, cgo)
         run: node --conditions=react-server --import tsx scripts/security/sandbox-escape.mts
-      - name: Harness-disclosure probes (offline)
+      - if: matrix.shard == 'other'
+        name: Harness-disclosure probes (offline)
         run: node --import tsx scripts/security/audit-checks.mts
-      - name: Reference-cache cancellation
+      - if: matrix.shard == 'other'
+        name: Reference-cache cancellation
         run: node --import tsx scripts/security/runner-cancellation.mts
-      - name: Runner socket integration (all languages)
+      - if: matrix.shard == 'other'
+        name: Runner socket integration (all languages)
         run: npm run test:runner
 
   regressions:
