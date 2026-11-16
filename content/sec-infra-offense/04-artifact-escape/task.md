@@ -1,3 +1,9 @@
-Implement `EscapeArtifact(lab Lab, port int, root, protected string) (Finding, bool)`. root and protected are clean absolute POSIX paths. root is a non-root directory with no trailing slash; protected is a file outside root. They contain no `.` or `..` components.
+Implement `EscapeArtifact(lab Lab, port int, root, protected string) (Finding, bool)`. The signature and types are fixed.
 
-GET `/artifact` with Body equal to an absolute requested path. The vulnerable model accepts a raw prefix `root+"/"`, then resolves `..` and looks up the normalized path. The patched model checks the normalized boundary instead. You may use `..` repeatedly to climb from root to `/`, then append protected. Confirm only a 200 Body beginning `LAB-PROOF:`; return zero Finding,false otherwise. Only this one request is allowed on the supplied port. No local filesystem access or URL encoding is involved.
+`root` and `protected` are clean absolute POSIX paths with no `.` or `..` components. `root` is a non-root directory with no trailing slash; `protected` is a file outside `root`.
+
+Send **one** request: `GET /artifact` on `port`, with `Body` set to an absolute requested path, empty `Token`. The vulnerable server accepts a request whose raw text starts with `root + "/"`, then resolves `..` segments and serves the file at the resolved path. The patched server resolves first and checks the boundary afterwards. So your payload must start with `root + "/"` as written, use `..` to climb from `root` up to `/`, and then name `protected`.
+
+Return `Finding{Port: port, Evidence: body}` and `true` only if the reply has status 200 and a `Body` beginning `LAB-PROOF:`. Otherwise return the zero `Finding` and `false`. A reflected path or a plain 200 is not evidence.
+
+Rules: exactly one request; no URL encoding; no local filesystem access.

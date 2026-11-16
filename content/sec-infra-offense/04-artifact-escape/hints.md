@@ -1,3 +1,7 @@
-Count root path components and append that many ../ segments without cleaning the payload first.
+Think about the order the vulnerable server works in: it checks the prefix on the raw text, then resolves `..`. Your payload must pass the first check and only reach the protected file after the second step.
 ===
-Cleaning on the client would remove the raw prefix that the vulnerable server checks. Only a returned proof marker establishes the read.
+The payload begins with `root + "/"`. Each `../` removes one directory, so you need as many as `root` has components to get back to `/`.
+===
+Count components with `strings.Split(strings.Trim(root, "/"), "/")`, repeat `"../"` that many times, and then append `protected` without its leading slash.
+===
+Do not run `path.Clean` on the payload. After sending, accept only status 200 and a body with the prefix `LAB-PROOF:`; a body like `requested path: ...` is just an echo.

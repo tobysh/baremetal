@@ -1,5 +1,7 @@
 package main
 
+// ---- Supplied scaffolding: do not change these types. ----
+
 // Lab is a fictional in-process service. Send does not use HTTP or sockets.
 type Request struct {
 	Port                      int
@@ -16,7 +18,10 @@ type Finding struct {
 	Evidence string
 }
 
+// ---- Your part: implement ExploitAgent as described in the task. ----
+
 func ExploitAgent(lab Lab, port int, marker string) (Finding, bool) {
+	// 1. version gate  2. one job whose label carries a second command  3. independent read of /last-proof
 	return Finding{}, false
 }
 

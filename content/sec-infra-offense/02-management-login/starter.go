@@ -1,5 +1,7 @@
 package main
 
+// ---- Supplied scaffolding: do not change these types. ----
+
 // Lab is a fictional in-process service. Send does not use HTTP or sockets.
 type Request struct {
 	Port                      int
@@ -16,7 +18,10 @@ type Finding struct {
 	Evidence string
 }
 
+// ---- Your part: implement GuessManagement as described in the task. ----
+
 func GuessManagement(lab Lab, port int, user string, passwords []string) (Finding, bool) {
+	// For each permitted password: login, treat a token as a candidate, then confirm with /admin/proof.
 	return Finding{}, false
 }
 

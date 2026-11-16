@@ -39,6 +39,9 @@ func (s *chainLab) Send(r Request) Reply {
 			if s.mode == "config-closed" {
 				return Reply{Status: 403}
 			}
+			if s.mode == "empty-key" {
+				return Reply{Status: 200, Body: `{"management_port":` + fmt.Sprint(s.manager) + `,"token_key":""}`}
+			}
 			if s.mode == "bad-json" {
 				return Reply{Status: 200, Body: "{"}
 			}
@@ -53,6 +56,9 @@ func (s *chainLab) Send(r Request) Reply {
 				return Reply{Status: 403}
 			}
 			s.leaked = true
+			if s.mode == "empty-token" {
+				return Reply{Status: 200, Body: `{"token":""}`}
+			}
 			b, _ := json.Marshal(LeakValue{s.token})
 			return Reply{Status: 200, Body: string(b)}
 		}
@@ -90,5 +96,15 @@ func TestEmptyChainScope(t *testing.T) {
 	got, ok := ChainSnapshot(s, nil)
 	if ok || got != (Finding{}) {
 		t.Fatal(got, ok)
+	}
+}
+
+func TestChainRejectsEmptyLeaks(t *testing.T) {
+	for _, mode := range []string{"empty-key", "empty-token"} {
+		s := &chainLab{t: t, backup: 13000, manager: 14000, key: "management-key", token: "leaked-token", marker: "LAB-PROOF:snapshot", mode: mode}
+		got, ok := ChainSnapshot(s, []int{s.backup, s.manager})
+		if ok || got != (Finding{}) || s.proved {
+			t.Fatal(mode, got, ok)
+		}
 	}
 }

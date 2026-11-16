@@ -38,7 +38,9 @@ func ExerciseService(lab Lab, port int, adminToken, name, marker string) (Findin
 	state := send("GET", path, "")
 	var running Unit
 	proof := send("GET", "/service-proof", "")
-	confirmed := state.Status == 200 && json.Unmarshal([]byte(state.Body), &running) == nil && running.Name == name && running.RunAs == "root" && running.Command == unit.Command && running.Enabled && running.Running && proof.Status == 200 && proof.Body == marker
+	unitOK := state.Status == 200 && json.Unmarshal([]byte(state.Body), &running) == nil && running.Name == name &&
+		running.RunAs == "root" && running.Command == unit.Command && running.Enabled && running.Running
+	confirmed := unitOK && proof.Status == 200 && proof.Body == marker
 	send("POST", path+"/stop", "")
 	send("DELETE", path, "")
 	after := send("GET", path, "")

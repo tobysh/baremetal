@@ -50,7 +50,8 @@ func ExerciseAccount(lab Lab, port int, adminToken string, account Account) (Fin
 	if session.Status == 200 && session.Token != "" {
 		proof = send("GET", "/root/proof", session.Token, "")
 	}
-	confirmed := all.Status == 200 && visible.Status == 200 && contains(all.Items) && !contains(visible.Items) && proof.Status == 200 && strings.HasPrefix(proof.Body, "LAB-PROOF:")
+	listed := all.Status == 200 && visible.Status == 200 && contains(all.Items) && !contains(visible.Items)
+	confirmed := listed && proof.Status == 200 && strings.HasPrefix(proof.Body, "LAB-PROOF:")
 	send("DELETE", "/accounts/"+account.Name, adminToken, "")
 	after := send("GET", "/accounts/all", adminToken, "")
 	loginAfter := send("POST", "/login", "", string(loginBody))
