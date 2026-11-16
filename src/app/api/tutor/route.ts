@@ -10,6 +10,7 @@ import { getProgress, getTutorThread } from "@/lib/progress";
 import { clientIp, ipLimit, rateLimit, rateLimitHit } from "@/lib/rate-limit";
 import { checkBudget, estimateCostMicro, recordTutorUsage, reserveBudget } from "@/lib/tutor-budget";
 import { HOUR, LIMITS } from "@/lib/tutor-limits";
+import { markTutorUsed } from "@/lib/tutor-used";
 import { MAX_REPLY_TOKENS, TUTOR_PROVIDER, TUTOR_SYSTEM, TutorUnavailableError, exposesSolution, SolutionGuard, buildMessages, lessonContext, planCache, streamTutor, type TutorUsage } from "@/lib/tutor";
 import { POPULAR_HITS, expiryFor, replyLeaks, type CacheKind } from "@/lib/tutor-cache";
 
@@ -63,11 +64,7 @@ export async function POST(req: Request) {
 
   const saveTurn = async (reply: string) => {
     const now = new Date();
-    await db.collection("progress").updateOne(
-      { userId: new ObjectId(user.id), exerciseId: found.exercise.id },
-      { $set: { tutorUsed: true, updatedAt: now }, $setOnInsert: { trackSlug: found.track.slug, code, status: "started", attempts: 0, startedAt: now, startKnown: false } },
-      { upsert: true },
-    );
+    await markTutorUsed(db, user.id, { id: found.exercise.id, trackSlug: found.track.slug }, code);
     await db.collection<TutorThreadDoc>("tutor_threads").updateOne(
       { userId: new ObjectId(user.id), lessonId: found.exercise.id },
       {
@@ -106,7 +103,7 @@ export async function POST(req: Request) {
 
   // Dollar ceilings (per user and site-wide, per UTC day), checked before any quota is consumed.
   const budget = await checkBudget(db, user.id);
-  if (!budget.ok) return jsonError(budget.scope === "user" ? 429 : 503, budget.message);
+  if (!budget.ok) return jsonError(budget.scope === "user" ? 429 : 503, budget.message, "tutor_budget");
 
   // Only real model calls count against the quotas.
   const ip = clientIp(req.headers);
@@ -135,7 +132,7 @@ export async function POST(req: Request) {
   // UTF-8 bytes conservatively bound input tokens, including cache-write pricing.
   const inputBound = Buffer.byteLength(TUTOR_SYSTEM + lessonCtx + JSON.stringify(messages), "utf8") + 1024;
   const settleBudget = await reserveBudget(db, user.id, Math.max(...[false, true].map((cached) => estimateCostMicro({ provider: TUTOR_PROVIDER, inputTokens: cached ? 0 : inputBound, cacheReadTokens: 0, cacheWriteTokens: cached ? inputBound : 0, outputTokens: MAX_REPLY_TOKENS }))));
-  if (!settleBudget) return jsonError(429, "There is not enough tutor allowance left for another reply today. It resets at midnight UTC; the hints and What probably went wrong notes are still available.");
+  if (!settleBudget) return jsonError(429, "There is not enough tutor allowance left for another reply today. It resets at midnight UTC; the hints and What probably went wrong notes are still available.", "tutor_budget");
 
   const abort = new AbortController();
   let cancelled = false;
@@ -151,7 +148,11 @@ export async function POST(req: Request) {
   const chunks = streamTutor(lessonCtx, messages, abort.signal, (u, ok) => {
     usage = u;
     cacheable = ok;
-  }, { onUpstream: () => { upstreamCalled = true; }, onStart: (u) => { started = u; } });
+  }, { onUpstream: () => {
+    upstreamCalled = true;
+    // The learner may read the answer even if they abort, so the Unaided seal is lost from here on.
+    markTutorUsed(db, user.id, { id: found.exercise.id, trackSlug: found.track.slug }, code).catch((e) => console.error("[tutor] tutorUsed", e));
+  }, onStart: (u) => { started = u; } });
 
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {

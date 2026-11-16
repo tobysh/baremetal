@@ -63,7 +63,7 @@ export function LessonWorkspace(props: {
   );
 
   return (
-    <div className="min-w-0 lg:flex lg:h-full lg:flex-col">
+    <div className="min-w-0 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
       {(showChallenge || showReview || practice) && (
         <div role="group" aria-label="What to work on" className="mb-2 flex flex-wrap items-center gap-1">
           <button type="button" aria-pressed={!practiceOpen} onClick={() => setPracticeOpen(false)} className={`min-h-11 rounded-md px-3 text-sm ${!practiceOpen ? "bg-surface-2 font-medium text-text" : "text-muted hover:text-text"}`}>Code</button>
@@ -81,7 +81,7 @@ export function LessonWorkspace(props: {
       {practice && practiceOpen && (
         <PracticePanel key={practice.id} practice={practice} language={lesson.language} passed={!!props.practicePassed} signedIn={signedIn} loginHref={props.loginHref} />
       )}
-      <div hidden={practiceOpen} className="min-w-0 lg:h-full">
+      <div hidden={practiceOpen} className="min-w-0 lg:min-h-0 lg:flex-1 lg:flex-col lg:[&:not([hidden])]:flex">
       {variant === "lesson" && (lesson.revision ?? 1) > 1 && (
         <PreviousVersion exerciseId={lesson.id} serverCode={props.previousCode ?? null} signedIn={signedIn} draftOwner={props.draftOwner} />
       )}

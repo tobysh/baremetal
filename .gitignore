@@ -85,3 +85,7 @@ next-env.d.ts
 
 # local working plans (not part of the repo)
 /SECURITY-FIX-PLAN-*.md
+/UPGRADE-PLAN*.md
+
+# stray self-referential symlink that once got committed
+/.lesson

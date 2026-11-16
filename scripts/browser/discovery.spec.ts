@@ -23,11 +23,21 @@ test.beforeAll(async () => {
 });
 test.afterAll(async () => { await mongo.close(); });
 
+/** Opens the command palette. The shortcut listener only exists after hydration, which on a slow CI runner can come after
+ * `goto` resolves, so press again until the dialog shows (only while it is closed, because the shortcut toggles). */
+async function openSearch(page: Page) {
+  const dialog = page.getByRole("dialog", { name: "Search", exact: true });
+  await expect(async () => {
+    if (!(await dialog.isVisible())) await page.keyboard.press("ControlOrMeta+k");
+    await expect(dialog).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 20_000 });
+}
+
 test.describe("search", () => {
   test("a concept query finds labelled lessons and courses; Escape closes", async ({ page }) => {
     await page.goto("/learn");
     await reject(page);
-    await page.keyboard.press("ControlOrMeta+k");
+    await openSearch(page);
     const dialog = page.getByRole("dialog", { name: "Search" });
     await expect(dialog).toBeVisible();
     await dialog.getByRole("combobox").fill("pointers");
@@ -43,7 +53,7 @@ test.describe("search", () => {
   test("learning paths are labelled", async ({ page }) => {
     await page.goto("/learn");
     await reject(page);
-    await page.keyboard.press("ControlOrMeta+k");
+    await openSearch(page);
     const dialog = page.getByRole("dialog", { name: "Search" });
     await dialog.getByRole("combobox").fill("security");
     await expect(dialog.getByRole("option").filter({ hasText: "Learning path" }).first()).toBeVisible();
@@ -52,7 +62,7 @@ test.describe("search", () => {
   test("no results offers a way back to the course list", async ({ page }) => {
     await page.goto("/learn");
     await reject(page);
-    await page.keyboard.press("ControlOrMeta+k");
+    await openSearch(page);
     const dialog = page.getByRole("dialog", { name: "Search" });
     await dialog.getByRole("combobox").fill("zzqxj");
     await expect(dialog.getByRole("option")).toHaveCount(0);

@@ -6,7 +6,7 @@ import { recordHint, recordReviewHint } from "@/lib/progress";
 import { clientIp, ipLimit, rateLimit } from "@/lib/rate-limit";
 import { hmac } from "@/lib/crypto";
 
-/** Record access before disclosing authored hints, including requests outside the UI. */
+/** Serve authored hints to anyone; with a session, record the access before disclosing, including requests outside the UI. */
 export async function POST(req: Request) {
   if (!sameOrigin(req)) return jsonError(403, "Cross-site request blocked.");
   const user = await getCurrentUser();
@@ -19,9 +19,11 @@ export async function POST(req: Request) {
   if (!found || found.isChallenge) return jsonError(404, "Unknown exercise.");
   const index = body.index!;
   if (index < 0 || index >= found.exercise.hints.length) return jsonError(400, "Unknown hint.");
-  // Hints are only served against a session so every disclosure is recorded; otherwise dropping the cookie would keep the "unaided" seal.
-  if (!user) return jsonError(401, "Sign in to see hints.");
-  await recordHint(user.id, found.exercise.id, found.track.slug, index);
-  if (body.review === true) await recordReviewHint(user.id, found.exercise.id, index);
+  // Hints are free for everyone. A session records the disclosure (so the Unaided seal stays honest for that account);
+  // a signed-out visitor has no progress to record and is limited per IP above.
+  if (user) {
+    await recordHint(user.id, found.exercise.id, found.track.slug, index);
+    if (body.review === true) await recordReviewHint(user.id, found.exercise.id, index);
+  }
   return NextResponse.json({ hints: found.exercise.hints.slice(0, index + 1) }, { headers: { "Cache-Control": "no-store" } });
 }

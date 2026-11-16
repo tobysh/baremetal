@@ -100,9 +100,11 @@ test("course filters are plain links that hide non-matching courses", async ({ p
 test("command palette searches lessons and opens a result from the keyboard", async ({ page }) => {
   await page.goto("/learn");
   await reject(page);
-  await page.keyboard.press("ControlOrMeta+k");
   const dialog = page.getByRole("dialog", { name: "Search", exact: true });
-  await expect(dialog).toBeVisible();
+  await expect(async () => {
+    if (!(await dialog.isVisible())) await page.keyboard.press("ControlOrMeta+k");
+    await expect(dialog).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 20_000 }); // the listener only exists after hydration, which can lag on CI
   const input = dialog.getByRole("combobox", { name: "Search lessons, courses and pages" });
   await input.fill("Your first program");
   await expect(dialog.getByRole("option").filter({ hasText: "Your first program" }).first()).toBeVisible();

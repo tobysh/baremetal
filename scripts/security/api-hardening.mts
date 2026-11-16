@@ -40,13 +40,24 @@ try {
   }
   assert.equal(await quota(), 0, "invalid tutor inputs consume no quota");
   const anonHint = await fetch(base + "/api/hint", { method: "POST", headers: { "Content-Type": "application/json", Origin: origin }, body: JSON.stringify({ exerciseId: ex.id, index: 0 }) });
-  assert.equal(anonHint.status, 401, "hints are not served without a session");
+  assert.equal(anonHint.status, 200, "hints are free without a session");
+  assert.deepEqual((await anonHint.json()).hints, ex.hints.slice(0, 1));
+  assert.equal(await db.collection("progress").countDocuments({ exerciseId: ex.id, hintsUsed: { $gt: 0 }, userId: { $nin: ids } }), 0, "an anonymous hint writes no progress");
   const hint = await request("/api/hint", { exerciseId: ex.id, index: 0 });
   assert.equal(hint.status, 200);
   assert.deepEqual((await hint.json()).hints, ex.hints.slice(0, 1));
   assert.equal((await db.collection("progress").findOne({ userId: ids[0], exerciseId: ex.id }))?.hintsUsed, 1);
   assert.equal((await request("/api/hint", { exerciseId: ex.id, index: -1 })).status, 400);
   console.log("Tutor validation/quota and server-recorded hint disclosure passed.");
+
+  // `review: true` on an unpassed lesson is an ordinary attempt: it must be counted, not run for free.
+  const attemptsOf = async () => (await db.collection("progress").findOne({ userId: ids[0], exerciseId: ex.id }))?.attempts ?? 0;
+  const attemptsBefore = await attemptsOf();
+  const reviewRun = await request("/api/run", { exerciseId: ex.id, mode: "test", review: true, code: "int main(void){return 0;}" });
+  assert.equal(reviewRun.status, 200);
+  assert.equal((await reviewRun.json()).reviewed, false);
+  assert.equal(await attemptsOf(), attemptsBefore + 1, "review:true on an unpassed lesson still counts an attempt");
+  console.log("Review flag ignored on unpassed lessons passed.");
 
   const slow = { exerciseId: ex.id, mode: "run", code: "#include <unistd.h>\nint main(void) { sleep(2); return 0; }" };
   const flood = Array.from({ length: 30 }, () => request("/api/run", slow));

@@ -151,7 +151,7 @@ async function Lesson({ params, searchParams }: { params: PageProps<"/learn/[tra
           </nav>
         </article>
       } workspace={
-        <div className="min-w-0 lg:h-full">
+        <div className="min-w-0 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
           <Suspense fallback={<WorkspaceSkeleton starter={exercise.starter} />}>
             <WorkspaceLoader exerciseId={exercise.id} path={path} trackSlug={track.slug} lessonSlug={lesson.slug} searchParams={searchParams} />
           </Suspense>
@@ -160,9 +160,9 @@ async function Lesson({ params, searchParams }: { params: PageProps<"/learn/[tra
       <p className="mt-3 flex shrink-0 flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-border pt-2 text-xs text-muted lg:mt-2">
         <span>© 2026 {SITE.legal.copyrightHolder}</span>
         <span aria-hidden="true">-</span>
-        <Link href="/terms" className="hover:text-text">Terms and conditions</Link>
+        <Link href="/terms" className="hover:text-text">Terms of Service</Link>
         <span aria-hidden="true">-</span>
-        <Link href="/privacy" className="hover:text-text">Privacy policy</Link>
+        <Link href="/privacy" className="hover:text-text">Privacy Notice</Link>
         <span aria-hidden="true">-</span>
         <CookieSettingsButton />
       </p>

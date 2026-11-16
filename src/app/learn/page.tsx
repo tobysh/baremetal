@@ -64,6 +64,7 @@ export default async function LearnPage({ searchParams }: PageProps<"/learn">) {
                   <span className="text-sm text-muted tabular-nums">{g.tracks.length} {g.tracks.length === 1 ? "course" : "courses"}</span>
                 </span>
                 <span className="mt-1 text-sm text-muted">{g.blurb}</span>
+                <span aria-hidden="true" className="mt-2 text-sm text-accent">View courses →</span>
               </a>
             </li>
           ))}

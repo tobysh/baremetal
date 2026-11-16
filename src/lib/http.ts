@@ -23,7 +23,8 @@ export function sameOrigin(req: Request): boolean {
   }
 }
 
-export const jsonError = (status: number, error: string) => NextResponse.json({ error }, { status });
+/** `code` is an optional machine-readable tag the client can branch on (e.g. `tutor_budget`). */
+export const jsonError = (status: number, error: string, code?: string) => NextResponse.json(code ? { error, code } : { error }, { status });
 
 /**
  * Reads a JSON body without ever buffering more than `maxBytes`: the stream is

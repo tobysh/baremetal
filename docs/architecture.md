@@ -75,7 +75,7 @@ Everything a learner sees comes from files under `content/<track>/`. `src/lib/cu
 
 - A track's `language` (`c`, `rust`, `go`, `asm`, `kernel`) fixes the file extensions, the editor file name (`LANGUAGE_FILE`) and the label (`LANGUAGE_LABEL`) in `types.ts`.
 - An exercise is either `mode: stdout` (compare program output against `cases.json`) or `mode: harness` (a hidden `tests.*` file calls the learner's code).
-- **Hidden material never reaches the browser.** Pages use `toPublicExercise`, which carries `id`, `language`, `task`, `starter`, `mode` and `hintCount` only. Solutions and tests stay server-side; hints are fetched one at a time through `/api/hint`, which records their use.
+- **Hidden material never reaches the browser.** Pages use `toPublicExercise`, which carries `id`, `language`, `task`, `starter`, `mode` and `hintCount` only. Solutions and tests stay server-side; hints are fetched one at a time through `/api/hint`, open to signed-out visitors and recording use when there is a session.
 - **Lesson ids (`track/slug`) are progress keys.** `content/.lesson-ids.json` is a snapshot, and `npm run check:ids` fails if a published id disappears. Renumbering folder prefixes is safe; changing a slug or `id:` loses learner progress.
 - **Drafts.** `"draft": true` in `track.json` (whole course) or `draft: true` in a lesson's frontmatter keeps unfinished work on disk but out of the catalogue, search, recommendations, static routes and exercise lookup. Missing files in *published* content are hard errors, by design.
 - **Paths.** Tracks group into learning paths (`start`, `c`, `rust`, `go`, `low`, `security`) via `path` and `order` in `track.json`; `paths.ts` defines the list. Optional `prerequisite` links drive recommendations and are validated at verification time.
@@ -89,7 +89,7 @@ Everything a learner sees comes from files under `content/<track>/`. `src/lib/cu
 2. The user is resolved from the `__Host-bm_session` cookie (or the visitor is anonymous) and a rate limit is applied *before* the body is parsed: 120 per 10 min per account, `RUN_LIMIT_ANON_IP` (default 30) per hashed IP for anonymous visitors.
 3. `readJson` reads a bounded body; code is capped at 64 KB. `findExercise` resolves the id (including `#challenge` ids). Challenges require the base lesson to be passed first.
 4. `executeRun` / `executeTest` in `runner-client.ts` send a versioned, size-capped request over the runner's Unix socket. Admission keys (`user:<id>` for signed-in learners, `ip:<ip>` for anonymous) identify the caller for in-flight limits.
-5. For a test run by a signed-in learner, `recordAttempt` stores the code, grants first-pass XP and updates the ledger; `evaluateAchievements` runs on a first pass. Review runs move only the review schedule.
+5. For a test run by a signed-in learner, `recordAttempt` stores the code, grants first-pass XP and updates the ledger; `evaluateAchievements` runs on a first pass. Review runs (`review: true`, honoured only when the lesson is already passed; otherwise the run is a normal attempt) move only the review schedule.
 
 ### Inside the runner (`runner-engine.ts`)
 
@@ -113,7 +113,7 @@ Everything a learner sees comes from files under `content/<track>/`. `src/lib/cu
 
 - The system prompt coaches rather than answers. **The model never receives the reference solution.** Learner text is tag-escaped, and replies stream through `SolutionGuard`, which withholds the last 24 tokens until every window has been compared with the solution; on a match the rest of the reply is replaced with a fallback sentence and not cached.
 - Cost control: atomic per-user and global daily dollar reservations in `tutor_spend` (`tutor-budget.ts`), hourly request quotas (`tutor-limits.ts`), and a privacy-checked shared answer cache with longer retention for popular answers (`tutor_cache`). Newcomers draw from a pool that reserves capacity for established users.
-- Conversations are stored per user and lesson (`tutor_threads`). Using the tutor before a pass affects the Unaided seal via a sticky progress flag.
+- Conversations are stored per user and lesson (`tutor_threads`). Using the tutor before a pass affects the Unaided seal via a sticky progress flag, set when the model call starts (an aborted reply still counts).
 
 ## Accounts and sessions
 

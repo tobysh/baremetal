@@ -19,6 +19,7 @@ export function TutorChat({
   loginHref,
   onShowHint,
   controlRef,
+  onShowDiagnostics,
 }: {
   exerciseId: string;
   signedIn: boolean;
@@ -27,11 +28,14 @@ export function TutorChat({
   loginHref: string;
   onShowHint: (() => void) | null;
   controlRef: Ref<TutorControl>;
+  /** Opens the free pre-written failure explanations (the Output tab). */
+  onShowDiagnostics?: () => void;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [budgetHit, setBudgetHit] = useState(false);
   const [quota, setQuota] = useState<{ remaining: number; limit: number } | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [announcement, setAnnouncement] = useState("");
@@ -69,6 +73,7 @@ export function TutorChat({
     if (!message || busy) return;
     setBusy(true);
     setError(null);
+    setBudgetHit(false);
     setElapsed(0);
     setAnnouncement("");
     setInput("");
@@ -85,6 +90,7 @@ export function TutorChat({
       if (remaining !== null && limit !== null) setQuota({ remaining: Number(remaining), limit: Number(limit) });
       if (!res.ok || !res.body) {
         const body = await res.json().catch(() => ({}));
+        if (body.code === "tutor_budget") setBudgetHit(true);
         throw new Error(body.error ?? "The tutor couldn't answer just now.");
       }
       const reader = res.body.getReader();
@@ -175,6 +181,14 @@ export function TutorChat({
       {error && (
         <p role="alert" className="mx-4 mb-2 rounded-lg bg-err-soft px-3 py-2 text-sm text-err">
           {error}
+          {budgetHit && onShowDiagnostics && (
+            <>
+              {" "}
+              <button type="button" className="underline underline-offset-2" onClick={onShowDiagnostics}>
+                See what probably went wrong
+              </button>
+            </>
+          )}
         </p>
       )}
       <form

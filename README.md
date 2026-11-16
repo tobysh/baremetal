@@ -40,7 +40,7 @@ Then, in two terminals:
 
 ```bash
 npm run db     # MongoDB, data in .data/db
-npm run dev    # http://localhost:3000
+npm run dev    # http://localhost:3000, listens on 127.0.0.1 only
 ```
 
 The site works without a tutor provider. All variables are listed in [docs/configuration.md](docs/configuration.md).
@@ -49,7 +49,8 @@ The site works without a tutor provider. All variables are listed in [docs/confi
 
 | Command | Purpose |
 |---|---|
-| `npm run dev` / `build` / `start` | Develop, build and serve |
+| `npm run dev` / `build` / `start` | Develop (localhost only), build and serve |
+| `npm run dev:lan` | Develop on 0.0.0.0 for phone testing; anyone on the network can run code through /api/run, so use a trusted network |
 | `npm run lint`, `npx tsc --noEmit` | Style and types |
 | `npm run verify:content [-- <track>]` | Every solution passes, every starter compiles but fails |
 | `npm run check:ids`, `check:theme`, `check:learning`, `check:curriculum` | Fast guards (stable lesson ids, design tokens, prerequisites, drafts) |

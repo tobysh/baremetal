@@ -660,6 +660,7 @@ export function Workspace({
         <div role="tabpanel" id="panel-tutor" aria-labelledby="tab-tutor" hidden={tab !== "tutor"} className="h-full">
           <TutorChat exerciseId={exercise.id} signedIn={signedIn} initialMessages={tutorHistory} getContext={getContext}
             controlRef={tutorRef}
+            onShowDiagnostics={() => setTab("output")}
             loginHref={loginHref}
             onShowHint={
               hintsShown < exercise.hintCount

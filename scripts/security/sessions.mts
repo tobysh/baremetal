@@ -13,18 +13,20 @@ delete process.env.BM_INSECURE_COOKIES;
 const jars = new AsyncLocalStorage<Map<string, string>>();
 const fallback = new Map<string, string>();
 const currentJar = () => jars.getStore() ?? fallback;
-// @types/node predates the `exports` option of mock.module (Node 22.3+), so go through a loose type.
-const mockModule = mock.module.bind(mock) as unknown as (id: string, options: { exports: Record<string, unknown> }) => void;
+// Node 24 takes `exports`; Node 22 only knows `namedExports` and `defaultExport` and silently ignores `exports`,
+// which leaves the mocked module empty. Pass whichever form the running Node understands (both together is an error).
+type MockOptions = { exports?: Record<string, unknown>; namedExports?: Record<string, unknown>; defaultExport?: unknown };
+const rawMock = mock.module.bind(mock) as unknown as (id: string, options: MockOptions) => void;
+const mockModule = (id: string, exports: Record<string, unknown>) =>
+  rawMock(id, Number(process.versions.node.split(".")[0]) >= 24 ? { exports } : { namedExports: exports, defaultExport: exports });
 mockModule("next/headers", {
-  exports: {
-    cookies: async () => {
-      const m = currentJar();
-      return { get: (n: string) => (m.has(n) ? { name: n, value: m.get(n)! } : undefined), set: (n: string, v: string) => void m.set(n, v), delete: (n: string) => void m.delete(n) };
-    },
+  cookies: async () => {
+    const m = currentJar();
+    return { get: (n: string) => (m.has(n) ? { name: n, value: m.get(n)! } : undefined), set: (n: string, v: string) => void m.set(n, v), delete: (n: string) => void m.delete(n) };
   },
 });
-mockModule("next/cache", { exports: { io: async () => {} } });
-mockModule("next/navigation", { exports: { redirect: () => { throw new Error("redirect"); } } });
+mockModule("next/cache", { io: async () => {} });
+mockModule("next/navigation", { redirect: () => { throw new Error("redirect"); } });
 
 const auth = await import("../../src/lib/auth");
 const { getDb } = await import("../../src/lib/db");

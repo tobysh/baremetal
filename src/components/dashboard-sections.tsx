@@ -50,7 +50,7 @@ export function RhythmCard({ rhythm }: { rhythm: Rhythm }) {
         </div>
       </div>
       <details className="mt-1 text-sm text-muted">
-        <summary className="inline-flex min-h-9 cursor-pointer items-center font-medium text-text-2 hover:text-accent">How rest weeks work</summary>
+        <summary className="inline-flex min-h-9 cursor-pointer items-center font-medium text-accent underline underline-offset-2">How rest weeks work</summary>
         <p className="mt-1">
           {rhythm.rest > 0
             ? `${rhythm.rest} rest ${rhythm.rest === 1 ? "week" : "weeks"} saved: one covers a missed week automatically. `

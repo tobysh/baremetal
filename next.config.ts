@@ -30,6 +30,10 @@ const nextConfig: NextConfig = {
   productionBrowserSourceMaps: false,
   // Lesson content, legal text and the password list are read from disk at runtime.
   outputFileTracingIncludes: { "/**": ["./content/**/*", "./data/**/*"] },
+  async redirects() {
+    // The 404 page and old links say "courses"; the catalogue lives at /learn.
+    return [{ source: "/courses", destination: "/learn", permanent: false }];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

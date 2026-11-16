@@ -84,7 +84,7 @@ if (base) {
 
     // Item 2: /api/tutor/quota and /api/hint act only for the session user; client-supplied ids are ignored.
     check((await call("/api/tutor/quota")).status === 401, "[quota] anonymous GET is refused");
-    check((await call("/api/hint", { body: { exerciseId: ex.id, index: 0 } })).status === 401, "[hint] anonymous POST is refused");
+    check((await call("/api/hint", { body: { exerciseId: ex.id, index: 0 } })).status === 200, "[hint] anonymous POST is served");
     const win = Math.floor(Date.now() / (HOUR * 1000));
     await db.collection("rate_limits").updateOne({ key: `tutor:user:h:${A}:${win}` }, { $set: { count: 7, expiresAt: new Date(Date.now() + 2 * HOUR * 1000) } }, { upsert: true });
     const q = async (user: number, qs = "") => (await call(`/api/tutor/quota${qs}`, { user })).json() as Promise<{ remaining: number }>;
